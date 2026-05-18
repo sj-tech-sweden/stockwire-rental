@@ -26,6 +26,39 @@ body {
   border: 1px solid rgba(79, 128, 255, 0.35);
 }
 
+.ec-title {
+  font-family: "Raleway SemiBold", "Myriad Pro", Arial, sans-serif;
+  font-size: 1.1rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: #e9f1ee;
+}
+
+.ec-drawer {
+  background: #11181d;
+  color: #e9f1ee;
+}
+
+.ec-drawer-header {
+  color: #35a853;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.ec-drawer .q-item {
+  color: #b8ccc4;
+  border-radius: 8px;
+  margin: 2px 8px;
+}
+
+.ec-drawer .q-item.q-router-link--active,
+.ec-drawer .q-item:hover {
+  background: rgba(79, 128, 255, 0.15);
+  color: #e9f1ee;
+}
+
 .q-toolbar-title,
 .text-h5,
 .text-h6 {

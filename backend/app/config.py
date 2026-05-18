@@ -14,8 +14,13 @@ class Settings(BaseSettings):
     postgres_password: str = "stockwire_rental"
 
     redis_url: str = "redis://redis:6379/0"
+    cors_origins: str = "http://localhost:9000,http://localhost:3000"
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", case_sensitive=False)
+
+    @property
+    def cors_origins_list(self) -> list[str]:
+        return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
 
     @property
     def database_url(self) -> str:
