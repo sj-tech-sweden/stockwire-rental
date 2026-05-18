@@ -11,18 +11,18 @@
           @click="drawerOpen = !drawerOpen"
         />
         <q-toolbar-title class="ec-title">Stockwire Rental</q-toolbar-title>
+        <div class="row items-center q-gutter-sm"> 
+          <q-btn
+              flat
+              round
+              :icon="$q.dark.isActive ? 'light_mode' : 'dark_mode'"
+              @click="$q.dark.toggle()"
+              aria-label="Toggle dark mode"
+            />
+        </div>
         <div v-if="authStore.me" class="row items-center q-gutter-sm">
           <span class="text-caption">{{ authStore.me.full_name }}</span>
           <q-btn flat dense round icon="logout" aria-label="Logout" @click="logout" />
-        </div>
-        <div class="row items-center q-gutter-sm"> 
-          <q-btn
-            flat
-            round
-            :icon="$q.dark.isActive ? 'light_mode' : 'dark_mode'"
-            @click="$q.dark.toggle()"
-            aria-label="Toggle dark mode"
-          />
         </div>
       </q-toolbar>
     </q-header>
@@ -88,7 +88,10 @@ const menuList = [
 ]
 
 function onNavigate(item) {
-  drawerOpen.value = false
+  // only auto-close drawer on small screens (mobile)
+  if ($q.screen.lt.sm) {
+    drawerOpen.value = false
+  }
   if (item.to) router.push(item.to)
 }
 </script>
