@@ -16,7 +16,7 @@
 
     <q-drawer
       v-model="drawerOpen"
-      side="right"
+      side="left"
       bordered
       overlay
       :width="220"
