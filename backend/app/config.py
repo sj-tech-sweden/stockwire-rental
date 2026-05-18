@@ -16,6 +16,10 @@ class Settings(BaseSettings):
     redis_url: str = "redis://redis:6379/0"
     cors_origins: str = "http://localhost:9000,http://localhost:3000"
 
+    jwt_secret_key: str = "change-me-in-production-use-a-long-random-string"
+    jwt_algorithm: str = "HS256"
+    jwt_expire_hours: int = 8
+
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", case_sensitive=False)
 
     @property

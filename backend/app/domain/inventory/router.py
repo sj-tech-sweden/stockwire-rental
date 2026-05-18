@@ -3,6 +3,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
+from app.domain.auth.deps import get_current_user
 from app.domain.inventory.models import Device, Product, Zone
 from app.domain.inventory.schemas import (
     DeviceCreate,
@@ -16,7 +17,7 @@ from app.domain.inventory.schemas import (
     ZoneUpdate,
 )
 
-router = APIRouter(prefix="/inventory", tags=["inventory"])
+router = APIRouter(prefix="/inventory", tags=["inventory"], dependencies=[Depends(get_current_user)])
 
 
 @router.get("/bootstrap")

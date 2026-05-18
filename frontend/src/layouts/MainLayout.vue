@@ -2,7 +2,6 @@
   <q-layout view="hHh lpR fFf" class="ec-layout">
     <q-header elevated class="ec-header">
       <q-toolbar>
-        <q-toolbar-title class="ec-title">Stockwire Rental</q-toolbar-title>
         <q-btn
           flat
           dense
@@ -11,6 +10,11 @@
           aria-label="Menu"
           @click="drawerOpen = !drawerOpen"
         />
+        <q-toolbar-title class="ec-title">Stockwire Rental</q-toolbar-title>
+        <div v-if="authStore.me" class="row items-center q-gutter-sm">
+          <span class="text-caption">{{ authStore.me.full_name }}</span>
+          <q-btn flat dense round icon="logout" aria-label="Logout" @click="logout" />
+        </div>
       </q-toolbar>
     </q-header>
 
@@ -60,5 +64,15 @@
 
 <script setup>
 import { ref } from 'vue'
+import { useRouter } from 'vue-router'
+import { useAuthStore } from '../stores/auth'
+
 const drawerOpen = ref(false)
+const authStore = useAuthStore()
+const router = useRouter()
+
+async function logout() {
+  authStore.logout()
+  router.push('/login')
+}
 </script>

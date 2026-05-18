@@ -1,6 +1,9 @@
 from datetime import datetime
+from typing import Literal
 
 from pydantic import BaseModel, EmailStr
+
+VALID_ROLES = {"admin", "manager", "viewer"}
 
 
 class UserSummary(BaseModel):
@@ -8,7 +11,7 @@ class UserSummary(BaseModel):
     email: EmailStr
     full_name: str
     is_active: bool
-    is_admin: bool
+    role: str
     created_at: datetime
 
     model_config = {"from_attributes": True}
@@ -16,7 +19,18 @@ class UserSummary(BaseModel):
 
 class UserCreate(BaseModel):
     email: EmailStr
-    password_hash: str
+    password: str
     full_name: str
     is_active: bool = True
-    is_admin: bool = False
+    role: Literal["admin", "manager", "viewer"] = "viewer"
+
+
+class UserLogin(BaseModel):
+    email: EmailStr
+    password: str
+
+
+class Token(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+    user: UserSummary

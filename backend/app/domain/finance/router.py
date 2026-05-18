@@ -3,6 +3,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
+from app.domain.auth.deps import get_current_user
 from app.domain.finance.models import FinancialTransaction
 from app.domain.finance.schemas import (
     FinancialTransactionCreate,
@@ -10,7 +11,7 @@ from app.domain.finance.schemas import (
     FinancialTransactionUpdate,
 )
 
-router = APIRouter(prefix="/finance", tags=["finance"])
+router = APIRouter(prefix="/finance", tags=["finance"], dependencies=[Depends(get_current_user)])
 
 
 @router.get("/bootstrap")
