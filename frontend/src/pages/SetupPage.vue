@@ -55,7 +55,8 @@
           dense
           class="q-mb-sm"
           autocomplete="new-password"
-          :rules="[v => v.length >= 8 || 'Min 8 characters']"
+          maxlength="72"
+          :rules="[v => v.length >= 8 || 'Min 8 characters', v => (v || '').length <= 72 || 'Max 72 characters']"
         >
           <template #append>
             <q-icon
@@ -73,6 +74,7 @@
           dense
           class="q-mb-md"
           autocomplete="new-password"
+          maxlength="72"
           :rules="[v => v === password || 'Passwords do not match']"
         />
 
