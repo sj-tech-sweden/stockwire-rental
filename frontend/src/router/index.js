@@ -7,19 +7,22 @@ import FinancePage from '../pages/FinancePage.vue'
 import HomePage from '../pages/HomePage.vue'
 import InventoryPage from '../pages/InventoryPage.vue'
 import JobsPage from '../pages/JobsPage.vue'
+import AuthLayout from '../layouts/AuthLayout.vue'
 import LoginPage from '../pages/LoginPage.vue'
 import SetupPage from '../pages/SetupPage.vue'
 
 const routes = [
   {
     path: '/login',
-    component: LoginPage,
-    meta: { public: true }
+    component: AuthLayout,
+    meta: { public: true },
+    children: [{ path: '', component: LoginPage }]
   },
   {
     path: '/setup',
-    component: SetupPage,
-    meta: { public: true }
+    component: AuthLayout,
+    meta: { public: true },
+    children: [{ path: '', component: SetupPage }]
   },
   {
     path: '/',
