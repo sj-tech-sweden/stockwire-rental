@@ -1,11 +1,4 @@
-from fastapi.testclient import TestClient
-
-from app.main import app
-
-client = TestClient(app)
-
-
-def test_bootstrap_modules() -> None:
+def test_bootstrap_modules(client) -> None:
     paths = [
         "/api/v1/auth/bootstrap",
         "/api/v1/inventory/bootstrap",

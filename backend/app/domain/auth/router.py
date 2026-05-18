@@ -18,6 +18,11 @@ def _make_token(user: User) -> Token:
     return Token(access_token=token, user=UserSummary.model_validate(user))
 
 
+@router.get("/bootstrap")
+def bootstrap() -> dict[str, str]:
+    return {"module": "auth", "status": "scaffolded"}
+
+
 @router.get("/bootstrap-status")
 def bootstrap_status(db: Session = Depends(get_db)) -> dict:
     """Returns whether first-time setup is still needed (no users exist)."""
