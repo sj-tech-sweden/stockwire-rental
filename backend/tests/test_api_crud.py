@@ -3,13 +3,13 @@ def test_auth_crud(client):
         "/api/v1/auth/users",
         json={
             "email": "admin@example.com",
-            "password_hash": "test",
+            "password": "test",
             "full_name": "Admin User",
             "is_active": True,
-            "is_admin": True,
+            "role": "admin",
         },
     )
-    assert created.status_code == 200
+    assert created.status_code == 201
 
     users = client.get("/api/v1/auth/users")
     assert users.status_code == 200

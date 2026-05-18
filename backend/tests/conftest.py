@@ -1,4 +1,5 @@
 from collections.abc import Generator
+from datetime import datetime, timezone
 
 import pytest
 from fastapi.testclient import TestClient
@@ -8,6 +9,8 @@ from sqlalchemy.pool import StaticPool
 
 from app.db.base import Base
 from app.db.session import get_db
+from app.domain.auth.deps import get_current_user, require_admin
+from app.domain.auth.models import User
 from app.main import app
 
 
@@ -34,11 +37,24 @@ def client(test_engine) -> Generator[TestClient, None, None]:
         finally:
             db.close()
 
+    mock_admin = User(
+        id=999,
+        email="testadmin@example.com",
+        password_hash="irrelevant",
+        full_name="Test Admin",
+        role="admin",
+        is_active=True,
+        is_admin=True,
+        created_at=datetime.now(timezone.utc),
+    )
+
     with test_engine.begin() as conn:
         for table in reversed(Base.metadata.sorted_tables):
             conn.execute(delete(table))
 
     app.dependency_overrides[get_db] = override_get_db
+    app.dependency_overrides[get_current_user] = lambda: mock_admin
+    app.dependency_overrides[require_admin] = lambda: mock_admin
     with TestClient(app) as test_client:
         yield test_client
     app.dependency_overrides.clear()
