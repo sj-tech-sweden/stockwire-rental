@@ -7,6 +7,13 @@
   --ec-text: #e9f1ee;
 }
 
+/* Map Quasar primary color variables to brand green */
+:root {
+  --q-color-primary: #3F873F;
+  --q-color-primary-7: #2f6b30;
+  --q-color-primary-9: #1f4d21;
+}
+
 body {
   background: radial-gradient(circle at top left, #14222a 0%, #0c1114 55%, #090d10 100%);
   color: var(--ec-text);
@@ -57,6 +64,30 @@ body {
 .ec-drawer .q-item:hover {
   background: rgba(63, 135, 63, 0.08);
   color: #e9f1ee;
+}
+
+/* Force Quasar primary-based components to use brand green */
+.q-btn.q-btn--primary,
+.q-btn.q-btn--unelevated.q-btn--primary,
+.q-btn.q-btn--standard.q-btn--primary,
+.q-btn--primary {
+  background-color: var(--q-color-primary) !important;
+  border-color: var(--q-color-primary) !important;
+  color: #ffffff !important;
+}
+.q-btn--primary .q-icon,
+.q-btn.q-btn--primary .q-icon {
+  color: #ffffff !important;
+}
+.q-banner.bg-primary,
+.q-chip.bg-primary,
+.bg-primary {
+  background-color: var(--q-color-primary) !important;
+  color: #ffffff !important;
+}
+.q-link[href],
+a {
+  color: var(--q-color-primary) !important;
 }
 
 .q-toolbar-title,
