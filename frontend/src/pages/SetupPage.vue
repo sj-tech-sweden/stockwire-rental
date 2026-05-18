@@ -148,14 +148,14 @@ async function submit() {
 
 <style scoped>
 .ec-auth-page {
-  background: #0d1117;
+  background: var(--ec-bg);
   min-height: 100vh;
 }
 .ec-auth-card {
-  background: #161b22;
-  border: 1px solid #30363d;
+  background: var(--ec-surface);
+  border: 1px solid rgba(63,135,63,0.12);
   border-radius: 8px;
-  color: #e6eef3; /* ensure readable text on dark theme */
+  color: var(--ec-text);
 }
 .ec-brand-green { color: #19A974 !important }
 .text-muted { color: #9aa6b2 }

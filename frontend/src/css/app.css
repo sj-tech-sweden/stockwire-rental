@@ -47,8 +47,9 @@ body {
 }
 
 .ec-card {
-  background: rgba(24, 34, 40, 0.88);
-  border: 1px solid rgba(63, 135, 63, 0.25);
+  background: var(--ec-surface);
+  border: 1px solid rgba(63, 135, 63, 0.12);
+  color: var(--ec-text);
 }
 
 .ec-title {
@@ -75,8 +76,8 @@ body:not(.q-dark) .ec-header .text-caption {
 }
 
 .ec-drawer {
-  background: var(--ec-drawer-bg);
-  color: var(--ec-drawer-text);
+  background: var(--ec-drawer-bg) !important;
+  color: var(--ec-drawer-text) !important;
 }
 
 .ec-drawer-header {
@@ -144,7 +145,21 @@ a {
 .q-field__label--float,
 .q-field__hint,
 .q-field__native {
+  /* default neutral - overridden by theme-specific selectors below */
+}
+
+body.q-dark .q-field__label,
+body.q-dark .q-field__label--float,
+body.q-dark .q-field__hint,
+body.q-dark .q-field__native {
   color: #cfdfe6 !important;
+}
+
+body:not(.q-dark) .q-field__label,
+body:not(.q-dark) .q-field__label--float,
+body:not(.q-dark) .q-field__hint,
+body:not(.q-dark) .q-field__native {
+  color: #374151 !important;
 }
 
 /* Utility brand color class */
