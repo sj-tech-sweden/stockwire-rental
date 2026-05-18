@@ -46,10 +46,19 @@ export const useAuthStore = defineStore('auth', () => {
     _setSession(data)
   }
 
+  // User list (admin-only)
+  const users = ref([])
+
+  async function fetchUsers() {
+    const { data } = await api.get('/api/v1/auth/users')
+    users.value = data.users || data
+    return users.value
+  }
+
   async function checkBootstrap() {
     const { data } = await api.get('/api/v1/auth/bootstrap-status')
     return data.setup_needed
   }
 
-  return { me, token, isAuthenticated, isAdmin, login, setup, logout, checkBootstrap }
+  return { me, token, isAuthenticated, isAdmin, login, setup, logout, checkBootstrap, users, fetchUsers }
 })
