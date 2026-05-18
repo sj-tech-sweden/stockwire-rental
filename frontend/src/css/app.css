@@ -1,0 +1,26 @@
+:root {
+  --ec-primary: #35a853;
+  --ec-bg-900: #0c1114;
+  --ec-bg-800: #11181d;
+  --ec-surface: #182228;
+  --ec-text: #e9f1ee;
+}
+
+body {
+  background: radial-gradient(circle at top left, #14222a 0%, #0c1114 55%, #090d10 100%);
+  color: var(--ec-text);
+  font-family: Manrope, Inter, sans-serif;
+}
+
+.ec-header {
+  background: linear-gradient(90deg, #182228 0%, #11181d 60%, #0c1114 100%);
+}
+
+.ec-page {
+  min-height: calc(100vh - 60px);
+}
+
+.ec-card {
+  background: rgba(24, 34, 40, 0.88);
+  border: 1px solid rgba(53, 168, 83, 0.35);
+}

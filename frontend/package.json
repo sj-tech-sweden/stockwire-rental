@@ -1,0 +1,20 @@
+{
+  "name": "eventcore-frontend",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "quasar dev",
+    "build": "quasar build",
+    "lint": "echo 'Add eslint config when app modules are in place'"
+  },
+  "dependencies": {
+    "axios": "^1.9.0",
+    "quasar": "^2.18.1",
+    "vue": "^3.5.13",
+    "vue-router": "^4.5.0"
+  },
+  "devDependencies": {
+    "@quasar/app-vite": "^2.1.0",
+    "typescript": "^5.8.3"
+  }
+}
