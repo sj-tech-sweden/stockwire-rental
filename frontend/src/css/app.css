@@ -208,3 +208,66 @@ body:not(.q-dark) .q-field__native {
 
 /* Utility brand color class */
 .ec-brand-green { color: var(--ec-primary) !important }
+
+/* Support Quasar's body--dark / body--light body classes too */
+body.body--dark {
+  --ec-bg: radial-gradient(circle at top left, #14222a 0%, #0c1114 55%, #090d10 100%);
+  --ec-surface: #182228;
+  --ec-drawer-bg: #11181d;
+  --ec-drawer-text: #b8ccc4;
+  --ec-text: #e9f1ee;
+}
+
+body.body--light {
+  --ec-bg: linear-gradient(90deg,#f7fcf7,#f3f9f3 40%);
+  --ec-surface: #ffffff;
+  --ec-drawer-bg: #f6faf6;
+  --ec-drawer-text: #2f3a3a;
+  --ec-text: #111827;
+}
+
+body.body--dark .q-field__label,
+body.body--dark .q-field__label--float,
+body.body--dark .q-field__hint,
+body.body--dark .q-field__native {
+  color: #cfdfe6 !important;
+}
+
+body.body--light .q-field__label,
+body.body--light .q-field__label--float,
+body.body--light .q-field__hint,
+body.body--light .q-field__native {
+  color: #374151 !important;
+}
+
+/* Drawer and card fallbacks for body--dark */
+body.body--dark .ec-drawer,
+body.body--dark .ec-drawer .q-drawer__content,
+body.body--dark .ec-drawer .q-scrollarea__content {
+  background: var(--ec-drawer-bg) !important;
+  color: var(--ec-drawer-text) !important;
+}
+
+body.body--dark .q-card.ec-card,
+body.body--dark .ec-card,
+body.body--dark .ec-card .q-card__section,
+body.body--dark .ec-card .q-card__actions {
+  background: var(--ec-surface) !important;
+  color: var(--ec-text) !important;
+}
+
+/* and light equivalents */
+body.body--light .ec-drawer,
+body.body--light .ec-drawer .q-drawer__content,
+body.body--light .ec-drawer .q-scrollarea__content {
+  background: var(--ec-drawer-bg) !important;
+  color: var(--ec-drawer-text) !important;
+}
+
+body.body--light .q-card.ec-card,
+body.body--light .ec-card,
+body.body--light .ec-card .q-card__section,
+body.body--light .ec-card .q-card__actions {
+  background: var(--ec-surface) !important;
+  color: var(--ec-text) !important;
+}
