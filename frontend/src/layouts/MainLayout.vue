@@ -16,15 +16,12 @@
           <q-btn flat dense round icon="logout" aria-label="Logout" @click="logout" />
         </div>
         <div class="row items-center q-gutter-sm"> 
-          <q-select
-            dense
-            outlined
-            hide-dropdown-icon
-            options-label="label"
-            :options="themeOptions"
-            v-model="themeMode"
-            style="width:130px"
-            @update:model-value="onThemeChange"
+          <q-btn
+            flat
+            round
+            :icon="$q.dark.isActive ? 'light_mode' : 'dark_mode'"
+            @click="$q.dark.toggle()"
+            aria-label="Toggle dark mode"
           />
         </div>
       </q-toolbar>
@@ -76,23 +73,6 @@ const drawerOpen = ref(false)
 const authStore = useAuthStore()
 const router = useRouter()
 const $q = useQuasar()
-
-const themeOptions = [
-  { label: 'Auto', value: 'auto' },
-  { label: 'Light', value: 'light' },
-  { label: 'Dark', value: 'dark' }
-]
-const themeMode = ref('auto')
-
-function onThemeChange(val) {
-  if (val === 'auto') {
-    try { $q.dark.set('auto') } catch (e) { $q.dark.set(false) }
-  } else if (val === 'dark') {
-    $q.dark.set(true)
-  } else {
-    $q.dark.set(false)
-  }
-}
 
 async function logout() {
   authStore.logout()
