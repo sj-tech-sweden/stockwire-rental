@@ -3,9 +3,9 @@ requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "eventcore-backend"
+name = "stockwire-rental-backend"
 version = "0.1.0"
-description = "Unified EventCore backend"
+description = "Stockwire Rental backend"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [

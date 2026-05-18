@@ -8,7 +8,7 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - eventcore-postgres-data:/var/lib/postgresql/data
+      - stockwire-rental-postgres-data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 10s
@@ -60,4 +60,4 @@ services:
       - backend
 
 volumes:
-  eventcore-postgres-data:
+  stockwire-rental-postgres-data:

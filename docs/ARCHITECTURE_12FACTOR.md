@@ -1,7 +1,7 @@
 # 12-Factor Architecture (FastAPI + Quasar)
 
 ## 1. Codebase
-- One repo: EventCore Unified
+- One repo: Stockwire Rental
 - Modular monolith approach first: domain modules with clean boundaries
 - Optional future extraction to services via event contracts
 

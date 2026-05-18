@@ -1,4 +1,4 @@
-# Implementation Plan: EventCore Unified
+# Implementation Plan: Stockwire Rental
 
 ## Target outcome
 One application replacing split RentalCore/WarehouseCore responsibilities with:

@@ -6,7 +6,7 @@ if ! command -v gh >/dev/null 2>&1; then
   exit 1
 fi
 
-REPO="${1:-jorblad/eventcore-unified}"
+REPO="${1:-jorblad/stockwire-rental}"
 MILESTONE_TITLE="M1 - Unified Core MVP"
 
 if ! gh api "repos/${REPO}" >/dev/null 2>&1; then

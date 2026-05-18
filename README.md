@@ -1,6 +1,6 @@
-# EventCore Unified
+# Stockwire Rental
 
-Unified rental + warehouse platform in one application with:
+Rental and warehouse platform in one application with:
 - FastAPI backend
 - Quasar frontend
 - Separate containers
@@ -53,5 +53,5 @@ Services:
 Create first milestone issues in a GitHub repo:
 
 ```bash
-./scripts/create_m1_issues.sh jorblad/eventcore-unified
+./scripts/create_m1_issues.sh jorblad/stockwire-rental
 ```

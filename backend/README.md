@@ -1,6 +1,6 @@
 # Backend
 
-FastAPI backend for EventCore Unified.
+FastAPI backend for Stockwire Rental.
 
 ## Run locally
 

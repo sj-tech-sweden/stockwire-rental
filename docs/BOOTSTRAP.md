@@ -1,12 +1,12 @@
 # Bootstrap and Repo Structure
 
 ## Suggested repository name
-`eventcore-unified`
+`stockwire-rental`
 
 ## Suggested tree
 
 ```text
-eventcore-unified/
+stockwire-rental/
   backend/
     app/
       api/
