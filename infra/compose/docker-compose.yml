@@ -2,23 +2,23 @@ services:
   postgres:
     image: postgres:18-alpine
     environment:
-      POSTGRES_DB: ${POSTGRES_DB}
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-stockwire_rental}
+      POSTGRES_USER: ${POSTGRES_USER:-stockwire_rental}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-stockwire_rental}
     ports:
       - "5432:5432"
     volumes:
-      - stockwire-rental-postgres-data:/var/lib/postgresql/data
+      - stockwire-rental-postgres18-data:/var/lib/postgresql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-stockwire_rental} -d ${POSTGRES_DB:-stockwire_rental}"]
       interval: 10s
       timeout: 5s
       retries: 8
 
-  redis:
-    image: valkey/valkey:8-alpine
+  valkey:
+    image: valkey/valkey:9-alpine
     ports:
-      - "6379:6379"
+      - "${VALKEY_HOST_PORT:-6380}:6379"
     healthcheck:
       test: ["CMD-SHELL", "valkey-cli ping || redis-cli ping"]
       interval: 10s
@@ -30,22 +30,22 @@ services:
       context: ../../backend
       dockerfile: Dockerfile
     environment:
-      APP_NAME: ${APP_NAME}
-      APP_ENV: ${APP_ENV}
+      APP_NAME: ${APP_NAME:-Stockwire Rental API}
+      APP_ENV: ${APP_ENV:-development}
       APP_HOST: 0.0.0.0
       APP_PORT: 8000
       POSTGRES_HOST: postgres
       POSTGRES_PORT: 5432
-      POSTGRES_DB: ${POSTGRES_DB}
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      REDIS_URL: redis://redis:6379/0
+      POSTGRES_DB: ${POSTGRES_DB:-stockwire_rental}
+      POSTGRES_USER: ${POSTGRES_USER:-stockwire_rental}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-stockwire_rental}
+      REDIS_URL: redis://valkey:6379/0
     ports:
       - "8000:8000"
     depends_on:
       postgres:
         condition: service_healthy
-      redis:
+      valkey:
         condition: service_healthy
 
   frontend:
@@ -53,11 +53,11 @@ services:
       context: ../../frontend
       dockerfile: Dockerfile
     environment:
-      VITE_API_BASE_URL: ${VITE_API_BASE_URL}
+      VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:8000}
     ports:
       - "9000:9000"
     depends_on:
       - backend
 
 volumes:
-  stockwire-rental-postgres-data:
+  stockwire-rental-postgres18-data:
