@@ -17,6 +17,9 @@ class Product(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
 
     devices: Mapped[list["Device"]] = relationship(back_populates="product")
+    requirements: Mapped[list["JobRequirement"]] = relationship(
+        back_populates="product", overlaps="product"
+    )
 
 
 class Device(Base):
@@ -41,3 +44,5 @@ class Zone(Base):
     name: Mapped[str] = mapped_column(String(255))
     zone_type: Mapped[str] = mapped_column(String(50), default="rack")
     parent_id: Mapped[int | None] = mapped_column(ForeignKey("zones.id"), nullable=True, index=True)
+
+    parent: Mapped["Zone | None"] = relationship(remote_side="Zone.id")

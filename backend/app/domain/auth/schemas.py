@@ -12,3 +12,11 @@ class UserSummary(BaseModel):
     created_at: datetime
 
     model_config = {"from_attributes": True}
+
+
+class UserCreate(BaseModel):
+    email: EmailStr
+    password_hash: str
+    full_name: str
+    is_active: bool = True
+    is_admin: bool = False

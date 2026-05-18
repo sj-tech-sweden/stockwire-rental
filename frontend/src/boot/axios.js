@@ -6,3 +6,7 @@ export const api = axios.create({
   baseURL: apiBaseUrl,
   timeout: 15000
 })
+
+export default ({ app }) => {
+  app.config.globalProperties.$api = api
+}

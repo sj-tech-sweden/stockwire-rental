@@ -21,13 +21,13 @@ export default configure(function () {
     framework: {
       config: {
         brand: {
-          primary: '#35A853',
-          secondary: '#182228',
-          accent: '#43C36B',
+          primary: '#4F80FF',
+          secondary: '#11181D',
+          accent: '#35A853',
           dark: '#0C1114',
           positive: '#43C36B',
           negative: '#E65656',
-          info: '#2E7DAF',
+          info: '#4F80FF',
           warning: '#F7B84B'
         }
       },

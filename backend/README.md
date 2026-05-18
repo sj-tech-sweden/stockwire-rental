@@ -20,3 +20,9 @@ pytest
 ```bash
 alembic upgrade head
 ```
+
+## Seed demo data
+
+```bash
+python scripts/seed_demo.py
+```

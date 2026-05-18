@@ -7,7 +7,9 @@ Observed identity cues from your logo:
 - Technical, clean, industrial tone
 - Curved cable motif as a signature element
 
-Because the grafisk profil values are not available as a workspace file, this document includes a tokenized system ready to replace with exact font/color values.
+Brand values integrated from `/Users/samsjo02/Downloads/grafiskProfil.pdf` extraction:
+- Typography families: `Myriad Pro` and `Raleway SemiBold`
+- Profile primary blue token from PDF color metadata: `#4F80FF` (derived from `[20224,32768,65535]`)
 
 ## Design principles
 - Functional first: operational UI with strong readability
@@ -18,7 +20,7 @@ Because the grafisk profil values are not available as a workspace file, this do
 ## Quasar token proposal
 Use these as CSS vars and map to Quasar brand config.
 
-- Brand primary: #35A853
+- Brand primary: #4F80FF
 - Brand primary-600: #2D9148
 - Brand success: #43C36B
 - Brand warning: #F7B84B
@@ -31,10 +33,10 @@ Use these as CSS vars and map to Quasar brand config.
 - Border-subtle: #243138
 
 ## Typography
-Recommended pair until exact grafisk profile values are provided:
-- Headings/UI emphasis: Manrope (600/700)
-- Body/data dense text: Inter (400/500)
-- Numeric/scan IDs: JetBrains Mono (500)
+Integrated profile pair:
+- Headings/UI emphasis: Raleway SemiBold (600)
+- Body/data dense text: Myriad Pro (400)
+- Numeric/scan IDs: Myriad Pro (400)
 
 If your grafisk profil specifies different fonts, replace in one place:
 - Quasar boot typography config

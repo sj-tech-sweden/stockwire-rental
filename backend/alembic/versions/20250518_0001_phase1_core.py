@@ -57,6 +57,7 @@ def upgrade() -> None:
         sa.Column("job_code", sa.String(length=50), nullable=False),
         sa.Column("customer_name", sa.String(length=255), nullable=False),
         sa.Column("status", sa.String(length=50), nullable=False, server_default="draft"),
+        sa.Column("owner_id", sa.Integer(), sa.ForeignKey("users.id"), nullable=True),
         sa.Column("start_date", sa.Date(), nullable=True),
         sa.Column("end_date", sa.Date(), nullable=True),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
@@ -64,6 +65,7 @@ def upgrade() -> None:
     op.create_index("ix_jobs_job_code", "jobs", ["job_code"], unique=True)
     op.create_index("ix_jobs_customer_name", "jobs", ["customer_name"], unique=False)
     op.create_index("ix_jobs_status", "jobs", ["status"], unique=False)
+    op.create_index("ix_jobs_owner_id", "jobs", ["owner_id"], unique=False)
 
     op.create_table(
         "devices",
@@ -126,6 +128,7 @@ def downgrade() -> None:
     op.drop_index("ix_jobs_status", table_name="jobs")
     op.drop_index("ix_jobs_customer_name", table_name="jobs")
     op.drop_index("ix_jobs_job_code", table_name="jobs")
+    op.drop_index("ix_jobs_owner_id", table_name="jobs", if_exists=True)
     op.drop_table("jobs")
 
     op.drop_index("ix_zones_parent_id", table_name="zones")

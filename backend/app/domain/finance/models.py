@@ -1,7 +1,7 @@
 from datetime import datetime
 
 from sqlalchemy import DateTime, ForeignKey, Numeric, String
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
 
@@ -18,3 +18,5 @@ class FinancialTransaction(Base):
     transaction_date: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
     due_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
+
+    job: Mapped["Job | None"] = relationship(back_populates="transactions")

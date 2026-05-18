@@ -1,5 +1,6 @@
 :root {
-  --ec-primary: #35a853;
+  --ec-primary: #4f80ff;
+  --ec-accent: #35a853;
   --ec-bg-900: #0c1114;
   --ec-bg-800: #11181d;
   --ec-surface: #182228;
@@ -9,7 +10,7 @@
 body {
   background: radial-gradient(circle at top left, #14222a 0%, #0c1114 55%, #090d10 100%);
   color: var(--ec-text);
-  font-family: Manrope, Inter, sans-serif;
+  font-family: "Myriad Pro", Arial, sans-serif;
 }
 
 .ec-header {
@@ -22,5 +23,11 @@ body {
 
 .ec-card {
   background: rgba(24, 34, 40, 0.88);
-  border: 1px solid rgba(53, 168, 83, 0.35);
+  border: 1px solid rgba(79, 128, 255, 0.35);
+}
+
+.q-toolbar-title,
+.text-h5,
+.text-h6 {
+  font-family: "Raleway SemiBold", "Myriad Pro", Arial, sans-serif;
 }
