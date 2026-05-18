@@ -48,6 +48,31 @@ Services:
 - Backend API: http://localhost:8000
 - Frontend (Quasar dev): http://localhost:9000
 
+## Local dev workflow
+
+The existing dev Docker Compose is the recommended local instance setup.
+
+```bash
+cp infra/env/.env.example infra/env/.env
+docker compose -f infra/compose/docker-compose.yml --env-file infra/env/.env up -d --build
+docker compose -f infra/compose/docker-compose.yml --env-file infra/env/.env run --rm backend alembic upgrade head
+docker compose -f infra/compose/docker-compose.yml --env-file infra/env/.env run --rm backend python scripts/seed_demo.py
+```
+
+## Tests
+
+Backend API integration tests:
+
+```bash
+docker compose -f infra/compose/docker-compose.yml --env-file infra/env/.env run --rm backend pytest
+```
+
+Frontend smoke tests:
+
+```bash
+docker compose -f infra/compose/docker-compose.yml --env-file infra/env/.env run --rm frontend npm run test:smoke
+```
+
 ## Milestone issue automation
 
 Create first milestone issues in a GitHub repo:
