@@ -47,9 +47,17 @@ body {
 }
 
 .ec-card {
-  background: var(--ec-surface);
-  border: 1px solid rgba(63, 135, 63, 0.12);
-  color: var(--ec-text);
+  background: var(--ec-surface) !important;
+  border: 1px solid rgba(63, 135, 63, 0.08) !important;
+  color: var(--ec-text) !important;
+  box-shadow: 0 1px 0 rgba(0,0,0,0.25) !important;
+}
+
+/* Ensure inner card sections don't force a white background */
+.ec-card .q-card__section,
+.ec-card .q-card__actions {
+  background: transparent !important;
+  color: inherit !important;
 }
 
 .ec-title {
@@ -76,6 +84,21 @@ body:not(.q-dark) .ec-header .text-caption {
 }
 
 .ec-drawer {
+  background: var(--ec-drawer-bg) !important;
+  color: var(--ec-drawer-text) !important;
+}
+
+/* Stronger overrides for Quasar drawer internals that may carry a white surface */
+body.q-dark .ec-drawer,
+body.q-dark .ec-drawer .q-drawer__content,
+body.q-dark .ec-drawer .q-scrollarea__content {
+  background: var(--ec-drawer-bg) !important;
+  color: var(--ec-drawer-text) !important;
+}
+
+body:not(.q-dark) .ec-drawer,
+body:not(.q-dark) .ec-drawer .q-drawer__content,
+body:not(.q-dark) .ec-drawer .q-scrollarea__content {
   background: var(--ec-drawer-bg) !important;
   color: var(--ec-drawer-text) !important;
 }
