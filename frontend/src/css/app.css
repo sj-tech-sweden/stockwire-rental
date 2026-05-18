@@ -103,6 +103,27 @@ body:not(.q-dark) .ec-drawer .q-scrollarea__content {
   color: var(--ec-drawer-text) !important;
 }
 
+/* Very specific overrides to catch Quasar internal card sections that may be white */
+body.q-dark .q-card.ec-card,
+body.q-dark .q-card.ec-card .q-card__section,
+body.q-dark .q-card.ec-card .q-card__actions,
+body.q-dark .ec-card,
+body.q-dark .ec-card .q-card__section,
+body.q-dark .ec-card .q-card__actions,
+body.q-dark .q-page .ec-card .q-card__section {
+  background: var(--ec-surface) !important;
+  color: var(--ec-text) !important;
+  border-color: rgba(63,135,63,0.06) !important;
+}
+
+/* Drawer inner parts sometimes use different wrappers */
+body.q-dark .q-drawer__content,
+body.q-dark .q-drawer__inner,
+body.q-dark .q-drawer__content .q-scrollarea__content {
+  background: var(--ec-drawer-bg) !important;
+  color: var(--ec-drawer-text) !important;
+}
+
 .ec-drawer-header {
   color: var(--ec-primary);
   font-size: 0.7rem;
