@@ -1,4 +1,3 @@
-def decode_token(token: str) -> dict:
 from datetime import datetime, timedelta, timezone
 import hashlib
 
