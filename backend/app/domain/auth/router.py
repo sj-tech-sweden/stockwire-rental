@@ -31,10 +31,6 @@ def setup_admin(payload: UserCreate, db: Session = Depends(get_db)) -> Token:
     count = db.scalar(select(func.count()).select_from(User))
     if count and count > 0:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Setup already complete")
-    # bcrypt has a 72-byte input limit; validate to return a friendly error instead of a 500
-    pw_bytes = payload.password.encode('utf-8') if payload.password is not None else b''
-    if len(pw_bytes) > 72:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Password too long (max 72 bytes). Please use a shorter password.")
     user = User(
         email=payload.email,
         password_hash=hash_password(payload.password),
@@ -82,10 +78,6 @@ def create_user(
     existing = db.scalar(select(User).where(User.email == payload.email))
     if existing:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email already registered")
-    # validate password length to avoid bcrypt errors
-    pw_bytes = payload.password.encode('utf-8') if payload.password is not None else b''
-    if len(pw_bytes) > 72:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Password too long (max 72 bytes). Please use a shorter password.")
     user = User(
         email=payload.email,
         password_hash=hash_password(payload.password),
