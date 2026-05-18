@@ -7,6 +7,7 @@ import { pinia } from './stores'
 
 import 'quasar/src/css/index.sass'
 import './css/app.css'
+import './boot/theme'
 
 createApp(App)
   .use(Quasar, {
