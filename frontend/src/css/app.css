@@ -1,6 +1,6 @@
 :root {
-  --ec-primary: #4f80ff;
-  --ec-accent: #35a853;
+  --ec-primary: #3F873F; /* brand green from grafiskProfil */
+  --ec-accent: #3F873F;
   --ec-bg-900: #0c1114;
   --ec-bg-800: #11181d;
   --ec-surface: #182228;
@@ -10,7 +10,7 @@
 body {
   background: radial-gradient(circle at top left, #14222a 0%, #0c1114 55%, #090d10 100%);
   color: var(--ec-text);
-  font-family: "Myriad Pro", Arial, sans-serif;
+  font-family: "Myriad Roman", "Myriad Pro", Arial, sans-serif;
 }
 
 .ec-header {
@@ -23,14 +23,14 @@ body {
 
 .ec-card {
   background: rgba(24, 34, 40, 0.88);
-  border: 1px solid rgba(79, 128, 255, 0.35);
+  border: 1px solid rgba(63, 135, 63, 0.25);
 }
 
 .ec-title {
-  font-family: "Raleway SemiBold", "Myriad Pro", Arial, sans-serif;
+  font-family: "Myriad Pro", "Myriad Roman", Arial, sans-serif;
   font-size: 1.1rem;
-  font-weight: 700;
-  letter-spacing: 0.04em;
+  font-weight: 600;
+  letter-spacing: 0.02em;
   color: #e9f1ee;
 }
 
@@ -40,7 +40,7 @@ body {
 }
 
 .ec-drawer-header {
-  color: #35a853;
+  color: var(--ec-primary);
   font-size: 0.7rem;
   font-weight: 700;
   letter-spacing: 0.12em;
@@ -55,12 +55,23 @@ body {
 
 .ec-drawer .q-item.q-router-link--active,
 .ec-drawer .q-item:hover {
-  background: rgba(79, 128, 255, 0.15);
+  background: rgba(63, 135, 63, 0.08);
   color: #e9f1ee;
 }
 
 .q-toolbar-title,
 .text-h5,
 .text-h6 {
-  font-family: "Raleway SemiBold", "Myriad Pro", Arial, sans-serif;
+  font-family: "Myriad Pro", "Myriad Roman", Arial, sans-serif;
 }
+
+/* Global fixes for dark theme form labels and hints */
+.q-field__label,
+.q-field__label--float,
+.q-field__hint,
+.q-field__native {
+  color: #cfdfe6 !important;
+}
+
+/* Utility brand color class */
+.ec-brand-green { color: var(--ec-primary) !important }
