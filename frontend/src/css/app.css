@@ -7,6 +7,24 @@
   --ec-text: #e9f1ee;
 }
 
+/* Theme variables overridden by Quasar dark class on body (body.q-dark) */
+body.q-dark {
+  --ec-bg: radial-gradient(circle at top left, #14222a 0%, #0c1114 55%, #090d10 100%);
+  --ec-surface: #182228;
+  --ec-drawer-bg: #11181d;
+  --ec-drawer-text: #b8ccc4;
+  --ec-text: #e9f1ee;
+}
+
+/* Light mode variables when Quasar dark is not active */
+body:not(.q-dark) {
+  --ec-bg: linear-gradient(90deg,#f7fcf7,#f3f9f3 40%);
+  --ec-surface: #ffffff;
+  --ec-drawer-bg: #f6faf6;
+  --ec-drawer-text: #2f3a3a;
+  --ec-text: #111827;
+}
+
 /* Map Quasar primary color variables to brand green */
 :root {
   --q-color-primary: #3F873F;
@@ -15,13 +33,13 @@
 }
 
 body {
-  background: radial-gradient(circle at top left, #14222a 0%, #0c1114 55%, #090d10 100%);
+  background: var(--ec-bg);
   color: var(--ec-text);
   font-family: "Myriad Roman", "Myriad Pro", Arial, sans-serif;
 }
 
 .ec-header {
-  background: linear-gradient(90deg, #182228 0%, #11181d 60%, #0c1114 100%);
+  background: linear-gradient(90deg, rgba(24,34,40,0.95) 0%, rgba(17,24,29,0.9) 60%, rgba(12,17,20,0.9) 100%);
 }
 
 .ec-page {
@@ -57,8 +75,8 @@ body:not(.q-dark) .ec-header .text-caption {
 }
 
 .ec-drawer {
-  background: #11181d;
-  color: #e9f1ee;
+  background: var(--ec-drawer-bg);
+  color: var(--ec-drawer-text);
 }
 
 .ec-drawer-header {
@@ -70,42 +88,25 @@ body:not(.q-dark) .ec-header .text-caption {
 }
 
 .ec-drawer .q-item {
-  color: #b8ccc4;
+  color: var(--ec-drawer-text);
   border-radius: 8px;
-  margin: 2px 8px;
+  margin: 6px 10px;
 }
 
 .ec-drawer .q-item .q-icon {
-  /* prefer brand green for icons */
   color: var(--ec-primary) !important;
 }
 
-/* Active / hover states - dark mode */
-body.q-dark .ec-drawer .q-item.q-router-link--active,
-body.q-dark .ec-drawer .q-item:hover {
+/* Hover & active for both themes - tweak contrast and use brand tint */
+.ec-drawer .q-item.q-router-link--active,
+.ec-drawer .q-item:hover {
   background: rgba(63, 135, 63, 0.08);
-  color: #e9f1ee;
+  color: var(--ec-text);
 }
 
-/* Light mode drawer colors */
-body:not(.q-dark) .ec-drawer {
-  background: #f6faf6; /* light surface */
-  color: #1f2a2a;
-}
-body:not(.q-dark) .ec-drawer .q-item {
-  color: #2f3a3a;
-}
-body:not(.q-dark) .ec-drawer .q-item .q-icon {
-  color: var(--ec-primary) !important;
-}
-body:not(.q-dark) .ec-drawer .q-item.q-router-link--active,
-body:not(.q-dark) .ec-drawer .q-item:hover {
-  background: rgba(63, 135, 63, 0.08);
-  color: var(--ec-primary);
-}
-body:not(.q-dark) .ec-drawer .q-item.q-router-link--active .q-icon,
-body:not(.q-dark) .ec-drawer .q-item:hover .q-icon {
-  color: var(--ec-primary) !important;
+/* Improve spacing and readability for drawer items */
+.ec-drawer .q-item__section {
+  align-items: center;
 }
 
 /* Force Quasar primary-based components to use brand green */
