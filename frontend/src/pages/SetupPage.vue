@@ -82,21 +82,29 @@
           {{ error }}
         </q-banner>
 
-        <q-btn
-          type="submit"
-          label="Create admin account"
-          color="primary"
-          class="full-width"
-          :loading="loading"
-          unelevated
-        />
+        <div v-if="alreadySetup">
+          <q-banner class="bg-info text-white q-mb-md rounded-borders" dense>
+            The system is already setup — please login instead.
+          </q-banner>
+          <q-btn label="Go to login" color="primary" class="full-width" @click="() => router.push('/login')" />
+        </div>
+        <div v-else>
+          <q-btn
+            type="submit"
+            label="Create admin account"
+            color="primary"
+            class="full-width"
+            :loading="loading"
+            unelevated
+          />
+        </div>
       </q-form>
     </q-card>
   </q-page>
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 
 import { useAuthStore } from '../stores/auth'
@@ -111,6 +119,18 @@ const confirm = ref('')
 const showPw = ref(false)
 const loading = ref(false)
 const error = ref('')
+const alreadySetup = ref(false)
+
+onMounted(async () => {
+  try {
+    const setupNeeded = await authStore.checkBootstrap()
+    if (!setupNeeded) {
+      alreadySetup.value = true
+    }
+  } catch (e) {
+    // ignore bootstrap check errors; allow submit to show errors
+  }
+})
 
 async function submit() {
   error.value = ''

@@ -16,7 +16,7 @@
               flat
               round
               :icon="$q.dark.isActive ? 'light_mode' : 'dark_mode'"
-              @click="$q.dark.toggle()"
+              @click="toggleDark"
               aria-label="Toggle dark mode"
             />
         </div>
@@ -77,6 +77,16 @@ const $q = useQuasar()
 async function logout() {
   authStore.logout()
   router.push('/login')
+}
+
+function toggleDark() {
+  // toggle and persist user's explicit choice
+  $q.dark.toggle()
+  try {
+    localStorage.setItem('ec_dark_mode', $q.dark.isActive ? 'true' : 'false')
+  } catch (e) {
+    // ignore storage errors
+  }
 }
 
 const menuList = [
