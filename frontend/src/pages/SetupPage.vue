@@ -2,9 +2,29 @@
   <q-page class="ec-auth-page flex flex-center">
     <q-card class="ec-auth-card q-pa-lg" style="width: 420px">
       <div class="text-center q-mb-lg">
-        <div class="ec-title text-h5 q-mb-xs">Stockwire Rental</div>
-        <div class="text-subtitle2 text-primary q-mb-xs">First-time Setup</div>
-        <div class="text-caption text-grey">Create your administrator account</div>
+        <div class="row items-center justify-center q-mb-sm" style="gap:12px">
+          <div class="ec-logo" aria-hidden>
+            <!-- simple inline SVG logo (blue) -->
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <rect width="24" height="24" rx="4" fill="#1E88E5" />
+              <path d="M6 12h12v2H6z" fill="white" opacity="0.9" />
+            </svg>
+          </div>
+          <div>
+            <div class="ec-title text-h5 q-mb-xs">Stockwire Rental</div>
+            <div class="text-subtitle2 ec-brand-blue q-mb-xs">First-time Setup</div>
+            <div class="text-caption text-muted">Create your administrator account</div>
+          </div>
+        </div>
+        <div class="q-mb-md">
+          <!-- graphical profile/avatar placeholder -->
+          <div class="ec-avatar">
+            <svg width="72" height="72" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <circle cx="12" cy="12" r="12" fill="#0B1220" />
+              <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-3.31 0-6 2.69-6 6h12c0-3.31-2.69-6-6-6z" fill="#1E88E5" />
+            </svg>
+          </div>
+        </div>
       </div>
 
       <q-form @submit.prevent="submit">
@@ -113,5 +133,10 @@ async function submit() {
   background: #161b22;
   border: 1px solid #30363d;
   border-radius: 8px;
+  color: #e6eef3; /* ensure readable text on dark theme */
 }
+.ec-brand-blue { color: #1E88E5 !important }
+.text-muted { color: #9aa6b2 }
+.ec-logo svg { border-radius: 6px }
+.ec-avatar { display: inline-flex; justify-content: center; }
 </style>
