@@ -58,4 +58,4 @@ These issues cover the first executable milestone: foundation + core operational
 - `priority:p1`
 
 ## Suggested milestone name
-`M1 - Unified Core MVP`
+`M1 - Stockwire Rental MVP`

@@ -1,6 +1,6 @@
 <template>
   <q-page class="q-pa-md ec-page">
-    <div class="text-h5 q-mb-md">Unified Operations Dashboard</div>
+    <div class="text-h5 q-mb-md">Stockwire Operations Dashboard</div>
     <q-card class="ec-card q-pa-md">
       <div class="text-subtitle1 q-mb-sm">Platform status</div>
       <div class="q-mb-sm">Backend health: <strong>{{ status }}</strong></div>

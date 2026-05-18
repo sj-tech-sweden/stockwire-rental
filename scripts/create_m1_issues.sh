@@ -7,7 +7,7 @@ if ! command -v gh >/dev/null 2>&1; then
 fi
 
 REPO="${1:-jorblad/stockwire-rental}"
-MILESTONE_TITLE="M1 - Unified Core MVP"
+MILESTONE_TITLE="M1 - Stockwire Rental MVP"
 
 if ! gh api "repos/${REPO}" >/dev/null 2>&1; then
   echo "Repository ${REPO} not found or no access"
