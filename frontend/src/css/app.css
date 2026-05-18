@@ -41,6 +41,21 @@ body {
   color: #e9f1ee;
 }
 
+/* Improve readability for small header captions (user name) */
+.ec-header .text-caption {
+  font-family: "Segoe UI", "Helvetica Neue", "Source Sans Pro", Arial, sans-serif;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+/* Color for dark vs light modes */
+body.q-dark .ec-header .text-caption {
+  color: #d0d8d6; /* light grey on dark */
+}
+body:not(.q-dark) .ec-header .text-caption {
+  color: #333333; /* dark grey on light */
+}
+
 .ec-drawer {
   background: #11181d;
   color: #e9f1ee;
