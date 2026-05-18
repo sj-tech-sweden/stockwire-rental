@@ -75,10 +75,37 @@ body:not(.q-dark) .ec-header .text-caption {
   margin: 2px 8px;
 }
 
-.ec-drawer .q-item.q-router-link--active,
-.ec-drawer .q-item:hover {
+.ec-drawer .q-item .q-icon {
+  /* prefer brand green for icons */
+  color: var(--ec-primary) !important;
+}
+
+/* Active / hover states - dark mode */
+body.q-dark .ec-drawer .q-item.q-router-link--active,
+body.q-dark .ec-drawer .q-item:hover {
   background: rgba(63, 135, 63, 0.08);
   color: #e9f1ee;
+}
+
+/* Light mode drawer colors */
+body:not(.q-dark) .ec-drawer {
+  background: #f6faf6; /* light surface */
+  color: #1f2a2a;
+}
+body:not(.q-dark) .ec-drawer .q-item {
+  color: #2f3a3a;
+}
+body:not(.q-dark) .ec-drawer .q-item .q-icon {
+  color: var(--ec-primary) !important;
+}
+body:not(.q-dark) .ec-drawer .q-item.q-router-link--active,
+body:not(.q-dark) .ec-drawer .q-item:hover {
+  background: rgba(63, 135, 63, 0.08);
+  color: var(--ec-primary);
+}
+body:not(.q-dark) .ec-drawer .q-item.q-router-link--active .q-icon,
+body:not(.q-dark) .ec-drawer .q-item:hover .q-icon {
+  color: var(--ec-primary) !important;
 }
 
 /* Force Quasar primary-based components to use brand green */
