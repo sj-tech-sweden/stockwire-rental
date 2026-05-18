@@ -12,7 +12,7 @@
           </div>
           <div>
             <div class="ec-title text-h5 q-mb-xs">Stockwire Rental</div>
-            <div class="text-subtitle2 ec-brand-blue q-mb-xs">First-time Setup</div>
+            <div class="text-subtitle2 ec-brand-green q-mb-xs">First-time Setup</div>
             <div class="text-caption text-muted">Create your administrator account</div>
           </div>
         </div>
@@ -21,7 +21,7 @@
           <div class="ec-avatar">
             <svg width="72" height="72" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
               <circle cx="12" cy="12" r="12" fill="#0B1220" />
-              <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-3.31 0-6 2.69-6 6h12c0-3.31-2.69-6-6-6z" fill="#1E88E5" />
+              <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-3.31 0-6 2.69-6 6h12c0-3.31-2.69-6-6-6z" fill="#19A974" />
             </svg>
           </div>
         </div>
@@ -135,8 +135,18 @@ async function submit() {
   border-radius: 8px;
   color: #e6eef3; /* ensure readable text on dark theme */
 }
-.ec-brand-blue { color: #1E88E5 !important }
+.ec-brand-green { color: #19A974 !important }
 .text-muted { color: #9aa6b2 }
 .ec-logo svg { border-radius: 6px }
 .ec-avatar { display: inline-flex; justify-content: center; }
+
+/* Ensure Quasar input labels and hints are visible on dark backgrounds */
+.ec-auth-card .q-field__label,
+.ec-auth-card .q-field__label--float,
+.ec-auth-card .q-field__hint {
+  color: #cfdfe6 !important;
+}
+.ec-auth-card .q-field__native {
+  color: #e6eef3 !important;
+}
 </style>
