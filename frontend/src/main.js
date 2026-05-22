@@ -1,18 +1,2 @@
-import { createApp } from 'vue'
-import { Quasar } from 'quasar'
-
-import App from './App.vue'
-import router from './router'
-import { pinia } from './stores'
-
-import 'quasar/src/css/index.sass'
-import './css/app.css'
-import './boot/theme'
-
-createApp(App)
-  .use(Quasar, {
-    config: {}
-  })
-  .use(pinia)
-  .use(router)
-  .mount('#q-app')
+// This file is not used by Quasar CLI — the entry point is generated from quasar.config.js.
+// Boot files in src/boot/ are loaded via the 'boot' array in quasar.config.js.

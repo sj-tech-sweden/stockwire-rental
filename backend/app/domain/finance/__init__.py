@@ -1,3 +1,3 @@
-from app.domain.finance.router import router
+"""Finance domain package."""
 
 __all__ = ["router"]

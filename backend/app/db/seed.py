@@ -3,8 +3,32 @@ from decimal import Decimal
 
 from sqlalchemy import select
 
-from app.db.models import Device, FinancialTransaction, Job, JobRequirement, Product, User, Zone
+from app.db.models import (
+    Customer,
+    Device,
+    FinancialTransaction,
+    InventoryCategory,
+    Job,
+    JobRequirement,
+    Product,
+    User,
+    Venue,
+    Zone,
+)
 from app.db.session import SessionLocal
+
+
+def _ensure_category(db, name: str, parent_id: int | None = None) -> InventoryCategory:
+    category = db.scalar(
+        select(InventoryCategory)
+        .where(InventoryCategory.name == name)
+        .where(InventoryCategory.parent_id == parent_id)
+    )
+    if category is None:
+        category = InventoryCategory(name=name, parent_id=parent_id)
+        db.add(category)
+        db.flush()
+    return category
 
 
 def seed_demo_data() -> None:
@@ -19,11 +43,31 @@ def seed_demo_data() -> None:
             is_active=True,
             is_admin=True,
         )
-        speaker = Product(sku="SPK-100", name="Active Speaker 12\"", category="audio", daily_rate=Decimal("350.00"))
-        light = Product(sku="LGT-200", name="LED Wash Bar", category="lighting", daily_rate=Decimal("225.00"))
+
+        audio = _ensure_category(db, "Audio")
+        audio_speakers = _ensure_category(db, "Speakers", parent_id=audio.id)
+        lighting = _ensure_category(db, "Lighting")
+        lighting_fixtures = _ensure_category(db, "Fixtures", parent_id=lighting.id)
+
+        speaker = Product(
+            sku="SPK-100",
+            name='Active Speaker 12"',
+            category="Speakers",
+            category_id=audio_speakers.id,
+            daily_rate=Decimal("350.00"),
+        )
+        light = Product(
+            sku="LGT-200",
+            name="LED Wash Bar",
+            category="Fixtures",
+            category_id=lighting_fixtures.id,
+            daily_rate=Decimal("225.00"),
+        )
         zone_main = Zone(code="A-01", name="Main Rack A-01", zone_type="rack")
         zone_stage = Zone(code="STAGE", name="Stage Prep", zone_type="stage")
-        db.add_all([admin, speaker, light, zone_main, zone_stage])
+        customer = Customer(name="Tsunami Events Demo", email="demo@tsunami-events.test", phone="+46 70 000 00 00")
+        venue = Venue(name="Tsunami Hall", address="Main Street 1", city="Stockholm")
+        db.add_all([admin, speaker, light, zone_main, zone_stage, customer, venue])
         db.flush()
 
         db.add_all(
@@ -35,10 +79,15 @@ def seed_demo_data() -> None:
 
         job = Job(
             job_code="JOB-2026-001",
-            customer_name="Tsunami Events Demo",
+            customer_id=customer.id,
+            customer_name=customer.name,
+            venue_id=venue.id,
+            venue_name=venue.name,
+            description="Demo event production",
             status="confirmed",
             start_date=date.today(),
             end_date=date.today() + timedelta(days=2),
+            notes="Seeded demo job",
         )
         db.add(job)
         db.flush()

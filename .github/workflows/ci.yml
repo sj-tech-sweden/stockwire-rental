@@ -1,0 +1,92 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  frontend-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install frontend deps
+        working-directory: frontend
+        run: npm ci
+      - name: Run frontend unit tests
+        working-directory: frontend
+        run: npm run test:smoke
+
+      - name: Build frontend
+        working-directory: frontend
+        run: npm run build
+
+  backend-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.12'
+      - name: Install backend deps
+        working-directory: backend
+        run: |
+          python -m pip install --upgrade pip
+          pip install .[dev]
+      - name: Run backend tests
+        working-directory: backend
+        run: pytest -q
+
+  e2e-tests:
+    runs-on: ubuntu-latest
+    needs: [frontend-tests, backend-tests]
+    strategy:
+      matrix:
+        browser: [chromium, firefox, webkit]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Start services with docker-compose
+        run: |
+          docker compose -f infra/compose/docker-compose.dev.yml up -d --build
+
+      - name: Wait for backend to be ready
+        run: |
+          for i in {1..30}; do
+            if curl -sS http://localhost:8000/ && break; then break; fi
+            echo "waiting..."; sleep 2
+          done
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install frontend deps and Playwright
+        working-directory: frontend
+        run: |
+          npm ci
+          npx playwright install --with-deps
+
+      - name: Run Playwright E2E for ${{ matrix.browser }}
+        working-directory: frontend
+        env:
+          BROWSER: ${{ matrix.browser }}
+        run: |
+          npx playwright test --project=${{ matrix.browser }} --trace=on
+
+      - name: Upload Playwright artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-artifacts-${{ matrix.browser }}
+          path: |
+            frontend/test-results
+            frontend/playwright-report
+            frontend/tests/e2e/artifacts

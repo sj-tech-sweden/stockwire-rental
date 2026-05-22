@@ -1,0 +1,1 @@
+import{P as a}from"./index-38O2Y-ct.js";const r=()=>{try{const t=localStorage.getItem("ec_dark_mode");if(t!==null){a.set(t==="true");return}const e=window.matchMedia&&window.matchMedia("(prefers-color-scheme: dark)");a.set(e?e.matches:!1),e&&e.addEventListener("change",c=>{localStorage.getItem("ec_dark_mode")===null&&a.set(c.matches)})}catch{}};export{r as default};

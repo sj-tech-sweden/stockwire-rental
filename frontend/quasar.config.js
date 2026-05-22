@@ -3,7 +3,7 @@ import { configure } from 'quasar/wrappers'
 export default configure(function () {
   return {
     supportTS: false,
-    boot: ['axios'],
+    boot: ['axios', 'i18n', 'theme', 'force-header-theme', 'realtime-sync', 'orbit-sync'],
     css: ['app.css'],
     extras: ['material-icons'],
     build: {
@@ -21,17 +21,17 @@ export default configure(function () {
     framework: {
       config: {
         brand: {
-          primary: '#4F80FF',
+          primary: '#3F873F',
           secondary: '#11181D',
           accent: '#35A853',
           dark: '#0C1114',
           positive: '#43C36B',
           negative: '#E65656',
-          info: '#4F80FF',
+          info: '#3F873F',
           warning: '#F7B84B'
         }
       },
-      plugins: []
+      plugins: ['Dark', 'Notify', 'Dialog']
     }
   }
 })

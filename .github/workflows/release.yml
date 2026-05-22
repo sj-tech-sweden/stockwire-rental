@@ -1,0 +1,81 @@
+name: Release
+
+on:
+  pull_request:
+    types: [labeled]
+  workflow_dispatch:
+    inputs:
+      release_type:
+        description: 'release type (major, minor, patch)'
+        required: true
+        default: 'patch'
+
+jobs:
+  create-release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Determine release type
+        id: rtype
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            LABEL=${{ toJSON(github.event.pull_request.labels) }}
+            # Look for one of the semantic labels
+            if echo "$LABEL" | grep -q '"name":"major"'; then echo ::set-output name=type::major; fi
+            if echo "$LABEL" | grep -q '"name":"minor"'; then echo ::set-output name=type::minor; fi
+            if echo "$LABEL" | grep -q '"name":"patch"'; then echo ::set-output name=type::patch; fi
+          else
+            echo ::set-output name=type::${{ github.event.inputs.release_type }}
+          fi
+
+      - name: Compute next semver tag
+        id: semver
+        run: |
+          git fetch --tags
+          LATEST=$(git describe --tags --abbrev=0 2>/dev/null || echo "0.0.0")
+          echo "Latest tag: $LATEST"
+          IFS='.' read -r MAJ MIN PAT <<<"$LATEST"
+          TYPE=${{ steps.rtype.outputs.type }}
+          if [ "$TYPE" = "major" ]; then MAJ=$((MAJ+1)); MIN=0; PAT=0; fi
+          if [ "$TYPE" = "minor" ]; then MIN=$((MIN+1)); PAT=0; fi
+          if [ "$TYPE" = "patch" ]; then PAT=$((PAT+1)); fi
+          NEW_TAG="$MAJ.$MIN.$PAT"
+          echo "New tag: $NEW_TAG"
+          echo "tag=$NEW_TAG" >> $GITHUB_OUTPUT
+
+      - name: Generate changelog
+        id: changelog
+        run: |
+          git fetch --tags
+          LATEST=$(git describe --tags --abbrev=0 2>/dev/null || echo "0.0.0")
+          NEW_TAG=${{ steps.semver.outputs.tag }}
+          if [ "$LATEST" = "0.0.0" ]; then
+            CHANGELOG=$(git log --pretty=format:'- %s (%h)' -n 50)
+          else
+            CHANGELOG=$(git log --pretty=format:'- %s (%h)' $LATEST..HEAD)
+          fi
+          if [ -z "$CHANGELOG" ]; then
+            CHANGELOG="No notable changes"
+          fi
+          echo "changelog<<EOF" >> $GITHUB_OUTPUT
+          echo "$CHANGELOG" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Create GitHub release
+        uses: actions/create-release@v1
+        with:
+          tag_name: ${{ steps.semver.outputs.tag }}
+          release_name: ${{ steps.semver.outputs.tag }}
+          body: ${{ steps.changelog.outputs.changelog }}
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  build-and-push:
+    needs: create-release
+    uses: ./.github/workflows/docker-build-and-push.yml
+    secrets:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

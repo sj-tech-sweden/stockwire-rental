@@ -7,8 +7,13 @@
   --ec-text: #e9f1ee;
 }
 
-/* Theme variables overridden by Quasar dark class on body (body.q-dark) */
-body.q-dark {
+/* Some environments put Quasar's dark class on the <html> element instead of <body>.
+   Mirror the same variables for html.q-dark and html.body--dark so CSS works
+   regardless of where Quasar applies the class. */
+html.q-dark,
+body.q-dark,
+html.body--dark,
+body.body--dark {
   --ec-bg: radial-gradient(circle at top left, #14222a 0%, #0c1114 55%, #090d10 100%);
   --ec-surface: #182228;
   --ec-drawer-bg: #11181d;
@@ -16,8 +21,11 @@ body.q-dark {
   --ec-text: #e9f1ee;
 }
 
-/* Light mode variables when Quasar dark is not active */
-body:not(.q-dark) {
+/* Light mode variables when Quasar dark is not active (handle html variants too) */
+html:not(.q-dark):not(.body--dark),
+body:not(.q-dark):not(.body--dark),
+html.body--light,
+body.body--light {
   --ec-bg: linear-gradient(90deg,#f7fcf7,#f3f9f3 40%);
   --ec-surface: #ffffff;
   --ec-drawer-bg: #f6faf6;
@@ -39,7 +47,7 @@ body {
 }
 
 .ec-header {
-  background: linear-gradient(90deg, rgba(24,34,40,0.95) 0%, rgba(17,24,29,0.9) 60%, rgba(12,17,20,0.9) 100%);
+  /* header background set per theme below */
 }
 
 .ec-page {
@@ -104,22 +112,52 @@ body:not(.q-dark) .ec-drawer .q-scrollarea__content {
 }
 
 /* Very specific overrides to catch Quasar internal card sections that may be white */
+html.q-dark .q-card.ec-card,
 body.q-dark .q-card.ec-card,
+html.body--dark .q-card.ec-card,
+body.body--dark .q-card.ec-card,
+html.q-dark .q-card.ec-card .q-card__section,
 body.q-dark .q-card.ec-card .q-card__section,
+html.body--dark .q-card.ec-card .q-card__section,
+body.body--dark .q-card.ec-card .q-card__section,
+html.q-dark .q-card.ec-card .q-card__actions,
 body.q-dark .q-card.ec-card .q-card__actions,
+html.body--dark .q-card.ec-card .q-card__actions,
+body.body--dark .q-card.ec-card .q-card__actions,
+html.q-dark .ec-card,
 body.q-dark .ec-card,
+html.body--dark .ec-card,
+body.body--dark .ec-card,
+html.q-dark .ec-card .q-card__section,
 body.q-dark .ec-card .q-card__section,
+html.body--dark .ec-card .q-card__section,
+body.body--dark .ec-card .q-card__section,
+html.q-dark .ec-card .q-card__actions,
 body.q-dark .ec-card .q-card__actions,
-body.q-dark .q-page .ec-card .q-card__section {
+html.body--dark .ec-card .q-card__actions,
+body.body--dark .ec-card .q-card__actions,
+html.q-dark .q-page .ec-card .q-card__section,
+body.q-dark .q-page .ec-card .q-card__section,
+html.body--dark .q-page .ec-card .q-card__section,
+body.body--dark .q-page .ec-card .q-card__section {
   background: var(--ec-surface) !important;
   color: var(--ec-text) !important;
   border-color: rgba(63,135,63,0.06) !important;
 }
 
 /* Drawer inner parts sometimes use different wrappers */
+html.q-dark .q-drawer__content,
 body.q-dark .q-drawer__content,
+html.body--dark .q-drawer__content,
+body.body--dark .q-drawer__content,
+html.q-dark .q-drawer__inner,
 body.q-dark .q-drawer__inner,
-body.q-dark .q-drawer__content .q-scrollarea__content {
+html.body--dark .q-drawer__inner,
+body.body--dark .q-drawer__inner,
+html.q-dark .q-drawer__content .q-scrollarea__content,
+body.q-dark .q-drawer__content .q-scrollarea__content,
+html.body--dark .q-drawer__content .q-scrollarea__content,
+body.body--dark .q-drawer__content .q-scrollarea__content {
   background: var(--ec-drawer-bg) !important;
   color: var(--ec-drawer-text) !important;
 }
@@ -209,6 +247,13 @@ body:not(.q-dark) .q-field__native {
 /* Utility brand color class */
 .ec-brand-green { color: var(--ec-primary) !important }
 
+/* Improve visibility for user full name labels in lists */
+.user-fullname {
+  color: var(--ec-text) !important;
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
 /* Support Quasar's body--dark / body--light body classes too */
 body.body--dark {
   --ec-bg: radial-gradient(circle at top left, #14222a 0%, #0c1114 55%, #090d10 100%);
@@ -216,6 +261,170 @@ body.body--dark {
   --ec-drawer-bg: #11181d;
   --ec-drawer-text: #b8ccc4;
   --ec-text: #e9f1ee;
+}
+
+/* Header username visibility across themes */
+.ec-username {
+  opacity: 1 !important;
+}
+body.q-dark .ec-header {
+  background: linear-gradient(90deg, rgba(24,34,40,0.95) 0%, rgba(17,24,29,0.9) 60%, rgba(12,17,20,0.9) 100%);
+}
+
+body:not(.q-dark) .ec-header {
+  background: linear-gradient(90deg,#f3f9f3 0%, #eef6ef 60%);
+}
+
+body.q-dark .ec-username {
+  color: var(--ec-text) !important;
+  font-weight: 700;
+  text-shadow: 0 1px 0 rgba(0,0,0,0.45);
+}
+body:not(.q-dark) .ec-username {
+  color: var(--ec-text) !important;
+  font-weight: 700;
+  text-shadow: none;
+}
+
+/* Ensure header icons, buttons and title use readable colors in both theme class variants
+   Cover both Quasar's `q-dark` and `body--dark` class names to be safe. */
+body.q-dark .ec-header .q-btn,
+body.q-dark .ec-header .q-btn .q-icon,
+body.q-dark .ec-header .q-icon,
+body.q-dark .ec-header .q-toolbar-title,
+body.body--dark .ec-header .q-btn,
+body.body--dark .ec-header .q-btn .q-icon,
+body.body--dark .ec-header .q-icon,
+body.body--dark .ec-header .q-toolbar-title {
+  color: var(--ec-text) !important;
+}
+
+body:not(.q-dark) .ec-header .q-btn,
+body:not(.q-dark) .ec-header .q-btn .q-icon,
+body:not(.q-dark) .ec-header .q-icon,
+body:not(.q-dark) .ec-header .q-toolbar-title,
+body.body--light .ec-header .q-btn,
+body.body--light .ec-header .q-btn .q-icon,
+body.body--light .ec-header .q-icon,
+body.body--light .ec-header .q-toolbar-title {
+  color: #0f1720 !important;
+}
+
+/* Make sure the small icons (dark/light toggle, logout) have visible backgrounds when needed */
+.ec-header .q-btn--flat.q-btn--dense {
+  background: transparent !important;
+}
+.ec-header .q-btn--flat.q-btn--dense .q-icon {
+  font-size: 18px;
+}
+
+/* Stronger header background rules to ensure the header follows the active theme.
+   Targets Quasar's header variant classes and uses !important to override inline
+   or high-specificity rules applied by Quasar runtime. */
+body.q-dark .q-header.ec-header,
+body.body--dark .q-header.ec-header,
+body.q-dark .ec-header,
+body.body--dark .ec-header {
+  background-color: var(--ec-surface-700) !important;
+  background-image: none !important;
+  color: var(--ec-text) !important;
+  border-bottom: 1px solid rgba(255,255,255,0.04) !important;
+}
+
+body:not(.q-dark) .q-header.ec-header,
+body.body--light .q-header.ec-header,
+body:not(.q-dark) .ec-header,
+body.body--light .ec-header {
+  background-color: #f3f9f3 !important;
+  background-image: none !important;
+  color: #0f1720 !important;
+  border-bottom: 1px solid rgba(15,23,32,0.06) !important;
+}
+
+/* Ensure toolbar title, icons and action buttons inside the header inherit readable color */
+body.q-dark .ec-header .q-toolbar-title,
+body.body--dark .ec-header .q-toolbar-title,
+body.q-dark .ec-header .q-btn,
+body.body--dark .ec-header .q-btn,
+body.q-dark .ec-header .q-icon,
+body.body--dark .ec-header .q-icon {
+  color: var(--ec-text) !important;
+}
+
+body:not(.q-dark) .ec-header .q-toolbar-title,
+body.body--light .ec-header .q-toolbar-title,
+body:not(.q-dark) .ec-header .q-btn,
+body.body--light .ec-header .q-btn,
+body:not(.q-dark) .ec-header .q-icon,
+body.body--light .ec-header .q-icon {
+  color: #0f1720 !important;
+}
+
+/* Fallback: make header title bold for extra legibility */
+.ec-header .q-toolbar-title {
+  font-weight: 600;
+}
+
+/* Prefer inline CSS variables set on the header element; this lets the
+   runtime binding in `MainLayout.vue` win over other styles. */
+.ec-header,
+.q-header.ec-header {
+  background-color: var(--ec-header-bg) !important;
+  color: var(--ec-header-text) !important;
+  background-image: none !important;
+}
+
+.ec-header .q-toolbar-title,
+.ec-header .q-btn,
+.ec-header .q-icon {
+  color: var(--ec-header-text) !important;
+  background: transparent !important;
+}
+
+/* Ensure header action buttons don't get dark filled backgrounds */
+.ec-header .q-btn--flat,
+.ec-header .q-btn--flat .q-icon {
+  background: transparent !important;
+  color: var(--ec-header-text) !important;
+}
+
+/* Force all q-btn internals in the header to be transparent and inherit header text color.
+   This covers Quasar's layered elements like .q-btn__bg, .q-btn__content and svg fills. */
+.ec-header .q-btn,
+.ec-header .q-btn .q-btn__content,
+.ec-header .q-btn .q-btn__bg,
+.ec-header .q-btn .q-btn__wrapper,
+.ec-header .q-btn .q-btn__inner,
+.ec-header .q-btn .q-icon,
+.ec-header .q-btn svg {
+  background: transparent !important;
+  color: var(--ec-header-text) !important;
+  fill: currentColor !important;
+  stroke: currentColor !important;
+}
+
+/* Force material icon ligatures and any text-fill to use the header text color */
+.ec-header .q-icon,
+.ec-header i.material-icons,
+.ec-header .q-icon * {
+  color: var(--ec-header-text) !important;
+  -webkit-text-fill-color: var(--ec-header-text) !important;
+  -webkit-text-stroke-color: var(--ec-header-text) !important;
+  fill: currentColor !important;
+  stroke: currentColor !important;
+}
+
+/* Quasar sometimes applies background through the pseudo-element on the button content */
+.ec-header .q-btn .q-btn__content::before,
+.ec-header .q-btn .q-btn__bg::before {
+  background: transparent !important;
+}
+
+/* Ensure dense/flat round buttons also inherit color */
+.ec-header .q-btn--flat.q-btn--round,
+.ec-header .q-btn--flat.q-btn--dense.q-btn--round {
+  background: transparent !important;
+  color: var(--ec-header-text) !important;
 }
 
 body.body--light {
@@ -270,4 +479,45 @@ body.body--light .ec-card .q-card__section,
 body.body--light .ec-card .q-card__actions {
   background: var(--ec-surface) !important;
   color: var(--ec-text) !important;
+}
+
+/* Strong dark-surface fallback for layout/page wrappers and table internals.
+   This prevents light backgrounds from bleeding through when Quasar class timing/order is odd. */
+html.body--dark,
+body.body--dark {
+  background: var(--ec-bg) !important;
+  color: var(--ec-text) !important;
+}
+
+html.body--dark .q-layout,
+body.body--dark .q-layout,
+html.body--dark .q-page-container,
+body.body--dark .q-page-container,
+html.body--dark .q-page,
+body.body--dark .q-page,
+html.body--dark .ec-page,
+body.body--dark .ec-page {
+  background: var(--ec-bg) !important;
+  color: var(--ec-text) !important;
+}
+
+html.body--dark .ec-card .q-table,
+body.body--dark .ec-card .q-table,
+html.body--dark .ec-card .q-table__container,
+body.body--dark .ec-card .q-table__container,
+html.body--dark .ec-card .q-table__middle,
+body.body--dark .ec-card .q-table__middle,
+html.body--dark .ec-card .q-table__top,
+body.body--dark .ec-card .q-table__top,
+html.body--dark .ec-card .q-table__bottom,
+body.body--dark .ec-card .q-table__bottom,
+html.body--dark .ec-card .q-table thead tr,
+body.body--dark .ec-card .q-table thead tr,
+html.body--dark .ec-card .q-table thead th,
+body.body--dark .ec-card .q-table thead th,
+html.body--dark .ec-card .q-table tbody td,
+body.body--dark .ec-card .q-table tbody td {
+  background: var(--ec-surface) !important;
+  color: var(--ec-text) !important;
+  border-color: rgba(110, 150, 145, 0.22) !important;
 }

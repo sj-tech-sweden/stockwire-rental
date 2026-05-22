@@ -1,3 +1,3 @@
-from app.domain.auth.router import router
+"""Auth domain package."""
 
 __all__ = ["router"]

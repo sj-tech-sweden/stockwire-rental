@@ -1,4 +1,3 @@
-def decode_token(token: str) -> dict:
 from datetime import datetime, timedelta, timezone
 import hashlib
 
@@ -6,6 +5,9 @@ from jose import jwt
 import bcrypt
 
 from app.config import settings
+import os
+import hmac
+import hashlib as _hashlib
 
 
 def _prepare_password(password: str) -> bytes:
@@ -38,3 +40,13 @@ def create_access_token(user_id: int, email: str, role: str) -> str:
 
 def decode_token(token: str) -> dict:
     return jwt.decode(token, settings.jwt_secret_key, algorithms=[settings.jwt_algorithm])
+
+
+def hash_api_key(raw: str) -> str:
+    """Return HMAC-SHA256 hex digest of API key using API_KEY_PEPPER env var."""
+    pepper = os.getenv("API_KEY_PEPPER")
+    if not pepper:
+        # default pepper — operators should set API_KEY_PEPPER in production
+        pepper = "stockwire-default-api-key-pepper"
+    mac = hmac.new(pepper.encode("utf-8"), raw.encode("utf-8"), _hashlib.sha256)
+    return mac.hexdigest()

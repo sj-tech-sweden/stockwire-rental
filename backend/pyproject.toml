@@ -20,7 +20,10 @@ dependencies = [
   "redis==5.2.1",
   "structlog==25.3.0",
   "python-jose[cryptography]==3.3.0",
-  "passlib[bcrypt]==1.7.4"
+  "passlib[bcrypt]==1.7.4",
+  "python3-saml==1.16.0",
+  "python-multipart==0.0.9",
+  "boto3==1.38.23"
 ]
 
 [project.optional-dependencies]
@@ -34,6 +37,9 @@ dev = [
 [tool.pytest.ini_options]
 addopts = "-q"
 testpaths = ["tests"]
+
+[tool.setuptools]
+packages = ["app"]
 
 [tool.ruff]
 line-length = 100

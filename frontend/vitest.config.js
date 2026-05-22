@@ -6,6 +6,7 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     globals: true,
+    setupFiles: ['tests/setup/indexeddb.setup.js'],
     include: ['tests/**/*.test.js']
   }
 })

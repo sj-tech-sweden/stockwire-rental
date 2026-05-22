@@ -1,14 +1,23 @@
 from datetime import date, datetime
+from decimal import Decimal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class JobBase(BaseModel):
     job_code: str
-    customer_name: str
+    customer_id: int | None = None
+    customer_name: str | None = None
+    venue_id: int | None = None
+    venue_name: str | None = None
+    description: str | None = None
     status: str = "draft"
     start_date: date | None = None
     end_date: date | None = None
+    sales_price: Decimal | None = Field(default=None, ge=Decimal("0.00"))
+    invoice_paid: bool = False
+    invoice_paid_at: date | None = None
+    notes: str | None = None
 
 
 class JobCreate(JobBase):
@@ -17,10 +26,18 @@ class JobCreate(JobBase):
 
 class JobUpdate(BaseModel):
     job_code: str | None = None
+    customer_id: int | None = None
     customer_name: str | None = None
+    venue_id: int | None = None
+    venue_name: str | None = None
+    description: str | None = None
     status: str | None = None
     start_date: date | None = None
     end_date: date | None = None
+    sales_price: Decimal | None = Field(default=None, ge=Decimal("0.00"))
+    invoice_paid: bool | None = None
+    invoice_paid_at: date | None = None
+    notes: str | None = None
 
 
 class JobRead(JobBase):
@@ -54,3 +71,14 @@ class JobRequirementRead(JobRequirementBase):
     id: int
 
     model_config = {"from_attributes": True}
+
+
+class JobRequirementBulkItem(BaseModel):
+    product_id: int
+    quantity_required: int = 1
+    quantity_picked: int = 0
+    notes: str | None = None
+
+
+class JobRequirementBulkUpsert(BaseModel):
+    items: list[JobRequirementBulkItem]

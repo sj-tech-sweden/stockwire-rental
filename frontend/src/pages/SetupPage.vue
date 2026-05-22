@@ -11,9 +11,9 @@
             </svg>
           </div>
           <div>
-            <div class="ec-title text-h5 q-mb-xs">Stockwire Rental</div>
-            <div class="text-subtitle2 ec-brand-green q-mb-xs">First-time Setup</div>
-            <div class="text-caption text-muted">Create your administrator account</div>
+            <div class="ec-title text-h5 q-mb-xs">{{ t('app.name') }}</div>
+            <div class="text-subtitle2 ec-brand-green q-mb-xs">{{ t('setup.title') }}</div>
+            <div class="text-caption text-muted">{{ t('setup.subtitle') }}</div>
           </div>
         </div>
         <div class="q-mb-md">
@@ -30,33 +30,33 @@
       <q-form @submit.prevent="submit">
         <q-input
           v-model="fullName"
-          label="Full name"
+          :label="t('profile.fullName')"
           outlined
           dense
           class="q-mb-sm"
           autocomplete="name"
-          :rules="[v => !!v || 'Required']"
+          :rules="[v => !!v || t('login.required')]"
         />
         <q-input
           v-model="email"
-          label="Email"
+          :label="t('profile.email')"
           type="email"
           outlined
           dense
           class="q-mb-sm"
           autocomplete="email"
-          :rules="[v => !!v || 'Required']"
+          :rules="[v => !!v || t('login.required')]"
         />
         <q-input
           v-model="password"
-          label="Password"
+          :label="t('login.password')"
           :type="showPw ? 'text' : 'password'"
           outlined
           dense
           class="q-mb-sm"
           autocomplete="new-password"
           maxlength="72"
-          :rules="[v => v.length >= 8 || 'Min 8 characters', v => (v || '').length <= 72 || 'Max 72 characters']"
+          :rules="[v => v.length >= 8 || t('setup.minLength'), v => (v || '').length <= 72 || t('setup.maxLength')]"
         >
           <template #append>
             <q-icon
@@ -68,14 +68,14 @@
         </q-input>
         <q-input
           v-model="confirm"
-          label="Confirm password"
+          :label="t('setup.confirmPassword')"
           :type="showPw ? 'text' : 'password'"
           outlined
           dense
           class="q-mb-md"
           autocomplete="new-password"
           maxlength="72"
-          :rules="[v => v === password || 'Passwords do not match']"
+          :rules="[v => v === password || t('setup.passwordMismatch')]"
         />
 
         <q-banner v-if="error" class="bg-negative text-white q-mb-md rounded-borders" dense>
@@ -84,14 +84,14 @@
 
         <div v-if="alreadySetup">
           <q-banner class="bg-info text-white q-mb-md rounded-borders" dense>
-            The system is already setup — please login instead.
+            {{ t('setup.alreadySetup') }}
           </q-banner>
-          <q-btn label="Go to login" color="primary" class="full-width" @click="() => router.push('/login')" />
+          <q-btn :label="t('setup.goToLogin')" color="primary" class="full-width" @click="() => router.push('/login')" />
         </div>
         <div v-else>
           <q-btn
             type="submit"
-            label="Create admin account"
+            :label="t('setup.createAdmin')"
             color="primary"
             class="full-width"
             :loading="loading"
@@ -106,11 +106,13 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 
 import { useAuthStore } from '../stores/auth'
 
 const authStore = useAuthStore()
 const router = useRouter()
+const { t } = useI18n()
 
 const fullName = ref('')
 const email = ref('')
@@ -139,7 +141,7 @@ async function submit() {
     await authStore.setup(email.value, password.value, fullName.value)
     router.push('/')
   } catch (e) {
-    error.value = e?.response?.data?.detail || 'Setup failed'
+    error.value = e?.response?.data?.detail || t('setup.failed')
   } finally {
     loading.value = false
   }

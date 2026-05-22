@@ -8,14 +8,13 @@ export default () => {
       return
     }
 
-    const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches
-    Dark.set(!!prefersDark)
+    // No saved preference — use system preference and follow changes
+    const mq = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)')
+    Dark.set(mq ? mq.matches : false)
 
-    // If user hasn't chosen, follow system changes
-    if (window.matchMedia) {
-      window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
-        const stored = localStorage.getItem('ec_dark_mode')
-        if (stored === null) {
+    if (mq) {
+      mq.addEventListener('change', (e) => {
+        if (localStorage.getItem('ec_dark_mode') === null) {
           Dark.set(e.matches)
         }
       })
