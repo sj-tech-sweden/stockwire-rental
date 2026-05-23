@@ -27,7 +27,7 @@ test('finance transaction create/edit/settle flow', async ({ page, request }) =>
   await page.goto(`${base}/finance`)
   await page.getByRole('button', { name: /new transaction/i }).click()
 
-  await page.getByLabel(/^Job$/i).click()
+  await page.getByRole('combobox', { name: /^Job$/i }).click()
   await page.getByRole('option', { name: new RegExp(String(job.job_code), 'i') }).click()
   await page.getByLabel(/description/i).fill(`Initial e2e transaction ${now}`)
   await page.getByLabel(/amount/i).fill('125.50')
