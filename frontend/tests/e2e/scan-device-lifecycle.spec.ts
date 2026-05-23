@@ -49,7 +49,7 @@ test('scan device lifecycle job out and in flow', async ({ page, request }) => {
     quantity_picked: 0,
   })
 
-  await page.goto(`${base}/#/scan`)
+  await page.goto(`${base}/scan`)
 
   await page.getByRole('button', { name: /^Outtake$/i }).click()
   await page.getByLabel('Select Job').click()

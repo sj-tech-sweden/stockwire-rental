@@ -1,43 +1,12 @@
 import { expect, test } from '@playwright/test'
 
-const base = process.env.E2E_BASE_URL || 'http://localhost:9000'
+import { base, ensureLoggedIn } from './helpers/session'
 
 test.describe('Inventory + settings custom fields flow', () => {
   test('prefill categories, create categorized product, and manage custom fields', async ({ page }) => {
-    let email = `e2e+admin+${Date.now()}@example.com`
-    const fullName = 'E2E Admin'
-    let password = 'P@ssw0rd123!'
+    await ensureLoggedIn(page)
 
-    await page.goto(`${base}/#/setup`)
-
-    if (await page.getByText('First-time Setup').count()) {
-      await page.getByLabel('Full name').fill(fullName)
-      await page.getByLabel('Email').fill(email)
-      await page.getByLabel('Password', { exact: true }).fill(password)
-      await page.getByLabel('Confirm password').fill(password)
-      await page.getByRole('button', { name: 'Create admin account' }).click()
-    } else {
-      const envEmail = process.env.E2E_ADMIN_EMAIL
-      const envPassword = process.env.E2E_ADMIN_PASSWORD
-      if (!envEmail || !envPassword) {
-        test.skip(true, 'Setup is already complete; set E2E_ADMIN_EMAIL and E2E_ADMIN_PASSWORD to run this test.')
-      }
-      email = envEmail || email
-      password = envPassword || password
-      if (await page.getByRole('button', { name: 'Go to login' }).count()) {
-        await page.getByRole('button', { name: 'Go to login' }).click()
-      }
-    }
-
-    if (await page.getByText('Sign in to continue').count()) {
-      await page.getByLabel('Email').fill(email)
-      await page.getByLabel('Password').fill(password)
-      await page.getByRole('button', { name: 'Sign in' }).click()
-    }
-
-    await expect(page.getByText('Stockwire Rental')).toBeVisible()
-
-    await page.goto(`${base}/#/inventory`)
+    await page.goto(`${base}/inventory`)
     await page.getByRole('tab', { name: 'Categories' }).click()
     await page.getByRole('button', { name: 'Prefill defaults' }).click()
     await expect(page.getByText('Category defaults added')).toBeVisible()
@@ -59,7 +28,7 @@ test.describe('Inventory + settings custom fields flow', () => {
     await expect(page.getByText(sku)).toBeVisible()
     await expect(page.getByRole('cell', { name: 'Audio' })).toBeVisible()
 
-    await page.goto(`${base}/#/settings`)
+    await page.goto(`${base}/settings`)
     await expect(page.getByText('Admin Settings')).toBeVisible()
     await page.getByRole('tab', { name: 'Custom Fields' }).click()
 

@@ -14,7 +14,7 @@ test('labels template create and apply to selected entities', async ({ page, req
     daily_rate: '15.00',
   })
 
-  await page.goto(`${base}/#/labels`)
+  await page.goto(`${base}/labels`)
 
   await page.getByLabel('Entity').click()
   await page.getByRole('option', { name: /^Product$/i }).click()

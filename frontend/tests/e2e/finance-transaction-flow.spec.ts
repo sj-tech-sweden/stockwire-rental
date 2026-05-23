@@ -24,7 +24,7 @@ test('finance transaction create/edit/settle flow', async ({ page, request }) =>
     venue_id: venue.id,
   })
 
-  await page.goto(`${base}/#/finance`)
+  await page.goto(`${base}/finance`)
   await page.getByRole('button', { name: /new transaction/i }).click()
 
   await page.getByLabel(/^Job$/i).click()

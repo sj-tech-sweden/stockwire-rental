@@ -5,6 +5,7 @@ export default defineConfig({
   timeout: 30_000,
   expect: { timeout: 5000 },
   fullyParallel: false,
+  workers: 1,
   projects: [
     {
       name: 'chromium',
