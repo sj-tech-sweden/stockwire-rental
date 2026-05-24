@@ -59,13 +59,15 @@ test('scan device lifecycle job out and in flow', async ({ page, request }) => {
   await page.getByLabel('Scan code').fill(assetTag)
   await page.getByRole('button', { name: /scan device|scan/i }).click()
 
-  await expect(page.getByText(assetTag).first()).toBeVisible()
-
   await page.getByRole('button', { name: /^Intake$/i }).click()
   await page.getByRole('combobox', { name: /^Select job with checked-out devices$/i }).click()
   await expect(page.getByRole('listbox')).toBeVisible()
   await page.getByRole('option', { name: new RegExp(String(job.job_code), 'i') }).click()
   await expect(page.getByRole('listbox')).not.toBeVisible()
+
+  // Device should appear in the checked-out list before scanning it back in
+  await expect(page.getByText(assetTag).first()).toBeVisible()
+
   await page.getByLabel('Scan code').fill(assetTag)
   await page.getByRole('button', { name: /^Scan$/i }).click()
 
