@@ -8,8 +8,8 @@ test.describe('Inventory + settings custom fields flow', () => {
 
     await page.goto(`${base}/inventory`)
     await page.getByRole('tab', { name: 'Categories' }).click()
-    await page.getByRole('button', { name: 'Prefill defaults' }).click()
-    await expect(page.getByText('Category defaults added')).toBeVisible()
+    await page.getByRole('button', { name: 'Reset category defaults' }).click()
+    await expect(page.getByText('Category prefill updated')).toBeVisible()
     await expect(page.getByText('Audio')).toBeVisible()
 
     await page.getByRole('tab', { name: 'Products' }).click()
