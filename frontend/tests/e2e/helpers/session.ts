@@ -35,17 +35,18 @@ export async function ensureLoggedIn(page: Page): Promise<SessionInfo> {
     await page.getByLabel('Password', { exact: true }).fill(password)
     await page.getByLabel('Confirm password').fill(password)
     await createAdminBtn.click()
-    // Wait for the button to disappear (API call complete) before proceeding
+    // authStore.setup() calls _setSession() which auto-logs the user in;
+    // router.push('/') navigates directly to the dashboard — no login page appears.
     await expect(createAdminBtn).not.toBeVisible({ timeout: 15_000 })
   } else {
+    // Setup already done: navigate to login and sign in with known credentials.
     await goToLoginBtn.click()
+    await expect(signInHeading).toBeVisible({ timeout: 10_000 })
+    await page.getByLabel('Email').fill(email)
+    await page.getByLabel('Password').fill(password)
+    await page.getByRole('button', { name: 'Sign in' }).click()
+    await expect(signInHeading).not.toBeVisible({ timeout: 15_000 })
   }
-
-  await expect(signInHeading).toBeVisible({ timeout: 10_000 })
-  await page.getByLabel('Email').fill(email)
-  await page.getByLabel('Password').fill(password)
-  await page.getByRole('button', { name: 'Sign in' }).click()
-  await expect(signInHeading).not.toBeVisible({ timeout: 15_000 })
 
   await expect(page.getByText('Stockwire Rental')).toBeVisible({ timeout: 15_000 })
   return { email, password }
