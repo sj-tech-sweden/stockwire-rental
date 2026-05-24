@@ -16,12 +16,12 @@ test('labels template create and apply to selected entities', async ({ page, req
 
   await page.goto(`${base}/labels`)
 
-  await page.getByLabel('Entity').click()
+  await page.getByRole('combobox', { name: /^Entity$/i }).click()
   await expect(page.getByRole('listbox')).toBeVisible()
   await page.getByRole('option', { name: /^Product$/i }).click()
   await expect(page.getByRole('listbox')).not.toBeVisible()
 
-  await page.getByLabel('Select one or many').click()
+  await page.getByRole('combobox', { name: /^Select one or many$/i }).click()
   await expect(page.getByRole('listbox')).toBeVisible()
   await page.getByRole('option', { name: new RegExp(String(product.name), 'i') }).click()
   await expect(page.getByRole('listbox')).not.toBeVisible()
@@ -31,7 +31,7 @@ test('labels template create and apply to selected entities', async ({ page, req
   await page.getByRole('button', { name: /^Save$/i }).click()
 
   await page.getByRole('button', { name: /^New$/i }).click()
-  await page.getByLabel('Template').click()
+  await page.getByRole('combobox', { name: /^Template$/i }).click()
   await expect(page.getByRole('listbox')).toBeVisible()
   await page.getByRole('option', { name: new RegExp(templateName, 'i') }).click()
   await expect(page.getByRole('listbox')).not.toBeVisible()

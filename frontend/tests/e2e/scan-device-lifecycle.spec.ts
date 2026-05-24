@@ -52,7 +52,7 @@ test('scan device lifecycle job out and in flow', async ({ page, request }) => {
   await page.goto(`${base}/scan`)
 
   await page.getByRole('button', { name: /^Outtake$/i }).click()
-  await page.getByLabel('Select Job').click()
+  await page.getByRole('combobox', { name: /^Select Job$/i }).click()
   await expect(page.getByRole('listbox')).toBeVisible()
   await page.getByRole('option', { name: new RegExp(String(job.job_code), 'i') }).click()
   await expect(page.getByRole('listbox')).not.toBeVisible()
@@ -62,7 +62,7 @@ test('scan device lifecycle job out and in flow', async ({ page, request }) => {
   await expect(page.getByText(assetTag).first()).toBeVisible()
 
   await page.getByRole('button', { name: /^Intake$/i }).click()
-  await page.getByLabel('Select job with checked-out devices').click()
+  await page.getByRole('combobox', { name: /^Select job with checked-out devices$/i }).click()
   await expect(page.getByRole('listbox')).toBeVisible()
   await page.getByRole('option', { name: new RegExp(String(job.job_code), 'i') }).click()
   await expect(page.getByRole('listbox')).not.toBeVisible()
