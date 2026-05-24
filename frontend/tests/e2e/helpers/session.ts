@@ -1,4 +1,4 @@
-import { expect, type Page, type APIRequestContext, test } from '@playwright/test'
+import { expect, type Page, type APIRequestContext } from '@playwright/test'
 
 export const base = process.env.E2E_BASE_URL || 'http://localhost:9000'
 export const apiBase = process.env.E2E_API_BASE_URL || 'http://localhost:8000'
@@ -8,47 +8,44 @@ export type SessionInfo = {
   password: string
 }
 
+// Fixed credentials used across all sequential tests so that tests 2+ can reuse
+// the account created by the first test without needing env vars.
+const FIXED_EMAIL = process.env.E2E_ADMIN_EMAIL || 'e2e-admin@example.com'
+const FIXED_PASSWORD = process.env.E2E_ADMIN_PASSWORD || 'P@ssw0rd123!'
+
 export async function ensureLoggedIn(page: Page): Promise<SessionInfo> {
-  const fullName = 'E2E Admin'
-  let email = `e2e+admin+${Date.now()}@example.com`
-  let password = 'P@ssw0rd123!'
+  const email = FIXED_EMAIL
+  const password = FIXED_PASSWORD
 
   await page.goto(`${base}/setup`)
 
-  const setupHeading = page.getByText('First-time Setup')
+  const createAdminBtn = page.getByRole('button', { name: 'Create admin account' })
+  const goToLoginBtn = page.getByRole('button', { name: 'Go to login' })
   const signInHeading = page.getByText('Sign in to continue')
 
-  // Wait for the page to fully render before deciding which branch to take
-  await expect(setupHeading.or(signInHeading)).toBeVisible({ timeout: 10_000 })
+  // The "First-time Setup" heading is always present on SetupPage regardless of
+  // setup state, so we cannot use it to detect readiness. Instead wait for the
+  // conditional action buttons that only render after onMounted's async
+  // checkBootstrap() call resolves.
+  await expect(createAdminBtn.or(goToLoginBtn)).toBeVisible({ timeout: 10_000 })
 
-  if (await setupHeading.isVisible()) {
-    await page.getByLabel('Full name').fill(fullName)
+  if (await createAdminBtn.isVisible()) {
+    await page.getByLabel('Full name').fill('E2E Admin')
     await page.getByLabel('Email').fill(email)
     await page.getByLabel('Password', { exact: true }).fill(password)
     await page.getByLabel('Confirm password').fill(password)
-    await page.getByRole('button', { name: 'Create admin account' }).click()
-    // Wait for the API call to complete before checking next state
-    await expect(setupHeading).not.toBeVisible({ timeout: 15_000 })
+    await createAdminBtn.click()
+    // Wait for the button to disappear (API call complete) before proceeding
+    await expect(createAdminBtn).not.toBeVisible({ timeout: 15_000 })
   } else {
-    const envEmail = process.env.E2E_ADMIN_EMAIL
-    const envPassword = process.env.E2E_ADMIN_PASSWORD
-    if (!envEmail || !envPassword) {
-      test.skip(true, 'Setup is complete; set E2E_ADMIN_EMAIL and E2E_ADMIN_PASSWORD to run e2e suites.')
-    }
-    email = envEmail || email
-    password = envPassword || password
-    if (await page.getByRole('button', { name: 'Go to login' }).isVisible()) {
-      await page.getByRole('button', { name: 'Go to login' }).click()
-    }
+    await goToLoginBtn.click()
   }
 
-  if (await signInHeading.isVisible()) {
-    await page.getByLabel('Email').fill(email)
-    await page.getByLabel('Password').fill(password)
-    await page.getByRole('button', { name: 'Sign in' }).click()
-    // Wait for navigation away from login page before returning
-    await expect(signInHeading).not.toBeVisible({ timeout: 15_000 })
-  }
+  await expect(signInHeading).toBeVisible({ timeout: 10_000 })
+  await page.getByLabel('Email').fill(email)
+  await page.getByLabel('Password').fill(password)
+  await page.getByRole('button', { name: 'Sign in' }).click()
+  await expect(signInHeading).not.toBeVisible({ timeout: 15_000 })
 
   await expect(page.getByText('Stockwire Rental')).toBeVisible({ timeout: 15_000 })
   return { email, password }
