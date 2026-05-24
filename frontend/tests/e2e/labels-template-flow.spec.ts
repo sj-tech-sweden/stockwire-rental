@@ -17,9 +17,11 @@ test('labels template create and apply to selected entities', async ({ page, req
   await page.goto(`${base}/labels`)
 
   await page.getByLabel('Entity').click()
+  await expect(page.getByRole('listbox')).toBeVisible()
   await page.getByRole('option', { name: /^Product$/i }).click()
 
   await page.getByLabel('Select one or many').click()
+  await expect(page.getByRole('listbox')).toBeVisible()
   await page.getByRole('option', { name: new RegExp(String(product.name), 'i') }).click()
 
   const templateName = `E2E Label Template ${now}`
@@ -28,6 +30,7 @@ test('labels template create and apply to selected entities', async ({ page, req
 
   await page.getByRole('button', { name: /^New$/i }).click()
   await page.getByLabel('Template').click()
+  await expect(page.getByRole('listbox')).toBeVisible()
   await page.getByRole('option', { name: new RegExp(templateName, 'i') }).click()
 
   await expect(page.getByLabel('Template name')).toHaveValue(templateName)

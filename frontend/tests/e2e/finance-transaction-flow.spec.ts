@@ -30,6 +30,7 @@ test('finance transaction create/edit/settle flow', async ({ page, request }) =>
   const dialog = page.getByRole('dialog')
   await expect(dialog).toBeVisible()
   await dialog.getByRole('combobox', { name: /^Job$/i }).click()
+  await expect(page.getByRole('listbox')).toBeVisible()
   await page.getByRole('option', { name: new RegExp(String(job.job_code), 'i') }).click()
   await dialog.getByLabel(/description/i).fill(`Initial e2e transaction ${now}`)
   await dialog.getByLabel(/amount/i).fill('125.50')
