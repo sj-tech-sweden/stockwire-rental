@@ -28,11 +28,13 @@ test('finance transaction create/edit/settle flow', async ({ page, request }) =>
   await page.getByRole('button', { name: /new transaction/i }).click()
 
   const dialog = page.getByRole('dialog')
+  await expect(dialog).toBeVisible()
   await dialog.getByRole('combobox', { name: /^Job$/i }).click()
   await page.getByRole('option', { name: new RegExp(String(job.job_code), 'i') }).click()
   await dialog.getByLabel(/description/i).fill(`Initial e2e transaction ${now}`)
   await dialog.getByLabel(/amount/i).fill('125.50')
   await dialog.getByRole('button', { name: /^Save$/i }).click()
+  await expect(dialog).not.toBeVisible()
 
   const row = page.locator('tbody tr').filter({ hasText: String(job.job_code) }).first()
   await expect(row).toBeVisible()
@@ -40,9 +42,11 @@ test('finance transaction create/edit/settle flow', async ({ page, request }) =>
 
   await row.locator('button').nth(1).click()
   const editDialog = page.getByRole('dialog')
+  await expect(editDialog).toBeVisible()
   await editDialog.getByLabel(/amount/i).fill('245.75')
   await editDialog.getByLabel(/description/i).fill(`Edited e2e transaction ${now}`)
   await editDialog.getByRole('button', { name: /^Save$/i }).click()
+  await expect(editDialog).not.toBeVisible()
 
   await expect(row).toContainText('245.75')
   await row.locator('button').first().click()
