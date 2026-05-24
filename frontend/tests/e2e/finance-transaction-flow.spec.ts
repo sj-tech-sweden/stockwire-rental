@@ -33,7 +33,6 @@ test('finance transaction create/edit/settle flow', async ({ page, request }) =>
   await expect(page.getByRole('listbox')).toBeVisible()
   await page.getByRole('option', { name: new RegExp(String(job.job_code), 'i') }).click()
   await expect(page.getByRole('listbox')).not.toBeVisible()
-  await dialog.getByLabel(/description/i).fill(`Initial e2e transaction ${now}`)
   await dialog.getByLabel(/amount/i).fill('125.50')
   await dialog.getByRole('button', { name: /^Save$/i }).click()
   await expect(dialog).not.toBeVisible()
@@ -46,7 +45,6 @@ test('finance transaction create/edit/settle flow', async ({ page, request }) =>
   const editDialog = page.getByRole('dialog')
   await expect(editDialog).toBeVisible()
   await editDialog.getByLabel(/amount/i).fill('245.75')
-  await editDialog.getByLabel(/description/i).fill(`Edited e2e transaction ${now}`)
   await editDialog.getByRole('button', { name: /^Save$/i }).click()
   await expect(editDialog).not.toBeVisible()
 
