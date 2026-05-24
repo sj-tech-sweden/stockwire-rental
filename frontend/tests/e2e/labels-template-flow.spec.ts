@@ -24,6 +24,8 @@ test('labels template create and apply to selected entities', async ({ page, req
   await page.getByRole('combobox', { name: /^Select one or many$/i }).click()
   await expect(page.getByRole('listbox')).toBeVisible()
   await page.getByRole('option', { name: new RegExp(String(product.name), 'i') }).click()
+  // Multi-select keeps listbox open; press Escape to close it
+  await page.keyboard.press('Escape')
   await expect(page.getByRole('listbox')).not.toBeVisible()
 
   const templateName = `E2E Label Template ${now}`
