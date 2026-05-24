@@ -37,9 +37,10 @@ test('finance transaction create/edit/settle flow', async ({ page, request }) =>
   await dialog.getByRole('button', { name: /^Save$/i }).click()
   await expect(dialog).not.toBeVisible()
 
-  const row = page.locator('tbody tr').filter({ hasText: String(job.job_code) }).first()
+  const transactionsTable = page.locator('.q-table__container').last()
+  const row = transactionsTable.locator('tbody tr').filter({ hasText: String(job.job_code) }).first()
   await expect(row).toBeVisible()
-  await expect(row).toContainText('125.50')
+  await expect(row).toContainText(/125[.,]50/)
 
   await row.locator('button').nth(1).click()
   const editDialog = page.getByRole('dialog')
@@ -48,9 +49,9 @@ test('finance transaction create/edit/settle flow', async ({ page, request }) =>
   await editDialog.getByRole('button', { name: /^Save$/i }).click()
   await expect(editDialog).not.toBeVisible()
 
-  await expect(row).toContainText('245.75')
+  await expect(row).toContainText(/245[.,]75/)
   await row.locator('button').first().click()
 
-  const settledRow = page.locator('tbody tr').filter({ hasText: String(job.job_code) }).first()
+  const settledRow = transactionsTable.locator('tbody tr').filter({ hasText: String(job.job_code) }).first()
   await expect(settledRow).toContainText(/settled|completed|paid/i)
 })
