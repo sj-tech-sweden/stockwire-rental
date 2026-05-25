@@ -9,7 +9,7 @@ from starlette.requests import Request
 from app.db.base import Base
 from app.domain.auth.deps import get_current_user
 from app.domain.auth.models import APIKey
-from app.domain.auth.security import hash_api_key, hash_api_key_legacy, verify_api_key_hash
+from app.domain.auth.security import hash_api_key, verify_api_key_hash
 
 
 def _make_db_session() -> Session:
@@ -60,25 +60,27 @@ def test_verify_api_key_hash_supports_legacy_pbkdf2_three_part_format(monkeypatc
     assert verify_api_key_hash(raw, stored)
 
 
-def test_get_current_user_accepts_legacy_hmac_api_keys(monkeypatch):
-    monkeypatch.setenv("API_KEY_PEPPER", "legacy-pepper")
+def test_get_current_user_rejects_non_pbkdf2_api_key_hash_entries(monkeypatch):
+    monkeypatch.setenv("API_KEY_PEPPER", "test-pepper")
 
-    raw = "legacy-hmac-key"
+    raw = "legacy-hash-format-key"
     db = _make_db_session()
     try:
         db.add(
             APIKey(
                 name="legacy-admin",
-                api_key_hash=hash_api_key_legacy(raw),
+                api_key_hash="a" * 64,
                 is_active=True,
                 is_admin=True,
             )
         )
         db.commit()
 
-        user = get_current_user(_make_request_with_api_key(raw), creds=None, db=db)
-        assert user.is_admin is True
-        assert user.email == "api-key:legacy-admin"
+        try:
+            get_current_user(_make_request_with_api_key(raw), creds=None, db=db)
+            raise AssertionError("Expected HTTPException")
+        except HTTPException as exc:
+            assert exc.status_code == 401
     finally:
         db.close()
 

@@ -21,6 +21,13 @@ pytest
 alembic upgrade head
 ```
 
+## API key hashing migration note
+
+API keys are now verified only against PBKDF2-based hashes.
+
+- Legacy API keys stored with the older HMAC-SHA256 hash format are no longer accepted.
+- Existing legacy API keys must be regenerated and re-created through the API key admin flow.
+
 ## Seed demo data
 
 ```bash

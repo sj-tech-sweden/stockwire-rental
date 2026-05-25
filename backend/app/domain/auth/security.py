@@ -1,6 +1,5 @@
 from datetime import datetime, timedelta, timezone
 import hashlib
-import hmac
 import os
 import secrets
 
@@ -85,23 +84,13 @@ def hash_api_key(raw: str) -> str:
     return f"pbkdf2_sha256${iterations}${salt.hex()}${dk.hex()}"
 
 
-def hash_api_key_legacy(raw: str) -> str:
-    """Return legacy HMAC-SHA256 API key hash for backward-compatible verification."""
-    pepper = _get_api_key_pepper()
-    return hmac.new(pepper.encode("utf-8"), raw.encode("utf-8"), hashlib.sha256).hexdigest()
-
-
 def verify_api_key_hash(raw: str, stored_hash: str) -> bool:
-    """Verify a raw API key against supported stored hash formats.
+    """Verify a raw API key against supported PBKDF2 stored hash formats.
 
     Supported formats:
     - ``pbkdf2_sha256$<iterations>$<salt_hex>$<digest_hex>`` (current)
     - ``pbkdf2_sha256$<iterations>$<digest_hex>`` (legacy PBKDF2 format)
-    - legacy HMAC-SHA256 hex digest (no delimiters)
     """
-    if "$" not in stored_hash:
-        return hmac.compare_digest(hash_api_key_legacy(raw), stored_hash)
-
     try:
         parts = stored_hash.split("$")
         if len(parts) == 4:
@@ -129,4 +118,4 @@ def verify_api_key_hash(raw: str, stored_hash: str) -> bool:
         salt,
         iterations,
     )
-    return hmac.compare_digest(dk.hex(), expected_hex)
+    return secrets.compare_digest(dk.hex(), expected_hex)
