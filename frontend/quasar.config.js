@@ -5,10 +5,12 @@ export default configure(function () {
   const usePolling = process.env.CHOKIDAR_USEPOLLING
     ? process.env.CHOKIDAR_USEPOLLING === 'true'
     : runningInContainer
-  const parsedWatchInterval = Number(process.env.CHOKIDAR_INTERVAL)
-  const parsedWatchBinaryInterval = Number(process.env.CHOKIDAR_BINARY_INTERVAL)
-  const watchInterval = Number.isFinite(parsedWatchInterval) ? parsedWatchInterval : 350
-  const watchBinaryInterval = Number.isFinite(parsedWatchBinaryInterval) ? parsedWatchBinaryInterval : 700
+  const parsePositiveInteger = (value, fallback) => {
+    const parsed = Number.parseInt(String(value || '').trim(), 10)
+    return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback
+  }
+  const watchInterval = parsePositiveInteger(process.env.CHOKIDAR_INTERVAL, 350)
+  const watchBinaryInterval = parsePositiveInteger(process.env.CHOKIDAR_BINARY_INTERVAL, 700)
 
   return {
     supportTS: false,
