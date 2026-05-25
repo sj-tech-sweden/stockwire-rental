@@ -50,6 +50,11 @@ def _get_api_key_pepper() -> str:
     raise RuntimeError("API_KEY_PEPPER must be set outside development/test environments")
 
 
+def validate_api_key_pepper() -> None:
+    """Call at application startup to fail fast if API_KEY_PEPPER is misconfigured."""
+    _get_api_key_pepper()
+
+
 _DEFAULT_PBKDF2_ITERATIONS = 310_000
 _MIN_PBKDF2_ITERATIONS = 100_000
 
@@ -78,7 +83,14 @@ def hash_api_key(raw: str) -> str:
     return f"pbkdf2_sha256${iterations}${dk.hex()}"
 
 
-def verify_api_key_hash(raw: str, stored_hash: str) -> bool:
+def verify_pbkdf2_api_key_hash(raw: str, stored_hash: str) -> bool:
+    """Verify a raw API key against a stored PBKDF2-HMAC-SHA256 versioned hash.
+
+    The stored hash must be in the format ``pbkdf2_sha256$<iterations>$<hex>``.
+    The iteration count is read from the stored hash, so verification remains
+    correct even if ``API_KEY_PBKDF2_ITERATIONS`` has been changed since the
+    key was created.
+    """
     try:
         algorithm, iterations_raw, expected_hex = stored_hash.split("$", 2)
         if algorithm != "pbkdf2_sha256":

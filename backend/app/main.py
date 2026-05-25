@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.router import api_router
 from app.config import settings
+from app.domain.auth.security import validate_api_key_pepper
 import os
 from pathlib import Path
 
@@ -23,7 +24,9 @@ app.include_router(api_router)
 
 
 @app.on_event("startup")
-def run_startup_migrations() -> None:
+def run_startup_checks() -> None:
+    # Fail fast if API_KEY_PEPPER is misconfigured in non-dev/test environments
+    validate_api_key_pepper()
     # Optionally run alembic migrations on startup when MIGRATE_ON_STARTUP=true
     if os.getenv("MIGRATE_ON_STARTUP", "").lower() == "true":
         base_dir = Path(__file__).resolve().parents[1]
