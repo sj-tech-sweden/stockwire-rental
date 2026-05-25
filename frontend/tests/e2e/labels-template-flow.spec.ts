@@ -15,6 +15,7 @@ test('labels template create and apply to selected entities', async ({ page, req
   })
 
   await page.goto(`${base}/labels`)
+  await page.waitForLoadState('networkidle', { timeout: 40_000 })
   await expect(page).toHaveURL(/\/labels/)
   await expect(page.getByLabel('Template name')).toBeVisible({ timeout: 20_000 })
 

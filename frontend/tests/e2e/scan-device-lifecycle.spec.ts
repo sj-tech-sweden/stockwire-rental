@@ -62,6 +62,7 @@ test('scan device lifecycle job out and in flow', async ({ page, request }) => {
   })
 
   await page.goto(`${base}/scan`)
+  await page.waitForLoadState('networkidle', { timeout: 40_000 })
   await expect(page.getByLabel('Scan code')).toBeVisible()
   await expect(page.getByRole('button', { name: /^Outtake$/i })).toBeVisible()
   await expect(page.getByRole('button', { name: /^Intake$/i })).toBeVisible()
