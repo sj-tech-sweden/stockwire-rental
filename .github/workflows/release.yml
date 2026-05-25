@@ -13,6 +13,8 @@ on:
 jobs:
   create-release:
     runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.semver.outputs.tag }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -24,11 +26,11 @@ jobs:
           if [ "${{ github.event_name }}" = "pull_request" ]; then
             LABEL=${{ toJSON(github.event.pull_request.labels) }}
             # Look for one of the semantic labels
-            if echo "$LABEL" | grep -q '"name":"major"'; then echo ::set-output name=type::major; fi
-            if echo "$LABEL" | grep -q '"name":"minor"'; then echo ::set-output name=type::minor; fi
-            if echo "$LABEL" | grep -q '"name":"patch"'; then echo ::set-output name=type::patch; fi
+            if echo "$LABEL" | grep -q '"name":"major"'; then echo "type=major" >> "$GITHUB_OUTPUT"; fi
+            if echo "$LABEL" | grep -q '"name":"minor"'; then echo "type=minor" >> "$GITHUB_OUTPUT"; fi
+            if echo "$LABEL" | grep -q '"name":"patch"'; then echo "type=patch" >> "$GITHUB_OUTPUT"; fi
           else
-            echo ::set-output name=type::${{ github.event.inputs.release_type }}
+            echo "type=${{ github.event.inputs.release_type }}" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Compute next semver tag
@@ -77,5 +79,6 @@ jobs:
   build-and-push:
     needs: create-release
     uses: ./.github/workflows/docker-build-and-push.yml
-    secrets:
-      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    with:
+      version_tag: ${{ needs.create-release.outputs.tag }}
+      push_latest: true

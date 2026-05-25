@@ -4,7 +4,25 @@ on:
   push:
     branches: [ main ]
   workflow_dispatch:
+    inputs:
+      version_tag:
+        description: Optional semantic version tag (for example 1.2.3)
+        required: false
+        type: string
+      push_latest:
+        description: Also push the latest tag
+        required: false
+        type: boolean
+        default: true
   workflow_call:
+    inputs:
+      version_tag:
+        required: false
+        type: string
+      push_latest:
+        required: false
+        type: boolean
+        default: true
 
 jobs:
   build-and-push:
@@ -27,14 +45,53 @@ jobs:
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          password: ${{ github.token }}
+
+      - name: Prepare image tags
+        id: image_tags
+        shell: bash
+        run: |
+          OWNER="${{ github.repository_owner }}"
+          VERSION_TAG="${{ inputs.version_tag || github.event.inputs.version_tag || '' }}"
+          PUSH_LATEST="${{ inputs.push_latest || github.event.inputs.push_latest || 'true' }}"
+
+          backend_tags=""
+          frontend_tags=""
+
+          if [ "$PUSH_LATEST" = "true" ]; then
+            backend_tags="ghcr.io/${OWNER}/stockwire-rental-backend:latest"
+            frontend_tags="ghcr.io/${OWNER}/stockwire-rental-frontend:latest"
+          fi
+
+          if [ -n "$VERSION_TAG" ]; then
+            if [ -n "$backend_tags" ]; then
+              backend_tags="${backend_tags}\n"
+              frontend_tags="${frontend_tags}\n"
+            fi
+            backend_tags="${backend_tags}ghcr.io/${OWNER}/stockwire-rental-backend:${VERSION_TAG}"
+            frontend_tags="${frontend_tags}ghcr.io/${OWNER}/stockwire-rental-frontend:${VERSION_TAG}"
+          fi
+
+          # Fallback so push builds keep working even if inputs are unset.
+          if [ -z "$backend_tags" ]; then
+            backend_tags="ghcr.io/${OWNER}/stockwire-rental-backend:latest"
+            frontend_tags="ghcr.io/${OWNER}/stockwire-rental-frontend:latest"
+          fi
+
+          {
+            echo "backend_tags<<EOF"
+            echo -e "$backend_tags"
+            echo "EOF"
+            echo "frontend_tags<<EOF"
+            echo -e "$frontend_tags"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Build and push backend image
         uses: docker/build-push-action@v4
         with:
           push: true
-          tags: |
-            ghcr.io/${{ github.repository_owner }}/stockwire-rental-backend:latest
+          tags: ${{ steps.image_tags.outputs.backend_tags }}
           context: ./backend
           file: ./backend/Dockerfile
 
@@ -42,7 +99,6 @@ jobs:
         uses: docker/build-push-action@v4
         with:
           push: true
-          tags: |
-            ghcr.io/${{ github.repository_owner }}/stockwire-rental-frontend:latest
+          tags: ${{ steps.image_tags.outputs.frontend_tags }}
           context: ./frontend
           file: ./frontend/Dockerfile
