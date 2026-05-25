@@ -24,14 +24,19 @@ test('finance transaction create/edit/settle flow', async ({ page }) => {
   await dialog.getByRole('button', { name: /^Save$/i }).click()
   await expect(dialog).not.toBeVisible()
   const createResponse = await createResponsePromise
+  expect(createResponse.ok()).toBeTruthy()
   const { id: transactionId } = await createResponse.json()
 
   const transactionsTable = page.locator('.q-table__container').last()
-  const idCell = transactionsTable
-    .locator('tbody td')
-    .filter({ hasText: new RegExp(`^${transactionId}$`) })
-    .first()
-  const row = idCell.locator('xpath=..')
+  const getRowById = (id: string) =>
+    transactionsTable
+      .locator('tbody tr')
+      .filter({
+        has: transactionsTable.getByRole('cell', { name: id, exact: true }),
+      })
+      .first()
+
+  const row = getRowById(transactionId)
   await expect(row).toBeVisible()
   await expect(row).toContainText(moneyPattern(initialAmount))
 
@@ -42,18 +47,10 @@ test('finance transaction create/edit/settle flow', async ({ page }) => {
   await editDialog.getByRole('button', { name: /^Save$/i }).click()
   await expect(editDialog).not.toBeVisible()
 
-  const updatedIdCell = transactionsTable
-    .locator('tbody td')
-    .filter({ hasText: new RegExp(`^${transactionId}$`) })
-    .first()
-  const updatedRow = updatedIdCell.locator('xpath=..')
+  const updatedRow = getRowById(transactionId)
   await expect(updatedRow).toContainText(moneyPattern(updatedAmount))
   await updatedRow.locator('button').first().click()
 
-  const settledIdCell = transactionsTable
-    .locator('tbody td')
-    .filter({ hasText: new RegExp(`^${transactionId}$`) })
-    .first()
-  const settledRow = settledIdCell.locator('xpath=..')
+  const settledRow = getRowById(transactionId)
   await expect(settledRow).toContainText(/settled|completed|paid/i)
 })
