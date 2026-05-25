@@ -30,11 +30,12 @@ test('finance transaction create/edit/settle flow', async ({ page, request }) =>
 
   const dialog = page.getByRole('dialog')
   await expect(dialog).toBeVisible()
-  // Fill a text field first so webkit fully establishes focus inside the dialog
-  // before any q-select combobox interaction (avoids the webkit issue where a
-  // combobox clicked as the very first dialog interaction never opens its portal).
   await dialog.getByLabel(/amount/i).fill('125.50')
-  await dialog.getByRole('combobox', { name: /^Job$/i }).click()
+  // Use keyboard (ArrowDown) instead of click to open the Quasar dropdown. In webkit,
+  // pointer-based .click() on div[role="combobox"] can fail to trigger Quasar's
+  // showPopup() on a cold browser. .press() focuses the element first and then
+  // dispatches a native keydown, which Quasar's onKeydown handler handles reliably.
+  await dialog.getByRole('combobox', { name: /^Job$/i }).press('ArrowDown')
   await expect(page.getByRole('listbox')).toBeVisible({ timeout: 20_000 })
   await page.getByRole('option', { name: new RegExp(String(job.job_code), 'i') }).click()
   await expect(page.getByRole('listbox')).not.toBeVisible({ timeout: 20_000 })
