@@ -43,10 +43,16 @@ def decode_token(token: str) -> dict:
 
 
 def hash_api_key(raw: str) -> str:
-    """Return HMAC-SHA256 hex digest of API key using API_KEY_PEPPER env var."""
+    """Return PBKDF2-HMAC-SHA256 hex digest of API key using API_KEY_PEPPER as salt."""
     pepper = os.getenv("API_KEY_PEPPER")
     if not pepper:
         # default pepper — operators should set API_KEY_PEPPER in production
         pepper = "stockwire-default-api-key-pepper"
-    mac = hmac.new(pepper.encode("utf-8"), raw.encode("utf-8"), _hashlib.sha256)
-    return mac.hexdigest()
+    iterations = int(os.getenv("API_KEY_PBKDF2_ITERATIONS", "310000"))
+    dk = hashlib.pbkdf2_hmac(
+        "sha256",
+        raw.encode("utf-8"),
+        pepper.encode("utf-8"),
+        iterations,
+    )
+    return dk.hex()
