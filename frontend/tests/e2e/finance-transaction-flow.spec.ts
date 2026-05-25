@@ -34,7 +34,7 @@ test('finance transaction create/edit/settle flow', async ({ page }) => {
     transactionsTable
       .locator('tbody tr')
       .filter({
-        has: transactionsTable.getByRole('cell', { name: id, exact: true }),
+        has: page.getByRole('cell', { name: id, exact: true }),
       })
       .first()
 
