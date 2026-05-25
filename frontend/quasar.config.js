@@ -5,8 +5,10 @@ export default configure(function () {
   const usePolling = process.env.CHOKIDAR_USEPOLLING
     ? process.env.CHOKIDAR_USEPOLLING === 'true'
     : runningInContainer
-  const watchInterval = Number(process.env.CHOKIDAR_INTERVAL || 350)
-  const watchBinaryInterval = Number(process.env.CHOKIDAR_BINARY_INTERVAL || 700)
+  const parsedWatchInterval = Number(process.env.CHOKIDAR_INTERVAL)
+  const parsedWatchBinaryInterval = Number(process.env.CHOKIDAR_BINARY_INTERVAL)
+  const watchInterval = Number.isFinite(parsedWatchInterval) ? parsedWatchInterval : 350
+  const watchBinaryInterval = Number.isFinite(parsedWatchBinaryInterval) ? parsedWatchBinaryInterval : 700
 
   return {
     supportTS: false,
