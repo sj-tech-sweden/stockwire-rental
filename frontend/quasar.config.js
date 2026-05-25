@@ -6,7 +6,12 @@ export default configure(function () {
     ? process.env.CHOKIDAR_USEPOLLING === 'true'
     : runningInContainer
   const parsePositiveInteger = (value, fallback) => {
-    const parsed = Number.parseInt(String(value || '').trim(), 10)
+    const normalized = String(value ?? '').trim()
+    if (!/^\d+$/.test(normalized)) {
+      return fallback
+    }
+
+    const parsed = Number(normalized)
     return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback
   }
   const watchInterval = parsePositiveInteger(process.env.CHOKIDAR_INTERVAL, 350)
