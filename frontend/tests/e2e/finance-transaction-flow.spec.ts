@@ -1,10 +1,9 @@
 import { expect, test } from '@playwright/test'
 
-import { apiPost, base, ensureLoggedIn, getAccessToken } from './helpers/session'
+import { base, ensureLoggedIn } from './helpers/session'
 
-test('finance transaction create/edit/settle flow', async ({ page, request }) => {
-  const session = await ensureLoggedIn(page)
-  const token = await getAccessToken(request, session)
+test('finance transaction create/edit/settle flow', async ({ page }) => {
+  await ensureLoggedIn(page)
 
   const now = Date.now()
   const initialAmount = Number((100 + ((now % 9000) / 100)).toFixed(2))
@@ -18,11 +17,21 @@ test('finance transaction create/edit/settle flow', async ({ page, request }) =>
   const dialog = page.getByRole('dialog')
   await expect(dialog).toBeVisible()
   await dialog.getByLabel(/amount/i).fill(initialAmount.toFixed(2))
+
+  const createResponsePromise = page.waitForResponse(
+    (resp) => resp.url().includes('/api/v1/finance/transactions') && resp.request().method() === 'POST',
+  )
   await dialog.getByRole('button', { name: /^Save$/i }).click()
   await expect(dialog).not.toBeVisible()
+  const createResponse = await createResponsePromise
+  const { id: transactionId } = await createResponse.json()
 
   const transactionsTable = page.locator('.q-table__container').last()
-  const row = transactionsTable.locator('tbody tr').filter({ hasText: moneyPattern(initialAmount) }).first()
+  const idCell = transactionsTable
+    .locator('tbody td')
+    .filter({ hasText: new RegExp(`^${transactionId}$`) })
+    .first()
+  const row = idCell.locator('xpath=..')
   await expect(row).toBeVisible()
   await expect(row).toContainText(moneyPattern(initialAmount))
 
@@ -33,10 +42,18 @@ test('finance transaction create/edit/settle flow', async ({ page, request }) =>
   await editDialog.getByRole('button', { name: /^Save$/i }).click()
   await expect(editDialog).not.toBeVisible()
 
-  const updatedRow = transactionsTable.locator('tbody tr').filter({ hasText: moneyPattern(updatedAmount) }).first()
+  const updatedIdCell = transactionsTable
+    .locator('tbody td')
+    .filter({ hasText: new RegExp(`^${transactionId}$`) })
+    .first()
+  const updatedRow = updatedIdCell.locator('xpath=..')
   await expect(updatedRow).toContainText(moneyPattern(updatedAmount))
   await updatedRow.locator('button').first().click()
 
-  const settledRow = transactionsTable.locator('tbody tr').filter({ hasText: moneyPattern(updatedAmount) }).first()
+  const settledIdCell = transactionsTable
+    .locator('tbody td')
+    .filter({ hasText: new RegExp(`^${transactionId}$`) })
+    .first()
+  const settledRow = settledIdCell.locator('xpath=..')
   await expect(settledRow).toContainText(/settled|completed|paid/i)
 })
