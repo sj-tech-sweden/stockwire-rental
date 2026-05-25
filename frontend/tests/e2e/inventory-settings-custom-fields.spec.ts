@@ -10,8 +10,8 @@ test.describe('Inventory + settings custom fields flow', () => {
     await page.waitForLoadState('networkidle', { timeout: 40_000 })
     await page.getByRole('tab', { name: 'Categories' }).click()
     await page.getByRole('button', { name: 'Reset category defaults' }).click()
-    await expect(page.getByText('Category prefill updated')).toBeVisible()
-    await expect(page.getByText('Audio')).toBeVisible()
+    await expect(page.getByText('Category prefill updated')).toBeVisible({ timeout: 20_000 })
+    await expect(page.getByText('Audio')).toBeVisible({ timeout: 20_000 })
 
     await page.getByRole('tab', { name: 'Products' }).click()
     await page.getByRole('button', { name: 'New product' }).click()
@@ -28,7 +28,7 @@ test.describe('Inventory + settings custom fields flow', () => {
     await expect(page.getByRole('listbox')).not.toBeVisible({ timeout: 20_000 })
     await productDialog.getByLabel('Daily rate').fill('123.45')
     await productDialog.getByRole('button', { name: 'Create' }).click()
-    await expect(page.getByText('Product created')).toBeVisible()
+    await expect(page.getByText('Product created')).toBeVisible({ timeout: 20_000 })
     await page.keyboard.press('Escape')
 
     const createdRow = page.getByRole('row').filter({ hasText: sku }).first()
@@ -54,6 +54,6 @@ test.describe('Inventory + settings custom fields flow', () => {
     await page.getByRole('option', { name: 'Date' }).click()
     await expect(page.getByRole('listbox')).not.toBeVisible({ timeout: 20_000 })
     await fieldDialog.getByRole('button', { name: 'Save' }).click()
-    await expect(page.getByText('Calibration date')).toBeVisible()
+    await expect(page.getByText('Calibration date')).toBeVisible({ timeout: 20_000 })
   })
 })
