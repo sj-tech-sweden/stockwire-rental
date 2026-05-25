@@ -2,6 +2,7 @@ from datetime import datetime, timedelta, timezone
 import hashlib
 import hmac
 import os
+import secrets
 
 import bcrypt
 from jose import jwt
@@ -74,25 +75,46 @@ def hash_api_key(raw: str) -> str:
     """Return versioned PBKDF2-HMAC-SHA256 hash string for API keys."""
     pepper = _get_api_key_pepper()
     iterations = _get_pbkdf2_iterations()
+    salt = secrets.token_bytes(16)
     dk = hashlib.pbkdf2_hmac(
         "sha256",
-        raw.encode("utf-8"),
-        pepper.encode("utf-8"),
+        f"{raw}{pepper}".encode("utf-8"),
+        salt,
         iterations,
     )
-    return f"pbkdf2_sha256${iterations}${dk.hex()}"
+    return f"pbkdf2_sha256${iterations}${salt.hex()}${dk.hex()}"
 
 
-def verify_pbkdf2_api_key_hash(raw: str, stored_hash: str) -> bool:
-    """Verify a raw API key against a stored PBKDF2-HMAC-SHA256 versioned hash.
+def hash_api_key_legacy(raw: str) -> str:
+    """Return legacy HMAC-SHA256 API key hash for backward-compatible verification."""
+    pepper = _get_api_key_pepper()
+    return hmac.new(pepper.encode("utf-8"), raw.encode("utf-8"), hashlib.sha256).hexdigest()
 
-    The stored hash must be in the format ``pbkdf2_sha256$<iterations>$<hex>``.
-    The iteration count is read from the stored hash, so verification remains
-    correct even if ``API_KEY_PBKDF2_ITERATIONS`` has been changed since the
-    key was created.
+
+def verify_api_key_hash(raw: str, stored_hash: str) -> bool:
+    """Verify a raw API key against supported stored hash formats.
+
+    Supported formats:
+    - ``pbkdf2_sha256$<iterations>$<salt_hex>$<digest_hex>`` (current)
+    - ``pbkdf2_sha256$<iterations>$<digest_hex>`` (legacy PBKDF2 format)
+    - legacy HMAC-SHA256 hex digest (no delimiters)
     """
+    if "$" not in stored_hash:
+        return hmac.compare_digest(hash_api_key_legacy(raw), stored_hash)
+
     try:
-        algorithm, iterations_raw, expected_hex = stored_hash.split("$", 2)
+        parts = stored_hash.split("$")
+        if len(parts) == 4:
+            algorithm, iterations_raw, salt_hex, expected_hex = parts
+            salt = bytes.fromhex(salt_hex)
+            raw_bytes = f"{raw}{_get_api_key_pepper()}".encode("utf-8")
+        elif len(parts) == 3:
+            algorithm, iterations_raw, expected_hex = parts
+            salt = _get_api_key_pepper().encode("utf-8")
+            raw_bytes = raw.encode("utf-8")
+        else:
+            return False
+
         if algorithm != "pbkdf2_sha256":
             return False
         iterations = int(iterations_raw)
@@ -101,11 +123,10 @@ def verify_pbkdf2_api_key_hash(raw: str, stored_hash: str) -> bool:
     except (TypeError, ValueError):
         return False
 
-    pepper = _get_api_key_pepper()
     dk = hashlib.pbkdf2_hmac(
         "sha256",
-        raw.encode("utf-8"),
-        pepper.encode("utf-8"),
+        raw_bytes,
+        salt,
         iterations,
     )
     return hmac.compare_digest(dk.hex(), expected_hex)

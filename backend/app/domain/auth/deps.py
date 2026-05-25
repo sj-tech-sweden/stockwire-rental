@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.db.session import get_db
 from app.domain.auth.models import User, APIKey
-from app.domain.auth.security import decode_token, hash_api_key, verify_pbkdf2_api_key_hash
+from app.domain.auth.security import decode_token, hash_api_key_legacy, verify_api_key_hash
 
 # Make bearer optional so we can accept either JWT or API keys
 bearer = HTTPBearer(auto_error=False)
@@ -33,20 +33,18 @@ def get_current_user(
     # Fallback: check X-API-Key header or Authorization: Bearer <key>
     api_key_raw = request.headers.get("X-API-Key") or (token if token else None)
     if api_key_raw:
-        # Fast path: exact indexed lookup using the current iteration count.
-        pbkdf2_hash = hash_api_key(api_key_raw)
+        # Fast path: exact indexed lookup for legacy deterministic hashes.
+        legacy_hash = hash_api_key_legacy(api_key_raw)
         ak = (
             db.query(APIKey)
             .filter(
                 APIKey.is_active.is_(True),
                 APIKey.is_admin.is_(True),
-                APIKey.api_key_hash == pbkdf2_hash,
+                APIKey.api_key_hash == legacy_hash,
             )
             .first()
         )
-        # Fallback: if no exact match, scan PBKDF2 candidates and verify using
-        # the iteration count embedded in each stored hash.  This handles keys
-        # that were created with a different API_KEY_PBKDF2_ITERATIONS value.
+        # Fallback: stream PBKDF2 candidates and verify with per-row parameters.
         if ak is None:
             candidates = (
                 db.query(APIKey)
@@ -55,12 +53,12 @@ def get_current_user(
                     APIKey.is_admin.is_(True),
                     APIKey.api_key_hash.like("pbkdf2_sha256$%"),
                 )
-                .all()
+                .yield_per(100)
             )
-            ak = next(
-                (c for c in candidates if verify_pbkdf2_api_key_hash(api_key_raw, c.api_key_hash)),
-                None,
-            )
+            for candidate in candidates:
+                if verify_api_key_hash(api_key_raw, candidate.api_key_hash):
+                    ak = candidate
+                    break
         if ak and ak.is_admin:
             # Return sentinel admin user (id=0)
             return User(id=0, email=f"api-key:{ak.name}", password_hash="", full_name=ak.name, role="admin", is_active=True, is_admin=True)
