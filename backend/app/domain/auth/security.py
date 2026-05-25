@@ -45,7 +45,8 @@ def _get_api_key_pepper() -> str:
     pepper = os.getenv("API_KEY_PEPPER")
     if pepper:
         return pepper
-    if str(settings.app_env).strip().lower() in {"development", "test"}:
+    app_env_raw = os.getenv("APP_ENV")
+    if app_env_raw and app_env_raw.strip().lower() in {"development", "test"}:
         return "stockwire-default-api-key-pepper"
     raise RuntimeError("API_KEY_PEPPER must be set outside development/test environments")
 
@@ -57,6 +58,10 @@ def validate_api_key_pepper() -> None:
 
 _DEFAULT_PBKDF2_ITERATIONS = 310_000
 _MIN_PBKDF2_ITERATIONS = 100_000
+_MAX_PBKDF2_ITERATIONS = 1_000_000
+_PBKDF2_SALT_BYTES = 16
+_PBKDF2_DIGEST_BYTES = 32
+_API_KEY_LOOKUP_SALT = b"stockwire-api-key-lookup-v1"
 
 
 def _get_pbkdf2_iterations() -> int:
@@ -74,7 +79,7 @@ def hash_api_key(raw: str) -> str:
     """Return versioned PBKDF2-HMAC-SHA256 hash string for API keys."""
     pepper = _get_api_key_pepper()
     iterations = _get_pbkdf2_iterations()
-    salt = secrets.token_bytes(16)
+    salt = secrets.token_bytes(_PBKDF2_SALT_BYTES)
     dk = hashlib.pbkdf2_hmac(
         "sha256",
         f"{raw}{pepper}".encode("utf-8"),
@@ -82,6 +87,18 @@ def hash_api_key(raw: str) -> str:
         iterations,
     )
     return f"pbkdf2_sha256${iterations}${salt.hex()}${dk.hex()}"
+
+
+def hash_api_key_lookup(raw: str) -> str:
+    """Return deterministic PBKDF2 lookup digest for indexed API key fetches."""
+    pepper = _get_api_key_pepper()
+    lookup = hashlib.pbkdf2_hmac(
+        "sha256",
+        f"{raw}{pepper}".encode("utf-8"),
+        _API_KEY_LOOKUP_SALT,
+        _MIN_PBKDF2_ITERATIONS,
+    )
+    return lookup.hex()
 
 
 def verify_api_key_hash(raw: str, stored_hash: str) -> bool:
@@ -92,13 +109,21 @@ def verify_api_key_hash(raw: str, stored_hash: str) -> bool:
     - ``pbkdf2_sha256$<iterations>$<digest_hex>`` (legacy PBKDF2 format)
     """
     try:
+        if len(stored_hash) > 512:
+            return False
         parts = stored_hash.split("$")
         if len(parts) == 4:
             algorithm, iterations_raw, salt_hex, expected_hex = parts
+            if len(salt_hex) != _PBKDF2_SALT_BYTES * 2 or len(expected_hex) != _PBKDF2_DIGEST_BYTES * 2:
+                return False
             salt = bytes.fromhex(salt_hex)
+            expected_digest = bytes.fromhex(expected_hex)
             raw_bytes = f"{raw}{_get_api_key_pepper()}".encode("utf-8")
         elif len(parts) == 3:
             algorithm, iterations_raw, expected_hex = parts
+            if len(expected_hex) != _PBKDF2_DIGEST_BYTES * 2:
+                return False
+            expected_digest = bytes.fromhex(expected_hex)
             salt = _get_api_key_pepper().encode("utf-8")
             raw_bytes = raw.encode("utf-8")
         else:
@@ -107,7 +132,7 @@ def verify_api_key_hash(raw: str, stored_hash: str) -> bool:
         if algorithm != "pbkdf2_sha256":
             return False
         iterations = int(iterations_raw)
-        if iterations < 1:
+        if iterations < 1 or iterations > _MAX_PBKDF2_ITERATIONS:
             return False
     except (TypeError, ValueError):
         return False
@@ -118,4 +143,4 @@ def verify_api_key_hash(raw: str, stored_hash: str) -> bool:
         salt,
         iterations,
     )
-    return secrets.compare_digest(dk.hex(), expected_hex)
+    return secrets.compare_digest(dk, expected_digest)

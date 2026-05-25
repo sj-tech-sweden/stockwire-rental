@@ -1,6 +1,7 @@
 import hashlib
 
 from fastapi import HTTPException
+import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
@@ -9,7 +10,7 @@ from starlette.requests import Request
 from app.db.base import Base
 from app.domain.auth.deps import get_current_user
 from app.domain.auth.models import APIKey
-from app.domain.auth.security import hash_api_key, verify_api_key_hash
+from app.domain.auth.security import hash_api_key, hash_api_key_lookup, verify_api_key_hash
 
 
 def _make_db_session() -> Session:
@@ -45,6 +46,14 @@ def test_hash_api_key_uses_versioned_salted_format(monkeypatch):
     assert verify_api_key_hash(raw, hash_a)
 
 
+def test_hash_api_key_requires_explicit_dev_test_env_for_default_pepper(monkeypatch):
+    monkeypatch.delenv("API_KEY_PEPPER", raising=False)
+    monkeypatch.delenv("APP_ENV", raising=False)
+
+    with pytest.raises(RuntimeError):
+        hash_api_key("api-key-123")
+
+
 def test_verify_api_key_hash_supports_legacy_pbkdf2_three_part_format(monkeypatch):
     monkeypatch.setenv("API_KEY_PEPPER", "legacy-pepper")
 
@@ -58,6 +67,13 @@ def test_verify_api_key_hash_supports_legacy_pbkdf2_three_part_format(monkeypatc
     ).hex()
     stored = f"pbkdf2_sha256${iterations}${dk}"
     assert verify_api_key_hash(raw, stored)
+
+
+def test_verify_api_key_hash_rejects_malformed_values(monkeypatch):
+    monkeypatch.setenv("API_KEY_PEPPER", "test-pepper")
+
+    assert not verify_api_key_hash("k", "pbkdf2_sha256$120000$abc$" + ("0" * 64))
+    assert not verify_api_key_hash("k", "pbkdf2_sha256$999999999$" + ("00" * 16) + "$" + ("0" * 64))
 
 
 def test_get_current_user_rejects_non_pbkdf2_api_key_hash_entries(monkeypatch):
@@ -91,12 +107,14 @@ def test_get_current_user_accepts_pbkdf2_hashes_after_iteration_change(monkeypat
 
     raw = "pbkdf2-admin-key"
     stored_hash = hash_api_key(raw)
+    stored_lookup = hash_api_key_lookup(raw)
 
     db = _make_db_session()
     try:
         db.add(
             APIKey(
                 name="pbkdf2-admin",
+                api_key_lookup=stored_lookup,
                 api_key_hash=stored_hash,
                 is_active=True,
                 is_admin=True,

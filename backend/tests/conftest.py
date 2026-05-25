@@ -1,5 +1,6 @@
 from collections.abc import Generator
 from datetime import datetime, timezone
+import os
 
 import pytest
 from fastapi.testclient import TestClient
@@ -11,6 +12,8 @@ from app.db.base import Base
 from app.db.session import get_db
 from app.domain.auth.deps import get_current_user, require_admin
 from app.domain.auth.models import User
+
+os.environ.setdefault("APP_ENV", "test")
 from app.main import app
 
 

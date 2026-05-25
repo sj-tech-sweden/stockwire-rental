@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.db.session import get_db
 from app.domain.auth.models import User, APIKey
-from app.domain.auth.security import decode_token, verify_api_key_hash
+from app.domain.auth.security import decode_token, verify_api_key_hash, hash_api_key_lookup
 
 # Make bearer optional so we can accept either JWT or API keys
 bearer = HTTPBearer(auto_error=False)
@@ -33,25 +33,19 @@ def get_current_user(
     # Fallback: check X-API-Key header or Authorization: Bearer <key>
     api_key_raw = request.headers.get("X-API-Key") or (token if token else None)
     if api_key_raw:
-        # Verify against PBKDF2 hashes only. Legacy HMAC API keys are no longer
-        # accepted and must be regenerated.
-        ak = None
+        api_lookup = hash_api_key_lookup(api_key_raw)
         candidates = (
             db.query(APIKey)
             .filter(
                 APIKey.is_active.is_(True),
                 APIKey.is_admin.is_(True),
-                APIKey.api_key_hash.like("pbkdf2_sha256$%"),
+                APIKey.api_key_lookup == api_lookup,
             )
-            .yield_per(100)
+            .all()
         )
         for candidate in candidates:
             if verify_api_key_hash(api_key_raw, candidate.api_key_hash):
-                ak = candidate
-                break
-        if ak and ak.is_admin:
-            # Return sentinel admin user (id=0)
-            return User(id=0, email=f"api-key:{ak.name}", password_hash="", full_name=ak.name, role="admin", is_active=True, is_admin=True)
+                return User(id=0, email=f"api-key:{candidate.name}", password_hash="", full_name=candidate.name, role="admin", is_active=True, is_admin=True)
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid API key")
 
     raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Credentials not provided")

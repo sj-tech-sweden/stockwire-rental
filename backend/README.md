@@ -27,6 +27,7 @@ API keys are now verified only against PBKDF2-based hashes.
 
 - Legacy API keys stored with the older HMAC-SHA256 hash format are no longer accepted.
 - Existing legacy API keys must be regenerated and re-created through the API key admin flow.
+- `API_KEY_PEPPER` is required unless `APP_ENV` is explicitly set to `development` or `test`.
 
 ## Seed demo data
 
