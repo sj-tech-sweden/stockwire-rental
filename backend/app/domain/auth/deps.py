@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.db.session import get_db
 from app.domain.auth.models import User, APIKey
-from app.domain.auth.security import decode_token, hash_api_key, hash_api_key_legacy
+from app.domain.auth.security import decode_token, hash_api_key
 
 # Make bearer optional so we can accept either JWT or API keys
 bearer = HTTPBearer(auto_error=False)
@@ -34,13 +34,12 @@ def get_current_user(
     api_key_raw = request.headers.get("X-API-Key") or (token if token else None)
     if api_key_raw:
         pbkdf2_hash = hash_api_key(api_key_raw)
-        legacy_hash = hash_api_key_legacy(api_key_raw)
         ak = (
             db.query(APIKey)
             .filter(
                 APIKey.is_active.is_(True),
                 APIKey.is_admin.is_(True),
-                APIKey.api_key_hash.in_([pbkdf2_hash, legacy_hash]),
+                APIKey.api_key_hash == pbkdf2_hash,
             )
             .first()
         )

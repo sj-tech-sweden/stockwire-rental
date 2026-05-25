@@ -65,12 +65,6 @@ def _get_pbkdf2_iterations() -> int:
     return iterations
 
 
-def hash_api_key_legacy(raw: str) -> str:
-    pepper = _get_api_key_pepper()
-    mac = hmac.new(pepper.encode("utf-8"), raw.encode("utf-8"), hashlib.sha256)
-    return mac.hexdigest()
-
-
 def hash_api_key(raw: str) -> str:
     """Return versioned PBKDF2-HMAC-SHA256 hash string for API keys."""
     pepper = _get_api_key_pepper()
