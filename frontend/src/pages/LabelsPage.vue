@@ -230,6 +230,7 @@ import QRCode from 'qrcode'
 import { useInventoryStore } from '../stores/inventory'
 import { useSettingsStore } from '../stores/settings'
 import { useAuthStore } from '../stores/auth'
+import { getApiBaseUrl } from '../utils/runtime-config'
 
 const inventoryStore = useInventoryStore()
 const settingsStore = useSettingsStore()
@@ -239,7 +240,7 @@ const { t } = useI18n()
 const route = useRoute()
 const router = useRouter()
 
-const apiBaseUrl = String(import.meta.env.VITE_API_BASE_URL || window.location.origin).replace(/\/$/, '')
+const apiBaseUrl = getApiBaseUrl()
 
 const BROTHER_QL560_HINT = computed(() => t('labels.brotherHint'))
 

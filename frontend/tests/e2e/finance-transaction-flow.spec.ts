@@ -1,6 +1,38 @@
-import { expect, test } from '@playwright/test'
+import { expect, test, type Locator, type Page } from '@playwright/test'
 
 import { apiPost, base, ensureLoggedIn, getAccessToken } from './helpers/session'
+
+async function openDialogSelect(page: Page, dialog: Locator, namePattern: RegExp) {
+  const combobox = dialog.getByRole('combobox', { name: namePattern })
+  const listbox = page.getByRole('listbox')
+
+  for (const open of [
+    async () => {
+      await combobox.focus()
+      await combobox.press('ArrowDown')
+    },
+    async () => {
+      await combobox.evaluate(node => {
+        const field = node.closest('.q-field')
+        if (!field) return
+        for (const type of ['mousedown', 'mouseup', 'click']) {
+          field.dispatchEvent(new MouseEvent(type, { bubbles: true, cancelable: true, view: window }))
+        }
+      })
+    },
+  ]) {
+    await open()
+    try {
+      await expect(listbox).toBeVisible({ timeout: 3_000 })
+      return listbox
+    } catch {
+      // Try the next open strategy.
+    }
+  }
+
+  await expect(listbox).toBeVisible({ timeout: 20_000 })
+  return listbox
+}
 
 test('finance transaction create/edit/settle flow', async ({ page, request }) => {
   const session = await ensureLoggedIn(page)
@@ -24,21 +56,23 @@ test('finance transaction create/edit/settle flow', async ({ page, request }) =>
     venue_id: venue.id,
   })
 
+  const jobsLoaded = page.waitForResponse(response => {
+    return response.ok()
+      && response.request().method() === 'GET'
+      && /\/api\/v1\/jobs(?:\?|$)/.test(response.url())
+  }, { timeout: 20_000 })
   await page.goto(`${base}/finance`)
   await page.waitForLoadState('networkidle', { timeout: 40_000 })
+  await jobsLoaded
   await page.getByRole('button', { name: /new transaction/i }).click()
 
   const dialog = page.getByRole('dialog')
   await expect(dialog).toBeVisible()
   await dialog.getByLabel(/amount/i).fill('125.50')
-  // Use keyboard (ArrowDown) instead of click to open the Quasar dropdown. In webkit,
-  // pointer-based .click() on div[role="combobox"] can fail to trigger Quasar's
-  // showPopup() on a cold browser. .press() focuses the element first and then
-  // dispatches a native keydown, which Quasar's onKeydown handler handles reliably.
-  await dialog.getByRole('combobox', { name: /^Job$/i }).press('ArrowDown')
-  await expect(page.getByRole('listbox')).toBeVisible({ timeout: 20_000 })
+  const listbox = await openDialogSelect(page, dialog, /^Job$/i)
+  await expect(listbox).toBeVisible({ timeout: 20_000 })
   await page.getByRole('option', { name: new RegExp(String(job.job_code), 'i') }).click()
-  await expect(page.getByRole('listbox')).not.toBeVisible({ timeout: 20_000 })
+  await expect(listbox).not.toBeVisible({ timeout: 20_000 })
   await dialog.getByRole('button', { name: /^Save$/i }).click()
   await expect(dialog).not.toBeVisible()
 

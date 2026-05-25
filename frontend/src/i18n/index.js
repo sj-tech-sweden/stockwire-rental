@@ -71,5 +71,8 @@ export function setLocale(locale) {
   const normalized = normalizeLocale(locale)
   i18n.global.locale.value = normalized
   localStorage.setItem('sw_locale', normalized)
+  if (typeof document !== 'undefined') {
+    document.documentElement.lang = normalized
+  }
   return normalized
 }
