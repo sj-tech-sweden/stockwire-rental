@@ -5,7 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <script>
       ;(() => {
-        const storedLocale = localStorage.getItem('sw_locale') || localStorage.getItem('sw_company_default_language') || ''
+        let storedLocale = ''
+        try {
+          storedLocale = localStorage.getItem('sw_locale') || localStorage.getItem('sw_company_default_language') || ''
+        } catch {
+          storedLocale = ''
+        }
         const browserLocale = navigator.language || navigator.languages?.[0] || ''
         const locale = String(storedLocale || browserLocale || 'en').trim().toLowerCase()
         document.documentElement.lang = locale === 'sv' || locale.startsWith('sv-') ? 'sv' : 'en'

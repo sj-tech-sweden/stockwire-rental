@@ -75,7 +75,7 @@ docker compose -f infra/compose/docker-compose.yml --env-file infra/env/.env up 
 Services:
 
 - Backend API: <http://localhost:8000>
-- Frontend (Quasar dev): <http://localhost:9000>
+- Frontend (production-style nginx build): <http://localhost:9000>
 
 ## Storage backend quick guidance
 
@@ -91,13 +91,13 @@ Services:
 
 ## Local dev workflow
 
-The existing dev Docker Compose is the recommended local instance setup.
+Use `infra/compose/docker-compose.dev.yml` when you want the Quasar dev server locally, or `infra/compose/docker-compose.yml` when you want to verify the production-style nginx frontend container.
 
 ```bash
 cp infra/env/.env.example infra/env/.env
-docker compose -f infra/compose/docker-compose.yml --env-file infra/env/.env up -d --build
-docker compose -f infra/compose/docker-compose.yml --env-file infra/env/.env run --rm backend alembic upgrade head
-docker compose -f infra/compose/docker-compose.yml --env-file infra/env/.env run --rm backend python scripts/seed_demo.py
+docker compose -f infra/compose/docker-compose.dev.yml --env-file infra/env/.env up -d --build
+docker compose -f infra/compose/docker-compose.dev.yml --env-file infra/env/.env run --rm backend alembic upgrade head
+docker compose -f infra/compose/docker-compose.dev.yml --env-file infra/env/.env run --rm backend python scripts/seed_demo.py
 ```
 
 ## Tests
@@ -111,7 +111,7 @@ docker compose -f infra/compose/docker-compose.yml --env-file infra/env/.env run
 Frontend smoke tests:
 
 ```bash
-docker compose -f infra/compose/docker-compose.yml --env-file infra/env/.env run --rm frontend npm run test:smoke
+docker compose -f infra/compose/docker-compose.dev.yml --env-file infra/env/.env run --rm frontend npm run test:smoke
 ```
 
 ## Milestone issue automation
