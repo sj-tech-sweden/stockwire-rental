@@ -1,4 +1,4 @@
-import { expect, type Page, type APIRequestContext, test } from '@playwright/test'
+import { expect, type Page, type APIRequestContext } from '@playwright/test'
 
 export const base = process.env.E2E_BASE_URL || 'http://localhost:9000'
 export const apiBase = process.env.E2E_API_BASE_URL || 'http://localhost:8000'
@@ -8,40 +8,57 @@ export type SessionInfo = {
   password: string
 }
 
+// Fixed credentials used across all sequential tests so that tests 2+ can reuse
+// the account created by the first test without needing env vars.
+const FIXED_EMAIL = process.env.E2E_ADMIN_EMAIL || 'e2e-admin@example.com'
+const FIXED_PASSWORD = process.env.E2E_ADMIN_PASSWORD || 'P@ssw0rd123!'
+
 export async function ensureLoggedIn(page: Page): Promise<SessionInfo> {
-  const fullName = 'E2E Admin'
-  let email = `e2e+admin+${Date.now()}@example.com`
-  let password = 'P@ssw0rd123!'
+  const credentialCandidates: SessionInfo[] = [
+    { email: FIXED_EMAIL, password: FIXED_PASSWORD },
+    { email: 'admin@example.com', password: 'secret123' },
+    { email: 'admin@stockwire.local', password: 'secret123' },
+  ]
 
-  await page.goto(`${base}/#/setup`)
+  // Avoid UI race conditions by resolving first-time setup via backend API first.
+  const bootstrapRes = await page.request.get(`${apiBase}/api/v1/auth/bootstrap-status`)
+  expect(bootstrapRes.ok()).toBeTruthy()
+  const bootstrapPayload = await bootstrapRes.json()
+  let selected = credentialCandidates[0]
 
-  if (await page.getByText('First-time Setup').count()) {
-    await page.getByLabel('Full name').fill(fullName)
-    await page.getByLabel('Email').fill(email)
-    await page.getByLabel('Password', { exact: true }).fill(password)
-    await page.getByLabel('Confirm password').fill(password)
-    await page.getByRole('button', { name: 'Create admin account' }).click()
-  } else {
-    const envEmail = process.env.E2E_ADMIN_EMAIL
-    const envPassword = process.env.E2E_ADMIN_PASSWORD
-    if (!envEmail || !envPassword) {
-      test.skip(true, 'Setup is complete; set E2E_ADMIN_EMAIL and E2E_ADMIN_PASSWORD to run e2e suites.')
-    }
-    email = envEmail || email
-    password = envPassword || password
-    if (await page.getByRole('button', { name: 'Go to login' }).count()) {
-      await page.getByRole('button', { name: 'Go to login' }).click()
-    }
+  if (bootstrapPayload?.setup_needed) {
+    const setupRes = await page.request.post(`${apiBase}/api/v1/auth/setup`, {
+      data: { full_name: 'E2E Admin', email: selected.email, password: selected.password },
+    })
+    // Another parallel test/process may complete setup between calls.
+    expect([201, 409]).toContain(setupRes.status())
   }
 
-  if (await page.getByText('Sign in to continue').count()) {
-    await page.getByLabel('Email').fill(email)
-    await page.getByLabel('Password').fill(password)
-    await page.getByRole('button', { name: 'Sign in' }).click()
+  let canLogin = false
+  for (const candidate of credentialCandidates) {
+    const loginProbe = await page.request.post(`${apiBase}/api/v1/auth/login`, {
+      data: { email: candidate.email, password: candidate.password },
+    })
+    if (loginProbe.ok()) {
+      selected = candidate
+      canLogin = true
+      break
+    }
   }
+  expect(canLogin).toBeTruthy()
 
-  await expect(page.getByText('Stockwire Rental')).toBeVisible()
-  return { email, password }
+  await page.goto(`${base}/login`)
+  const signInHeading = page.getByText('Sign in to continue')
+  await expect(signInHeading).toBeVisible({ timeout: 20_000 })
+
+  await page.getByLabel('Email').fill(selected.email)
+  await page.getByLabel('Password').fill(selected.password)
+  await page.getByRole('button', { name: 'Sign in' }).click()
+  await expect(signInHeading).not.toBeVisible({ timeout: 20_000 })
+
+  await expect(page).not.toHaveURL(/\/login/, { timeout: 20_000 })
+  await expect(page.locator('.q-page').first()).toBeVisible({ timeout: 20_000 })
+  return selected
 }
 
 export async function getAccessToken(request: APIRequestContext, session: SessionInfo): Promise<string> {

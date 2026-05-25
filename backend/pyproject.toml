@@ -38,8 +38,6 @@ dev = [
 addopts = "-q"
 testpaths = ["tests"]
 
-[tool.setuptools]
-packages = ["app"]
 [tool.setuptools.packages.find]
 include = ["app*"]
 

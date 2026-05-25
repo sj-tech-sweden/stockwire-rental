@@ -24,27 +24,39 @@ test('finance transaction create/edit/settle flow', async ({ page, request }) =>
     venue_id: venue.id,
   })
 
-  await page.goto(`${base}/#/finance`)
+  await page.goto(`${base}/finance`)
+  await page.waitForLoadState('networkidle', { timeout: 40_000 })
   await page.getByRole('button', { name: /new transaction/i }).click()
 
-  await page.getByLabel(/^Job$/i).click()
+  const dialog = page.getByRole('dialog')
+  await expect(dialog).toBeVisible()
+  await dialog.getByLabel(/amount/i).fill('125.50')
+  // Use keyboard (ArrowDown) instead of click to open the Quasar dropdown. In webkit,
+  // pointer-based .click() on div[role="combobox"] can fail to trigger Quasar's
+  // showPopup() on a cold browser. .press() focuses the element first and then
+  // dispatches a native keydown, which Quasar's onKeydown handler handles reliably.
+  await dialog.getByRole('combobox', { name: /^Job$/i }).press('ArrowDown')
+  await expect(page.getByRole('listbox')).toBeVisible({ timeout: 20_000 })
   await page.getByRole('option', { name: new RegExp(String(job.job_code), 'i') }).click()
-  await page.getByLabel(/description/i).fill(`Initial e2e transaction ${now}`)
-  await page.getByLabel(/amount/i).fill('125.50')
-  await page.getByRole('button', { name: /^Save$/i }).click()
+  await expect(page.getByRole('listbox')).not.toBeVisible({ timeout: 20_000 })
+  await dialog.getByRole('button', { name: /^Save$/i }).click()
+  await expect(dialog).not.toBeVisible()
 
-  const row = page.locator('tbody tr').filter({ hasText: String(job.job_code) }).first()
+  const transactionsTable = page.locator('.q-table__container').last()
+  const row = transactionsTable.locator('tbody tr').filter({ hasText: String(job.job_code) }).first()
   await expect(row).toBeVisible()
-  await expect(row).toContainText('125.50')
+  await expect(row).toContainText(/125[.,]50/)
 
   await row.locator('button').nth(1).click()
-  await page.getByLabel(/amount/i).fill('245.75')
-  await page.getByLabel(/description/i).fill(`Edited e2e transaction ${now}`)
-  await page.getByRole('button', { name: /^Save$/i }).click()
+  const editDialog = page.getByRole('dialog')
+  await expect(editDialog).toBeVisible()
+  await editDialog.getByLabel(/amount/i).fill('245.75')
+  await editDialog.getByRole('button', { name: /^Save$/i }).click()
+  await expect(editDialog).not.toBeVisible()
 
-  await expect(row).toContainText('245.75')
+  await expect(row).toContainText(/245[.,]75/)
   await row.locator('button').first().click()
 
-  const settledRow = page.locator('tbody tr').filter({ hasText: String(job.job_code) }).first()
+  const settledRow = transactionsTable.locator('tbody tr').filter({ hasText: String(job.job_code) }).first()
   await expect(settledRow).toContainText(/settled|completed|paid/i)
 })

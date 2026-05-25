@@ -71,6 +71,7 @@ jobs:
       - name: Install frontend deps and Playwright
         working-directory: frontend
         run: |
+          sudo rm -rf node_modules
           npm ci
           npx playwright install --with-deps
 
