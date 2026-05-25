@@ -8,7 +8,7 @@ from datetime import datetime
 from urllib.parse import urlencode
 from urllib.error import HTTPError, URLError
 from urllib.parse import urljoin, urlparse
-from urllib.request import Request, urlopen
+from urllib.request import Request, build_opener, HTTPRedirectHandler, urlopen
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from sqlalchemy import select
@@ -1538,8 +1538,16 @@ def _url_origin(url: str) -> tuple[str, str, int] | None:
     parsed = urlparse(str(url or "").strip())
     if parsed.scheme not in {"http", "https"} or not parsed.hostname:
         return None
-    port = parsed.port if parsed.port is not None else (443 if parsed.scheme == "https" else 80)
+    try:
+        port = parsed.port if parsed.port is not None else (443 if parsed.scheme == "https" else 80)
+    except ValueError:
+        return None
     return (parsed.scheme, parsed.hostname.lower(), port)
+
+
+class _NoRedirectHandler(HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        raise HTTPError(req.full_url, code, "redirect blocked", headers, fp)
 
 
 def _is_same_origin_url(url: str, expected_origin: tuple[str, str, int]) -> bool:
@@ -1589,7 +1597,7 @@ def _fetch_eventory_token(api_url: str, token_endpoint: str, username: str, pass
             method="POST",
         )
         try:
-            with urlopen(req, timeout=10) as resp:
+            with build_opener(_NoRedirectHandler()).open(req, timeout=10) as resp:
                 payload = json.loads(resp.read().decode("utf-8") or "{}")
                 if not isinstance(payload, dict):
                     raise ValueError("token response is not an object")
