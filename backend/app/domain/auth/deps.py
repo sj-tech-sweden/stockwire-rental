@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.db.session import get_db
 from app.domain.auth.models import User, APIKey
-from app.domain.auth.security import decode_token, verify_api_key_hash
+from app.domain.auth.security import decode_token, hash_api_key, hash_api_key_legacy
 
 # Make bearer optional so we can accept either JWT or API keys
 bearer = HTTPBearer(auto_error=False)
@@ -33,17 +33,16 @@ def get_current_user(
     # Fallback: check X-API-Key header or Authorization: Bearer <key>
     api_key_raw = request.headers.get("X-API-Key") or (token if token else None)
     if api_key_raw:
-        candidates = (
+        pbkdf2_hash = hash_api_key(api_key_raw)
+        legacy_hash = hash_api_key_legacy(api_key_raw)
+        ak = (
             db.query(APIKey)
             .filter(
                 APIKey.is_active.is_(True),
                 APIKey.is_admin.is_(True),
+                APIKey.api_key_hash.in_([pbkdf2_hash, legacy_hash]),
             )
-            .all()
-        )
-        ak = next(
-            (candidate for candidate in candidates if verify_api_key_hash(api_key_raw, candidate.api_key_hash)),
-            None,
+            .first()
         )
         if ak and ak.is_admin:
             # Return sentinel admin user (id=0)

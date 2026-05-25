@@ -50,13 +50,19 @@ def _get_api_key_pepper() -> str:
     raise RuntimeError("API_KEY_PEPPER must be set outside development/test environments")
 
 
+_DEFAULT_PBKDF2_ITERATIONS = 310_000
+_MIN_PBKDF2_ITERATIONS = 100_000
+
+
 def _get_pbkdf2_iterations() -> int:
-    raw = os.getenv("API_KEY_PBKDF2_ITERATIONS", "310000")
+    raw = os.getenv("API_KEY_PBKDF2_ITERATIONS", str(_DEFAULT_PBKDF2_ITERATIONS))
     try:
         iterations = int(raw)
     except (TypeError, ValueError):
-        return 310000
-    return max(1, iterations)
+        return _DEFAULT_PBKDF2_ITERATIONS
+    if iterations < _MIN_PBKDF2_ITERATIONS:
+        return _DEFAULT_PBKDF2_ITERATIONS
+    return iterations
 
 
 def hash_api_key_legacy(raw: str) -> str:
