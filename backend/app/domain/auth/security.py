@@ -1,13 +1,12 @@
 from datetime import datetime, timedelta, timezone
 import hashlib
+import hmac
+import os
 
-from jose import jwt
 import bcrypt
+from jose import jwt
 
 from app.config import settings
-import os
-import hmac
-import hashlib as _hashlib
 
 
 def _prepare_password(password: str) -> bytes:
@@ -42,13 +41,34 @@ def decode_token(token: str) -> dict:
     return jwt.decode(token, settings.jwt_secret_key, algorithms=[settings.jwt_algorithm])
 
 
-def hash_api_key(raw: str) -> str:
-    """Return PBKDF2-HMAC-SHA256 hex digest of API key using API_KEY_PEPPER as salt."""
+def _get_api_key_pepper() -> str:
     pepper = os.getenv("API_KEY_PEPPER")
-    if not pepper:
-        # default pepper — operators should set API_KEY_PEPPER in production
-        pepper = "stockwire-default-api-key-pepper"
-    iterations = int(os.getenv("API_KEY_PBKDF2_ITERATIONS", "310000"))
+    if pepper:
+        return pepper
+    if str(settings.app_env).strip().lower() in {"development", "test"}:
+        return "stockwire-default-api-key-pepper"
+    raise RuntimeError("API_KEY_PEPPER must be set outside development/test environments")
+
+
+def _get_pbkdf2_iterations() -> int:
+    raw = os.getenv("API_KEY_PBKDF2_ITERATIONS", "310000")
+    try:
+        iterations = int(raw)
+    except (TypeError, ValueError):
+        return 310000
+    return max(1, iterations)
+
+
+def hash_api_key_legacy(raw: str) -> str:
+    pepper = _get_api_key_pepper()
+    mac = hmac.new(pepper.encode("utf-8"), raw.encode("utf-8"), hashlib.sha256)
+    return mac.hexdigest()
+
+
+def hash_api_key(raw: str) -> str:
+    """Return PBKDF2-HMAC-SHA256 hex digest using API_KEY_PEPPER as PBKDF2 salt."""
+    pepper = _get_api_key_pepper()
+    iterations = _get_pbkdf2_iterations()
     dk = hashlib.pbkdf2_hmac(
         "sha256",
         raw.encode("utf-8"),
