@@ -38,7 +38,7 @@ test.describe('Core module route smoke', () => {
       // This is the most reliable wait strategy for a Quasar SPA dev server.
       await page.waitForLoadState('networkidle', { timeout: 40_000 })
       await expect(page).not.toHaveURL(/\/login/)
-      await expect(page.locator('.q-page').first()).toBeVisible({ timeout: 15_000 })
+      await expect(page.getByRole('button', { name: 'Logout' })).toBeVisible({ timeout: 15_000 })
     }
   })
 })

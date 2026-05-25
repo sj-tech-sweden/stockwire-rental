@@ -30,8 +30,9 @@ test.describe('Inventory + settings custom fields flow', () => {
     await expect(page.getByText('Product created')).toBeVisible()
     await page.keyboard.press('Escape')
 
-    await expect(page.getByText(sku)).toBeVisible()
-    await expect(page.getByRole('cell', { name: 'Audio' })).toBeVisible()
+    const createdRow = page.getByRole('row').filter({ hasText: sku }).first()
+    await expect(createdRow).toBeVisible()
+    await expect(createdRow).toContainText(/audio/i)
 
     await page.goto(`${base}/settings`)
     await expect(page.getByText('Admin Settings')).toBeVisible()
@@ -51,6 +52,6 @@ test.describe('Inventory + settings custom fields flow', () => {
     await page.getByRole('option', { name: 'Date' }).click()
     await expect(page.getByRole('listbox')).not.toBeVisible()
     await fieldDialog.getByRole('button', { name: 'Save' }).click()
-    await expect(page.getByText('Field created')).toBeVisible()
+    await expect(page.getByText('Calibration date')).toBeVisible()
   })
 })

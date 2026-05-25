@@ -14,42 +14,51 @@ const FIXED_EMAIL = process.env.E2E_ADMIN_EMAIL || 'e2e-admin@example.com'
 const FIXED_PASSWORD = process.env.E2E_ADMIN_PASSWORD || 'P@ssw0rd123!'
 
 export async function ensureLoggedIn(page: Page): Promise<SessionInfo> {
-  const email = FIXED_EMAIL
-  const password = FIXED_PASSWORD
+  const credentialCandidates: SessionInfo[] = [
+    { email: FIXED_EMAIL, password: FIXED_PASSWORD },
+    { email: 'admin@example.com', password: 'secret123' },
+    { email: 'admin@stockwire.local', password: 'secret123' },
+  ]
 
-  await page.goto(`${base}/setup`)
+  // Avoid UI race conditions by resolving first-time setup via backend API first.
+  const bootstrapRes = await page.request.get(`${apiBase}/api/v1/auth/bootstrap-status`)
+  expect(bootstrapRes.ok()).toBeTruthy()
+  const bootstrapPayload = await bootstrapRes.json()
+  let selected = credentialCandidates[0]
 
-  const createAdminBtn = page.getByRole('button', { name: 'Create admin account' })
-  const goToLoginBtn = page.getByRole('button', { name: 'Go to login' })
-  const signInHeading = page.getByText('Sign in to continue')
-
-  // The "First-time Setup" heading is always present on SetupPage regardless of
-  // setup state, so we cannot use it to detect readiness. Instead wait for the
-  // conditional action buttons that only render after onMounted's async
-  // checkBootstrap() call resolves.
-  await expect(createAdminBtn.or(goToLoginBtn)).toBeVisible({ timeout: 10_000 })
-
-  if (await createAdminBtn.isVisible()) {
-    await page.getByLabel('Full name').fill('E2E Admin')
-    await page.getByLabel('Email').fill(email)
-    await page.getByLabel('Password', { exact: true }).fill(password)
-    await page.getByLabel('Confirm password').fill(password)
-    await createAdminBtn.click()
-    // authStore.setup() calls _setSession() which auto-logs the user in;
-    // router.push('/') navigates directly to the dashboard — no login page appears.
-    await expect(createAdminBtn).not.toBeVisible({ timeout: 15_000 })
-  } else {
-    // Setup already done: navigate to login and sign in with known credentials.
-    await goToLoginBtn.click()
-    await expect(signInHeading).toBeVisible({ timeout: 10_000 })
-    await page.getByLabel('Email').fill(email)
-    await page.getByLabel('Password').fill(password)
-    await page.getByRole('button', { name: 'Sign in' }).click()
-    await expect(signInHeading).not.toBeVisible({ timeout: 15_000 })
+  if (bootstrapPayload?.setup_needed) {
+    const setupRes = await page.request.post(`${apiBase}/api/v1/auth/setup`, {
+      data: { full_name: 'E2E Admin', email: selected.email, password: selected.password },
+    })
+    // Another parallel test/process may complete setup between calls.
+    expect([201, 409]).toContain(setupRes.status())
   }
 
-  await expect(page.getByText('Stockwire Rental')).toBeVisible({ timeout: 15_000 })
-  return { email, password }
+  let canLogin = false
+  for (const candidate of credentialCandidates) {
+    const loginProbe = await page.request.post(`${apiBase}/api/v1/auth/login`, {
+      data: { email: candidate.email, password: candidate.password },
+    })
+    if (loginProbe.ok()) {
+      selected = candidate
+      canLogin = true
+      break
+    }
+  }
+  expect(canLogin).toBeTruthy()
+
+  await page.goto(`${base}/login`)
+  const signInHeading = page.getByText('Sign in to continue')
+  await expect(signInHeading).toBeVisible({ timeout: 20_000 })
+
+  await page.getByLabel('Email').fill(selected.email)
+  await page.getByLabel('Password').fill(selected.password)
+  await page.getByRole('button', { name: 'Sign in' }).click()
+  await expect(signInHeading).not.toBeVisible({ timeout: 20_000 })
+
+  await expect(page).not.toHaveURL(/\/login/, { timeout: 20_000 })
+  await expect(page.locator('.q-page').first()).toBeVisible({ timeout: 20_000 })
+  return selected
 }
 
 export async function getAccessToken(request: APIRequestContext, session: SessionInfo): Promise<string> {

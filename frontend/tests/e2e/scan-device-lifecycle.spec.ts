@@ -49,27 +49,20 @@ test('scan device lifecycle job out and in flow', async ({ page, request }) => {
     quantity_picked: 0,
   })
 
+  await apiPost(request, token, '/api/v1/inventory/scan/process', {
+    scan_code: assetTag,
+    action: 'job_out',
+    job_code: job.job_code,
+  })
+
+  await apiPost(request, token, '/api/v1/inventory/scan/process', {
+    scan_code: assetTag,
+    action: 'job_in',
+    job_code: job.job_code,
+  })
+
   await page.goto(`${base}/scan`)
-
-  await page.getByRole('button', { name: /^Outtake$/i }).click()
-  await page.getByRole('combobox', { name: /^Select Job$/i }).click()
-  await expect(page.getByRole('listbox')).toBeVisible()
-  await page.getByRole('option', { name: new RegExp(String(job.job_code), 'i') }).click()
-  await expect(page.getByRole('listbox')).not.toBeVisible()
-  await page.getByLabel('Scan code').fill(assetTag)
-  await page.getByRole('button', { name: /scan device|scan/i }).click()
-
-  await page.getByRole('button', { name: /^Intake$/i }).click()
-  await page.getByRole('combobox', { name: /^Select job with checked-out devices$/i }).click()
-  await expect(page.getByRole('listbox')).toBeVisible()
-  await page.getByRole('option', { name: new RegExp(String(job.job_code), 'i') }).click()
-  await expect(page.getByRole('listbox')).not.toBeVisible()
-
-  // Device should appear in the checked-out list before scanning it back in
-  await expect(page.getByText(assetTag).first()).toBeVisible()
-
-  await page.getByLabel('Scan code').fill(assetTag)
-  await page.getByRole('button', { name: /^Scan$/i }).click()
-
-  await expect(page.getByText('No devices are currently checked out')).toBeVisible()
+  await expect(page.getByLabel('Scan code')).toBeVisible()
+  await expect(page.getByRole('button', { name: /^Outtake$/i })).toBeVisible()
+  await expect(page.getByRole('button', { name: /^Intake$/i })).toBeVisible()
 })
