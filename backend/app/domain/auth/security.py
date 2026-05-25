@@ -66,7 +66,7 @@ def hash_api_key_legacy(raw: str) -> str:
 
 
 def hash_api_key(raw: str) -> str:
-    """Return PBKDF2-HMAC-SHA256 hex digest using API_KEY_PEPPER as PBKDF2 salt."""
+    """Return versioned PBKDF2-HMAC-SHA256 hash string for API keys."""
     pepper = _get_api_key_pepper()
     iterations = _get_pbkdf2_iterations()
     dk = hashlib.pbkdf2_hmac(
@@ -75,4 +75,25 @@ def hash_api_key(raw: str) -> str:
         pepper.encode("utf-8"),
         iterations,
     )
-    return dk.hex()
+    return f"pbkdf2_sha256${iterations}${dk.hex()}"
+
+
+def verify_api_key_hash(raw: str, stored_hash: str) -> bool:
+    try:
+        algorithm, iterations_raw, expected_hex = stored_hash.split("$", 2)
+        if algorithm != "pbkdf2_sha256":
+            return False
+        iterations = int(iterations_raw)
+        if iterations < 1:
+            return False
+    except (TypeError, ValueError):
+        return False
+
+    pepper = _get_api_key_pepper()
+    dk = hashlib.pbkdf2_hmac(
+        "sha256",
+        raw.encode("utf-8"),
+        pepper.encode("utf-8"),
+        iterations,
+    )
+    return hmac.compare_digest(dk.hex(), expected_hex)
