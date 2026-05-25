@@ -25,7 +25,9 @@ test('finance transaction create/edit/settle flow', async ({ page }) => {
   await expect(dialog).not.toBeVisible()
   const createResponse = await createResponsePromise
   expect(createResponse.ok()).toBeTruthy()
-  const { id: transactionId } = await createResponse.json()
+  const createResponseJson = (await createResponse.json()) as { id?: string | number }
+  expect(createResponseJson.id).toBeDefined()
+  const transactionId = String(createResponseJson.id)
 
   const transactionsTable = page.locator('.q-table__container').last()
   const getRowById = (id: string) =>
