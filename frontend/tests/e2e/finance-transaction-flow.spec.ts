@@ -30,11 +30,14 @@ test('finance transaction create/edit/settle flow', async ({ page, request }) =>
 
   const dialog = page.getByRole('dialog')
   await expect(dialog).toBeVisible()
+  // Fill a text field first so webkit fully establishes focus inside the dialog
+  // before any q-select combobox interaction (avoids the webkit issue where a
+  // combobox clicked as the very first dialog interaction never opens its portal).
+  await dialog.getByLabel(/amount/i).fill('125.50')
   await dialog.getByRole('combobox', { name: /^Job$/i }).click()
   await expect(page.getByRole('listbox')).toBeVisible({ timeout: 20_000 })
   await page.getByRole('option', { name: new RegExp(String(job.job_code), 'i') }).click()
   await expect(page.getByRole('listbox')).not.toBeVisible({ timeout: 20_000 })
-  await dialog.getByLabel(/amount/i).fill('125.50')
   await dialog.getByRole('button', { name: /^Save$/i }).click()
   await expect(dialog).not.toBeVisible()
 
