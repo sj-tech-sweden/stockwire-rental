@@ -100,6 +100,7 @@ import { useI18n } from 'vue-i18n'
 
 import { useAuthStore } from '../stores/auth'
 import { resolveLoginLocale, setLocale, setUserLocalePreference } from '../i18n'
+import { getApiBaseUrl } from '../utils/runtime-config'
 
 const authStore = useAuthStore()
 const router = useRouter()
@@ -122,7 +123,7 @@ const localeOptions = computed(() => [
   { label: t('app.language.swedish'), value: 'sv' },
 ])
 
-const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'
+const apiBaseUrl = getApiBaseUrl()
 
 async function loadPublicBranding() {
   try {
