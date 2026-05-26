@@ -49,9 +49,9 @@ def get_current_user(
             if verify_api_key_hash(api_key_raw, candidate.api_key_hash):
                 return User(id=0, email=f"api-key:{candidate.name}", password_hash="", full_name=candidate.name, role="admin", is_active=True, is_admin=True)
 
-        # Fallback: limited scan for keys created before the lookup-digest migration.
+        # Fallback: scan for keys created before the lookup-digest migration.
         # On a successful match the lookup digest is backfilled so future requests
-        # use the fast indexed path.
+        # use the fast indexed path.  Stream rows to avoid loading all into memory.
         null_candidates = (
             db.query(APIKey)
             .filter(
@@ -59,8 +59,7 @@ def get_current_user(
                 APIKey.is_admin.is_(True),
                 APIKey.api_key_lookup.is_(None),
             )
-            .limit(100)
-            .all()
+            .yield_per(50)
         )
         for candidate in null_candidates:
             if verify_api_key_hash(api_key_raw, candidate.api_key_hash):

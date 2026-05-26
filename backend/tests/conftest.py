@@ -1,7 +1,8 @@
 import os
 
-# Must be set before any app.* imports so Settings() reads the right value at import time
-os.environ.setdefault("APP_ENV", "test")
+# Force APP_ENV=test before any app.* imports so Settings() always reads the
+# correct value, regardless of what the caller's environment has set.
+os.environ["APP_ENV"] = "test"
 
 from collections.abc import Generator
 from datetime import datetime, timezone

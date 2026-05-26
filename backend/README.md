@@ -24,19 +24,30 @@ alembic upgrade head
 ## API key hashing migration note
 
 API keys are now verified using PBKDF2-HMAC-SHA256 with a per-key random salt
-and an indexed HMAC-SHA256 lookup digest (`api_key_lookup` column).
+and an indexed PBKDF2 lookup digest (`api_key_lookup` column, derived with 1
+iteration keyed by `API_KEY_PEPPER`).
 
-- Legacy API keys stored with the older HMAC-SHA256 hash format are no longer accepted.
-  Such keys must be deleted and re-created through the API key admin flow.
-- **Migration `20260526_0022`** resets the `api_key_lookup` column to `NULL` for all
-  existing rows following the switch from BLAKE2b to HMAC-SHA256 as the lookup digest
-  algorithm.  Any active API key whose lookup digest was backfilled with the previous
-  BLAKE2b format will authenticate transparently via the NULL-scan fallback on its next
-  use, and the HMAC-SHA256 digest will be stored automatically at that point.
-- PBKDF2-format keys created before migration `20260525_0021` was applied (i.e. with a
-  `NULL` `api_key_lookup`) remain usable via the limited fallback scan and are backfilled
-  automatically on first authentication.
-- `API_KEY_PEPPER` is required unless `APP_ENV` is explicitly set to `development` or `test`.
+**Breaking change:** Legacy API keys stored with the older HMAC-SHA256 hash
+format are no longer accepted. Such keys must be deleted and re-created through
+the API key admin flow.
+
+### Migration history
+
+| Migration | Purpose |
+|-----------|---------|
+| `20260525_0021` | Adds `api_key_lookup` column (indexed, nullable). |
+| `20260526_0022` | Resets `api_key_lookup` to `NULL` for rows backfilled with the former BLAKE2b digest so they are re-backfilled with the PBKDF2 digest on next use. |
+| `20260526_0023` | Resets `api_key_lookup` to `NULL` for rows backfilled with the intermediate HMAC-SHA256 digest so they are re-backfilled with the final PBKDF2 digest on next use. |
+
+After running all migrations, any PBKDF2-format key whose `api_key_lookup` is
+`NULL` will authenticate via the NULL-scan fallback and have its lookup digest
+backfilled automatically on first use.
+
+- `API_KEY_PEPPER` is required unless `APP_ENV` is explicitly set to
+  `development` or `test`; the application will fail to start if it is missing.
+- `API_KEY_PBKDF2_ITERATIONS` tunes the verification iteration count (default:
+  310 000; min: 100 000; max: 1 000 000). Values outside this range fall back to
+  the default.
 
 ## Seed demo data
 

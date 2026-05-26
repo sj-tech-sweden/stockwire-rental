@@ -26,7 +26,7 @@ depends_on: str | Sequence[str] | None = None
 def upgrade() -> None:
     # Nullify all existing lookup digests so they are recomputed with the new
     # HMAC-SHA256 algorithm on the first authentication request.
-    op.execute(sa.text("UPDATE api_keys SET api_key_lookup = NULL"))
+    op.execute(sa.text("UPDATE api_keys SET api_key_lookup = NULL WHERE api_key_lookup IS NOT NULL"))
 
 
 def downgrade() -> None:
