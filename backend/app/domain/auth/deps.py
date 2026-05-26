@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.db.session import get_db
 from app.domain.auth.models import User, APIKey
-from app.domain.auth.security import decode_token, hash_api_key
+from app.domain.auth.security import decode_token, verify_api_key_hash, hash_api_key_lookup
 
 # Make bearer optional so we can accept either JWT or API keys
 bearer = HTTPBearer(auto_error=False)
@@ -30,14 +30,46 @@ def get_current_user(
             # Fall through to API key handling
             pass
 
-    # Fallback: check X-API-Key header or Authorization: Bearer <key>
+    # Fallback: check X-API-Key header or Authorization: ******
     api_key_raw = request.headers.get("X-API-Key") or (token if token else None)
     if api_key_raw:
-        api_hash = hash_api_key(api_key_raw)
-        ak = db.query(APIKey).filter(APIKey.api_key_hash == api_hash, APIKey.is_active == True).first()
-        if ak and ak.is_admin:
-            # Return sentinel admin user (id=0)
-            return User(id=0, email=f"api-key:{ak.name}", password_hash="", full_name=ak.name, role="admin", is_active=True, is_admin=True)
+        api_lookup = hash_api_key_lookup(api_key_raw)
+
+        # Fast indexed lookup by precomputed lookup digest
+        candidates = (
+            db.query(APIKey)
+            .filter(
+                APIKey.is_active.is_(True),
+                APIKey.is_admin.is_(True),
+                APIKey.api_key_lookup == api_lookup,
+            )
+            .all()
+        )
+        for candidate in candidates:
+            if verify_api_key_hash(api_key_raw, candidate.api_key_hash):
+                return User(id=0, email=f"api-key:{candidate.name}", password_hash="", full_name=candidate.name, role="admin", is_active=True, is_admin=True)
+
+        # Fallback: scan for keys created before the lookup-digest migration.
+        # On a successful match the lookup digest is backfilled so future requests
+        # use the fast indexed path.  Stream rows to avoid loading all into memory.
+        null_candidates = (
+            db.query(APIKey)
+            .filter(
+                APIKey.is_active.is_(True),
+                APIKey.is_admin.is_(True),
+                APIKey.api_key_lookup.is_(None),
+            )
+            .yield_per(50)
+        )
+        for candidate in null_candidates:
+            if verify_api_key_hash(api_key_raw, candidate.api_key_hash):
+                try:
+                    candidate.api_key_lookup = api_lookup
+                    db.commit()
+                except Exception:
+                    db.rollback()
+                return User(id=0, email=f"api-key:{candidate.name}", password_hash="", full_name=candidate.name, role="admin", is_active=True, is_admin=True)
+
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid API key")
 
     raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Credentials not provided")

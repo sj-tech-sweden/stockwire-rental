@@ -8,7 +8,7 @@ from app.db.session import get_db
 from app.domain.auth.deps import get_current_user, require_admin
 from app.domain.auth.models import User
 from app.domain.auth.schemas import Token, UserCreate, UserLogin, UserSummary, UserSelfUpdate, OIDCExchangeRequest, SAMLAssertionRequest, SSOProviderSummary
-from app.domain.auth.security import create_access_token, hash_password, verify_password, hash_api_key
+from app.domain.auth.security import create_access_token, hash_password, verify_password, hash_api_key, hash_api_key_lookup
 from app.domain.auth.sso import (
     build_oidc_authorize_url,
     claims_to_identity,
@@ -302,8 +302,9 @@ def list_api_keys(db: Session = Depends(get_db), _: User = Depends(require_admin
 @router.post("/api-keys", response_model=APIKeyOut, status_code=status.HTTP_201_CREATED)
 def create_api_key(payload: APIKeyCreate, db: Session = Depends(get_db), _: User = Depends(require_admin)):
     # Store only the hash
+    api_lookup = hash_api_key_lookup(payload.raw_key)
     api_hash = hash_api_key(payload.raw_key)
-    ak = APIKey(name=payload.name, api_key_hash=api_hash, is_active=True, is_admin=payload.is_admin)
+    ak = APIKey(name=payload.name, api_key_lookup=api_lookup, api_key_hash=api_hash, is_active=True, is_admin=payload.is_admin)
     db.add(ak)
     db.commit()
     db.refresh(ak)

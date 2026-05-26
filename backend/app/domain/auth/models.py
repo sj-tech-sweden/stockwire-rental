@@ -65,6 +65,7 @@ class APIKey(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     name: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
+    api_key_lookup: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
     api_key_hash: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     is_admin: Mapped[bool] = mapped_column(Boolean, default=False)

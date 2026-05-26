@@ -1162,9 +1162,10 @@ import {
   filterCurrencyOptions,
   normalizeCurrencyCode,
 } from '../constants/currencies'
+import { getApiBaseUrl } from '../utils/runtime-config'
 
 const route = useRoute()
-const apiBaseUrl = String(import.meta.env.VITE_API_BASE_URL || window.location.origin).replace(/\/$/, '')
+const apiBaseUrl = getApiBaseUrl()
 const knownTabs = new Set(['auth', 'company', 'custom-fields', 'inventory', 'integrations', 'offline-queue'])
 const requestedTab = String(route.query.tab || '')
 const tab = ref(knownTabs.has(requestedTab) ? requestedTab : 'auth')

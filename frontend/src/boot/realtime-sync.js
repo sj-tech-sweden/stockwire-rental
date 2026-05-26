@@ -4,6 +4,7 @@ import { useInventoryStore } from '../stores/inventory'
 import { useJobsStore } from '../stores/jobs'
 import { useVenuesStore } from '../stores/venues'
 import { startRealtime, subscribeRealtime } from '../services/realtime/client'
+import { getApiBaseUrl } from '../utils/runtime-config'
 
 function debounce(fn, waitMs = 350) {
   let timer = null
@@ -17,7 +18,7 @@ function debounce(fn, waitMs = 350) {
 }
 
 export default ({ store }) => {
-  const apiBase = import.meta.env.VITE_API_BASE_URL || window.location.origin
+  const apiBase = getApiBaseUrl()
 
   startRealtime({
     apiBase,

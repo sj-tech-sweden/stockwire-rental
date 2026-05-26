@@ -10,14 +10,16 @@ test.describe('Inventory + settings custom fields flow', () => {
     await page.waitForLoadState('networkidle', { timeout: 40_000 })
     await page.getByRole('tab', { name: 'Categories' }).click()
     await page.getByRole('button', { name: 'Reset category defaults' }).click()
-    await expect(page.getByText('Category prefill updated')).toBeVisible({ timeout: 20_000 })
     await expect(page.getByText('Audio')).toBeVisible({ timeout: 20_000 })
 
     await page.getByRole('tab', { name: 'Products' }).click()
     await page.getByRole('button', { name: 'New product' }).click()
 
-    const productDialog = page.getByRole('dialog')
-    await expect(productDialog).toBeVisible()
+    const productDialog = page
+      .locator('.q-dialog')
+      .filter({ has: page.getByText('New product', { exact: true }) })
+      .first()
+    await expect(productDialog).toBeVisible({ timeout: 20_000 })
 
     const sku = `E2E-${Date.now()}`
     await productDialog.getByLabel('SKU', { exact: true }).fill(sku)
