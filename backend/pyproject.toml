@@ -19,16 +19,16 @@ dependencies = [
   "alembic==1.15.2",
   "redis==5.2.1",
   "structlog==25.3.0",
-  "python-jose[cryptography]==3.3.0",
+  "python-jose[cryptography]==3.4.0",
   "passlib[bcrypt]==1.7.4",
   "python3-saml==1.16.0",
-  "python-multipart==0.0.9",
+  "python-multipart==0.0.27",
   "boto3==1.38.23"
 ]
 
 [project.optional-dependencies]
 dev = [
-  "pytest==8.3.5",
+  "pytest==9.0.3",
   "pytest-asyncio==0.26.0",
   "httpx==0.28.1",
   "ruff==0.11.8"
