@@ -21,6 +21,34 @@ pytest
 alembic upgrade head
 ```
 
+## API key hashing migration note
+
+API keys are now verified using PBKDF2-HMAC-SHA256 with a per-key random salt
+and an indexed PBKDF2 lookup digest (`api_key_lookup` column, derived with 1
+iteration keyed by `API_KEY_PEPPER`).
+
+**Breaking change:** Legacy API keys stored with the older HMAC-SHA256 hash
+format are no longer accepted. Such keys must be deleted and re-created through
+the API key admin flow.
+
+### Migration history
+
+| Migration | Purpose |
+|-----------|---------|
+| `20260525_0021` | Adds `api_key_lookup` column (indexed, nullable). |
+| `20260526_0022` | Resets `api_key_lookup` to `NULL` for rows backfilled with the former BLAKE2b digest so they are re-backfilled with the PBKDF2 digest on next use. |
+| `20260526_0023` | Resets `api_key_lookup` to `NULL` for rows backfilled with the intermediate HMAC-SHA256 digest so they are re-backfilled with the final PBKDF2 digest on next use. |
+
+After running all migrations, any PBKDF2-format key whose `api_key_lookup` is
+`NULL` will authenticate via the NULL-scan fallback and have its lookup digest
+backfilled automatically on first use.
+
+- `API_KEY_PEPPER` is required unless `APP_ENV` is explicitly set to
+  `development` or `test`; the application will fail to start if it is missing.
+- `API_KEY_PBKDF2_ITERATIONS` tunes the verification iteration count (default:
+  310 000; min: 100 000; max: 1 000 000). Values outside this range fall back to
+  the default.
+
 ## Seed demo data
 
 ```bash
