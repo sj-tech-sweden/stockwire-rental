@@ -1,0 +1,1 @@
+import{_ as e}from"./index-Dy4ulRLN.js";var t=()=>{try{let t=localStorage.getItem(`ec_dark_mode`);if(t!==null){e.set(t===`true`);return}let n=window.matchMedia&&window.matchMedia(`(prefers-color-scheme: dark)`);e.set(n?n.matches:!1),n&&n.addEventListener(`change`,t=>{localStorage.getItem(`ec_dark_mode`)===null&&e.set(t.matches)})}catch{}};export{t as default};

@@ -17,7 +17,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v5
         with:
-          node-version: 20
+          node-version: 22
       - name: Install frontend deps
         working-directory: frontend
         run: npm ci
@@ -62,14 +62,27 @@ jobs:
       - name: Wait for backend to be ready
         run: |
           for i in {1..30}; do
-            if curl -sS http://localhost:8000/ && break; then break; fi
+            if curl --fail --silent --show-error http://localhost:8000/ >/dev/null; then
+              break
+            fi
             echo "waiting..."; sleep 2
           done
+          curl --fail --silent --show-error http://localhost:8000/ >/dev/null || exit 1
+
+      - name: Wait for frontend to be ready
+        run: |
+          for i in {1..60}; do
+            if curl --fail --silent --show-error http://localhost:9000/ >/dev/null; then
+              break
+            fi
+            echo "waiting for frontend..."; sleep 5
+          done
+          curl --fail --silent --show-error http://localhost:9000/ >/dev/null || exit 1
 
       - name: Setup Node
         uses: actions/setup-node@v5
         with:
-          node-version: 20
+          node-version: 22
 
       - name: Install frontend deps and Playwright
         working-directory: frontend
