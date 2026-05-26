@@ -2,7 +2,7 @@ name: Release
 
 on:
   pull_request:
-    types: [labeled]
+    types: [closed]
   workflow_dispatch:
     inputs:
       release_type:
@@ -12,6 +12,7 @@ on:
 
 jobs:
   create-release:
+    if: ${{ github.event_name == 'workflow_dispatch' || (github.event.pull_request.merged == true && (contains(github.event.pull_request.labels.*.name, 'major') || contains(github.event.pull_request.labels.*.name, 'minor') || contains(github.event.pull_request.labels.*.name, 'patch'))) }}
     runs-on: ubuntu-latest
     permissions:
       contents: write
