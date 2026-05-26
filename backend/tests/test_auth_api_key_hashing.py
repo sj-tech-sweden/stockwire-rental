@@ -141,3 +141,51 @@ def test_get_current_user_rejects_invalid_api_key(monkeypatch):
             assert exc.status_code == 401
     finally:
         db.close()
+
+
+def test_hash_api_key_clamps_iterations_above_max(monkeypatch):
+    monkeypatch.setenv("API_KEY_PEPPER", "test-pepper")
+    monkeypatch.setenv("API_KEY_PBKDF2_ITERATIONS", "9999999")
+
+    raw = "test-key"
+    h = hash_api_key(raw)
+    algo, iters_str, _salt, _digest = h.split("$")
+    assert algo == "pbkdf2_sha256"
+    # Must fall back to default (310000) rather than storing an out-of-range value
+    assert int(iters_str) == 310_000
+
+
+def test_get_current_user_backfills_lookup_for_null_lookup_row(monkeypatch):
+    """Keys stored before the api_key_lookup migration have a NULL lookup column;
+    they should still authenticate via the fallback scan, and the lookup digest
+    should be backfilled automatically.
+    """
+    monkeypatch.setenv("API_KEY_PEPPER", "backfill-pepper")
+    monkeypatch.setenv("API_KEY_PBKDF2_ITERATIONS", "150000")
+
+    raw = "backfill-key"
+    stored_hash = hash_api_key(raw)
+
+    db = _make_db_session()
+    try:
+        key_row = APIKey(
+            name="backfill-admin",
+            api_key_lookup=None,  # simulate a pre-migration row
+            api_key_hash=stored_hash,
+            is_active=True,
+            is_admin=True,
+        )
+        db.add(key_row)
+        db.commit()
+        db.refresh(key_row)
+
+        user = get_current_user(_make_request_with_api_key(raw), creds=None, db=db)
+        assert user.is_admin is True
+        assert user.email == "api-key:backfill-admin"
+
+        # The fallback should have backfilled the lookup digest
+        db.refresh(key_row)
+        expected_lookup = hash_api_key_lookup(raw)
+        assert key_row.api_key_lookup == expected_lookup
+    finally:
+        db.close()

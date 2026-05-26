@@ -23,10 +23,16 @@ alembic upgrade head
 
 ## API key hashing migration note
 
-API keys are now verified only against PBKDF2-based hashes.
+API keys are now verified using PBKDF2-HMAC-SHA256 with a per-key random salt
+and an indexed BLAKE2b lookup digest (`api_key_lookup` column added in migration
+`20260525_0021`).
 
 - Legacy API keys stored with the older HMAC-SHA256 hash format are no longer accepted.
-- Existing legacy API keys must be regenerated and re-created through the API key admin flow.
+- PBKDF2-format keys created **before** migration `20260525_0021` was applied will have a
+  `NULL` `api_key_lookup` value; they remain usable via a limited fallback scan and the
+  lookup digest is automatically backfilled on the first successful authentication.
+- Keys whose `api_key_hash` cannot be verified (e.g., HMAC-SHA256 hashes from before the
+  PBKDF2 upgrade) must be deleted and re-created through the API key admin flow.
 - `API_KEY_PEPPER` is required unless `APP_ENV` is explicitly set to `development` or `test`.
 
 ## Seed demo data

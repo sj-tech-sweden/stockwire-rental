@@ -61,7 +61,6 @@ _MIN_PBKDF2_ITERATIONS = 100_000
 _MAX_PBKDF2_ITERATIONS = 1_000_000
 _PBKDF2_SALT_BYTES = 16
 _PBKDF2_DIGEST_BYTES = 32
-_API_KEY_LOOKUP_SALT = b"stockwire-api-key-lookup-v1"
 
 
 def _get_pbkdf2_iterations() -> int:
@@ -70,7 +69,7 @@ def _get_pbkdf2_iterations() -> int:
         iterations = int(raw)
     except (TypeError, ValueError):
         return _DEFAULT_PBKDF2_ITERATIONS
-    if iterations < _MIN_PBKDF2_ITERATIONS:
+    if iterations < _MIN_PBKDF2_ITERATIONS or iterations > _MAX_PBKDF2_ITERATIONS:
         return _DEFAULT_PBKDF2_ITERATIONS
     return iterations
 
@@ -90,15 +89,18 @@ def hash_api_key(raw: str) -> str:
 
 
 def hash_api_key_lookup(raw: str) -> str:
-    """Return deterministic PBKDF2 lookup digest for indexed API key fetches."""
+    """Return fast BLAKE2b lookup digest for indexed API key fetches.
+
+    Uses BLAKE2b in keyed mode with the API key pepper for a fast, secret-keyed
+    lookup index.  This is intentionally cheap to compute (unlike the PBKDF2
+    verification hash) so indexed lookups add negligible latency.
+    """
     pepper = _get_api_key_pepper()
-    lookup = hashlib.pbkdf2_hmac(
-        "sha256",
-        f"{raw}{pepper}".encode("utf-8"),
-        _API_KEY_LOOKUP_SALT,
-        _MIN_PBKDF2_ITERATIONS,
-    )
-    return lookup.hex()
+    pepper_bytes = pepper.encode("utf-8")
+    # BLAKE2b key must be 1–64 bytes; hash longer peppers to a 32-byte subkey
+    key = pepper_bytes if len(pepper_bytes) <= 64 else hashlib.sha256(pepper_bytes).digest()
+    lookup = hashlib.blake2b(raw.encode("utf-8"), key=key, digest_size=32)
+    return lookup.hexdigest()
 
 
 def verify_api_key_hash(raw: str, stored_hash: str) -> bool:

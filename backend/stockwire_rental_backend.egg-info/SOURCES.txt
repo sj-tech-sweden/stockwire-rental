@@ -65,6 +65,7 @@ stockwire_rental_backend.egg-info/dependency_links.txt
 stockwire_rental_backend.egg-info/requires.txt
 stockwire_rental_backend.egg-info/top_level.txt
 tests/test_api_crud.py
+tests/test_auth_api_key_hashing.py
 tests/test_eventory_token.py
 tests/test_health.py
 tests/test_modules.py
