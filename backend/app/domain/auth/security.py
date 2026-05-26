@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta, timezone
 import hashlib
+import hmac
 import os
 import secrets
 
@@ -89,18 +90,16 @@ def hash_api_key(raw: str) -> str:
 
 
 def hash_api_key_lookup(raw: str) -> str:
-    """Return fast BLAKE2b lookup digest for indexed API key fetches.
+    """Return HMAC-SHA256 lookup digest for indexed API key fetches.
 
-    Uses BLAKE2b in keyed mode with the API key pepper for a fast, secret-keyed
+    Uses HMAC-SHA256 keyed with the API key pepper for a fast, deterministic
     lookup index.  This is intentionally cheap to compute (unlike the PBKDF2
-    verification hash) so indexed lookups add negligible latency.
+    verification hash) so indexed lookups add negligible latency.  Python's
+    ``hmac`` module handles arbitrary-length keys internally, so no separate
+    key-derivation step is required for the pepper.
     """
     pepper = _get_api_key_pepper()
-    pepper_bytes = pepper.encode("utf-8")
-    # BLAKE2b key must be 1–64 bytes; hash longer peppers to a 32-byte subkey
-    key = pepper_bytes if len(pepper_bytes) <= 64 else hashlib.sha256(pepper_bytes).digest()
-    lookup = hashlib.blake2b(raw.encode("utf-8"), key=key, digest_size=32)
-    return lookup.hexdigest()
+    return hmac.new(pepper.encode("utf-8"), raw.encode("utf-8"), "sha256").hexdigest()
 
 
 def verify_api_key_hash(raw: str, stored_hash: str) -> bool:
