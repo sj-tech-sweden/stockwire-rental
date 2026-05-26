@@ -66,6 +66,13 @@ jobs:
             echo "waiting..."; sleep 2
           done
 
+      - name: Wait for frontend to be ready
+        run: |
+          for i in {1..60}; do
+            if curl -sS http://localhost:9000/ && break; then break; fi
+            echo "waiting for frontend..."; sleep 5
+          done
+
       - name: Setup Node
         uses: actions/setup-node@v5
         with:
