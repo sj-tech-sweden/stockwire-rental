@@ -51,7 +51,7 @@ export function addPreFetchHooks ({ router, store, publicPath }) {
   // Doing it after initial route is resolved so that we don't double-fetch
   // the data that we already have. Using router.beforeResolve() so that all
   // async components are resolved.
-  router.beforeResolve((to, from, next) => {
+  router.beforeResolve(async (to, from, next) => {
     const
       urlPath = window.location.href.replace(window.location.origin, ''),
       matched = getMatchedComponents(to, router),
@@ -81,36 +81,39 @@ export function addPreFetchHooks ({ router, store, publicPath }) {
     
 
     if (preFetchList.length === 0) {
-      return next()
+      next()
+      return
     }
 
-    let hasRedirected = false
-    const redirect = url => {
-      hasRedirected = true
-      next(url)
-    }
-    const proceed = () => {
-      
-      if (hasRedirected === false) { next() }
-    }
+    let redirectArg = null
+    const redirect = url => { redirectArg = url }
 
     
 
-    preFetchList.reduce(
-      (promise, preFetch) => promise.then(() => hasRedirected === false && preFetch({
-        store,
-        currentRoute: to,
-        previousRoute: from,
-        redirect,
-        urlPath,
-        publicPath
-      })),
-      Promise.resolve()
-    )
-    .then(proceed)
-    .catch(e => {
-      console.error(e)
-      proceed()
-    })
+    for (let i = 0; i < preFetchList.length; i++) {
+      try {
+        await preFetchList[i]({
+          store,
+          currentRoute: to,
+          previousRoute: from,
+          redirect,
+          urlPath,
+          publicPath
+        })
+      } catch (e) {
+        console.error(e)
+        
+        next()
+        return
+      }
+
+      if (redirectArg !== null) {
+        
+        next(redirectArg); return
+      }
+    }
+
+    
+    next()
   })
 }

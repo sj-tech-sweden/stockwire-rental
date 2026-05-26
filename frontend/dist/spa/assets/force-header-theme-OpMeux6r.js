@@ -1,4 +1,4 @@
-const c=({app:r,router:t,store:d,Vue:a})=>{const o=`
+var e=({app:e,router:t,store:n,Vue:r})=>{let i=document.createElement(`style`);i.setAttribute(`data-enforced`,`force-header-theme`),i.appendChild(document.createTextNode(`
   /* Runtime enforced header and button theming */
   body.q-dark .q-header.ec-header,
   body.body--dark .q-header.ec-header,
@@ -52,4 +52,4 @@ const c=({app:r,router:t,store:d,Vue:a})=>{const o=`
   .ec-header .q-toolbar-title {
     font-weight: 600 !important;
   }
-  `,e=document.createElement("style");e.setAttribute("data-enforced","force-header-theme"),e.appendChild(document.createTextNode(o)),document.head.appendChild(e),new MutationObserver(()=>{}).observe(document.body,{attributes:!0,attributeFilter:["class"]})};export{c as default};
+  `)),document.head.appendChild(i),new MutationObserver(()=>{}).observe(document.body,{attributes:!0,attributeFilter:[`class`]})};export{e as default};
