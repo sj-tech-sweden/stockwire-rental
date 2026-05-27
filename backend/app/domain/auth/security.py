@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta, timezone
 import hashlib
+import hmac
 import os
 import secrets
 
@@ -9,11 +10,22 @@ from jose import jwt
 from app.config import settings
 
 
+def _get_password_pepper_bytes() -> bytes:
+    pepper = os.getenv("PASSWORD_PEPPER")
+    if pepper:
+        return pepper.encode("utf-8")
+    app_env_raw = os.getenv("APP_ENV")
+    if app_env_raw and app_env_raw.strip().lower() in {"development", "test"}:
+        return b"stockwire-default-password-pepper"
+    raise RuntimeError("PASSWORD_PEPPER must be set outside development/test environments")
+
+
 def _prepare_password(password: str) -> bytes:
     b = password.encode('utf-8')
-    # bcrypt input limit is 72 bytes; for longer inputs, use SHA256 pre-hash
+    # bcrypt input limit is 72 bytes; for longer inputs, use keyed preprocessing
+    # to avoid directly hashing password material with a fast unkeyed hash.
     if len(b) > 72:
-        return hashlib.sha256(b).digest()
+        return hmac.new(_get_password_pepper_bytes(), b, hashlib.sha256).digest()
     return b
 
 
