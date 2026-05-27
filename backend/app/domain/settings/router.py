@@ -1609,8 +1609,10 @@ def _fetch_eventory_token(api_url: str, token_endpoint: str, username: str, pass
         if not _is_same_origin_url(candidate, base_origin):
             continue
         if not _is_public_http_url(candidate):
-            last_error = ValueError("Token endpoint must resolve to a public IP address")
-            continue
+            raise HTTPException(
+                status_code=400,
+                detail="Token endpoint must resolve to a public IP address",
+            )
         body = urlencode(
             {
                 "grant_type": "password",

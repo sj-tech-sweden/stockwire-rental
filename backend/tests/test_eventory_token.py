@@ -56,16 +56,6 @@ def test_default_candidates_are_same_origin():
         assert _is_same_origin_url(candidate, origin), f"{candidate} should be same-origin"
 
 
-def _mock_socket(addresses):
-    """Return a mock for app.domain.settings.router.socket with given address list."""
-    return {
-        "return_value": [
-            (socket.AF_INET, socket.SOCK_STREAM, 0, "", (addr, 80))
-            for addr in addresses
-        ]
-    }
-
-
 def test_is_public_http_url_invalid_port_no_exception():
     # Must return False, not raise ValueError
     assert _is_public_http_url("https://host:99999/") is False
