@@ -1,9 +1,9 @@
 import pytest
+import socket
 from urllib.parse import urljoin
 
 from fastapi import HTTPException
 
-from app.domain.settings import router
 from app.domain.settings.router import _url_origin, _is_same_origin_url, _fetch_eventory_token, _validate_outbound_api_url
 
 
@@ -57,7 +57,7 @@ def test_default_candidates_are_same_origin():
 
 def test_validate_outbound_api_url_allows_public_target(monkeypatch):
     monkeypatch.setattr(
-        router.socket,
+        socket,
         "getaddrinfo",
         lambda _host, _port: [(None, None, None, None, ("93.184.216.34", 443))],
     )
@@ -66,7 +66,7 @@ def test_validate_outbound_api_url_allows_public_target(monkeypatch):
 
 def test_validate_outbound_api_url_rejects_shared_cgnat_range(monkeypatch):
     monkeypatch.setattr(
-        router.socket,
+        socket,
         "getaddrinfo",
         lambda _host, _port: [(None, None, None, None, ("100.64.0.1", 443))],
     )
