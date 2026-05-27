@@ -227,14 +227,20 @@ def update_integrations(
     eventory_instances = payload.eventory_instances or [
         EventoryInstanceConfig(id="eventory-main", name="Eventory Main", supplier_name="Eventory")
     ]
-    data = {
-        "eventory_instances": [
+    normalized_instances: list[dict[str, object]] = []
+    for instance in eventory_instances:
+        _validate_url_port(str(instance.api_url or "").strip(), "API URL")
+        token_endpoint = str(instance.token_endpoint or "").strip()
+        if token_endpoint:
+            _validate_url_port(token_endpoint, "Token endpoint")
+        normalized_instances.append(
             _merge_sync_metadata(
                 _normalize_eventory_instance(instance),
                 persisted_by_id.get(str(instance.id or "").strip() or "eventory-main"),
             )
-            for instance in eventory_instances
-        ],
+        )
+    data = {
+        "eventory_instances": normalized_instances,
     }
     setting.value_json = json.dumps(data)
     db.commit()
@@ -594,13 +600,15 @@ def test_integration_connection(
             message="API URL is required to test connection",
         )
 
-    parsed = urlparse(api_url)
-    if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+    try:
+        _validate_integration_url(api_url, "API URL")
+    except HTTPException as exc:
         return IntegrationConnectionTestRead(
             ok=False,
             plugin=plugin_key,
-            message="API URL must be an absolute http(s) URL",
+            message=str(exc.detail),
         )
+    parsed = urlparse(api_url)
 
     headers = {
         "User-Agent": "stockwire-rental-settings-test/1.0",
@@ -611,6 +619,20 @@ def test_integration_connection(
     username = str(normalized.get("username") or "").strip()
     password = str(normalized.get("password") or "").strip()
     token_endpoint = str(normalized.get("token_endpoint") or "").strip()
+
+    if parsed.scheme != "https":
+        if username or password:
+            return IntegrationConnectionTestRead(
+                ok=False,
+                plugin=plugin_key,
+                message="API URL must use HTTPS when username/password are configured",
+            )
+        if api_key:
+            return IntegrationConnectionTestRead(
+                ok=False,
+                plugin=plugin_key,
+                message="API URL must use HTTPS when API key is configured",
+            )
 
     if username and password:
         try:
@@ -632,7 +654,8 @@ def test_integration_connection(
 
     req = Request(api_url, headers=headers, method="HEAD")
     try:
-        with urlopen(req, timeout=5) as response:
+        with build_opener(_NoRedirectHandler()).open(req, timeout=5) as response:
+            _ensure_public_response_peer(response, "API URL")
             status_code = int(getattr(response, "status", 0) or 0)
             return IntegrationConnectionTestRead(
                 ok=status_code < 500,
@@ -640,18 +663,36 @@ def test_integration_connection(
                 message=f"Connection established (status {status_code})",
                 status_code=status_code,
             )
-    except HTTPError as exc:
-        status_code = int(getattr(exc, "code", 0) or 0)
+    except HTTPException as exc:
         return IntegrationConnectionTestRead(
-            ok=status_code < 500,
+            ok=False,
             plugin=plugin_key,
-            message=f"Connection reached endpoint (status {status_code})",
-            status_code=status_code,
+            message=str(exc.detail),
         )
+    except HTTPError as exc:
+        try:
+            try:
+                _ensure_public_response_peer(exc, "API URL")
+            except HTTPException as peer_exc:
+                return IntegrationConnectionTestRead(
+                    ok=False,
+                    plugin=plugin_key,
+                    message=str(peer_exc.detail),
+                )
+            status_code = int(getattr(exc, "code", 0) or 0)
+            return IntegrationConnectionTestRead(
+                ok=status_code < 500,
+                plugin=plugin_key,
+                message=f"Connection reached endpoint (status {status_code})",
+                status_code=status_code,
+            )
+        finally:
+            exc.close()
     except URLError as exc:
         get_req = Request(api_url, headers=headers, method="GET")
         try:
-            with urlopen(get_req, timeout=5) as response:
+            with build_opener(_NoRedirectHandler()).open(get_req, timeout=5) as response:
+                _ensure_public_response_peer(response, "API URL")
                 status_code = int(getattr(response, "status", 0) or 0)
                 return IntegrationConnectionTestRead(
                     ok=status_code < 500,
@@ -659,11 +700,36 @@ def test_integration_connection(
                     message=f"Connection established (GET status {status_code})",
                     status_code=status_code,
                 )
-        except Exception:
+        except HTTPException as get_peer_exc:
             return IntegrationConnectionTestRead(
                 ok=False,
                 plugin=plugin_key,
-                message=f"Connection failed: {exc.reason if hasattr(exc, 'reason') else str(exc)}",
+                message=str(get_peer_exc.detail),
+            )
+        except HTTPError as get_exc:
+            try:
+                try:
+                    _ensure_public_response_peer(get_exc, "API URL")
+                except HTTPException as get_peer_exc:
+                    return IntegrationConnectionTestRead(
+                        ok=False,
+                        plugin=plugin_key,
+                        message=str(get_peer_exc.detail),
+                    )
+                status_code = int(getattr(get_exc, "code", 0) or 0)
+                return IntegrationConnectionTestRead(
+                    ok=status_code < 500,
+                    plugin=plugin_key,
+                    message=f"Connection reached endpoint (GET status {status_code})",
+                    status_code=status_code,
+                )
+            finally:
+                get_exc.close()
+        except Exception as get_exc:
+            return IntegrationConnectionTestRead(
+                ok=False,
+                plugin=plugin_key,
+                message=f"Connection failed: {get_exc.reason if hasattr(get_exc, 'reason') else str(get_exc)}",
             )
 
 
@@ -1259,6 +1325,7 @@ def _normalize_plugin_config(config: IntegrationPluginConfig) -> dict[str, objec
     sync_started_at = str(config.sync_started_at or "").strip() or None
     sync_finished_at = str(config.sync_finished_at or "").strip() or None
     sync_message = str(config.sync_message or "").strip() or None
+
     return {
         "enabled": bool(config.enabled),
         "api_url": api_url,
@@ -1282,6 +1349,18 @@ def _normalize_plugin_config(config: IntegrationPluginConfig) -> dict[str, objec
         "sync_progress_percent": max(0, min(100, int(config.sync_progress_percent or 0))),
         "sync_message": sync_message,
     }
+
+
+def _validate_url_port(raw_url: str, label: str) -> None:
+    value = str(raw_url or "").strip()
+    if not value:
+        return
+    try:
+        port = urlparse(value).port
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=f"{label} contains an invalid port") from exc
+    if port is not None and port <= 0:
+        raise HTTPException(status_code=422, detail=f"{label} contains an invalid port")
 
 
 def _parse_product_defaults(raw: str | None) -> dict[str, object]:
@@ -1436,6 +1515,12 @@ def _validate_integration_url(raw_url: str, label: str) -> None:
         raise HTTPException(status_code=422, detail=f"{label} must be an absolute http(s) URL")
     if parsed.username or parsed.password:
         raise HTTPException(status_code=422, detail=f"{label} must not contain embedded credentials")
+    try:
+        port = parsed.port
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=f"{label} contains an invalid port") from exc
+    if port is not None and port <= 0:
+        raise HTTPException(status_code=422, detail=f"{label} contains an invalid port")
 
     host = (parsed.hostname or "").strip()
     if not host:
@@ -1555,6 +1640,67 @@ def _is_same_origin_url(url: str, expected_origin: tuple[str, str, int]) -> bool
     return origin is not None and origin == expected_origin
 
 
+def _is_public_http_url(url: str) -> bool:
+    parsed = urlparse(str(url or "").strip())
+    if parsed.scheme not in {"http", "https"} or not parsed.hostname or parsed.username or parsed.password:
+        return False
+    try:
+        port = parsed.port
+    except ValueError:
+        return False
+    if port is not None and port <= 0:
+        return False
+    if port is None:
+        port = 443 if parsed.scheme == "https" else 80
+    try:
+        infos = socket.getaddrinfo(parsed.hostname, port, type=socket.SOCK_STREAM)
+    except (OSError, UnicodeError):
+        return False
+    addresses = {info[4][0] for info in infos if info and len(info) > 4 and info[4]}
+    if not addresses:
+        return False
+    try:
+        return not any(_is_blocked_ip(ipaddress.ip_address(addr)) for addr in addresses)
+    except ValueError:
+        return False
+
+
+def _response_peer_ip(response: object) -> ipaddress.IPv4Address | ipaddress.IPv6Address | None:
+    seen: set[int] = set()
+    stack: list[object] = [response]
+    while stack:
+        current = stack.pop()
+        if current is None or id(current) in seen:
+            continue
+        seen.add(id(current))
+
+        sock = getattr(current, "_sock", None)
+        if sock is not None:
+            try:
+                peer = sock.getpeername()
+            except OSError:
+                peer = None
+            if isinstance(peer, tuple) and peer:
+                try:
+                    return ipaddress.ip_address(peer[0])
+                except ValueError:
+                    pass
+
+        for attr in ("fp", "raw"):
+            nested = getattr(current, attr, None)
+            if nested is not None:
+                stack.append(nested)
+    return None
+
+
+def _ensure_public_response_peer(response: object, label: str) -> None:
+    peer_ip = _response_peer_ip(response)
+    if peer_ip is None:
+        raise HTTPException(status_code=502, detail=f"{label} peer address could not be verified")
+    if _is_blocked_ip(peer_ip):
+        raise HTTPException(status_code=502, detail=f"{label} connected to a non-public IP address")
+
+
 def _fetch_eventory_token(api_url: str, token_endpoint: str, username: str, password: str) -> str:
     base_origin = _url_origin(api_url)
     if base_origin is None:
@@ -1579,6 +1725,11 @@ def _fetch_eventory_token(api_url: str, token_endpoint: str, username: str, pass
     for candidate in candidates:
         if not _is_same_origin_url(candidate, base_origin):
             continue
+        if not _is_public_http_url(candidate):
+            raise HTTPException(
+                status_code=400,
+                detail="Token endpoint must be a valid public http(s) URL",
+            )
         body = urlencode(
             {
                 "grant_type": "password",
@@ -1598,6 +1749,7 @@ def _fetch_eventory_token(api_url: str, token_endpoint: str, username: str, pass
         )
         try:
             with build_opener(_NoRedirectHandler()).open(req, timeout=10) as resp:
+                _ensure_public_response_peer(resp, "Token endpoint")
                 payload = json.loads(resp.read().decode("utf-8") or "{}")
                 if not isinstance(payload, dict):
                     raise ValueError("token response is not an object")
@@ -1620,6 +1772,17 @@ def _fetch_eventory_token(api_url: str, token_endpoint: str, username: str, pass
                 if token:
                     return token
                 raise ValueError("token response contained no token field")
+        except HTTPError as exc:
+            try:
+                _ensure_public_response_peer(exc, "Token endpoint")
+            except HTTPException:
+                exc.close()
+                raise
+            last_error = exc
+            exc.close()
+            continue
+        except HTTPException:
+            raise
         except Exception as exc:
             last_error = exc
             continue
