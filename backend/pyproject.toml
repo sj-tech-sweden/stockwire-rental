@@ -13,7 +13,7 @@ dependencies = [
   "uvicorn[standard]==0.34.2",
   "email-validator==2.2.0",
   "pydantic-settings==2.9.1",
-  "sqlalchemy==2.0.40",
+  "sqlalchemy==2.0.50",
   "asyncpg==0.30.0",
   "psycopg[binary]==3.2.7",
   "alembic==1.15.2",
