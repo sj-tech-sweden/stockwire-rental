@@ -601,14 +601,21 @@ def test_integration_connection(
         )
 
     try:
-        _validate_integration_url(api_url, "API URL")
-    except HTTPException as exc:
+        api_url = _validate_outbound_api_url(api_url)
+    except ValueError as exc:
         return IntegrationConnectionTestRead(
             ok=False,
             plugin=plugin_key,
-            message=str(exc.detail),
+            message=str(exc),
         )
+
     parsed = urlparse(api_url)
+    if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+        return IntegrationConnectionTestRead(
+            ok=False,
+            plugin=plugin_key,
+            message="API URL must be an absolute http(s) URL",
+        )
 
     headers = {
         "User-Agent": "stockwire-rental-settings-test/1.0",
@@ -1361,6 +1368,49 @@ def _validate_url_port(raw_url: str, label: str) -> None:
         raise HTTPException(status_code=422, detail=f"{label} contains an invalid port") from exc
     if port is not None and port <= 0:
         raise HTTPException(status_code=422, detail=f"{label} contains an invalid port")
+
+
+def _is_public_ip_address(value: str) -> bool:
+    try:
+        ip = ipaddress.ip_address(value)
+    except ValueError:
+        return False
+    return ip.is_global
+
+
+def _validate_outbound_api_url(raw_url: str) -> str:
+    parsed = urlparse(str(raw_url or "").strip())
+    if parsed.scheme not in {"http", "https"}:
+        raise ValueError("Only http and https URLs are allowed")
+    if not parsed.hostname:
+        raise ValueError("URL hostname is required")
+    if parsed.username is not None or parsed.password is not None:
+        raise ValueError("URL must not contain credentials")
+
+    try:
+        parsed_port = parsed.port
+    except ValueError as exc:
+        raise ValueError("URL port is invalid") from exc
+    resolved_port = parsed_port or (443 if parsed.scheme == "https" else 80)
+
+    try:
+        resolved = socket.getaddrinfo(parsed.hostname, resolved_port)
+    except socket.gaierror as exc:
+        raise ValueError("URL hostname could not be resolved") from exc
+
+    for entry in resolved:
+        sockaddr = entry[4]
+        if not sockaddr:
+            continue
+        candidate_ip = str(sockaddr[0])
+        if not _is_public_ip_address(candidate_ip):
+            raise ValueError("URL resolves to a non-public IP address")
+
+    hostname = str(parsed.hostname)
+    netloc = f"[{hostname}]" if ":" in hostname else hostname
+    if parsed_port is not None:
+        netloc = f"{netloc}:{parsed_port}"
+    return parsed._replace(netloc=netloc).geturl()
 
 
 def _parse_product_defaults(raw: str | None) -> dict[str, object]:
