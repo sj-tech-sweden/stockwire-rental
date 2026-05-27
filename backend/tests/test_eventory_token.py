@@ -87,15 +87,18 @@ def test_open_outbound_integration_request_uses_no_redirect_handler(monkeypatch)
             captured["timeout"] = timeout
             return "opened"
 
-    def _fake_build_opener(handler):
-        captured["handler"] = handler
+    def _fake_build_opener(*handlers):
+        captured["handlers"] = handlers
         return _DummyOpener()
 
     monkeypatch.setattr(settings_router, "build_opener", _fake_build_opener)
     req = Request("https://api.example.com/ping", method="GET")
     result = settings_router._open_outbound_integration_request(req, timeout=7)
 
-    assert isinstance(captured["handler"], settings_router._NoRedirectHandler)
+    handlers = captured["handlers"]
+    assert any(isinstance(handler, settings_router._NoRedirectHandler) for handler in handlers)
+    assert any(isinstance(handler, settings_router._ValidatedHTTPHandler) for handler in handlers)
+    assert any(isinstance(handler, settings_router._ValidatedHTTPSHandler) for handler in handlers)
     assert captured["req"] is req
     assert captured["timeout"] == 7
     assert result == "opened"

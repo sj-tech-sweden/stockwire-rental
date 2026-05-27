@@ -5,10 +5,11 @@ import socket
 import threading
 from collections.abc import Callable
 from datetime import datetime
+from http.client import HTTPConnection, HTTPSConnection
 from urllib.parse import urlencode
 from urllib.error import HTTPError, URLError
 from urllib.parse import urljoin, urlparse
-from urllib.request import Request, build_opener, HTTPRedirectHandler, urlopen
+from urllib.request import Request, build_opener, HTTPRedirectHandler, HTTPHandler, HTTPSHandler, urlopen
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from sqlalchemy import select
@@ -1268,17 +1269,54 @@ def _validate_outbound_integration_url(raw_url: str) -> str:
     for entry in resolved:
         address = entry[4][0]
         ip_obj = ipaddress.ip_address(address)
-        if (
-            ip_obj.is_private
-            or ip_obj.is_loopback
-            or ip_obj.is_link_local
-            or ip_obj.is_multicast
-            or ip_obj.is_reserved
-            or ip_obj.is_unspecified
-        ):
+        if _is_disallowed_outbound_ip(ip_obj):
             raise HTTPException(status_code=400, detail="API URL points to a disallowed network address")
 
     return candidate
+
+
+def _is_disallowed_outbound_ip(ip_obj: ipaddress.IPv4Address | ipaddress.IPv6Address) -> bool:
+    return (
+        ip_obj.is_private
+        or ip_obj.is_loopback
+        or ip_obj.is_link_local
+        or ip_obj.is_multicast
+        or ip_obj.is_reserved
+        or ip_obj.is_unspecified
+    )
+
+
+def _validate_connected_outbound_socket(sock: socket.socket):
+    try:
+        peer_ip = sock.getpeername()[0]
+    except OSError as exc:
+        raise URLError("Unable to validate outbound peer address") from exc
+
+    ip_obj = ipaddress.ip_address(peer_ip)
+    if _is_disallowed_outbound_ip(ip_obj):
+        raise URLError("Outbound connection resolved to a disallowed network address")
+
+
+class _ValidatedHTTPConnection(HTTPConnection):
+    def connect(self):
+        super().connect()
+        _validate_connected_outbound_socket(self.sock)
+
+
+class _ValidatedHTTPSConnection(HTTPSConnection):
+    def connect(self):
+        super().connect()
+        _validate_connected_outbound_socket(self.sock)
+
+
+class _ValidatedHTTPHandler(HTTPHandler):
+    def http_open(self, req):
+        return self.do_open(_ValidatedHTTPConnection, req)
+
+
+class _ValidatedHTTPSHandler(HTTPSHandler):
+    def https_open(self, req):
+        return self.do_open(_ValidatedHTTPSConnection, req)
 
 
 class _NoRedirectHandler(HTTPRedirectHandler):
@@ -1288,7 +1326,7 @@ class _NoRedirectHandler(HTTPRedirectHandler):
 
 def _open_outbound_integration_request(req: Request, timeout: int):
     _validate_outbound_integration_url(req.full_url)
-    opener = build_opener(_NoRedirectHandler())
+    opener = build_opener(_NoRedirectHandler(), _ValidatedHTTPHandler(), _ValidatedHTTPSHandler())
     return opener.open(req, timeout=timeout)
 
 
