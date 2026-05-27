@@ -1,9 +1,11 @@
+import socket
 import pytest
+from unittest.mock import patch
 from urllib.parse import urljoin
 
 from fastapi import HTTPException
 
-from app.domain.settings.router import _url_origin, _is_same_origin_url, _fetch_eventory_token
+from app.domain.settings.router import _url_origin, _is_same_origin_url, _fetch_eventory_token, _is_public_http_url
 
 
 def test_url_origin_invalid_port_non_numeric():
@@ -52,3 +54,60 @@ def test_default_candidates_are_same_origin():
     ]
     for candidate in candidates:
         assert _is_same_origin_url(candidate, origin), f"{candidate} should be same-origin"
+
+
+def _mock_socket(addresses):
+    """Return a mock for app.domain.settings.router.socket with given address list."""
+    return {
+        "return_value": [
+            (socket.AF_INET, socket.SOCK_STREAM, 0, "", (addr, 80))
+            for addr in addresses
+        ]
+    }
+
+
+def test_is_public_http_url_invalid_port_no_exception():
+    # Must return False, not raise ValueError
+    assert _is_public_http_url("https://host:99999/") is False
+
+
+def test_is_public_http_url_invalid_scheme():
+    assert _is_public_http_url("ftp://example.com/") is False
+
+
+def test_is_public_http_url_rejects_loopback():
+    with patch("app.domain.settings.router.socket") as mock_sock:
+        mock_sock.gaierror = socket.gaierror
+        mock_sock.getaddrinfo.return_value = [
+            (socket.AF_INET, socket.SOCK_STREAM, 0, "", ("127.0.0.1", 80)),
+        ]
+        assert _is_public_http_url("http://example.com/") is False
+
+
+def test_is_public_http_url_rejects_private():
+    with patch("app.domain.settings.router.socket") as mock_sock:
+        mock_sock.gaierror = socket.gaierror
+        mock_sock.getaddrinfo.return_value = [
+            (socket.AF_INET, socket.SOCK_STREAM, 0, "", ("192.168.1.1", 80)),
+        ]
+        assert _is_public_http_url("http://example.com/") is False
+
+
+def test_is_public_http_url_rejects_mixed_public_and_private():
+    with patch("app.domain.settings.router.socket") as mock_sock:
+        mock_sock.gaierror = socket.gaierror
+        mock_sock.getaddrinfo.return_value = [
+            (socket.AF_INET, socket.SOCK_STREAM, 0, "", ("1.1.1.1", 80)),
+            (socket.AF_INET, socket.SOCK_STREAM, 0, "", ("192.168.1.1", 80)),
+        ]
+        assert _is_public_http_url("http://example.com/") is False
+
+
+def test_is_public_http_url_accepts_all_public():
+    with patch("app.domain.settings.router.socket") as mock_sock:
+        mock_sock.gaierror = socket.gaierror
+        mock_sock.getaddrinfo.return_value = [
+            (socket.AF_INET, socket.SOCK_STREAM, 0, "", ("1.1.1.1", 80)),
+            (socket.AF_INET, socket.SOCK_STREAM, 0, "", ("8.8.8.8", 80)),
+        ]
+        assert _is_public_http_url("http://example.com/") is True

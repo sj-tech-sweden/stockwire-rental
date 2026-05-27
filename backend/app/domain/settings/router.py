@@ -638,7 +638,7 @@ def test_integration_connection(
 
     req = Request(api_url, headers=headers, method="HEAD")
     try:
-        with urlopen(req, timeout=5) as response:
+        with build_opener(_NoRedirectHandler()).open(req, timeout=5) as response:
             status_code = int(getattr(response, "status", 0) or 0)
             return IntegrationConnectionTestRead(
                 ok=status_code < 500,
@@ -657,7 +657,7 @@ def test_integration_connection(
     except URLError as exc:
         get_req = Request(api_url, headers=headers, method="GET")
         try:
-            with urlopen(get_req, timeout=5) as response:
+            with build_opener(_NoRedirectHandler()).open(get_req, timeout=5) as response:
                 status_code = int(getattr(response, "status", 0) or 0)
                 return IntegrationConnectionTestRead(
                     ok=status_code < 500,
@@ -1561,30 +1561,27 @@ def _is_same_origin_url(url: str, expected_origin: tuple[str, str, int]) -> bool
     return origin is not None and origin == expected_origin
 
 
-def _is_public_ip_address(ip_text: str) -> bool:
-    ip = ipaddress.ip_address(ip_text)
-    return not (
-        ip.is_private
-        or ip.is_loopback
-        or ip.is_link_local
-        or ip.is_multicast
-        or ip.is_reserved
-        or ip.is_unspecified
-    )
-
-
 def _is_public_http_url(url: str) -> bool:
     parsed = urlparse(url)
     if parsed.scheme not in {"http", "https"} or not parsed.hostname:
         return False
     try:
-        infos = socket.getaddrinfo(parsed.hostname, parsed.port or (443 if parsed.scheme == "https" else 80))
+        port = parsed.port
+    except ValueError:
+        return False
+    if port is None:
+        port = 443 if parsed.scheme == "https" else 80
+    try:
+        infos = socket.getaddrinfo(parsed.hostname, port)
     except socket.gaierror:
         return False
     addresses = {info[4][0] for info in infos if info and len(info) > 4 and info[4]}
     if not addresses:
         return False
-    return all(_is_public_ip_address(addr) for addr in addresses)
+    try:
+        return not any(_is_blocked_ip(ipaddress.ip_address(addr)) for addr in addresses)
+    except ValueError:
+        return False
 
 
 def _fetch_eventory_token(api_url: str, token_endpoint: str, username: str, password: str) -> str:
