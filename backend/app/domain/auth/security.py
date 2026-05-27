@@ -1,6 +1,5 @@
 from datetime import datetime, timedelta, timezone
 import hashlib
-import hmac
 import os
 import secrets
 
@@ -25,11 +24,21 @@ def validate_password_pepper() -> None:
     _get_password_pepper_bytes()
 
 
+def _derive_long_password(password_bytes: bytes) -> bytes:
+    return hashlib.pbkdf2_hmac(
+        "sha256",
+        password_bytes,
+        _get_password_pepper_bytes(),
+        _DEFAULT_PBKDF2_ITERATIONS,
+        dklen=32,
+    )
+
+
 def _prepare_password(password: str) -> bytes:
     b = password.encode("utf-8")
     # bcrypt input limit is 72 bytes; for longer inputs, use keyed preprocessing.
     if len(b) > 72:
-        return hmac.new(_get_password_pepper_bytes(), b, hashlib.sha256).digest()
+        return _derive_long_password(b)
     return b
 
 
@@ -43,13 +52,7 @@ def verify_password(plain: str, hashed: str) -> bool:
     hashed_bytes = hashed.encode("utf-8")
     try:
         pw = _prepare_password(plain)
-        if bcrypt.checkpw(pw, hashed_bytes):
-            return True
-        plain_bytes = plain.encode("utf-8")
-        if len(plain_bytes) > 72:
-            legacy_pw = hmac.new(_get_password_pepper_bytes(), plain_bytes, hashlib.sha256).digest()
-            return bcrypt.checkpw(legacy_pw, hashed_bytes)
-        return False
+        return bcrypt.checkpw(pw, hashed_bytes)
     except Exception:
         return False
 
