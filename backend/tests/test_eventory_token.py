@@ -175,6 +175,11 @@ def test_validate_outbound_api_url_rejects_invalid_port():
         _validate_outbound_api_url("https://example.com:abc/test")
 
 
+def test_validate_outbound_api_url_rejects_port_zero():
+    with pytest.raises(ValueError, match="port is invalid"):
+        _validate_outbound_api_url("https://example.com:0/test")
+
+
 def test_validate_outbound_api_url_normalizes_ipv6_host(monkeypatch):
     monkeypatch.setattr(
         socket,

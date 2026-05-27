@@ -1392,7 +1392,9 @@ def _validate_outbound_api_url(raw_url: str) -> str:
         parsed_port = parsed.port
     except ValueError as exc:
         raise ValueError("URL port is invalid") from exc
-    resolved_port = parsed_port or (443 if parsed.scheme == "https" else 80)
+    if parsed_port is not None and parsed_port <= 0:
+        raise ValueError("URL port is invalid")
+    resolved_port = parsed_port if parsed_port is not None else (443 if parsed.scheme == "https" else 80)
 
     try:
         resolved = socket.getaddrinfo(parsed.hostname, resolved_port)
