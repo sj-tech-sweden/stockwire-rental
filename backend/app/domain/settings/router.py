@@ -601,6 +601,12 @@ def test_integration_connection(
             plugin=plugin_key,
             message="API URL must be an absolute http(s) URL",
         )
+    if not _is_public_http_url(api_url):
+        return IntegrationConnectionTestRead(
+            ok=False,
+            plugin=plugin_key,
+            message="API URL must resolve to a public IP address",
+        )
 
     headers = {
         "User-Agent": "stockwire-rental-settings-test/1.0",
@@ -1555,6 +1561,32 @@ def _is_same_origin_url(url: str, expected_origin: tuple[str, str, int]) -> bool
     return origin is not None and origin == expected_origin
 
 
+def _is_public_ip_address(ip_text: str) -> bool:
+    ip = ipaddress.ip_address(ip_text)
+    return not (
+        ip.is_private
+        or ip.is_loopback
+        or ip.is_link_local
+        or ip.is_multicast
+        or ip.is_reserved
+        or ip.is_unspecified
+    )
+
+
+def _is_public_http_url(url: str) -> bool:
+    parsed = urlparse(url)
+    if parsed.scheme not in {"http", "https"} or not parsed.hostname:
+        return False
+    try:
+        infos = socket.getaddrinfo(parsed.hostname, parsed.port or (443 if parsed.scheme == "https" else 80))
+    except socket.gaierror:
+        return False
+    addresses = {info[4][0] for info in infos if info and len(info) > 4 and info[4]}
+    if not addresses:
+        return False
+    return all(_is_public_ip_address(addr) for addr in addresses)
+
+
 def _fetch_eventory_token(api_url: str, token_endpoint: str, username: str, password: str) -> str:
     base_origin = _url_origin(api_url)
     if base_origin is None:
@@ -1578,6 +1610,9 @@ def _fetch_eventory_token(api_url: str, token_endpoint: str, username: str, pass
     last_error: Exception | None = None
     for candidate in candidates:
         if not _is_same_origin_url(candidate, base_origin):
+            continue
+        if not _is_public_http_url(candidate):
+            last_error = ValueError("Token endpoint must resolve to a public IP address")
             continue
         body = urlencode(
             {
