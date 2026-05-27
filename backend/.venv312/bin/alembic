@@ -1,4 +1,4 @@
-#!/tmp/workspace/sj-tech-sweden/stockwire-rental/backend/.venv312/bin/python
+#!/Users/samsjo02/Documents/script/rentalcore/stockwire-rental/backend/.venv312/bin/python
 import sys
 from alembic.config import main
 if __name__ == '__main__':
