@@ -119,6 +119,7 @@ def test_inventory_crud(client):
     )
     assert bulk.status_code == 200
     assert len(bulk.json()) == 2
+
     sub_zone = client.post(
         "/api/v1/inventory/zones",
         json={"code": "A-01-01", "name": "Shelf 1", "zone_type": "shelf", "parent_id": zone_id, "sort_order": 0, "is_active": True},
@@ -191,6 +192,54 @@ def test_eventory_connection_get_fallback_treats_http_error_as_reachable(client)
         "plugin": "eventory",
         "message": "Connection reached endpoint (GET status 302)",
         "status_code": 302,
+    }
+
+
+def test_eventory_connection_private_peer_returns_structured_error(client):
+    class FakeSocket:
+        def getpeername(self):
+            return ("127.0.0.1", 443)
+
+    class FakeRaw:
+        def __init__(self):
+            self._sock = FakeSocket()
+
+    class FakeBuffer:
+        def __init__(self):
+            self.raw = FakeRaw()
+
+    class FakeResponse:
+        def __init__(self):
+            self.status = 200
+            self.fp = FakeBuffer()
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+    class FakeOpener:
+        def open(self, req, timeout=0):
+            return FakeResponse()
+
+    with patch("app.domain.settings.router.socket.getaddrinfo") as mock_getaddrinfo, patch(
+        "app.domain.settings.router.build_opener", return_value=FakeOpener()
+    ):
+        mock_getaddrinfo.return_value = [
+            (socket.AF_INET, socket.SOCK_STREAM, 0, "", ("1.1.1.1", 443)),
+        ]
+        response = client.post(
+            "/api/v1/settings/integrations/eventory/test",
+            json={"config": {"api_url": "https://api.example.com"}},
+        )
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "ok": False,
+        "plugin": "eventory",
+        "message": "API URL connected to a non-public IP address",
+        "status_code": None,
     }
 
 
@@ -495,7 +544,7 @@ def test_settings_modules_crud(client):
         "status_code": None,
     }
 
-    with patch("app.domain.settings.router.socket.getaddrinfo", side_effect=socket.gaierror) as mock_getaddrinfo:
+    with patch("app.domain.settings.router.socket.getaddrinfo") as mock_getaddrinfo:
         zero_port = client.post(
             "/api/v1/settings/integrations/eventory/test",
             json={"config": {"api_url": "https://api.example.com:0"}},
@@ -504,10 +553,10 @@ def test_settings_modules_crud(client):
     assert zero_port.json() == {
         "ok": False,
         "plugin": "eventory",
-        "message": "API URL hostname could not be resolved",
+        "message": "API URL contains an invalid port",
         "status_code": None,
     }
-    assert mock_getaddrinfo.call_args.args[1] == 0
+    mock_getaddrinfo.assert_not_called()
 
     auth_sso = client.get("/api/v1/settings/auth-sso")
     assert auth_sso.status_code == 200

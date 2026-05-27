@@ -67,6 +67,10 @@ def test_is_public_http_url_invalid_port_no_exception():
     assert _is_public_http_url("https://host:99999/") is False
 
 
+def test_is_public_http_url_port_zero_rejected():
+    assert _is_public_http_url("https://host:0/") is False
+
+
 def test_is_public_http_url_invalid_scheme():
     assert _is_public_http_url("ftp://example.com/") is False
 
@@ -120,7 +124,7 @@ def test_is_public_http_url_strips_whitespace():
 
 
 def test_is_public_http_url_rejects_embedded_credentials():
-    assert _is_public_http_url("https://user" + ":pass@example.com/") is False
+    assert _is_public_http_url("https://user@example.com/") is False
 
 
 class _FakeSocket:

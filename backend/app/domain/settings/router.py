@@ -601,10 +601,22 @@ def test_integration_connection(
             plugin=plugin_key,
             message="API URL must be an absolute http(s) URL",
         )
+    if parsed.username or parsed.password:
+        return IntegrationConnectionTestRead(
+            ok=False,
+            plugin=plugin_key,
+            message="API URL must not contain embedded credentials",
+        )
 
     try:
         port = parsed.port
     except ValueError:
+        return IntegrationConnectionTestRead(
+            ok=False,
+            plugin=plugin_key,
+            message="API URL contains an invalid port",
+        )
+    if port is not None and port <= 0:
         return IntegrationConnectionTestRead(
             ok=False,
             plugin=plugin_key,
@@ -692,8 +704,21 @@ def test_integration_connection(
                 message=f"Connection established (status {status_code})",
                 status_code=status_code,
             )
+    except HTTPException as exc:
+        return IntegrationConnectionTestRead(
+            ok=False,
+            plugin=plugin_key,
+            message=str(exc.detail),
+        )
     except HTTPError as exc:
-        _ensure_public_response_peer(exc, "API URL")
+        try:
+            _ensure_public_response_peer(exc, "API URL")
+        except HTTPException as peer_exc:
+            return IntegrationConnectionTestRead(
+                ok=False,
+                plugin=plugin_key,
+                message=str(peer_exc.detail),
+            )
         status_code = int(getattr(exc, "code", 0) or 0)
         return IntegrationConnectionTestRead(
             ok=status_code < 500,
@@ -713,8 +738,21 @@ def test_integration_connection(
                     message=f"Connection established (GET status {status_code})",
                     status_code=status_code,
                 )
+        except HTTPException as get_peer_exc:
+            return IntegrationConnectionTestRead(
+                ok=False,
+                plugin=plugin_key,
+                message=str(get_peer_exc.detail),
+            )
         except HTTPError as get_exc:
-            _ensure_public_response_peer(get_exc, "API URL")
+            try:
+                _ensure_public_response_peer(get_exc, "API URL")
+            except HTTPException as get_peer_exc:
+                return IntegrationConnectionTestRead(
+                    ok=False,
+                    plugin=plugin_key,
+                    message=str(get_peer_exc.detail),
+                )
             status_code = int(getattr(get_exc, "code", 0) or 0)
             return IntegrationConnectionTestRead(
                 ok=status_code < 500,
@@ -722,11 +760,11 @@ def test_integration_connection(
                 message=f"Connection reached endpoint (GET status {status_code})",
                 status_code=status_code,
             )
-        except Exception:
+        except Exception as get_exc:
             return IntegrationConnectionTestRead(
                 ok=False,
                 plugin=plugin_key,
-                message=f"Connection failed: {exc.reason if hasattr(exc, 'reason') else str(exc)}",
+                message=f"Connection failed: {get_exc.reason if hasattr(get_exc, 'reason') else str(get_exc)}",
             )
 
 
@@ -1626,6 +1664,8 @@ def _is_public_http_url(url: str) -> bool:
         port = parsed.port
     except ValueError:
         return False
+    if port is not None and port <= 0:
+        return False
     if port is None:
         port = 443 if parsed.scheme == "https" else 80
     try:
@@ -1749,7 +1789,10 @@ def _fetch_eventory_token(api_url: str, token_endpoint: str, username: str, pass
                     return token
                 raise ValueError("token response contained no token field")
         except HTTPError as exc:
-            _ensure_public_response_peer(exc, "Token endpoint")
+            try:
+                _ensure_public_response_peer(exc, "Token endpoint")
+            except HTTPException:
+                raise
             last_error = exc
             continue
         except HTTPException:
