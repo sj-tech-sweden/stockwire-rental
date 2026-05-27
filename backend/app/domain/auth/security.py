@@ -19,6 +19,11 @@ def _get_password_pepper_bytes() -> bytes:
     raise RuntimeError("PASSWORD_PEPPER must be set outside development/test environments")
 
 
+def validate_password_pepper() -> None:
+    """Call at application startup to fail fast if PASSWORD_PEPPER is misconfigured."""
+    _get_password_pepper_bytes()
+
+
 def _prepare_password(password: str) -> bytes:
     b = password.encode('utf-8')
     # bcrypt input limit is 72 bytes; for longer inputs, use PBKDF2 preprocessing
