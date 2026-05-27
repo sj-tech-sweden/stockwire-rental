@@ -1382,32 +1382,32 @@ def _is_public_ip_address(value: str) -> bool:
 def _validate_outbound_api_url(raw_url: str) -> str:
     parsed = urlparse(str(raw_url or "").strip())
     if parsed.scheme not in {"http", "https"}:
-        raise ValueError("Only http and https URLs are allowed")
+        raise ValueError("API URL must use http or https")
     if not parsed.hostname:
-        raise ValueError("URL hostname is required")
+        raise ValueError("API URL hostname is required")
     if parsed.username is not None or parsed.password is not None:
-        raise ValueError("URL must not contain credentials")
+        raise ValueError("API URL must not contain credentials")
 
     try:
         parsed_port = parsed.port
     except ValueError as exc:
-        raise ValueError("URL port is invalid") from exc
+        raise ValueError("API URL port is invalid") from exc
     if parsed_port is not None and parsed_port <= 0:
-        raise ValueError("URL port is invalid")
+        raise ValueError("API URL port is invalid")
     resolved_port = parsed_port if parsed_port is not None else (443 if parsed.scheme == "https" else 80)
 
     try:
         resolved = socket.getaddrinfo(parsed.hostname, resolved_port, type=socket.SOCK_STREAM)
     except (OSError, UnicodeError) as exc:
-        raise ValueError("URL hostname could not be resolved") from exc
+        raise ValueError("API URL hostname could not be resolved") from exc
 
     addresses = {str(entry[4][0]) for entry in resolved if entry and len(entry) > 4 and entry[4]}
     if not addresses:
-        raise ValueError("URL hostname could not be resolved")
+        raise ValueError("API URL hostname could not be resolved")
 
     for candidate_ip in addresses:
         if not _is_public_ip_address(candidate_ip):
-            raise ValueError("URL resolves to a non-public IP address")
+            raise ValueError("API URL resolves to a non-public IP address")
 
     hostname = str(parsed.hostname)
     netloc = f"[{hostname}]" if ":" in hostname else hostname

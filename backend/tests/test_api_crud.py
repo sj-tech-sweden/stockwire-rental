@@ -563,7 +563,7 @@ def test_settings_modules_crud(client):
     assert mixed_dns.json() == {
         "ok": False,
         "plugin": "eventory",
-        "message": "URL resolves to a non-public IP address",
+        "message": "API URL resolves to a non-public IP address",
         "status_code": None,
     }
 
@@ -576,7 +576,7 @@ def test_settings_modules_crud(client):
     assert zero_port.json() == {
         "ok": False,
         "plugin": "eventory",
-        "message": "URL port is invalid",
+        "message": "API URL port is invalid",
         "status_code": None,
     }
     mock_getaddrinfo.assert_not_called()
