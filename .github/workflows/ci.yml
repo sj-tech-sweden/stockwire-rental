@@ -55,6 +55,17 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
+      - name: Setup Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22
+
+      - name: Install frontend deps and Playwright
+        working-directory: frontend
+        run: |
+          npm ci
+          npx playwright install --with-deps
+
       - name: Start services with docker-compose
         run: |
           docker compose -f infra/compose/docker-compose.dev.yml up -d --build
@@ -78,18 +89,6 @@ jobs:
             echo "waiting for frontend..."; sleep 5
           done
           curl --fail --silent --show-error http://localhost:9000/ >/dev/null || exit 1
-
-      - name: Setup Node
-        uses: actions/setup-node@v5
-        with:
-          node-version: 22
-
-      - name: Install frontend deps and Playwright
-        working-directory: frontend
-        run: |
-          sudo rm -rf node_modules
-          npm ci
-          npx playwright install --with-deps
 
       - name: Run Playwright E2E for ${{ matrix.browser }}
         working-directory: frontend

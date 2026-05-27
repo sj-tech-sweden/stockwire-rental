@@ -3,7 +3,18 @@
   "extends": [
     "config:recommended"
   ],
-  "addLabels": [
-    "patch"
+  "packageRules": [
+    {
+      "matchUpdateTypes": ["major"],
+      "addLabels": ["major"]
+    },
+    {
+      "matchUpdateTypes": ["minor"],
+      "addLabels": ["minor"]
+    },
+    {
+      "matchUpdateTypes": ["patch", "pin", "pinDigest", "digest", "lockFileMaintenance", "rollback", "bump"],
+      "addLabels": ["patch"]
+    }
   ]
 }
