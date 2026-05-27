@@ -1,1 +1,0 @@
-"""Custom fields domain package."""
