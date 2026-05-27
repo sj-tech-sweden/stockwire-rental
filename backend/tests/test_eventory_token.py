@@ -74,6 +74,24 @@ def test_validate_outbound_api_url_rejects_shared_cgnat_range(monkeypatch):
         _validate_outbound_api_url("https://example.com/test")
 
 
+@pytest.mark.parametrize(
+    "ip_address",
+    [
+        "127.0.0.1",
+        "10.0.0.1",
+        "169.254.1.1",
+    ],
+)
+def test_validate_outbound_api_url_rejects_non_public_ranges(monkeypatch, ip_address):
+    monkeypatch.setattr(
+        router.socket,
+        "getaddrinfo",
+        lambda _host, _port: [(None, None, None, None, (ip_address, 443))],
+    )
+    with pytest.raises(ValueError, match="non-public"):
+        _validate_outbound_api_url("https://example.com/test")
+
+
 def test_validate_outbound_api_url_rejects_credentials():
     with pytest.raises(ValueError, match="must not contain credentials"):
         _validate_outbound_api_url("http://user@example.com/test")
@@ -82,3 +100,12 @@ def test_validate_outbound_api_url_rejects_credentials():
 def test_validate_outbound_api_url_rejects_invalid_port():
     with pytest.raises(ValueError, match="port is invalid"):
         _validate_outbound_api_url("https://example.com:abc/test")
+
+
+def test_validate_outbound_api_url_normalizes_ipv6_host(monkeypatch):
+    monkeypatch.setattr(
+        router.socket,
+        "getaddrinfo",
+        lambda _host, _port: [(None, None, None, None, ("2001:4860:4860::8888", 443, 0, 0))],
+    )
+    assert _validate_outbound_api_url("https://[2001:4860:4860::8888]/test") == "https://[2001:4860:4860::8888]/test"
