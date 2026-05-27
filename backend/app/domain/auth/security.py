@@ -47,7 +47,7 @@ def verify_password(plain: str, hashed: str) -> bool:
             return True
         plain_bytes = plain.encode("utf-8")
         if len(plain_bytes) > 72:
-            legacy_pw = hashlib.sha256(plain_bytes).digest()
+            legacy_pw = hmac.new(_get_password_pepper_bytes(), plain_bytes, hashlib.sha256).digest()
             return bcrypt.checkpw(legacy_pw, hashed_bytes)
         return False
     except Exception:
