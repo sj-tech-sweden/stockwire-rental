@@ -132,7 +132,7 @@ def test_validate_outbound_api_url_allows_public_target(monkeypatch):
     monkeypatch.setattr(
         socket,
         "getaddrinfo",
-        lambda _host, _port: [(None, None, None, None, ("93.184.216.34", 443))],
+        lambda _host, _port, **_kwargs: [(None, None, None, None, ("93.184.216.34", 443))],
     )
     assert _validate_outbound_api_url("https://example.com:443/test") == "https://example.com:443/test"
 
@@ -141,7 +141,7 @@ def test_validate_outbound_api_url_rejects_shared_cgnat_range(monkeypatch):
     monkeypatch.setattr(
         socket,
         "getaddrinfo",
-        lambda _host, _port: [(None, None, None, None, ("100.64.0.1", 443))],
+        lambda _host, _port, **_kwargs: [(None, None, None, None, ("100.64.0.1", 443))],
     )
     with pytest.raises(ValueError, match="non-public"):
         _validate_outbound_api_url("https://example.com/test")
@@ -159,7 +159,7 @@ def test_validate_outbound_api_url_rejects_non_public_ranges(monkeypatch, ip_add
     monkeypatch.setattr(
         socket,
         "getaddrinfo",
-        lambda _host, _port: [(None, None, None, None, (ip_address, 443))],
+        lambda _host, _port, **_kwargs: [(None, None, None, None, (ip_address, 443))],
     )
     with pytest.raises(ValueError, match="non-public"):
         _validate_outbound_api_url("https://example.com/test")
@@ -184,9 +184,27 @@ def test_validate_outbound_api_url_normalizes_ipv6_host(monkeypatch):
     monkeypatch.setattr(
         socket,
         "getaddrinfo",
-        lambda _host, _port: [(None, None, None, None, ("2001:4860:4860::8888", 443, 0, 0))],
+        lambda _host, _port, **_kwargs: [
+            (None, None, None, None, ("2001:4860:4860::8888", 443, 0, 0))
+        ],
     )
     assert _validate_outbound_api_url("https://[2001:4860:4860::8888]/test") == "https://[2001:4860:4860::8888]/test"
+
+
+def test_validate_outbound_api_url_uses_stream_dns_resolution():
+    with patch("app.domain.settings.router.socket") as mock_sock:
+        mock_sock.SOCK_STREAM = socket.SOCK_STREAM
+        mock_sock.getaddrinfo.return_value = [
+            (socket.AF_INET, socket.SOCK_STREAM, 0, "", ("93.184.216.34", 443)),
+        ]
+        assert _validate_outbound_api_url("https://example.com/test") == "https://example.com/test"
+        assert mock_sock.getaddrinfo.call_args.kwargs["type"] == mock_sock.SOCK_STREAM
+
+
+def test_validate_outbound_api_url_rejects_empty_resolution(monkeypatch):
+    monkeypatch.setattr(socket, "getaddrinfo", lambda *_args, **_kwargs: [])
+    with pytest.raises(ValueError, match="could not be resolved"):
+        _validate_outbound_api_url("https://example.com/test")
 
 
 def test_fetch_eventory_token_rejects_non_public_endpoint_url():

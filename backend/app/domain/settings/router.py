@@ -1397,15 +1397,15 @@ def _validate_outbound_api_url(raw_url: str) -> str:
     resolved_port = parsed_port if parsed_port is not None else (443 if parsed.scheme == "https" else 80)
 
     try:
-        resolved = socket.getaddrinfo(parsed.hostname, resolved_port)
-    except socket.gaierror as exc:
+        resolved = socket.getaddrinfo(parsed.hostname, resolved_port, type=socket.SOCK_STREAM)
+    except (OSError, UnicodeError) as exc:
         raise ValueError("URL hostname could not be resolved") from exc
 
-    for entry in resolved:
-        sockaddr = entry[4]
-        if not sockaddr:
-            continue
-        candidate_ip = str(sockaddr[0])
+    addresses = {str(entry[4][0]) for entry in resolved if entry and len(entry) > 4 and entry[4]}
+    if not addresses:
+        raise ValueError("URL hostname could not be resolved")
+
+    for candidate_ip in addresses:
         if not _is_public_ip_address(candidate_ip):
             raise ValueError("URL resolves to a non-public IP address")
 
