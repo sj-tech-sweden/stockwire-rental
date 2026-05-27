@@ -1,8 +1,10 @@
 import pytest
 from urllib.parse import urljoin
+from urllib.request import Request
 
 from fastapi import HTTPException
 
+import app.domain.settings.router as settings_router
 from app.domain.settings.router import _url_origin, _is_same_origin_url, _fetch_eventory_token
 
 
@@ -52,3 +54,48 @@ def test_default_candidates_are_same_origin():
     ]
     for candidate in candidates:
         assert _is_same_origin_url(candidate, origin), f"{candidate} should be same-origin"
+
+
+def test_open_outbound_integration_request_validates_url_at_open_time(monkeypatch):
+    validated: list[str] = []
+    monkeypatch.setattr(
+        settings_router,
+        "_validate_outbound_integration_url",
+        lambda raw_url: validated.append(raw_url) or raw_url,
+    )
+
+    class _DummyOpener:
+        def open(self, req, timeout):
+            return {"req": req, "timeout": timeout}
+
+    monkeypatch.setattr(settings_router, "build_opener", lambda *_: _DummyOpener())
+    req = Request("https://api.example.com/ping", method="HEAD")
+    result = settings_router._open_outbound_integration_request(req, timeout=5)
+
+    assert validated == ["https://api.example.com/ping"]
+    assert result["req"] is req
+    assert result["timeout"] == 5
+
+
+def test_open_outbound_integration_request_uses_no_redirect_handler(monkeypatch):
+    monkeypatch.setattr(settings_router, "_validate_outbound_integration_url", lambda raw_url: raw_url)
+    captured: dict[str, object] = {}
+
+    class _DummyOpener:
+        def open(self, req, timeout):
+            captured["req"] = req
+            captured["timeout"] = timeout
+            return "opened"
+
+    def _fake_build_opener(handler):
+        captured["handler"] = handler
+        return _DummyOpener()
+
+    monkeypatch.setattr(settings_router, "build_opener", _fake_build_opener)
+    req = Request("https://api.example.com/ping", method="GET")
+    result = settings_router._open_outbound_integration_request(req, timeout=7)
+
+    assert isinstance(captured["handler"], settings_router._NoRedirectHandler)
+    assert captured["req"] is req
+    assert captured["timeout"] == 7
+    assert result == "opened"

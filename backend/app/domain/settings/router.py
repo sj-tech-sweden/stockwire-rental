@@ -633,7 +633,7 @@ def test_integration_connection(
 
     req = Request(api_url, headers=headers, method="HEAD")
     try:
-        with urlopen(req, timeout=5) as response:
+        with _open_outbound_integration_request(req, timeout=5) as response:
             status_code = int(getattr(response, "status", 0) or 0)
             return IntegrationConnectionTestRead(
                 ok=status_code < 500,
@@ -652,7 +652,7 @@ def test_integration_connection(
     except URLError as exc:
         get_req = Request(api_url, headers=headers, method="GET")
         try:
-            with urlopen(get_req, timeout=5) as response:
+            with _open_outbound_integration_request(get_req, timeout=5) as response:
                 status_code = int(getattr(response, "status", 0) or 0)
                 return IntegrationConnectionTestRead(
                     ok=status_code < 500,
@@ -1279,6 +1279,17 @@ def _validate_outbound_integration_url(raw_url: str) -> str:
             raise HTTPException(status_code=400, detail="API URL points to a disallowed network address")
 
     return candidate
+
+
+class _NoRedirectHandler(HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):  # noqa: D401, N803
+        return None
+
+
+def _open_outbound_integration_request(req: Request, timeout: int):
+    _validate_outbound_integration_url(req.full_url)
+    opener = build_opener(_NoRedirectHandler())
+    return opener.open(req, timeout=timeout)
 
 
 def _normalize_plugin_config(config: IntegrationPluginConfig) -> dict[str, object]:
