@@ -1,6 +1,5 @@
 from datetime import datetime, timedelta, timezone
 import hashlib
-import hmac
 import os
 import secrets
 
@@ -22,10 +21,16 @@ def _get_password_pepper_bytes() -> bytes:
 
 def _prepare_password(password: str) -> bytes:
     b = password.encode('utf-8')
-    # bcrypt input limit is 72 bytes; for longer inputs, use keyed preprocessing
-    # to avoid directly hashing password material with a fast unkeyed hash.
+    # bcrypt input limit is 72 bytes; for longer inputs, use PBKDF2 preprocessing
+    # so password material is transformed with a computationally expensive KDF.
     if len(b) > 72:
-        return hmac.new(_get_password_pepper_bytes(), b, hashlib.sha256).digest()
+        return hashlib.pbkdf2_hmac(
+            "sha256",
+            b,
+            _get_password_pepper_bytes(),
+            _DEFAULT_PBKDF2_ITERATIONS,
+            dklen=32,
+        )
     return b
 
 
