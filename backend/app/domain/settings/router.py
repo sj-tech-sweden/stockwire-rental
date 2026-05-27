@@ -1537,6 +1537,12 @@ def _validate_integration_url(raw_url: str, label: str) -> None:
         raise HTTPException(status_code=422, detail=f"{label} must be an absolute http(s) URL")
     if parsed.username or parsed.password:
         raise HTTPException(status_code=422, detail=f"{label} must not contain embedded credentials")
+    try:
+        port = parsed.port
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=f"{label} contains an invalid port") from exc
+    if port is not None and port <= 0:
+        raise HTTPException(status_code=422, detail=f"{label} contains an invalid port")
 
     host = (parsed.hostname or "").strip()
     if not host:

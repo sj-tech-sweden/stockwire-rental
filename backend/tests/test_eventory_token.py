@@ -166,7 +166,7 @@ def test_fetch_eventory_token_rejects_private_peer_after_public_dns_check():
             return False
 
         def read(self):
-            return b'{\"access_token\":\"secret\"}'
+            return b'{"access_token":"secret"}'
 
     class FakeOpener:
         def open(self, req, timeout=0):

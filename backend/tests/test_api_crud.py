@@ -527,6 +527,29 @@ def test_settings_modules_crud(client):
     assert updated_integrations.status_code == 200
     assert updated_integrations.json()["eventory_instances"][0]["sync_interval_minutes"] == 60
 
+    invalid_port_integrations = client.put(
+        "/api/v1/settings/integrations",
+        json={
+            "eventory_instances": [
+                {
+                    "id": "eventory-main",
+                    "name": "Eventory Main",
+                    "enabled": False,
+                    "api_url": "https://api.eventory.se:0",
+                    "api_key": "",
+                    "username": "",
+                    "password": "",
+                    "token_endpoint": "",
+                    "supplier_name": "Eventory",
+                    "sync_interval_minutes": 60,
+                    "price_margin_percent": 5,
+                }
+            ]
+        },
+    )
+    assert invalid_port_integrations.status_code == 422
+    assert invalid_port_integrations.json() == {"detail": "API URL contains an invalid port"}
+
     with patch("app.domain.settings.router.socket.getaddrinfo") as mock_getaddrinfo:
         mock_getaddrinfo.return_value = [
             (socket.AF_INET, socket.SOCK_STREAM, 0, "", ("1.1.1.1", 443)),
