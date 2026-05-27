@@ -1629,7 +1629,7 @@ def _is_public_http_url(url: str) -> bool:
     if port is None:
         port = 443 if parsed.scheme == "https" else 80
     try:
-        infos = socket.getaddrinfo(parsed.hostname, port)
+        infos = socket.getaddrinfo(parsed.hostname, port, type=socket.SOCK_STREAM)
     except socket.gaierror:
         return False
     addresses = {info[4][0] for info in infos if info and len(info) > 4 and info[4]}
@@ -1641,7 +1641,7 @@ def _is_public_http_url(url: str) -> bool:
         return False
 
 
-def _response_peer_ip(response: object) -> ipaddress._BaseAddress | None:
+def _response_peer_ip(response: object) -> ipaddress.IPv4Address | ipaddress.IPv6Address | None:
     seen: set[int] = set()
     stack: list[object] = [response]
     while stack:

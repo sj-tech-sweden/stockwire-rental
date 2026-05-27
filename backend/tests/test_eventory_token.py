@@ -107,6 +107,7 @@ def test_is_public_http_url_accepts_all_public():
             (socket.AF_INET, socket.SOCK_STREAM, 0, "", ("8.8.8.8", 80)),
         ]
         assert _is_public_http_url("http://example.com/") is True
+        assert mock_sock.getaddrinfo.call_args.kwargs["type"] == mock_sock.SOCK_STREAM
 
 
 def test_is_public_http_url_strips_whitespace():
