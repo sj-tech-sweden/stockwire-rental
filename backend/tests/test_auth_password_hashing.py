@@ -1,16 +1,6 @@
-import hashlib
-
-import bcrypt
 import pytest
 
 from app.domain.auth.security import hash_password, validate_password_pepper, verify_password
-
-
-def test_verify_password_accepts_legacy_sha256_prehashed_long_password():
-    plain = "p" * 100
-    legacy_prepared = hashlib.sha256(plain.encode("utf-8")).digest()
-    legacy_hash = bcrypt.hashpw(legacy_prepared, bcrypt.gensalt()).decode("utf-8")
-    assert verify_password(plain, legacy_hash)
 
 
 def test_hash_and_verify_long_password_with_password_pepper(monkeypatch):
