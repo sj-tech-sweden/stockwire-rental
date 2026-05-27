@@ -1,5 +1,6 @@
 import socket
 from unittest.mock import patch
+from urllib.error import HTTPError, URLError
 
 
 def test_auth_crud(client):
@@ -118,7 +119,6 @@ def test_inventory_crud(client):
     )
     assert bulk.status_code == 200
     assert len(bulk.json()) == 2
-
     sub_zone = client.post(
         "/api/v1/inventory/zones",
         json={"code": "A-01-01", "name": "Shelf 1", "zone_type": "shelf", "parent_id": zone_id, "sort_order": 0, "is_active": True},
@@ -146,6 +146,33 @@ def test_inventory_crud(client):
     assert zone_tree.status_code == 200 and len(zone_tree.json()) >= 1
     assert list_products.json()[0]["total_devices"] == 3
     assert list_products.json()[0]["in_store_devices"] == 3
+
+
+def test_eventory_connection_get_fallback_treats_http_error_as_reachable(client):
+    class FakeOpener:
+        def open(self, req, timeout=0):
+            if req.get_method() == "HEAD":
+                raise URLError("head unsupported")
+            raise HTTPError(req.full_url, 302, "redirect blocked", None, None)
+
+    with patch("app.domain.settings.router.socket.getaddrinfo") as mock_getaddrinfo, patch(
+        "app.domain.settings.router.build_opener", return_value=FakeOpener()
+    ):
+        mock_getaddrinfo.return_value = [
+            (socket.AF_INET, socket.SOCK_STREAM, 0, "", ("1.1.1.1", 443)),
+        ]
+        response = client.post(
+            "/api/v1/settings/integrations/eventory/test",
+            json={"config": {"api_url": "https://api.example.com"}},
+        )
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "ok": True,
+        "plugin": "eventory",
+        "message": "Connection reached endpoint (GET status 302)",
+        "status_code": 302,
+    }
 
 
 def test_customers_and_venues_crud(client):

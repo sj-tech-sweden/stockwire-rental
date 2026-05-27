@@ -710,6 +710,14 @@ def test_integration_connection(
                     message=f"Connection established (GET status {status_code})",
                     status_code=status_code,
                 )
+        except HTTPError as get_exc:
+            status_code = int(getattr(get_exc, "code", 0) or 0)
+            return IntegrationConnectionTestRead(
+                ok=status_code < 500,
+                plugin=plugin_key,
+                message=f"Connection reached endpoint (GET status {status_code})",
+                status_code=status_code,
+            )
         except Exception:
             return IntegrationConnectionTestRead(
                 ok=False,
