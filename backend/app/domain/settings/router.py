@@ -1676,7 +1676,7 @@ def _is_public_http_url(url: str) -> bool:
         port = 443 if parsed.scheme == "https" else 80
     try:
         infos = socket.getaddrinfo(parsed.hostname, port, type=socket.SOCK_STREAM)
-    except socket.gaierror:
+    except (OSError, UnicodeError):
         return False
     addresses = {info[4][0] for info in infos if info and len(info) > 4 and info[4]}
     if not addresses:
