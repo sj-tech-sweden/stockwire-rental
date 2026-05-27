@@ -16,7 +16,7 @@ dependencies = [
   "sqlalchemy==2.0.50",
   "asyncpg==0.30.0",
   "psycopg[binary]==3.2.7",
-  "alembic==1.15.2",
+  "alembic==1.18.4",
   "redis==5.2.1",
   "structlog==25.3.0",
   "python-jose[cryptography]==3.5.0",
