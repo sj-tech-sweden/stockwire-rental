@@ -639,9 +639,10 @@ def test_integration_connection(
         headers["X-API-Key"] = api_key
         headers["Authorization"] = f"Bearer {api_key}"
 
+    opener = build_opener(_NoRedirectHandler())
     req = Request(api_url, headers=headers, method="HEAD")
     try:
-        with urlopen(req, timeout=5) as response:
+        with opener.open(req, timeout=5) as response:
             status_code = int(getattr(response, "status", 0) or 0)
             return IntegrationConnectionTestRead(
                 ok=status_code < 500,
@@ -660,7 +661,7 @@ def test_integration_connection(
     except URLError as exc:
         get_req = Request(api_url, headers=headers, method="GET")
         try:
-            with urlopen(get_req, timeout=5) as response:
+            with opener.open(get_req, timeout=5) as response:
                 status_code = int(getattr(response, "status", 0) or 0)
                 return IntegrationConnectionTestRead(
                     ok=status_code < 500,
@@ -1298,14 +1299,7 @@ def _is_public_ip_address(value: str) -> bool:
         ip = ipaddress.ip_address(value)
     except ValueError:
         return False
-    return not (
-        ip.is_private
-        or ip.is_loopback
-        or ip.is_link_local
-        or ip.is_multicast
-        or ip.is_reserved
-        or ip.is_unspecified
-    )
+    return ip.is_global
 
 
 def _validate_outbound_api_url(raw_url: str) -> str:
@@ -1314,9 +1308,17 @@ def _validate_outbound_api_url(raw_url: str) -> str:
         raise ValueError("Only http and https URLs are allowed")
     if not parsed.hostname:
         raise ValueError("URL hostname is required")
+    if parsed.username is not None or parsed.password is not None:
+        raise ValueError("URL must not contain credentials")
 
     try:
-        resolved = socket.getaddrinfo(parsed.hostname, parsed.port or (443 if parsed.scheme == "https" else 80))
+        parsed_port = parsed.port
+    except ValueError as exc:
+        raise ValueError("URL port is invalid") from exc
+    resolved_port = parsed_port or (443 if parsed.scheme == "https" else 80)
+
+    try:
+        resolved = socket.getaddrinfo(parsed.hostname, resolved_port)
     except socket.gaierror as exc:
         raise ValueError("URL hostname could not be resolved") from exc
 
@@ -1328,7 +1330,11 @@ def _validate_outbound_api_url(raw_url: str) -> str:
         if not _is_public_ip_address(candidate_ip):
             raise ValueError("URL resolves to a non-public IP address")
 
-    return parsed.geturl()
+    hostname = str(parsed.hostname)
+    netloc = f"[{hostname}]" if ":" in hostname else hostname
+    if parsed_port is not None:
+        netloc = f"{netloc}:{parsed_port}"
+    return parsed._replace(netloc=netloc).geturl()
 
 
 def _parse_product_defaults(raw: str | None) -> dict[str, object]:
