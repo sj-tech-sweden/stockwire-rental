@@ -9,8 +9,10 @@ test.describe('Inventory + settings custom fields flow', () => {
     await page.goto(`${base}/inventory`)
     await page.waitForLoadState('networkidle', { timeout: 40_000 })
     await page.getByRole('tab', { name: 'Categories' }).click()
-    await page.getByRole('button', { name: 'Reset category defaults' }).click()
-    await expect(page.getByText('Audio')).toBeVisible({ timeout: 20_000 })
+    await Promise.all([
+      page.waitForResponse((res) => res.url().includes('/api/v1/inventory/categories/prefill') && res.ok(), { timeout: 20_000 }),
+      page.getByRole('button', { name: 'Reset category defaults' }).click(),
+    ])
 
     await page.getByRole('tab', { name: 'Products' }).click()
     await page.getByRole('button', { name: 'New product' }).click()
@@ -26,7 +28,9 @@ test.describe('Inventory + settings custom fields flow', () => {
     await productDialog.getByLabel('Name').fill('E2E Category Product')
     await productDialog.getByRole('combobox', { name: /^Category$/i }).click()
     await expect(page.getByRole('listbox')).toBeVisible({ timeout: 20_000 })
-    await page.getByRole('option', { name: 'Audio' }).first().click()
+    const audioOption = page.getByRole('option', { name: 'Audio' }).first()
+    await expect(audioOption).toBeVisible({ timeout: 20_000 })
+    await audioOption.click()
     await expect(page.getByRole('listbox')).not.toBeVisible({ timeout: 20_000 })
     await productDialog.getByLabel('Daily rate').fill('123.45')
     await productDialog.getByRole('button', { name: 'Create' }).click()
