@@ -1776,10 +1776,10 @@ def _fetch_eventory_token(api_url: str, token_endpoint: str, username: str, pass
             try:
                 _ensure_public_response_peer(exc, "Token endpoint")
             except HTTPException:
-                raise
-            finally:
                 exc.close()
+                raise
             last_error = exc
+            exc.close()
             continue
         except HTTPException:
             raise

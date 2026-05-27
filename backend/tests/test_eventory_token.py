@@ -127,6 +127,19 @@ def test_is_public_http_url_rejects_embedded_credentials():
     assert _is_public_http_url("https://user@example.com/") is False
 
 
+def test_fetch_eventory_token_rejects_non_public_endpoint_url():
+    with patch("app.domain.settings.router._is_public_http_url", return_value=False):
+        with pytest.raises(HTTPException) as exc_info:
+            _fetch_eventory_token(
+                "https://api.example.com",
+                "https://api.example.com/oauth/token",
+                "user",
+                "pass",
+            )
+    assert exc_info.value.status_code == 400
+    assert exc_info.value.detail == "Token endpoint must be a valid public http(s) URL"
+
+
 class _FakeSocket:
     def __init__(self, host: str):
         self.host = host
