@@ -45,6 +45,8 @@ backfilled automatically on first use.
 
 - `API_KEY_PEPPER` is required unless `APP_ENV` is explicitly set to
   `development` or `test`; the application will fail to start if it is missing.
+- `PASSWORD_PEPPER` is required unless `APP_ENV` is explicitly set to
+  `development` or `test`; the application will fail to start if it is missing.
 - `API_KEY_PBKDF2_ITERATIONS` tunes the verification iteration count (default:
   310 000; min: 100 000; max: 1 000 000). Values outside this range fall back to
   the default.
