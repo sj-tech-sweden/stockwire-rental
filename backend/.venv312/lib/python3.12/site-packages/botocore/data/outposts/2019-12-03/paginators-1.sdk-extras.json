@@ -7,6 +7,13 @@
           "OutpostArn",
           "OutpostId"
         ]
+      },
+      "GetOutpostBillingInformation": {
+        "non_aggregate_keys": [
+          "ContractEndDate",
+          "PaymentOption",
+          "PaymentTerm"
+        ]
       }
     }
   }

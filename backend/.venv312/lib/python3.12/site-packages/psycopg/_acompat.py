@@ -13,34 +13,20 @@ from __future__ import annotations
 import queue
 import asyncio
 import threading
-from typing import TYPE_CHECKING, Any, Callable, Coroutine
+from typing import Any, TypeAlias
+from collections.abc import Callable, Coroutine
 
-from ._compat import TypeAlias, TypeVar
+from ._compat import TypeVar
 
 Worker: TypeAlias = threading.Thread
-AWorker: TypeAlias = "asyncio.Task[None]"
+AWorker: TypeAlias = asyncio.Task[None]
+Lock = threading.Lock
+ALock = asyncio.Lock
+
 T = TypeVar("T")
 
-# Hack required on Python 3.8 because subclassing Queue[T] fails at runtime.
-# https://stackoverflow.com/questions/45414066/mypy-how-to-define-a-generic-subclass
-if TYPE_CHECKING:
-    _GQueue: TypeAlias = queue.Queue
-    _AGQueue: TypeAlias = asyncio.Queue
 
-else:
-
-    class FakeGenericMeta(type):
-        def __getitem__(self, item):
-            return self
-
-    class _GQueue(queue.Queue, metaclass=FakeGenericMeta):
-        pass
-
-    class _AGQueue(asyncio.Queue, metaclass=FakeGenericMeta):
-        pass
-
-
-class Queue(_GQueue[T]):
+class Queue(queue.Queue[T]):
     """
     A Queue subclass with an interruptible get() method.
     """
@@ -52,7 +38,7 @@ class Queue(_GQueue[T]):
         return super().get(block=block, timeout=timeout)
 
 
-class AQueue(_AGQueue[T]):
+class AQueue(asyncio.Queue[T]):
     pass
 
 

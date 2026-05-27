@@ -1,5 +1,5 @@
 # dialects/mssql/pyodbc.py
-# Copyright (C) 2005-2025 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2026 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -358,7 +358,6 @@ hook. See that method for usage examples.
    :func:`_sa.create_engine`.
 
 """  # noqa
-
 
 import datetime
 import decimal

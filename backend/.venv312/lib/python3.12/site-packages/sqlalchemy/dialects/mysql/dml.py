@@ -1,5 +1,5 @@
 # dialects/mysql/dml.py
-# Copyright (C) 2005-2025 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2026 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -27,7 +27,6 @@ from ...sql.elements import KeyedColumnElement
 from ...sql.expression import alias
 from ...sql.selectable import NamedFromClause
 from ...util.typing import Self
-
 
 __all__ = ("Insert", "insert")
 

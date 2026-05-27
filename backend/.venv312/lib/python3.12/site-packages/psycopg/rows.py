@@ -7,19 +7,18 @@ psycopg row factories
 from __future__ import annotations
 
 import functools
-from typing import TYPE_CHECKING, Any, Callable, Dict  # drop with Python 3.8
-from typing import NamedTuple, NoReturn, Protocol, Sequence, Tuple
+from typing import TYPE_CHECKING, Any, NamedTuple, NoReturn, Protocol, TypeAlias
 from collections import namedtuple
+from collections.abc import Callable, Sequence
 
 from . import errors as e
 from . import pq
-from ._compat import TypeAlias, TypeVar
+from ._compat import TypeVar
 from ._encodings import _as_python_identifier
 
 if TYPE_CHECKING:
-    from psycopg.pq.abc import PGresult
-
     from .cursor import Cursor
+    from .pq.abc import PGresult
     from ._cursor_base import BaseCursor
     from .cursor_async import AsyncCursor
 
@@ -83,13 +82,13 @@ class BaseRowFactory(Protocol[Row]):
     def __call__(self, __cursor: BaseCursor[Any, Any]) -> RowMaker[Row]: ...
 
 
-TupleRow: TypeAlias = Tuple[Any, ...]
+TupleRow: TypeAlias = tuple[Any, ...]
 """
 An alias for the type returned by `tuple_row()` (i.e. a tuple of any content).
 """
 
 
-DictRow: TypeAlias = Dict[str, Any]
+DictRow: TypeAlias = dict[str, Any]
 """
 An alias for the type returned by `dict_row()`
 

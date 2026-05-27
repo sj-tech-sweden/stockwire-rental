@@ -1,5 +1,5 @@
 # ext/baked.py
-# Copyright (C) 2005-2025 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2026 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -27,7 +27,6 @@ from ..orm.session import Session
 from ..sql import func
 from ..sql import literal_column
 from ..sql import util as sql_util
-
 
 log = logging.getLogger(__name__)
 

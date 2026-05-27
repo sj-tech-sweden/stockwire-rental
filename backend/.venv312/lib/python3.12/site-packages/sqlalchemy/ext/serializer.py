@@ -1,5 +1,5 @@
 # ext/serializer.py
-# Copyright (C) 2005-2025 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2026 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -81,7 +81,6 @@ from ..orm.mapper import Mapper
 from ..orm.session import Session
 from ..util import b64decode
 from ..util import b64encode
-
 
 __all__ = ["Serializer", "Deserializer", "dumps", "loads"]
 

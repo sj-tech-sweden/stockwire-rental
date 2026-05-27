@@ -1,5 +1,5 @@
 # dialects/postgresql/pg8000.py
-# Copyright (C) 2005-2025 the SQLAlchemy authors and contributors <see AUTHORS
+# Copyright (C) 2005-2026 the SQLAlchemy authors and contributors <see AUTHORS
 # file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -95,6 +95,7 @@ of the :ref:`psycopg2 <psycopg2_isolation_level>` dialect:
 
 
 """  # noqa
+
 import decimal
 import re
 
@@ -540,6 +541,9 @@ class PGDialect_pg8000(PGDialect):
             cursor.execute("COMMIT")
             cursor.close()
 
+    def detect_autocommit_setting(self, dbapi_conn) -> bool:
+        return bool(dbapi_conn.autocommit)
+
     def set_readonly(self, connection, value):
         cursor = connection.cursor()
         try:
@@ -584,11 +588,8 @@ class PGDialect_pg8000(PGDialect):
 
     def _set_client_encoding(self, dbapi_connection, client_encoding):
         cursor = dbapi_connection.cursor()
-        cursor.execute(
-            f"""SET CLIENT_ENCODING TO '{
-                client_encoding.replace("'", "''")
-            }'"""
-        )
+        cursor.execute(f"""
+            SET CLIENT_ENCODING TO '{client_encoding.replace("'", "''")}'""")
         cursor.execute("COMMIT")
         cursor.close()
 

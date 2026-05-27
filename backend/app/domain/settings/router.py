@@ -1602,8 +1602,8 @@ def _is_same_origin_url(url: str, expected_origin: tuple[str, str, int]) -> bool
 
 
 def _is_public_http_url(url: str) -> bool:
-    parsed = urlparse(url)
-    if parsed.scheme not in {"http", "https"} or not parsed.hostname:
+    parsed = urlparse(str(url or "").strip())
+    if parsed.scheme not in {"http", "https"} or not parsed.hostname or parsed.username or parsed.password:
         return False
     try:
         port = parsed.port
@@ -1622,6 +1622,42 @@ def _is_public_http_url(url: str) -> bool:
         return not any(_is_blocked_ip(ipaddress.ip_address(addr)) for addr in addresses)
     except ValueError:
         return False
+
+
+def _response_peer_ip(response: object) -> ipaddress._BaseAddress | None:
+    seen: set[int] = set()
+    stack: list[object] = [response]
+    while stack:
+        current = stack.pop()
+        if current is None or id(current) in seen:
+            continue
+        seen.add(id(current))
+
+        sock = getattr(current, "_sock", None)
+        if sock is not None:
+            try:
+                peer = sock.getpeername()
+            except OSError:
+                peer = None
+            if isinstance(peer, tuple) and peer:
+                try:
+                    return ipaddress.ip_address(peer[0])
+                except ValueError:
+                    pass
+
+        for attr in ("fp", "raw"):
+            nested = getattr(current, attr, None)
+            if nested is not None:
+                stack.append(nested)
+    return None
+
+
+def _ensure_public_response_peer(response: object, label: str) -> None:
+    peer_ip = _response_peer_ip(response)
+    if peer_ip is None:
+        raise HTTPException(status_code=502, detail=f"{label} peer address could not be verified")
+    if _is_blocked_ip(peer_ip):
+        raise HTTPException(status_code=502, detail=f"{label} connected to a non-public IP address")
 
 
 def _fetch_eventory_token(api_url: str, token_endpoint: str, username: str, password: str) -> str:
@@ -1672,6 +1708,7 @@ def _fetch_eventory_token(api_url: str, token_endpoint: str, username: str, pass
         )
         try:
             with build_opener(_NoRedirectHandler()).open(req, timeout=10) as resp:
+                _ensure_public_response_peer(resp, "Token endpoint")
                 payload = json.loads(resp.read().decode("utf-8") or "{}")
                 if not isinstance(payload, dict):
                     raise ValueError("token response is not an object")
@@ -1694,6 +1731,12 @@ def _fetch_eventory_token(api_url: str, token_endpoint: str, username: str, pass
                 if token:
                     return token
                 raise ValueError("token response contained no token field")
+        except HTTPError as exc:
+            _ensure_public_response_peer(exc, "Token endpoint")
+            last_error = exc
+            continue
+        except HTTPException:
+            raise
         except Exception as exc:
             last_error = exc
             continue

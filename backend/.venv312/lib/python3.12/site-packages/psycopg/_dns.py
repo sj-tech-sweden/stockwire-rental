@@ -11,8 +11,9 @@ import os
 import re
 import warnings
 from random import randint
-from typing import TYPE_CHECKING, Any, DefaultDict, NamedTuple, Sequence
+from typing import TYPE_CHECKING, Any, DefaultDict, NamedTuple
 from collections import defaultdict
+from collections.abc import Sequence
 
 try:
     from dns.resolver import Cache, Resolver
@@ -140,7 +141,7 @@ class Rfc2782Resolver:
         host_arg: str = params.get("host", os.environ.get("PGHOST", ""))
         hosts_in = host_arg.split(",")
         port_arg: str = str(params.get("port", os.environ.get("PGPORT", "")))
-        if len((ports_in := port_arg.split(","))) == 1:
+        if len(ports_in := port_arg.split(",")) == 1:
             # If only one port is specified, it applies to all the hosts.
             ports_in *= len(hosts_in)
         if len(ports_in) != len(hosts_in):

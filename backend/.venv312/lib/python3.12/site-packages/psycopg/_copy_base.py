@@ -10,7 +10,8 @@ import re
 import sys
 import struct
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Any, Generic, Match, Sequence
+from typing import TYPE_CHECKING, Any, Generic
+from collections.abc import Sequence
 
 from . import adapt
 from . import errors as e
@@ -320,16 +321,11 @@ class BinaryFormatter(Formatter):
             return data
 
 
-def _format_row_text(
-    row: Sequence[Any], tx: Transformer, out: bytearray | None = None
-) -> bytearray:
+def _format_row_text(row: Sequence[Any], tx: Transformer, out: bytearray) -> None:
     """Convert a row of objects to the data to send for copy."""
-    if out is None:
-        out = bytearray()
-
     if not row:
         out += b"\n"
-        return out
+        return
 
     adapted = tx.dump_sequence(row, [PY_TEXT] * len(row))
     for b in adapted:
@@ -337,26 +333,18 @@ def _format_row_text(
         out += b"\t"
 
     out[-1:] = b"\n"
-    return out
 
 
-def _format_row_binary(
-    row: Sequence[Any], tx: Transformer, out: bytearray | None = None
-) -> bytearray:
+def _format_row_binary(row: Sequence[Any], tx: Transformer, out: bytearray) -> None:
     """Convert a row of objects to the data to send for binary copy."""
-    if out is None:
-        out = bytearray()
-
-    out += _pack_int2(len(row))
     adapted = tx.dump_sequence(row, [PY_BINARY] * len(row))
+    out += _pack_int2(len(row))
     for b in adapted:
         if b is not None:
             out += _pack_int4(len(b))
             out += b
         else:
             out += _binary_null
-
-    return out
 
 
 def _parse_row_text(data: Buffer, tx: Transformer) -> tuple[Any, ...]:
@@ -409,7 +397,7 @@ _dump_repl = {
 }
 
 
-def _dump_sub(m: Match[bytes], __map: dict[bytes, bytes] = _dump_repl) -> bytes:
+def _dump_sub(m: re.Match[bytes], __map: dict[bytes, bytes] = _dump_repl) -> bytes:
     return __map[m.group(0)]
 
 
@@ -417,7 +405,7 @@ _load_re = re.compile(b"\\\\[btnvfr\\\\]")
 _load_repl = {v: k for k, v in _dump_repl.items()}
 
 
-def _load_sub(m: Match[bytes], __map: dict[bytes, bytes] = _load_repl) -> bytes:
+def _load_sub(m: re.Match[bytes], __map: dict[bytes, bytes] = _load_repl) -> bytes:
     return __map[m.group(0)]
 
 

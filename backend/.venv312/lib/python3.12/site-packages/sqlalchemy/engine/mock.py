@@ -1,5 +1,5 @@
 # engine/mock.py
-# Copyright (C) 2005-2025 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2026 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -19,7 +19,6 @@ from typing import Union
 from . import url as _url
 from .. import util
 
-
 if typing.TYPE_CHECKING:
     from .base import Engine
     from .interfaces import _CoreAnyExecuteParams
@@ -27,10 +26,9 @@ if typing.TYPE_CHECKING:
     from .interfaces import Dialect
     from .url import URL
     from ..sql.base import Executable
-    from ..sql.ddl import SchemaDropper
-    from ..sql.ddl import SchemaGenerator
+    from ..sql.ddl import InvokeDDLBase
     from ..sql.schema import HasSchemaAttr
-    from ..sql.schema import SchemaItem
+    from ..sql.visitors import Visitable
 
 
 class MockConnection:
@@ -53,12 +51,14 @@ class MockConnection:
 
     def _run_ddl_visitor(
         self,
-        visitorcallable: Type[Union[SchemaGenerator, SchemaDropper]],
-        element: SchemaItem,
+        visitorcallable: Type[InvokeDDLBase],
+        element: Visitable,
         **kwargs: Any,
     ) -> None:
         kwargs["checkfirst"] = False
-        visitorcallable(self.dialect, self, **kwargs).traverse_single(element)
+        visitorcallable(
+            dialect=self.dialect, connection=self, **kwargs
+        ).traverse_single(element)
 
     def execute(
         self,

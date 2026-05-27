@@ -1,5 +1,5 @@
 # ext/compiler.py
-# Copyright (C) 2005-2025 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2026 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -481,6 +481,7 @@ Example usage::
     )
 
 """
+
 from __future__ import annotations
 
 from typing import Any

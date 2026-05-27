@@ -1,13 +1,12 @@
 # event/api.py
-# Copyright (C) 2005-2025 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2026 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
 
-"""Public API functions for the event system.
+"""Public API functions for the event system."""
 
-"""
 from __future__ import annotations
 
 from typing import Any
@@ -19,7 +18,6 @@ from .registry import _EventKey
 from .registry import _ListenerFnType
 from .. import exc
 from .. import util
-
 
 CANCEL = util.symbol("CANCEL")
 NO_RETVAL = util.symbol("NO_RETVAL")

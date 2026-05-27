@@ -8,7 +8,8 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from types import TracebackType
-from typing import TYPE_CHECKING, Any, AsyncIterator, Sequence
+from typing import TYPE_CHECKING, Any
+from collections.abc import AsyncIterator, Sequence
 
 from . import errors as e
 from . import pq
@@ -132,8 +133,9 @@ class AsyncCopy(BaseCopy["AsyncConnection[Any]"]):
         using the `Copy` object outside a block.
         """
         if self._direction == COPY_IN:
-            if data := self.formatter.end():
-                await self._write(data)
+            if not exc:
+                if data := self.formatter.end():
+                    await self._write(data)
             await self.writer.finish(exc)
             self._finished = True
         else:

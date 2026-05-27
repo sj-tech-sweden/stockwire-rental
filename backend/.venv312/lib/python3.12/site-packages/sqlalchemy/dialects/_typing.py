@@ -1,5 +1,5 @@
 # dialects/_typing.py
-# Copyright (C) 2005-2025 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2026 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -17,7 +17,6 @@ from ..sql.base import ColumnCollection
 from ..sql.schema import Column
 from ..sql.schema import ColumnCollectionConstraint
 from ..sql.schema import Index
-
 
 _OnConflictConstraintT = Union[str, ColumnCollectionConstraint, Index, None]
 _OnConflictIndexElementsT = Optional[

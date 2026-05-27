@@ -4,11 +4,12 @@ Adapters for PostGIS geometries
 
 from __future__ import annotations
 
+from functools import cache
+
 from .. import postgres
 from ..pq import Format
 from ..abc import AdaptContext, Buffer
 from ..adapt import Dumper, Loader
-from .._compat import cache
 from .._typeinfo import TypeInfo
 
 try:

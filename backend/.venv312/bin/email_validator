@@ -1,4 +1,4 @@
-#!/Users/samsjo02/Documents/script/rentalcore/stockwire-rental/backend/.venv312/bin/python
+#!/tmp/workspace/sj-tech-sweden/stockwire-rental/backend/.venv312/bin/python
 import sys
 from email_validator.__main__ import main
 if __name__ == '__main__':

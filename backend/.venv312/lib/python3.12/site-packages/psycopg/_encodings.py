@@ -10,9 +10,9 @@ import re
 import codecs
 import string
 from typing import TYPE_CHECKING, Any
+from functools import cache
 
 from .errors import NotSupportedError
-from ._compat import cache
 from .pq._enums import ConnStatus
 
 if TYPE_CHECKING:
