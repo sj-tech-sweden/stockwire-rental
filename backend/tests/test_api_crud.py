@@ -149,11 +149,30 @@ def test_inventory_crud(client):
 
 
 def test_eventory_connection_get_fallback_treats_http_error_as_reachable(client):
+    class FakeSocket:
+        def getpeername(self):
+            return ("1.1.1.1", 443)
+
+    class FakeRaw:
+        def __init__(self):
+            self._sock = FakeSocket()
+
+    class FakeBuffer:
+        def __init__(self):
+            self.raw = FakeRaw()
+
+    class FakeFp:
+        def __init__(self):
+            self.fp = FakeBuffer()
+
+        def close(self):
+            return None
+
     class FakeOpener:
         def open(self, req, timeout=0):
             if req.get_method() == "HEAD":
                 raise URLError("head unsupported")
-            raise HTTPError(req.full_url, 302, "redirect blocked", None, None)
+            raise HTTPError(req.full_url, 302, "redirect blocked", None, FakeFp())
 
     with patch("app.domain.settings.router.socket.getaddrinfo") as mock_getaddrinfo, patch(
         "app.domain.settings.router.build_opener", return_value=FakeOpener()

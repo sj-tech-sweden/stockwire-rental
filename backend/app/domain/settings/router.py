@@ -684,6 +684,7 @@ def test_integration_connection(
     req = Request(api_url, headers=headers, method="HEAD")
     try:
         with build_opener(_NoRedirectHandler()).open(req, timeout=5) as response:
+            _ensure_public_response_peer(response, "API URL")
             status_code = int(getattr(response, "status", 0) or 0)
             return IntegrationConnectionTestRead(
                 ok=status_code < 500,
@@ -692,6 +693,7 @@ def test_integration_connection(
                 status_code=status_code,
             )
     except HTTPError as exc:
+        _ensure_public_response_peer(exc, "API URL")
         status_code = int(getattr(exc, "code", 0) or 0)
         return IntegrationConnectionTestRead(
             ok=status_code < 500,
@@ -703,6 +705,7 @@ def test_integration_connection(
         get_req = Request(api_url, headers=headers, method="GET")
         try:
             with build_opener(_NoRedirectHandler()).open(get_req, timeout=5) as response:
+                _ensure_public_response_peer(response, "API URL")
                 status_code = int(getattr(response, "status", 0) or 0)
                 return IntegrationConnectionTestRead(
                     ok=status_code < 500,
@@ -711,6 +714,7 @@ def test_integration_connection(
                     status_code=status_code,
                 )
         except HTTPError as get_exc:
+            _ensure_public_response_peer(get_exc, "API URL")
             status_code = int(getattr(get_exc, "code", 0) or 0)
             return IntegrationConnectionTestRead(
                 ok=status_code < 500,
@@ -1700,7 +1704,7 @@ def _fetch_eventory_token(api_url: str, token_endpoint: str, username: str, pass
         if not _is_public_http_url(candidate):
             raise HTTPException(
                 status_code=400,
-                detail="Token endpoint must resolve to a public IP address",
+                detail="Token endpoint must be a valid public http(s) URL",
             )
         body = urlencode(
             {
