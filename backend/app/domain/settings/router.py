@@ -601,7 +601,47 @@ def test_integration_connection(
             plugin=plugin_key,
             message="API URL must be an absolute http(s) URL",
         )
-    if not _is_public_http_url(api_url):
+
+    try:
+        port = parsed.port
+    except ValueError:
+        return IntegrationConnectionTestRead(
+            ok=False,
+            plugin=plugin_key,
+            message="API URL contains an invalid port",
+        )
+
+    hostname = parsed.hostname
+    if not hostname:
+        return IntegrationConnectionTestRead(
+            ok=False,
+            plugin=plugin_key,
+            message="API URL must be an absolute http(s) URL",
+        )
+
+    try:
+        resolved = socket.getaddrinfo(
+            hostname,
+            port or (443 if parsed.scheme == "https" else 80),
+            type=socket.SOCK_STREAM,
+        )
+    except socket.gaierror:
+        return IntegrationConnectionTestRead(
+            ok=False,
+            plugin=plugin_key,
+            message="API URL hostname could not be resolved",
+        )
+
+    has_public_ip = False
+    for _, _, _, _, sockaddr in resolved:
+        try:
+            if ipaddress.ip_address(sockaddr[0]).is_global:
+                has_public_ip = True
+                break
+        except ValueError:
+            continue
+
+    if not has_public_ip:
         return IntegrationConnectionTestRead(
             ok=False,
             plugin=plugin_key,
