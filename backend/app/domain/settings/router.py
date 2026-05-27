@@ -594,6 +594,7 @@ def test_integration_connection(
             message="API URL is required to test connection",
         )
 
+    api_url = _validate_outbound_integration_url(api_url)
     parsed = urlparse(api_url)
     if parsed.scheme not in {"http", "https"} or not parsed.netloc:
         return IntegrationConnectionTestRead(
@@ -1246,6 +1247,38 @@ def _normalize_eventory_instance(config: EventoryInstanceConfig) -> dict[str, ob
         "name": name,
         **base,
     }
+
+
+def _validate_outbound_integration_url(raw_url: str) -> str:
+    candidate = str(raw_url or "").strip()
+    parsed = urlparse(candidate)
+
+    if parsed.scheme not in {"http", "https"}:
+        raise HTTPException(status_code=400, detail="API URL must use http or https")
+
+    hostname = parsed.hostname
+    if not hostname:
+        raise HTTPException(status_code=400, detail="API URL must include a valid host")
+
+    try:
+        resolved = socket.getaddrinfo(hostname, parsed.port or None, type=socket.SOCK_STREAM)
+    except socket.gaierror:
+        raise HTTPException(status_code=400, detail="API URL host could not be resolved")
+
+    for entry in resolved:
+        address = entry[4][0]
+        ip_obj = ipaddress.ip_address(address)
+        if (
+            ip_obj.is_private
+            or ip_obj.is_loopback
+            or ip_obj.is_link_local
+            or ip_obj.is_multicast
+            or ip_obj.is_reserved
+            or ip_obj.is_unspecified
+        ):
+            raise HTTPException(status_code=400, detail="API URL points to a disallowed network address")
+
+    return candidate
 
 
 def _normalize_plugin_config(config: IntegrationPluginConfig) -> dict[str, object]:
