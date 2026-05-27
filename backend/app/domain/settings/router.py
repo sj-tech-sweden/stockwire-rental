@@ -594,6 +594,15 @@ def test_integration_connection(
             message="API URL is required to test connection",
         )
 
+    try:
+        api_url = _validate_outbound_api_url(api_url)
+    except ValueError as exc:
+        return IntegrationConnectionTestRead(
+            ok=False,
+            plugin=plugin_key,
+            message=str(exc),
+        )
+
     parsed = urlparse(api_url)
     if parsed.scheme not in {"http", "https"} or not parsed.netloc:
         return IntegrationConnectionTestRead(
@@ -1282,6 +1291,44 @@ def _normalize_plugin_config(config: IntegrationPluginConfig) -> dict[str, objec
         "sync_progress_percent": max(0, min(100, int(config.sync_progress_percent or 0))),
         "sync_message": sync_message,
     }
+
+
+def _is_public_ip_address(value: str) -> bool:
+    try:
+        ip = ipaddress.ip_address(value)
+    except ValueError:
+        return False
+    return not (
+        ip.is_private
+        or ip.is_loopback
+        or ip.is_link_local
+        or ip.is_multicast
+        or ip.is_reserved
+        or ip.is_unspecified
+    )
+
+
+def _validate_outbound_api_url(raw_url: str) -> str:
+    parsed = urlparse(str(raw_url or "").strip())
+    if parsed.scheme not in {"http", "https"}:
+        raise ValueError("Only http and https URLs are allowed")
+    if not parsed.hostname:
+        raise ValueError("URL hostname is required")
+
+    try:
+        resolved = socket.getaddrinfo(parsed.hostname, parsed.port or (443 if parsed.scheme == "https" else 80))
+    except socket.gaierror as exc:
+        raise ValueError("URL hostname could not be resolved") from exc
+
+    for entry in resolved:
+        sockaddr = entry[4]
+        if not sockaddr:
+            continue
+        candidate_ip = str(sockaddr[0])
+        if not _is_public_ip_address(candidate_ip):
+            raise ValueError("URL resolves to a non-public IP address")
+
+    return parsed.geturl()
 
 
 def _parse_product_defaults(raw: str | None) -> dict[str, object]:
