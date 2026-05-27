@@ -84,7 +84,7 @@ def test_validate_outbound_api_url_rejects_shared_cgnat_range(monkeypatch):
 )
 def test_validate_outbound_api_url_rejects_non_public_ranges(monkeypatch, ip_address):
     monkeypatch.setattr(
-        router.socket,
+        socket,
         "getaddrinfo",
         lambda _host, _port: [(None, None, None, None, (ip_address, 443))],
     )
@@ -104,7 +104,7 @@ def test_validate_outbound_api_url_rejects_invalid_port():
 
 def test_validate_outbound_api_url_normalizes_ipv6_host(monkeypatch):
     monkeypatch.setattr(
-        router.socket,
+        socket,
         "getaddrinfo",
         lambda _host, _port: [(None, None, None, None, ("2001:4860:4860::8888", 443, 0, 0))],
     )
