@@ -622,7 +622,7 @@ def test_integration_connection(
     try:
         resolved = socket.getaddrinfo(
             hostname,
-            port or (443 if parsed.scheme == "https" else 80),
+            port if port is not None else (443 if parsed.scheme == "https" else 80),
             type=socket.SOCK_STREAM,
         )
     except socket.gaierror:
@@ -635,11 +635,16 @@ def test_integration_connection(
     has_public_ip = False
     for _, _, _, _, sockaddr in resolved:
         try:
-            if ipaddress.ip_address(sockaddr[0]).is_global:
-                has_public_ip = True
-                break
+            ip_obj = ipaddress.ip_address(sockaddr[0])
         except ValueError:
             continue
+        if _is_blocked_ip(ip_obj):
+            return IntegrationConnectionTestRead(
+                ok=False,
+                plugin=plugin_key,
+                message="API URL must resolve to a public IP address",
+            )
+        has_public_ip = True
 
     if not has_public_ip:
         return IntegrationConnectionTestRead(

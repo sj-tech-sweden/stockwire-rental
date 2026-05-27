@@ -1,3 +1,7 @@
+import socket
+from unittest.mock import patch
+
+
 def test_auth_crud(client):
     created = client.post(
         "/api/v1/auth/users",
@@ -427,6 +431,37 @@ def test_settings_modules_crud(client):
     )
     assert updated_integrations.status_code == 200
     assert updated_integrations.json()["eventory_instances"][0]["sync_interval_minutes"] == 60
+
+    with patch("app.domain.settings.router.socket.getaddrinfo") as mock_getaddrinfo:
+        mock_getaddrinfo.return_value = [
+            (socket.AF_INET, socket.SOCK_STREAM, 0, "", ("1.1.1.1", 443)),
+            (socket.AF_INET, socket.SOCK_STREAM, 0, "", ("127.0.0.1", 443)),
+        ]
+        mixed_dns = client.post(
+            "/api/v1/settings/integrations/eventory/test",
+            json={"config": {"api_url": "https://api.example.com"}},
+        )
+    assert mixed_dns.status_code == 200
+    assert mixed_dns.json() == {
+        "ok": False,
+        "plugin": "eventory",
+        "message": "API URL must resolve to a public IP address",
+        "status_code": None,
+    }
+
+    with patch("app.domain.settings.router.socket.getaddrinfo", side_effect=socket.gaierror) as mock_getaddrinfo:
+        zero_port = client.post(
+            "/api/v1/settings/integrations/eventory/test",
+            json={"config": {"api_url": "https://api.example.com:0"}},
+        )
+    assert zero_port.status_code == 200
+    assert zero_port.json() == {
+        "ok": False,
+        "plugin": "eventory",
+        "message": "API URL hostname could not be resolved",
+        "status_code": None,
+    }
+    assert mock_getaddrinfo.call_args.args[1] == 0
 
     auth_sso = client.get("/api/v1/settings/auth-sso")
     assert auth_sso.status_code == 200
