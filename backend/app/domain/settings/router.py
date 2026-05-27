@@ -659,9 +659,10 @@ def test_integration_connection(
         headers["X-API-Key"] = api_key
         headers["Authorization"] = f"Bearer {api_key}"
 
+    opener = build_opener(_NoRedirectHandler())
     req = Request(api_url, headers=headers, method="HEAD")
     try:
-        with build_opener(_NoRedirectHandler()).open(req, timeout=5) as response:
+        with opener.open(req, timeout=5) as response:
             _ensure_public_response_peer(response, "API URL")
             status_code = int(getattr(response, "status", 0) or 0)
             return IntegrationConnectionTestRead(
@@ -698,7 +699,7 @@ def test_integration_connection(
     except URLError as exc:
         get_req = Request(api_url, headers=headers, method="GET")
         try:
-            with build_opener(_NoRedirectHandler()).open(get_req, timeout=5) as response:
+            with opener.open(get_req, timeout=5) as response:
                 _ensure_public_response_peer(response, "API URL")
                 status_code = int(getattr(response, "status", 0) or 0)
                 return IntegrationConnectionTestRead(

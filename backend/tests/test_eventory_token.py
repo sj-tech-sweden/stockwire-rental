@@ -11,6 +11,7 @@ from app.domain.settings.router import (
     _is_public_http_url,
     _is_same_origin_url,
     _url_origin,
+    _validate_outbound_api_url,
 )
 
 
@@ -125,6 +126,62 @@ def test_is_public_http_url_strips_whitespace():
 
 def test_is_public_http_url_rejects_embedded_credentials():
     assert _is_public_http_url("https://user@example.com/") is False
+
+
+def test_validate_outbound_api_url_allows_public_target(monkeypatch):
+    monkeypatch.setattr(
+        socket,
+        "getaddrinfo",
+        lambda _host, _port: [(None, None, None, None, ("93.184.216.34", 443))],
+    )
+    assert _validate_outbound_api_url("https://example.com:443/test") == "https://example.com:443/test"
+
+
+def test_validate_outbound_api_url_rejects_shared_cgnat_range(monkeypatch):
+    monkeypatch.setattr(
+        socket,
+        "getaddrinfo",
+        lambda _host, _port: [(None, None, None, None, ("100.64.0.1", 443))],
+    )
+    with pytest.raises(ValueError, match="non-public"):
+        _validate_outbound_api_url("https://example.com/test")
+
+
+@pytest.mark.parametrize(
+    "ip_address",
+    [
+        "127.0.0.1",
+        "10.0.0.1",
+        "169.254.1.1",
+    ],
+)
+def test_validate_outbound_api_url_rejects_non_public_ranges(monkeypatch, ip_address):
+    monkeypatch.setattr(
+        socket,
+        "getaddrinfo",
+        lambda _host, _port: [(None, None, None, None, (ip_address, 443))],
+    )
+    with pytest.raises(ValueError, match="non-public"):
+        _validate_outbound_api_url("https://example.com/test")
+
+
+def test_validate_outbound_api_url_rejects_credentials():
+    with pytest.raises(ValueError, match="must not contain credentials"):
+        _validate_outbound_api_url("http://user@example.com/test")
+
+
+def test_validate_outbound_api_url_rejects_invalid_port():
+    with pytest.raises(ValueError, match="port is invalid"):
+        _validate_outbound_api_url("https://example.com:abc/test")
+
+
+def test_validate_outbound_api_url_normalizes_ipv6_host(monkeypatch):
+    monkeypatch.setattr(
+        socket,
+        "getaddrinfo",
+        lambda _host, _port: [(None, None, None, None, ("2001:4860:4860::8888", 443, 0, 0))],
+    )
+    assert _validate_outbound_api_url("https://[2001:4860:4860::8888]/test") == "https://[2001:4860:4860::8888]/test"
 
 
 def test_fetch_eventory_token_rejects_non_public_endpoint_url():
