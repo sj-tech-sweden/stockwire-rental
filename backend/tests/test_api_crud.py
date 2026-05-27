@@ -563,7 +563,7 @@ def test_settings_modules_crud(client):
     assert mixed_dns.json() == {
         "ok": False,
         "plugin": "eventory",
-        "message": "API URL must resolve to a public IP address",
+        "message": "API URL resolves to private/reserved IP addresses",
         "status_code": None,
     }
 
