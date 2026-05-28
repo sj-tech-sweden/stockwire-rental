@@ -1913,6 +1913,8 @@ def _fetch_eventory_token(api_url: str, token_endpoint: str, username: str, pass
     base_origin = _url_origin(api_url)
     if base_origin is None:
         raise HTTPException(status_code=400, detail="Invalid API URL for token request")
+    if base_origin[0] != "https":
+        raise HTTPException(status_code=400, detail="API URL must use HTTPS for token requests")
 
     # Intentionally do not use user-provided token_endpoint as a request target.
     # Token probing is restricted to server-derived, same-origin endpoints.
