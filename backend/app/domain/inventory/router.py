@@ -59,8 +59,7 @@ from app.domain.inventory.schemas import (
     ZoneTreeRead,
     ZoneUpdate,
 )
-    BulkDeleteRequest,
-    BulkOperationResult,
+ 
 
 router = APIRouter(prefix="/inventory", tags=["inventory"], dependencies=[Depends(get_current_user)])
 

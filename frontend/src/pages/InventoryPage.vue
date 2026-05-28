@@ -5256,17 +5256,17 @@ function selectNodeAndChildren(node) {
   }
   walk(node)
   // replace selection with subtree
-  selectedLocationIds = ids
+  selectedLocationIds.value = ids
 }
 
 async function doBulkDeleteLocations() {
-  if (!selectedLocationIds.length) return
+  if (!selectedLocationIds.value.length) return
   bulkDeleteSaving.value = true
   bulkDeleteError.value = ''
   try {
-    const res = await store.deleteZonesBulk(selectedLocationIds)
+    const res = await store.deleteZonesBulk(selectedLocationIds.value)
     $q.notify({ type: 'positive', message: `${res.deleted} location(s) deleted` })
-    selectedLocationIds = []
+    selectedLocationIds.value = []
     bulkDeleteDialogOpen.value = false
   } catch (error) {
     bulkDeleteError.value = error?.response?.data?.detail || error?.message || 'Failed to delete locations'
