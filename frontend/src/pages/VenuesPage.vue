@@ -27,8 +27,36 @@
         </q-input>
       </template>
 
+      <template #body-cell-address="props">
+        <q-td :props="props">
+          <a
+            v-if="venueMapLink(props.row)"
+            :href="venueMapLink(props.row)"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="text-primary"
+          >
+            {{ props.value || '—' }}
+          </a>
+          <span v-else>{{ props.value || '—' }}</span>
+        </q-td>
+      </template>
+
       <template #body-cell-actions="props">
         <q-td v-if="authStore.canEdit" :props="props" auto-width>
+          <q-btn
+            v-if="venueMapLink(props.row)"
+            flat
+            round
+            dense
+            icon="open_in_new"
+            color="secondary"
+            class="q-mr-xs"
+            :href="venueMapLink(props.row)"
+            target="_blank"
+            rel="noopener noreferrer"
+            :aria-label="t('venues.openMap')"
+          />
           <q-btn flat round dense icon="edit" color="primary" class="q-mr-xs" @click="openEdit(props.row)" />
           <q-btn flat round dense icon="delete" color="negative" @click="confirmDelete(props.row)" />
         </q-td>
@@ -42,7 +70,19 @@
               <div class="text-caption text-grey-7">{{ props.row.city || t('venues.noCity') }}</div>
             </q-card-section>
             <q-card-section class="q-pt-none q-pb-sm">
-              <div class="text-caption">{{ t('venues.address') }}: {{ props.row.address || '-' }}</div>
+              <div class="text-caption">
+                {{ t('venues.address') }}:
+                <a
+                  v-if="venueMapLink(props.row)"
+                  :href="venueMapLink(props.row)"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="text-primary"
+                >
+                  {{ props.row.address || '-' }}
+                </a>
+                <span v-else>{{ props.row.address || '-' }}</span>
+              </div>
               <div class="text-caption">{{ t('venues.created') }}: {{ props.row.created_at ? new Date(props.row.created_at).toLocaleDateString() : '—' }}</div>
               <div class="text-caption">{{ props.row.notes || t('venues.noNotes') }}</div>
             </q-card-section>
@@ -75,6 +115,29 @@
                 />
                 <q-input v-model="form.address" :label="t('venues.address')" outlined dense class="q-mb-sm" />
                 <q-input v-model="form.city" :label="t('venues.city')" outlined dense class="q-mb-sm" />
+                <div v-if="venueFormMapEmbedUrl" class="q-mb-sm">
+                  <q-responsive :ratio="16 / 9" class="rounded-borders" style="overflow: hidden; border: 1px solid #d6dbe2;">
+                    <iframe
+                      :src="venueFormMapEmbedUrl"
+                      :title="t('venues.mapPreview')"
+                      loading="lazy"
+                      referrerpolicy="no-referrer-when-downgrade"
+                      style="border: 0; width: 100%; height: 100%;"
+                    />
+                  </q-responsive>
+                  <q-btn
+                    flat
+                    dense
+                    no-caps
+                    color="primary"
+                    icon="open_in_new"
+                    class="q-mt-xs"
+                    :label="t('venues.openMap')"
+                    :href="venueFormMapLink"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  />
+                </div>
                 <q-input v-model="form.notes" :label="t('venues.notes')" type="textarea" autogrow outlined dense />
               </div>
             </q-expansion-item>
@@ -172,6 +235,7 @@ import { useCustomFieldsStore } from '../stores/customFields'
 import { useAuthStore } from '../stores/auth'
 import { useCompactGrid } from '../composables/useCompactGrid'
 import { translateMaybePrefillCustomFieldLabel, translateMaybePrefillCustomFieldOption } from '../i18n/prefillContent'
+import { googleMapsEmbedUrl, googleMapsSearchUrl, locationQueryFromParts } from '../utils/maps'
 
 const $q = useQuasar()
 const isPhone = computed(() => $q.screen.lt.md)
@@ -262,6 +326,14 @@ const emptyForm = () => ({
 })
 
 const form = ref(emptyForm())
+
+const venueFormLocationQuery = computed(() => locationQueryFromParts(form.value))
+const venueFormMapLink = computed(() => googleMapsSearchUrl(venueFormLocationQuery.value))
+const venueFormMapEmbedUrl = computed(() => googleMapsEmbedUrl(venueFormLocationQuery.value))
+
+function venueMapLink(venue) {
+  return googleMapsSearchUrl(locationQueryFromParts(venue))
+}
 
 function createEmptyVenueFieldRows() {
   const defs = (customFieldsStore.definitions || []).filter(def => def.entity_type === 'venue' && def.is_active !== false)

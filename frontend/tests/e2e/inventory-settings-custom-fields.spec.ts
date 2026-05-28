@@ -11,10 +11,11 @@ test.describe('Inventory + settings custom fields flow', () => {
     await page.getByRole('tab', { name: 'Categories' }).click()
     const resetButton = page.getByRole('button', { name: 'Reset category defaults' })
     await expect(resetButton).toBeVisible({ timeout: 20_000 })
-    await Promise.all([
-      page.waitForResponse((res) => res.url().includes('/api/v1/inventory/categories/prefill') && res.ok(), { timeout: 20_000 }),
+    const [prefillResponse] = await Promise.all([
+      page.waitForResponse((res) => res.url().includes('/api/v1/inventory/categories/prefill'), { timeout: 20_000 }),
       resetButton.click(),
     ])
+    expect(prefillResponse.ok(), `Expected prefill response to be successful, got HTTP ${prefillResponse.status()}`).toBeTruthy()
 
     await page.getByRole('tab', { name: 'Products' }).click()
     const newProductButton = page.getByRole('button', { name: 'New product' }).first()

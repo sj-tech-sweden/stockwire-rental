@@ -519,6 +519,22 @@ export const useInventoryStore = defineStore('inventory', () => {
     return data
   }
 
+  async function createZonesBulk(parentId, items) {
+    // items: array of ZoneCreate-like objects (name, code, zone_type, etc.)
+    if (!isOnline()) {
+      // optimistic: add temporary entries
+      const optimisticRows = (items || []).map((item, idx) => ({ id: -(Date.now() + idx), parent_id: parentId, ...item, _offline_queued: true }))
+      zones.value = [...zones.value, ...optimisticRows]
+      zoneTree.value = [...zones.value]
+      await queueMutation({ method: 'post', url: `/api/v1/inventory/locations/${parentId}/subzones/bulk`, data: items })
+      await persistFetchAllSnapshot()
+      return optimisticRows
+    }
+    const { data } = await api.post(`/api/v1/inventory/locations/${parentId}/subzones/bulk`, items)
+    await fetchZones()
+    return data
+  }
+
   async function updateZone(id, payload) {
     if (!isOnline()) {
       zones.value = zones.value.map(item => (item.id === id ? { ...item, ...payload, _offline_queued: true } : item))
@@ -534,6 +550,13 @@ export const useInventoryStore = defineStore('inventory', () => {
 
   async function moveZone(id, payload) {
     const { data } = await api.post(`/api/v1/inventory/zones/${id}/move`, payload)
+    await fetchZones()
+    return data
+  }
+
+  async function deleteZonesBulk(ids) {
+    if (!Array.isArray(ids) || !ids.length) return { deleted: 0, skipped: 0 }
+    const { data } = await api.post('/api/v1/inventory/locations/bulk-delete', { ids })
     await fetchZones()
     return data
   }
@@ -632,6 +655,8 @@ export const useInventoryStore = defineStore('inventory', () => {
     fetchAuditLogs,
     fetchDeviceAuditLogs,
     createZone,
+    createZonesBulk,
+    deleteZonesBulk,
     updateZone,
     moveZone,
     generateProductSku,

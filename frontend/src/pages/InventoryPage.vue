@@ -262,42 +262,7 @@
         </q-card>
       </q-tab-panel>
 
-      <q-tab-panel name="categories" class="q-pa-none">
-        <div class="row items-center q-mb-sm">
-          <q-btn color="primary" icon="add" :label="t('inventory.newCategory')" unelevated @click="openCreateCategory" />
-          <q-btn class="q-ml-sm" color="secondary" icon="playlist_add" :label="t('settings.inventory.resetCategoryDefaults')" @click="prefillCategories" />
-        </div>
-
-        <q-card class="ec-card q-pa-md">
-          <div class="text-subtitle1 q-mb-sm">{{ t('inventory.categoryTree') }}</div>
-          <div class="q-pa-sm q-mb-sm bg-grey-2 text-dark rounded-borders text-caption" @dragover.prevent @drop="onCategoryDropToRoot">
-            {{ t('inventory.dropCategoryToRoot') }}
-          </div>
-          <q-tree :nodes="categoryTreeNodes" node-key="id" label-key="label" children-key="children" default-expand-all :no-nodes-label="t('inventory.noCategoriesYet')">
-            <template #default-header="prop">
-              <div
-                class="row items-center no-wrap full-width"
-                draggable="true"
-                @dragstart="onCategoryDragStart(prop.node)"
-                @dragend="onCategoryDragEnd"
-                @dragover.prevent
-                @drop="onCategoryDropOnRow(prop.node)"
-              >
-                <q-icon name="drag_indicator" size="16px" class="q-mr-xs text-grey-6" />
-                <div class="col ellipsis">{{ prop.node.name }}</div>
-                <q-badge
-                  size="sm"
-                  class="q-mr-xs"
-                  :color="prop.node.is_active ? 'positive' : 'grey'"
-                  :label="prop.node.is_active ? t('settings.auth.active') : t('settings.auth.inactive')"
-                />
-                <q-btn flat dense round icon="edit" color="primary" class="q-mr-xs" @click.stop="openEditCategory(prop.node)" />
-                <q-btn flat dense round icon="delete" color="negative" @click.stop="confirmDeleteCategory(prop.node)" />
-              </div>
-            </template>
-          </q-tree>
-        </q-card>
-      </q-tab-panel>
+      
 
       <q-tab-panel name="devices" class="q-pa-none">
         <div class="row items-center q-mb-sm">
@@ -538,6 +503,43 @@
         </q-table>
       </q-tab-panel>
 
+      <q-tab-panel name="categories" class="q-pa-none">
+        <div class="row items-center q-mb-sm">
+          <q-btn color="primary" icon="add" :label="t('inventory.newCategory')" unelevated @click="openCreateCategory" />
+          <q-btn class="q-ml-sm" color="secondary" icon="playlist_add" :label="t('settings.inventory.resetCategoryDefaults')" @click="prefillCategories" />
+        </div>
+
+        <q-card class="ec-card q-pa-md">
+          <div class="text-subtitle1 q-mb-sm">{{ t('inventory.categoryTree') }}</div>
+          <div class="q-pa-sm q-mb-sm bg-grey-2 text-dark rounded-borders text-caption" @dragover.prevent @drop="onCategoryDropToRoot">
+            {{ t('inventory.dropCategoryToRoot') }}
+          </div>
+          <q-tree :nodes="categoryTreeNodes" node-key="id" label-key="label" children-key="children" default-expand-all :no-nodes-label="t('inventory.noCategoriesYet')">
+            <template #default-header="prop">
+              <div
+                class="row items-center no-wrap full-width"
+                draggable="true"
+                @dragstart="onCategoryDragStart(prop.node)"
+                @dragend="onCategoryDragEnd"
+                @dragover.prevent
+                @drop="onCategoryDropOnRow(prop.node)"
+              >
+                <q-icon name="drag_indicator" size="16px" class="q-mr-xs text-grey-6" />
+                <div class="col ellipsis">{{ prop.node.name }}</div>
+                <q-badge
+                  size="sm"
+                  class="q-mr-xs"
+                  :color="prop.node.is_active ? 'positive' : 'grey'"
+                  :label="prop.node.is_active ? t('settings.auth.active') : t('settings.auth.inactive')"
+                />
+                <q-btn flat dense round icon="edit" color="primary" class="q-mr-xs" @click.stop="openEditCategory(prop.node)" />
+                <q-btn flat dense round icon="delete" color="negative" @click.stop="confirmDeleteCategory(prop.node)" />
+              </div>
+            </template>
+          </q-tree>
+        </q-card>
+      </q-tab-panel>
+
       <q-tab-panel name="locations" class="q-pa-none">
         <div class="row items-center q-mb-sm">
           <q-btn color="primary" icon="add" :label="t('inventory.newLocation')" unelevated @click="openCreateLocation" />
@@ -545,6 +547,7 @@
         <div v-if="selectedLocationIds.length" class="row items-center q-gutter-sm q-mb-sm">
           <q-badge color="primary" :label="t('inventory.selectedCount', { count: selectedLocationIds.length })" />
           <q-btn :color="bulkPrintActionColor" :text-color="bulkPrintActionTextColor" icon="print" :label="t('inventory.bulkPrintLabels')" unelevated @click="openBulkPrintLabels('location', selectedLocationIds)" />
+          <q-btn color="negative" icon="delete" :label="t('inventory.bulkDelete')" unelevated @click="bulkDeleteDialogOpen = true" />
           <q-btn flat :label="t('scan.clear')" @click="selectedLocationIds = []" />
         </div>
         <q-card class="ec-card q-pa-md">
@@ -583,6 +586,12 @@
                   :color="prop.node.is_active ? 'positive' : 'grey'"
                   :label="prop.node.is_active ? 'Active' : 'Inactive'"
                 />
+                <q-btn flat dense round icon="playlist_add" class="q-mr-xs inventory-action-contrast" @click.stop="openBulkCreateSubzones(prop.node)">
+                  <q-tooltip>{{ tr('inventory.bulkCreateSubzones.addButton', 'Add multiple subzones') }}</q-tooltip>
+                </q-btn>
+                <q-btn flat dense round icon="select_all" class="q-mr-xs inventory-action-contrast" @click.stop="selectNodeAndChildren(prop.node)">
+                  <q-tooltip>{{ tr('inventory.selectNodeAndChildren', 'Select node and children') }}</q-tooltip>
+                </q-btn>
                 <q-btn flat dense round icon="edit" color="primary" @click.stop="openEditLocation(prop.node)" />
               </div>
             </template>
@@ -712,6 +721,20 @@
             :loading="rentalProductSaving"
             @click="saveRentalProduct"
           />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
+
+    <q-dialog v-model="bulkDeleteDialogOpen" persistent>
+      <q-card class="ec-card">
+        <q-card-section>
+          <div class="text-h6">{{ t('inventory.bulkDelete') }}</div>
+          <div class="text-caption text-grey-7">{{ t('inventory.bulkDeleteConfirm', { count: selectedLocationIds.length }) }}</div>
+          <q-banner v-if="bulkDeleteError" class="bg-negative text-white q-mt-sm rounded-borders" dense>{{ bulkDeleteError }}</q-banner>
+        </q-card-section>
+        <q-card-actions align="right">
+          <q-btn flat :label="t('app.actions.cancel')" @click="bulkDeleteDialogOpen = false" />
+          <q-btn color="negative" unelevated :label="t('inventory.bulkDelete')" :loading="bulkDeleteSaving" @click="doBulkDeleteLocations" />
         </q-card-actions>
       </q-card>
     </q-dialog>
@@ -1077,8 +1100,23 @@
         <q-card-section><div class="text-h6">{{ locationEditing ? t('inventory.editLocation') : t('inventory.newLocation') }}</div></q-card-section>
         <q-card-section class="q-pt-none">
           <q-form ref="locationFormRef" @submit.prevent="saveLocation">
-            <q-input v-model="locationForm.code" :label="t('inventory.code')" outlined dense class="q-mb-sm" :rules="[v => !!v || t('login.required')]" />
             <q-input v-model="locationForm.name" :label="t('users.name')" outlined dense class="q-mb-sm" :rules="[v => !!v || t('login.required')]" />
+            <q-input v-model="locationForm.code" :label="t('inventory.code')" outlined dense class="q-mb-sm" :rules="[v => !!v || t('login.required')]" @update:model-value="() => { locationCodeEdited = true }" />
+            <div class="row items-center q-mb-sm">
+              <div class="col">
+                <div v-if="locationForm.name" class="text-caption text-grey-7">
+                  {{ t('inventory.generatedCodePreview', { slug: slugify(locationForm.name) }) }}
+                </div>
+              </div>
+              <div class="col-auto">
+                <q-btn dense flat size="sm" :label="t('app.actions.reset')" color="primary" v-if="locationForm.name" @click="() => { locationForm.code = slugify(locationForm.name); locationCodeEdited = false }" />
+              </div>
+            </div>
+            <div class="row q-col-gutter-sm q-mb-sm">
+              <div class="col-12 col-md-6">
+                <q-toggle v-model="locationAutoGenerateCode" :label="t('inventory.autoGenerateCode')" color="primary" />
+              </div>
+            </div>
             <div class="row q-col-gutter-sm q-mb-sm">
               <div class="col-12 col-md-4">
                 <q-input ref="locationBarcodeInputRef" v-model="locationForm.barcode" label="Barcode" outlined dense>
@@ -1127,6 +1165,41 @@
         <q-card-actions align="right">
           <q-btn flat :label="t('app.actions.cancel')" @click="locationDialogOpen = false" />
           <q-btn color="primary" unelevated :label="locationEditing ? 'Save' : 'Create'" :loading="saving" @click="saveLocation" />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
+
+    <q-dialog v-model="bulkCreateDialogOpen" persistent>
+      <q-card style="min-width: 520px; max-width: 95vw" class="ec-card">
+        <q-card-section>
+          <div class="text-h6">{{ tr('inventory.bulkCreateSubzones.title', 'Create multiple subzones') }}</div>
+          <div class="text-caption text-grey-7">{{ tr('inventory.bulkCreateSubzones.hint', 'Enter one subzone name per line. These will be created as children of the chosen location.') }}</div>
+        </q-card-section>
+        <q-card-section class="q-pt-none">
+          <div class="q-mb-sm">
+            <q-input type="textarea" autogrow v-model="bulkCreateText" :label="tr('inventory.bulkCreateSubzones.names', 'Subzone names (one per line)')" outlined dense />
+          </div>
+          <div class="row q-col-gutter-sm q-mb-sm">
+            <div class="col-12 col-md-6">
+              <q-select v-model="bulkCreateZoneType" :options="locationTypeOptions" :label="t('inventory.type')" outlined dense emit-value map-options />
+            </div>
+            <div class="col-12 col-md-6">
+              <q-toggle v-model="bulkCreateIsActive" :label="t('settings.auth.active')" color="primary" />
+            </div>
+          </div>
+          <div class="row q-col-gutter-sm q-mb-sm">
+            <div class="col-12 col-md-6">
+              <q-toggle v-model="bulkCreateInterpretRanges" :label="tr('inventory.bulkCreateSubzones.interpretRanges', 'Interpret ranges (A-D, 01-05)')" color="primary" />
+            </div>
+            <div class="col-12 col-md-6">
+              <q-toggle v-model="bulkCreateAutoGenerateCode" :label="tr('inventory.bulkCreateSubzones.autoGenerateCode', 'Auto-generate codes from names')" color="primary" />
+            </div>
+          </div>
+          <q-banner v-if="bulkCreateError" class="bg-negative text-white q-mt-sm rounded-borders" dense>{{ bulkCreateError }}</q-banner>
+        </q-card-section>
+          <q-card-actions align="right">
+          <q-btn flat :label="t('app.actions.cancel')" @click="bulkCreateDialogOpen = false" />
+          <q-btn color="primary" unelevated :label="tr('inventory.create', 'Create')" :loading="saving" @click="saveBulkCreateSubzones" />
         </q-card-actions>
       </q-card>
     </q-dialog>
@@ -2211,6 +2284,7 @@ import EntityAttachmentsPanel from '../components/EntityAttachmentsPanel.vue'
 import { translateMaybePrefillCustomFieldLabel, translateMaybePrefillCustomFieldOption } from '../i18n/prefillContent'
 import { normalizeCurrencyCode } from '../constants/currencies'
 import { collectImportSourceKeys, convertDimensionValueToCm, getImportValueBySourceKey, parseImportRows, resolveImportEntityType } from '../utils/import-data'
+import { slugify } from 'src/utils/slugify'
 
 const $q = useQuasar()
 const { t } = useI18n()
@@ -2244,6 +2318,7 @@ const showCachedOfflineBanner = computed(() => (
 
 const PREFIX_MEMORY_STORAGE_KEY = 'inventory.prefix-memory.v1'
 const RETURN_INFO_STORAGE_KEY = 'inventory.return-info.v1'
+const ZONE_CODE_MAX_LENGTH = 50
 
 function customFieldLabel(label) {
   return translateMaybePrefillCustomFieldLabel(label, t)
@@ -4273,6 +4348,9 @@ watch(() => deviceForm.value.product_id, (nextProductId) => {
   applyAssetPrefixForType(getProductTypeForDeviceProductId(nextProductId))
 })
 
+// Auto-generate `code` from `name` for location dialog when enabled
+// (moved below where `locationForm` is declared to avoid initialization order error)
+
 function addYearsToDateString(dateString, yearsToAdd) {
   if (!dateString) return ''
   const dateObj = new Date(`${dateString}T00:00:00`)
@@ -4904,12 +4982,24 @@ const emptyLocationForm = () => ({
   is_active: true,
 })
 const locationForm = ref(emptyLocationForm())
+// Single-location auto-generate toggle and edit-tracking
+const locationAutoGenerateCode = ref(true)
+const locationCodeEdited = ref(false)
+
+// Auto-generate `code` from `name` for location dialog when enabled
+watch(() => locationForm.value.name, (newName) => {
+  if (!locationAutoGenerateCode.value) return
+  if (locationCodeEdited.value) return
+  locationForm.value.code = slugify(newName || '')
+})
 
 function openCreateLocation() {
   locationEditing.value = null
   const firstType = locationTypeOptions.value[0]?.value || 'rack'
   locationForm.value = { ...emptyLocationForm(), zone_type: firstType }
   locationDialogError.value = ''
+  locationCodeEdited.value = false
+  locationAutoGenerateCode.value = true
   locationDialogOpen.value = true
 }
 
@@ -4927,6 +5017,9 @@ function openEditLocation(zone) {
     is_active: !!zone.is_active,
   }
   locationDialogError.value = ''
+  // When editing an existing zone, treat the code as manually set by default
+  locationCodeEdited.value = true
+  locationAutoGenerateCode.value = false
   locationDialogOpen.value = true
 }
 
@@ -4960,6 +5053,126 @@ async function saveLocation() {
     locationDialogOpen.value = false
   } catch (error) {
     locationDialogError.value = error?.response?.data?.detail || 'Failed to save location'
+  } finally {
+    saving.value = false
+  }
+}
+
+const bulkCreateDialogOpen = ref(false)
+const bulkCreateParent = ref(null)
+const bulkCreateText = ref('')
+const bulkCreateZoneType = ref(locationTypeOptions.value[0]?.value || 'rack')
+const bulkCreateIsActive = ref(true)
+const bulkCreateInterpretRanges = ref(true)
+const bulkCreateAutoGenerateCode = ref(true)
+const bulkCreateError = ref('')
+
+function tr(key, fallback) {
+  try {
+    const val = t(key)
+    if (!val || val === key) return fallback || key
+    return val
+  } catch (e) {
+    return fallback || key
+  }
+}
+
+function openBulkCreateSubzones(node) {
+  bulkCreateParent.value = node
+  bulkCreateText.value = ''
+  bulkCreateZoneType.value = locationTypeOptions.value[0]?.value || 'rack'
+  bulkCreateIsActive.value = true
+  bulkCreateError.value = ''
+  bulkCreateDialogOpen.value = true
+}
+
+async function saveBulkCreateSubzones() {
+  const rawLines = String(bulkCreateText.value || '').split(/\r?\n/).map(s => s.trim()).filter(Boolean)
+  const lines = []
+  // expand ranges like a-f or 1-5
+  for (const line of rawLines) {
+    if (bulkCreateInterpretRanges.value) {
+      const mAlpha = line.match(/^([A-Za-z])\s*-\s*([A-Za-z])$/)
+      const mNum = line.match(/^(\d+)\s*-\s*(\d+)$/)
+      if (mAlpha) {
+        let a = mAlpha[1]
+        let b = mAlpha[2]
+        const start = a.toLowerCase().charCodeAt(0)
+        const end = b.toLowerCase().charCodeAt(0)
+        const step = start <= end ? 1 : -1
+        const preserveUpper = (a[0] >= 'A' && a[0] <= 'Z')
+        for (let c = start; step === 1 ? c <= end : c >= end; c += step) {
+          const ch = String.fromCharCode(c)
+          lines.push(preserveUpper ? ch.toUpperCase() : ch)
+        }
+        continue
+      } else if (mNum) {
+        const start = Number(mNum[1])
+        const end = Number(mNum[2])
+        const step = start <= end ? 1 : -1
+        const width = Math.max(String(start).length, String(end).length)
+        for (let n = start; step === 1 ? n <= end : n >= end; n += step) {
+          lines.push(String(n).padStart(width, '0'))
+        }
+        continue
+      }
+    }
+    lines.push(line)
+  }
+  if (!lines.length) {
+    bulkCreateError.value = t('inventory.bulkCreateSubzones.emptyNames')
+    return
+  }
+
+  // prepare codes: sanitize and avoid collisions when auto-generate enabled
+  const existingCodes = new Set((store.zones || []).map(z => String(z.code || '').toLowerCase()).filter(Boolean))
+  const items = []
+  for (const name of lines) {
+    let baseCode = bulkCreateAutoGenerateCode.value ? slugify(name) : String(name).trim()
+    if (!baseCode) baseCode = `zone-${items.length + 1}`
+    baseCode = String(baseCode).slice(0, ZONE_CODE_MAX_LENGTH)
+    if (!baseCode) {
+      bulkCreateError.value = t('inventory.bulkCreateSubzones.invalidCode')
+      return
+    }
+
+    let code = baseCode
+    let suffix = 1
+    while (existingCodes.has(String(code || '').toLowerCase())) {
+      const suffixLabel = `-${suffix++}`
+      const maxBaseLength = Math.max(ZONE_CODE_MAX_LENGTH - suffixLabel.length, 1)
+      code = `${baseCode.slice(0, maxBaseLength)}${suffixLabel}`
+    }
+    existingCodes.add(String(code || '').toLowerCase())
+    items.push({
+      code: String(code || '').trim(),
+      name,
+      zone_type: bulkCreateZoneType.value || 'rack',
+      barcode: null,
+      qr_code: null,
+      rfid: null,
+      sort_order: 0,
+      is_active: !!bulkCreateIsActive.value,
+    })
+  }
+
+  saving.value = true
+  bulkCreateError.value = ''
+  try {
+    await store.createZonesBulk(bulkCreateParent.value.id, items)
+    $q.notify({ type: 'positive', message: t('inventory.bulkCreateSubzones.created') })
+    bulkCreateDialogOpen.value = false
+  } catch (error) {
+    const serverDetail = error?.response?.data?.detail
+    if (error?.response?.status === 409 && serverDetail && typeof serverDetail === 'object') {
+      const conflicts = serverDetail.conflicts || []
+      const msg = t('inventory.bulkCreateSubzones.conflictMessage')
+      bulkCreateError.value = conflicts.length ? `${msg}: ${conflicts.join(', ')}` : msg
+    } else if (typeof serverDetail === 'string' && serverDetail.trim()) {
+      bulkCreateError.value = serverDetail.trim()
+    } else {
+      bulkCreateError.value = t('inventory.bulkCreateSubzones.failed')
+    }
   } finally {
     saving.value = false
   }
@@ -5035,6 +5248,38 @@ const importFile = ref(null)
 const importRows = ref([])
 const importSourceKeys = ref([])
 const importMapping = ref({})
+
+// bulk-delete dialog
+const bulkDeleteDialogOpen = ref(false)
+const bulkDeleteSaving = ref(false)
+const bulkDeleteError = ref('')
+
+function selectNodeAndChildren(node) {
+  const ids = []
+  function walk(n) {
+    ids.push(n.id)
+    for (const c of n.children || []) walk(c)
+  }
+  walk(node)
+  // replace selection with subtree
+  selectedLocationIds.value = ids
+}
+
+async function doBulkDeleteLocations() {
+  if (!selectedLocationIds.value.length) return
+  bulkDeleteSaving.value = true
+  bulkDeleteError.value = ''
+  try {
+    const res = await store.deleteZonesBulk(selectedLocationIds.value)
+    $q.notify({ type: 'positive', message: `${res.deleted} location(s) deleted` })
+    selectedLocationIds.value = []
+    bulkDeleteDialogOpen.value = false
+  } catch (error) {
+    bulkDeleteError.value = error?.response?.data?.detail || error?.message || 'Failed to delete locations'
+  } finally {
+    bulkDeleteSaving.value = false
+  }
+}
 
 const importEntityOptions = [
   { label: 'Products', value: 'product' },
