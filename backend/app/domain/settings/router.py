@@ -1914,20 +1914,13 @@ def _fetch_eventory_token(api_url: str, token_endpoint: str, username: str, pass
     if base_origin is None:
         raise HTTPException(status_code=400, detail="Invalid API URL for token request")
 
-    if token_endpoint:
-        token_candidate = str(token_endpoint or "").strip()
-        if not _is_same_origin_url(token_candidate, base_origin):
-            raise HTTPException(
-                status_code=400,
-                detail="Token endpoint must be an absolute http(s) URL on the same origin as API URL",
-            )
-        candidates = [token_candidate]
-    else:
-        candidates = [
-            urljoin(api_url.rstrip("/") + "/", "login-json"),
-            urljoin(api_url.rstrip("/") + "/", "login"),
-            urljoin(api_url.rstrip("/") + "/", "oauth/token"),
-        ]
+    # Intentionally do not use user-provided token_endpoint as a request target.
+    # Token probing is restricted to server-derived, same-origin endpoints.
+    candidates = [
+        urljoin(api_url.rstrip("/") + "/", "login-json"),
+        urljoin(api_url.rstrip("/") + "/", "login"),
+        urljoin(api_url.rstrip("/") + "/", "oauth/token"),
+    ]
 
     last_error: Exception | None = None
     for candidate in candidates:
