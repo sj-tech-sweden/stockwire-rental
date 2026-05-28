@@ -888,6 +888,7 @@ export default {
       interpretRanges: 'Interpret ranges (A-D, 01-05)',
       autoGenerateCode: 'Auto-generate codes from names',
       conflictMessage: 'Code conflict',
+      emptyNames: 'Please enter at least one subzone name.',
       invalidCode: 'Could not generate a valid code for one or more subzones',
       failed: 'Failed to create subzones',
       created: 'Subzones created',

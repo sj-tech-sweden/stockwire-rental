@@ -5118,7 +5118,7 @@ async function saveBulkCreateSubzones() {
     lines.push(line)
   }
   if (!lines.length) {
-    bulkCreateError.value = 'Please enter at least one subzone name.'
+    bulkCreateError.value = t('inventory.bulkCreateSubzones.emptyNames')
     return
   }
 

@@ -888,6 +888,7 @@ export default {
       interpretRanges: 'Tolka intervaller (A–D, 01–05)',
       autoGenerateCode: 'Generera koder från namn',
       conflictMessage: 'Kodkonflikt',
+      emptyNames: 'Ange minst ett underzonsnamn.',
       invalidCode: 'Kunde inte skapa en giltig kod för en eller flera underzoner',
       failed: 'Kunde inte skapa underzoner',
       created: 'Underzoner skapade',

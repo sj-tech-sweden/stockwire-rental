@@ -1,4 +1,5 @@
 import json
+import re
 from typing import Any
 from datetime import date, timedelta
 
@@ -1571,7 +1572,6 @@ def create_subzones_bulk(location_id: int, payload: list[ZoneCreate], db: Sessio
         try:
             orig = getattr(exc, 'orig', None) or exc
             text = str(orig)
-            import re
 
             # Postgres pattern: Key (code)=(abc) already exists.
             matches = re.findall(r"Key \(code\)=\(([^)]+)\)", text)
