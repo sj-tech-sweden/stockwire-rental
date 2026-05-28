@@ -1373,13 +1373,13 @@ def _validate_connected_outbound_socket(sock: socket.socket):
 
 
 class _ValidatedHTTPConnection(HTTPConnection):
-    def connect(self):
+    def connect(self) -> None:
         super().connect()
         _validate_connected_outbound_socket(self.sock)
 
 
 class _ValidatedHTTPSConnection(HTTPSConnection):
-    def connect(self):
+    def connect(self) -> None:
         # Perform TCP connect only (via HTTPConnection) so we can validate
         # the raw socket before the TLS handshake begins.
         HTTPConnection.connect(self)
