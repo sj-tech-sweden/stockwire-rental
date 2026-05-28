@@ -108,7 +108,6 @@ def test_open_outbound_integration_request_uses_no_redirect_handler(monkeypatch)
     handlers = captured["handlers"]
     assert isinstance(handlers[0], settings_router.ProxyHandler)
     assert handlers[0].proxies == {}
-    assert any(isinstance(handler, settings_router.ProxyHandler) and handler.proxies == {} for handler in handlers)
     assert any(isinstance(handler, settings_router._NoRedirectHandler) for handler in handlers)
     assert any(isinstance(handler, settings_router._ValidatedHTTPHandler) for handler in handlers)
     assert any(isinstance(handler, settings_router._ValidatedHTTPSHandler) for handler in handlers)
