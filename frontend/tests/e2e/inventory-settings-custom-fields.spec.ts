@@ -20,8 +20,8 @@ test.describe('Inventory + settings custom fields flow', () => {
     await newProductButton.click()
 
     const productDialog = page
-      .getByRole('dialog')
-      .filter({ has: page.getByLabel('SKU', { exact: true }) })
+      .locator('.q-dialog')
+      .filter({ has: page.getByText('New product', { exact: true }) })
       .first()
     await expect(productDialog).toBeVisible({ timeout: 20_000 })
 

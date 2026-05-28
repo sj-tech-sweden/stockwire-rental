@@ -1348,6 +1348,9 @@ def _validate_outbound_integration_url(raw_url: str) -> str:
     except (OSError, UnicodeError):
         raise HTTPException(status_code=400, detail="API URL host could not be resolved")
 
+    if not resolved:
+        raise HTTPException(status_code=400, detail="API URL host could not be resolved")
+
     for entry in resolved:
         address = entry[4][0]
         ip_obj = ipaddress.ip_address(address)

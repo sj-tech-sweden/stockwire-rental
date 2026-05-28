@@ -124,6 +124,14 @@ def test_validate_outbound_integration_url_rejects_invalid_port():
     assert "invalid port" in str(exc_info.value.detail).lower()
 
 
+def test_validate_outbound_integration_url_rejects_empty_resolution(monkeypatch):
+    monkeypatch.setattr(socket, "getaddrinfo", lambda *_args, **_kwargs: [])
+    with pytest.raises(HTTPException) as exc_info:
+        settings_router._validate_outbound_integration_url("https://example.com/test")
+    assert exc_info.value.status_code == 400
+    assert "could not be resolved" in str(exc_info.value.detail).lower()
+
+
 def test_validate_connected_outbound_socket_rejects_private_peer():
     class _DummySocket:
         def getpeername(self):
