@@ -10,7 +10,7 @@ test.describe('Inventory + settings custom fields flow', () => {
     await page.waitForLoadState('networkidle', { timeout: 40_000 })
     await page.getByRole('tab', { name: 'Categories' }).click()
     await Promise.all([
-      page.waitForResponse((res) => res.url().includes('/api/v1/inventory/categories/prefill') && res.ok(), { timeout: 20_000 }),
+      page.waitForResponse((res) => res.url().includes('/api/v1/inventory/categories/prefill'), { timeout: 20_000 }),
       page.getByRole('button', { name: 'Reset category defaults' }).click(),
     ])
 

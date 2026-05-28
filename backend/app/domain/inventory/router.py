@@ -7,7 +7,7 @@ from collections import defaultdict
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
 from app.db.session import get_db
 from app.domain.auth.deps import get_current_user, require_admin, require_editor
@@ -69,6 +69,19 @@ router = APIRouter(prefix="/inventory", tags=["inventory"], dependencies=[Depend
 def bulk_delete_locations(payload: BulkDeleteRequest, db: Session = Depends(get_db), _: User = Depends(require_editor)) -> BulkOperationResult:
     ids = sorted(set(payload.ids))
     rows = list(db.scalars(select(Zone).where(Zone.id.in_(ids))).all())
+    rows_by_id = {row.id: row for row in rows}
+
+    def _depth(zone: Zone) -> int:
+        depth = 0
+        parent_id = zone.parent_id
+        seen: set[int] = set()
+        while parent_id is not None and parent_id in rows_by_id and parent_id not in seen:
+            seen.add(parent_id)
+            depth += 1
+            parent_id = rows_by_id[parent_id].parent_id
+        return depth
+
+    rows.sort(key=_depth, reverse=True)
 
     deleted = 0
     skipped = max(len(ids) - len(rows), 0)
@@ -77,10 +90,18 @@ def bulk_delete_locations(payload: BulkDeleteRequest, db: Session = Depends(get_
         if linked_devices > 0:
             skipped += 1
             continue
+        has_children = db.scalar(select(func.count()).select_from(Zone).where(Zone.parent_id == row.id)) or 0
+        if has_children > 0:
+            skipped += 1
+            continue
         db.delete(row)
         deleted += 1
 
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError as exc:
+        db.rollback()
+        raise HTTPException(status_code=409, detail="Could not delete one or more locations") from exc
     if deleted:
         emit_realtime_event("inventory.updated", {"entity": "zone", "action": "bulk_delete", "count": deleted})
     return BulkOperationResult(deleted=deleted, skipped=skipped)
@@ -1516,17 +1537,26 @@ def create_subzones_bulk(location_id: int, payload: list[ZoneCreate], db: Sessio
     if parent is None:
         raise HTTPException(status_code=404, detail="Parent location not found")
 
+    max_code_length = Zone.__table__.columns.code.type.length or 50
     created: list[Zone] = []
     # pre-check for conflicting codes to give a friendly 409 response
-    requested_codes = [ (item.code or "").strip() for item in payload if (item.code or "").strip() ]
+    requested_codes = []
+    for item in payload:
+        code = (item.code or "").strip()
+        if not code:
+            raise HTTPException(status_code=422, detail="Location code is required")
+        if len(code) > max_code_length:
+            raise HTTPException(status_code=422, detail=f"Location code must be at most {max_code_length} characters")
+        requested_codes.append(code)
     if requested_codes:
         lower_codes = [c.lower() for c in requested_codes]
         existing = list(db.scalars(select(Zone.code).where(func.lower(Zone.code).in_(lower_codes))).all())
         if existing:
             raise HTTPException(status_code=409, detail={"message": "Code conflict", "conflicts": existing})
-    for item in payload:
+    for item, code in zip(payload, requested_codes):
         # ensure child uses the provided payload but force the parent assignment
         data = item.model_dump()
+        data["code"] = code
         data["parent_id"] = location_id
         zone = Zone(**data)
         db.add(zone)
@@ -1556,6 +1586,9 @@ def create_subzones_bulk(location_id: int, payload: list[ZoneCreate], db: Sessio
 
         detail = {"message": "Code conflict", "conflicts": conflicts} if conflicts else "One or more zone codes conflict with existing entries"
         raise HTTPException(status_code=409, detail=detail) from exc
+    except SQLAlchemyError as exc:
+        db.rollback()
+        raise HTTPException(status_code=400, detail="Failed to create subzones") from exc
 
     # refresh created objects so fields like id are populated
     for zone in created:

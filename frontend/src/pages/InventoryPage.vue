@@ -1101,7 +1101,7 @@
         <q-card-section class="q-pt-none">
           <q-form ref="locationFormRef" @submit.prevent="saveLocation">
             <q-input v-model="locationForm.name" :label="t('users.name')" outlined dense class="q-mb-sm" :rules="[v => !!v || t('login.required')]" />
-            <q-input v-model="locationForm.code" :label="t('inventory.code')" outlined dense class="q-mb-sm" :rules="[v => !!v || t('login.required')]" @input="() => { locationCodeEdited.value = true }" />
+            <q-input v-model="locationForm.code" :label="t('inventory.code')" outlined dense class="q-mb-sm" :rules="[v => !!v || t('login.required')]" @update:model-value="() => { locationCodeEdited.value = true }" />
             <div class="row items-center q-mb-sm">
               <div class="col">
                 <div v-if="locationForm.name" class="text-caption text-grey-7">
@@ -5123,14 +5123,24 @@ async function saveBulkCreateSubzones() {
   }
 
     // prepare codes: sanitize and avoid collisions when auto-generate enabled
+    const maxCodeLength = 50
     const existingCodes = new Set((store.zones || []).map(z => String(z.code || '').toLowerCase()).filter(Boolean))
     const items = []
     for (const name of lines) {
       let baseCode = bulkCreateAutoGenerateCode.value ? slugify(name) : String(name).trim()
+      if (!baseCode) baseCode = `zone-${items.length + 1}`
+      baseCode = String(baseCode).slice(0, maxCodeLength)
+      if (!baseCode) {
+        bulkCreateError.value = t('inventory.bulkCreateSubzones.invalidCode')
+        return
+      }
+
       let code = baseCode
       let suffix = 1
       while (existingCodes.has(String(code || '').toLowerCase())) {
-        code = `${baseCode}-${suffix++}`
+        const suffixLabel = `-${suffix++}`
+        const maxBaseLength = Math.max(maxCodeLength - suffixLabel.length, 1)
+        code = `${baseCode.slice(0, maxBaseLength)}${suffixLabel}`
       }
       existingCodes.add(String(code || '').toLowerCase())
       items.push({
@@ -5149,20 +5159,16 @@ async function saveBulkCreateSubzones() {
   bulkCreateError.value = ''
   try {
     await store.createZonesBulk(bulkCreateParent.value.id, items)
-    $q.notify({ type: 'positive', message: 'Subzones created' })
+    $q.notify({ type: 'positive', message: t('inventory.bulkCreateSubzones.created') })
     bulkCreateDialogOpen.value = false
   } catch (error) {
-    // Surface more details for debugging (will show raw server message if available)
-    console.error('Bulk create subzones error', error)
     const serverDetail = error?.response?.data?.detail
-    const serverBody = error?.response?.data
-    // If server returned structured conflict info, display it clearly
     if (error?.response?.status === 409 && serverDetail && typeof serverDetail === 'object') {
       const conflicts = serverDetail.conflicts || []
-      const msg = serverDetail.message || 'Conflict'
+      const msg = t('inventory.bulkCreateSubzones.conflictMessage')
       bulkCreateError.value = conflicts.length ? `${msg}: ${conflicts.join(', ')}` : msg
     } else {
-      bulkCreateError.value = serverDetail || (serverBody ? JSON.stringify(serverBody) : error?.message) || 'Failed to create subzones'
+      bulkCreateError.value = t('inventory.bulkCreateSubzones.failed')
     }
   } finally {
     saving.value = false
