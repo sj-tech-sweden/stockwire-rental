@@ -5,10 +5,11 @@ import socket
 import threading
 from collections.abc import Callable
 from datetime import datetime
+from http.client import HTTPConnection, HTTPSConnection
 from urllib.parse import urlencode
 from urllib.error import HTTPError, URLError
 from urllib.parse import urljoin, urlparse
-from urllib.request import Request, build_opener, HTTPRedirectHandler, urlopen
+from urllib.request import Request, build_opener, HTTPRedirectHandler, HTTPHandler, HTTPSHandler, ProxyHandler, urlopen
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from sqlalchemy import select
@@ -601,14 +602,13 @@ def test_integration_connection(
         )
 
     try:
-        api_url = _validate_outbound_api_url(api_url)
-    except ValueError as exc:
+        api_url = _validate_outbound_integration_url(api_url)
+    except HTTPException as exc:
         return IntegrationConnectionTestRead(
             ok=False,
             plugin=plugin_key,
-            message=str(exc),
+            message=str(exc.detail),
         )
-
     parsed = urlparse(api_url)
     if parsed.scheme not in {"http", "https"} or not parsed.netloc:
         return IntegrationConnectionTestRead(
@@ -659,10 +659,9 @@ def test_integration_connection(
         headers["X-API-Key"] = api_key
         headers["Authorization"] = f"Bearer {api_key}"
 
-    opener = build_opener(_NoRedirectHandler())
     req = Request(api_url, headers=headers, method="HEAD")
     try:
-        with opener.open(req, timeout=5) as response:
+        with _open_outbound_integration_request(req, timeout=5) as response:
             _ensure_public_response_peer(response, "API URL")
             status_code = int(getattr(response, "status", 0) or 0)
             return IntegrationConnectionTestRead(
@@ -697,9 +696,15 @@ def test_integration_connection(
         finally:
             exc.close()
     except URLError as exc:
+        if _is_disallowed_outbound_peer_error(exc):
+            return IntegrationConnectionTestRead(
+                ok=False,
+                plugin=plugin_key,
+                message="API URL connected to a non-public IP address",
+            )
         get_req = Request(api_url, headers=headers, method="GET")
         try:
-            with opener.open(get_req, timeout=5) as response:
+            with _open_outbound_integration_request(get_req, timeout=5) as response:
                 _ensure_public_response_peer(response, "API URL")
                 status_code = int(getattr(response, "status", 0) or 0)
                 return IntegrationConnectionTestRead(
@@ -733,6 +738,18 @@ def test_integration_connection(
                 )
             finally:
                 get_exc.close()
+        except URLError as get_exc:
+            if _is_disallowed_outbound_peer_error(get_exc):
+                return IntegrationConnectionTestRead(
+                    ok=False,
+                    plugin=plugin_key,
+                    message="API URL connected to a non-public IP address",
+                )
+            return IntegrationConnectionTestRead(
+                ok=False,
+                plugin=plugin_key,
+                message=f"Connection failed: {get_exc.reason if hasattr(get_exc, 'reason') else str(get_exc)}",
+            )
         except Exception as get_exc:
             return IntegrationConnectionTestRead(
                 ok=False,
@@ -1322,6 +1339,119 @@ def _normalize_eventory_instance(config: EventoryInstanceConfig) -> dict[str, ob
     }
 
 
+def _validate_outbound_integration_url(raw_url: str) -> str:
+    candidate = str(raw_url or "").strip()
+    try:
+        parsed = urlparse(candidate)
+        hostname = parsed.hostname
+    except ValueError:
+        raise HTTPException(status_code=400, detail="API URL contains an invalid host")
+
+    if parsed.scheme not in {"http", "https"}:
+        raise HTTPException(status_code=400, detail="API URL must use http or https")
+
+    if not hostname:
+        raise HTTPException(status_code=400, detail="API URL must include a valid host")
+
+    if parsed.username is not None or parsed.password is not None:
+        raise HTTPException(status_code=400, detail="API URL must not contain credentials")
+
+    try:
+        port = parsed.port
+    except ValueError:
+        raise HTTPException(status_code=400, detail="API URL contains an invalid port")
+
+    if port is not None and port <= 0:
+        raise HTTPException(status_code=400, detail="API URL port is invalid")
+
+    try:
+        resolved = socket.getaddrinfo(hostname, port or None, type=socket.SOCK_STREAM)
+    except (OSError, UnicodeError):
+        raise HTTPException(status_code=400, detail="API URL host could not be resolved")
+
+    if not resolved:
+        raise HTTPException(status_code=400, detail="API URL host could not be resolved")
+
+    for entry in resolved:
+        address = entry[4][0]
+        ip_obj = ipaddress.ip_address(address)
+        if _is_disallowed_outbound_ip(ip_obj):
+            raise HTTPException(status_code=400, detail="API URL resolves to a non-public IP address")
+
+    return candidate
+
+
+def _is_disallowed_outbound_ip(ip_obj: ipaddress.IPv4Address | ipaddress.IPv6Address) -> bool:
+    return not ip_obj.is_global or ip_obj.is_multicast
+
+
+class _DisallowedOutboundPeerURLError(URLError):
+    pass
+
+
+def _is_disallowed_outbound_peer_error(exc: URLError) -> bool:
+    if isinstance(exc, _DisallowedOutboundPeerURLError):
+        return True
+    reason = getattr(exc, "reason", None)
+    if isinstance(reason, _DisallowedOutboundPeerURLError):
+        return True
+    if isinstance(reason, str) and "disallowed network address" in reason.lower():
+        return True
+    return "disallowed network address" in str(exc).lower()
+
+
+def _validate_connected_outbound_socket(sock: socket.socket):
+    try:
+        peer_ip = sock.getpeername()[0]
+    except OSError as exc:
+        try:
+            sock.close()
+        except OSError:
+            pass
+        raise URLError("Unable to validate outbound peer address") from exc
+
+    ip_obj = ipaddress.ip_address(peer_ip)
+    if _is_disallowed_outbound_ip(ip_obj):
+        try:
+            sock.close()
+        except OSError:
+            pass
+        raise _DisallowedOutboundPeerURLError("Outbound connection resolved to a disallowed network address")
+
+
+class _ValidatedHTTPConnection(HTTPConnection):
+    def connect(self) -> None:
+        super().connect()
+        _validate_connected_outbound_socket(self.sock)
+
+
+class _ValidatedHTTPSConnection(HTTPSConnection):
+    def connect(self) -> None:
+        # Perform TCP connect only (via HTTPConnection) so we can validate
+        # the raw socket before the TLS handshake begins.
+        HTTPConnection.connect(self)
+        _validate_connected_outbound_socket(self.sock)
+        # Now complete the TLS handshake, mirroring HTTPSConnection.connect.
+        server_hostname = self._tunnel_host or self.host
+        self.sock = self._context.wrap_socket(self.sock, server_hostname=server_hostname)
+
+
+class _ValidatedHTTPHandler(HTTPHandler):
+    def http_open(self, req):
+        return self.do_open(_ValidatedHTTPConnection, req)
+
+
+class _ValidatedHTTPSHandler(HTTPSHandler):
+    def https_open(self, req):
+        return self.do_open(_ValidatedHTTPSConnection, req)
+
+
+def _open_outbound_integration_request(req: Request, timeout: int):
+    _validate_outbound_integration_url(req.full_url)
+    opener = build_opener(ProxyHandler({}), _NoRedirectHandler(), _ValidatedHTTPHandler(), _ValidatedHTTPSHandler())
+    return opener.open(req, timeout=timeout)
+
+
 def _normalize_plugin_config(config: IntegrationPluginConfig) -> dict[str, object]:
     api_url = str(config.api_url or "").strip() or DEFAULT_EVENTORY_API_URL
     api_key = str(config.api_key or "").strip() or None
@@ -1750,7 +1880,7 @@ def _ensure_public_response_peer(response: object, label: str) -> None:
     peer_ip = _response_peer_ip(response)
     if peer_ip is None:
         raise HTTPException(status_code=502, detail=f"{label} peer address could not be verified")
-    if _is_blocked_ip(peer_ip):
+    if _is_disallowed_outbound_ip(peer_ip):
         raise HTTPException(status_code=502, detail=f"{label} connected to a non-public IP address")
 
 
@@ -1801,7 +1931,7 @@ def _fetch_eventory_token(api_url: str, token_endpoint: str, username: str, pass
             method="POST",
         )
         try:
-            with build_opener(_NoRedirectHandler()).open(req, timeout=10) as resp:
+            with _open_outbound_integration_request(req, timeout=10) as resp:
                 _ensure_public_response_peer(resp, "Token endpoint")
                 payload = json.loads(resp.read().decode("utf-8") or "{}")
                 if not isinstance(payload, dict):
@@ -1836,6 +1966,11 @@ def _fetch_eventory_token(api_url: str, token_endpoint: str, username: str, pass
             continue
         except HTTPException:
             raise
+        except URLError as exc:
+            if _is_disallowed_outbound_peer_error(exc):
+                raise HTTPException(status_code=502, detail="Token endpoint connected to a non-public IP address") from exc
+            last_error = exc
+            continue
         except Exception as exc:
             last_error = exc
             continue

@@ -1,10 +1,13 @@
 import socket
 import pytest
+from urllib.error import URLError
 from unittest.mock import patch
 from urllib.parse import urljoin
+from urllib.request import Request
 
 from fastapi import HTTPException
 
+import app.domain.settings.router as settings_router
 from app.domain.settings.router import (
     _ensure_public_response_peer,
     _fetch_eventory_token,
@@ -61,6 +64,121 @@ def test_default_candidates_are_same_origin():
     ]
     for candidate in candidates:
         assert _is_same_origin_url(candidate, origin), f"{candidate} should be same-origin"
+
+
+def test_open_outbound_integration_request_validates_url_at_open_time(monkeypatch):
+    validated: list[str] = []
+    monkeypatch.setattr(
+        settings_router,
+        "_validate_outbound_integration_url",
+        lambda raw_url: validated.append(raw_url) or raw_url,
+    )
+
+    class _DummyOpener:
+        def open(self, req, timeout):
+            return {"req": req, "timeout": timeout}
+
+    monkeypatch.setattr(settings_router, "build_opener", lambda *_: _DummyOpener())
+    req = Request("https://api.example.com/ping", method="HEAD")
+    result = settings_router._open_outbound_integration_request(req, timeout=5)
+
+    assert validated == ["https://api.example.com/ping"]
+    assert result["req"] is req
+    assert result["timeout"] == 5
+
+
+def test_open_outbound_integration_request_uses_no_redirect_handler(monkeypatch):
+    monkeypatch.setattr(settings_router, "_validate_outbound_integration_url", lambda raw_url: raw_url)
+    captured: dict[str, object] = {}
+
+    class _DummyOpener:
+        def open(self, req, timeout):
+            captured["req"] = req
+            captured["timeout"] = timeout
+            return "opened"
+
+    def _fake_build_opener(*handlers):
+        captured["handlers"] = handlers
+        return _DummyOpener()
+
+    monkeypatch.setattr(settings_router, "build_opener", _fake_build_opener)
+    req = Request("https://api.example.com/ping", method="GET")
+    result = settings_router._open_outbound_integration_request(req, timeout=7)
+
+    handlers = captured["handlers"]
+    assert isinstance(handlers[0], settings_router.ProxyHandler)
+    assert handlers[0].proxies == {}
+    assert any(isinstance(handler, settings_router._NoRedirectHandler) for handler in handlers)
+    assert any(isinstance(handler, settings_router._ValidatedHTTPHandler) for handler in handlers)
+    assert any(isinstance(handler, settings_router._ValidatedHTTPSHandler) for handler in handlers)
+    assert captured["req"] is req
+    assert captured["timeout"] == 7
+    assert result == "opened"
+
+
+def test_validate_outbound_integration_url_rejects_invalid_port():
+    with pytest.raises(HTTPException) as exc_info:
+        settings_router._validate_outbound_integration_url("https://api.example.com:abc")
+
+    assert exc_info.value.status_code == 400
+    assert "invalid port" in str(exc_info.value.detail).lower()
+
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        "https://user@example.com/test",
+        "https://:password@example.com/test",
+        "https://user:password@example.com/test",
+    ],
+)
+def test_validate_outbound_integration_url_rejects_credentials(url):
+    with pytest.raises(HTTPException) as exc_info:
+        settings_router._validate_outbound_integration_url(url)
+
+    assert exc_info.value.status_code == 400
+    assert "must not contain credentials" in str(exc_info.value.detail).lower()
+
+
+def test_validate_outbound_integration_url_rejects_empty_resolution(monkeypatch):
+    monkeypatch.setattr(socket, "getaddrinfo", lambda *_args, **_kwargs: [])
+    with pytest.raises(HTTPException) as exc_info:
+        settings_router._validate_outbound_integration_url("https://example.com/test")
+    assert exc_info.value.status_code == 400
+    assert "could not be resolved" in str(exc_info.value.detail).lower()
+
+
+def test_validate_connected_outbound_socket_rejects_private_peer():
+    class _DummySocket:
+        def getpeername(self):
+            return ("127.0.0.1", 443)
+
+        def close(self):
+            return None
+
+    with pytest.raises(URLError, match="disallowed network address"):
+        settings_router._validate_connected_outbound_socket(_DummySocket())
+
+
+def test_validate_connected_outbound_socket_rejects_multicast_peer():
+    class _DummySocket:
+        def getpeername(self):
+            return ("224.0.0.1", 443)
+
+        def close(self):
+            return None
+
+    with pytest.raises(URLError, match="disallowed network address"):
+        settings_router._validate_connected_outbound_socket(_DummySocket())
+
+
+def test_validate_outbound_integration_url_rejects_multicast(monkeypatch):
+    multicast_entry = (None, None, None, None, ("224.0.0.1", 0))
+    monkeypatch.setattr(socket, "getaddrinfo", lambda *_args, **_kwargs: [multicast_entry])
+    with pytest.raises(HTTPException) as exc_info:
+        settings_router._validate_outbound_integration_url("https://example.com/test")
+    assert exc_info.value.status_code == 400
+    assert "non-public" in str(exc_info.value.detail).lower()
 
 
 def test_is_public_http_url_invalid_port_no_exception():
@@ -250,6 +368,13 @@ def test_ensure_public_response_peer_rejects_private_ip():
     assert exc_info.value.detail == "Token endpoint connected to a non-public IP address"
 
 
+def test_ensure_public_response_peer_rejects_shared_cgnat_ip():
+    with pytest.raises(HTTPException) as exc_info:
+        _ensure_public_response_peer(_FakeResponse("100.64.0.1"), "Token endpoint")
+    assert exc_info.value.status_code == 502
+    assert exc_info.value.detail == "Token endpoint connected to a non-public IP address"
+
+
 def test_fetch_eventory_token_rejects_private_peer_after_public_dns_check():
     class FakeTokenResponse(_FakeResponse):
         def __enter__(self):
@@ -261,12 +386,9 @@ def test_fetch_eventory_token_rejects_private_peer_after_public_dns_check():
         def read(self):
             return b'{"access_token":"secret"}'
 
-    class FakeOpener:
-        def open(self, req, timeout=0):
-            return FakeTokenResponse("127.0.0.1")
-
     with patch("app.domain.settings.router._is_public_http_url", return_value=True), patch(
-        "app.domain.settings.router.build_opener", return_value=FakeOpener()
+        "app.domain.settings.router._open_outbound_integration_request",
+        return_value=FakeTokenResponse("127.0.0.1"),
     ):
         with pytest.raises(HTTPException) as exc_info:
             _fetch_eventory_token(
@@ -275,5 +397,35 @@ def test_fetch_eventory_token_rejects_private_peer_after_public_dns_check():
                 "user",
                 "pass",
             )
+    assert exc_info.value.status_code == 502
+    assert exc_info.value.detail == "Token endpoint connected to a non-public IP address"
+
+
+def test_fetch_eventory_token_disallowed_peer_is_terminal(monkeypatch):
+    class FakeTokenResponse(_FakeResponse):
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+        def read(self):
+            return b'{"access_token":"secret"}'
+
+    calls: list[str] = []
+
+    def _fake_open(req, timeout):
+        calls.append(req.full_url)
+        if len(calls) == 1:
+            raise URLError("Outbound connection resolved to a disallowed network address")
+        return FakeTokenResponse("1.1.1.1")
+
+    monkeypatch.setattr(settings_router, "_is_public_http_url", lambda *_args, **_kwargs: True)
+    monkeypatch.setattr(settings_router, "_open_outbound_integration_request", _fake_open)
+
+    with pytest.raises(HTTPException) as exc_info:
+        _fetch_eventory_token("https://api.example.com", "", "user", "pass")
+
+    assert calls == ["https://api.example.com/login-json"]
     assert exc_info.value.status_code == 502
     assert exc_info.value.detail == "Token endpoint connected to a non-public IP address"

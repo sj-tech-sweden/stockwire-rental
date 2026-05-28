@@ -243,6 +243,35 @@ def test_eventory_connection_private_peer_returns_structured_error(client):
     }
 
 
+def test_eventory_connection_disallowed_head_peer_does_not_retry_get(client):
+    calls: list[str] = []
+
+    class FakeOpener:
+        def open(self, req, timeout=0):
+            calls.append(req.get_method())
+            raise URLError("Outbound connection resolved to a disallowed network address")
+
+    with patch("app.domain.settings.router.socket.getaddrinfo") as mock_getaddrinfo, patch(
+        "app.domain.settings.router.build_opener", return_value=FakeOpener()
+    ):
+        mock_getaddrinfo.return_value = [
+            (socket.AF_INET, socket.SOCK_STREAM, 0, "", ("1.1.1.1", 443)),
+        ]
+        response = client.post(
+            "/api/v1/settings/integrations/eventory/test",
+            json={"config": {"api_url": "https://api.example.com"}},
+        )
+
+    assert calls == ["HEAD"]
+    assert response.status_code == 200
+    assert response.json() == {
+        "ok": False,
+        "plugin": "eventory",
+        "message": "API URL connected to a non-public IP address",
+        "status_code": None,
+    }
+
+
 def test_customers_and_venues_crud(client):
     customer = client.post(
         "/api/v1/customers",
