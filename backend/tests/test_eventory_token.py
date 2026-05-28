@@ -31,26 +31,39 @@ def test_url_origin_valid():
     assert _url_origin("http://api.example.com:8080") == ("http", "api.example.com", 8080)
 
 
-def test_fetch_eventory_token_rejects_cross_origin_endpoint():
+def test_fetch_eventory_token_rejects_http_api_url():
     with pytest.raises(HTTPException) as exc_info:
+        _fetch_eventory_token(
+            "http://api.example.com",
+            "",
+            "user",
+            "pass",
+        )
+    assert exc_info.value.status_code == 400
+    assert "https" in exc_info.value.detail.lower()
+
+
+def test_fetch_eventory_token_ignores_token_endpoint(monkeypatch):
+    """token_endpoint is not used; candidates always derive from api_url."""
+    calls: list[str] = []
+
+    def _fake_open(req, timeout):
+        calls.append(req.full_url)
+        raise URLError("connection refused")
+
+    monkeypatch.setattr(settings_router, "_is_public_http_url", lambda *_args, **_kwargs: True)
+    monkeypatch.setattr(settings_router, "_open_outbound_integration_request", _fake_open)
+
+    with pytest.raises(HTTPException):
         _fetch_eventory_token(
             "https://api.example.com",
             "https://evil.com/oauth/token",
             "user",
             "pass",
         )
-    assert exc_info.value.status_code == 400
 
-
-def test_fetch_eventory_token_rejects_different_scheme():
-    with pytest.raises(HTTPException) as exc_info:
-        _fetch_eventory_token(
-            "https://api.example.com",
-            "http://api.example.com/oauth/token",
-            "user",
-            "pass",
-        )
-    assert exc_info.value.status_code == 400
+    assert calls, "expected at least one outbound request"
+    assert all(url.startswith("https://api.example.com/") for url in calls)
 
 
 def test_default_candidates_are_same_origin():
