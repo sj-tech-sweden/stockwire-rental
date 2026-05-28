@@ -129,7 +129,7 @@ def test_validate_outbound_integration_url_rejects_invalid_port():
     [
         "https://user@example.com/test",
         "https://:password@example.com/test",
-        f"https://user{':'}password@example.com/test",
+        "https://user:password@example.com/test",
     ],
 )
 def test_validate_outbound_integration_url_rejects_credentials(url):
