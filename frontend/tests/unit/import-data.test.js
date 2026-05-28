@@ -22,6 +22,10 @@ describe('import-data utilities', () => {
     expect(rows).toEqual([{ entity_type: 'product', sku: 'P-1', 'dimensions.height': '1.5m' }])
   })
 
+  it('returns csv parse errors for non-json unknown-extension files', () => {
+    expect(() => parseImportRows('not,json\n', 'import.txt')).toThrow('CSV must contain a header row and at least one data row')
+  })
+
   it('collects nested source keys and supports nested value lookups', () => {
     const rows = [{ sku: 'P-1', dimensions: { height: '1.2m', width: '25cm' } }]
     const keys = collectImportSourceKeys(rows).sort()

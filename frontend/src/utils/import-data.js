@@ -129,6 +129,8 @@ function parseCsvRows(text) {
 export function parseImportRows(text, filename = '') {
   const rawText = String(text || '')
   const preferCsv = /\.csv$/i.test(filename)
+  const trimmedText = rawText.trimStart()
+  const looksLikeJson = trimmedText.startsWith('{') || trimmedText.startsWith('[')
   let jsonError = null
 
   if (!preferCsv) {
@@ -142,7 +144,7 @@ export function parseImportRows(text, filename = '') {
   try {
     return parseCsvRows(rawText)
   } catch (csvError) {
-    if (jsonError) throw jsonError
+    if (jsonError && looksLikeJson) throw jsonError
     throw csvError
   }
 }

@@ -2,7 +2,7 @@
   <q-page class="q-pa-md ec-page">
     <div class="row items-center q-mb-md">
       <div class="text-h5 col">{{ t('app.nav.inventory') }}</div>
-      <q-btn class="q-mr-sm" color="secondary" :label="t('inventory.importJson')" icon="upload_file" @click="openImportDialog" />
+      <q-btn class="q-mr-sm" color="secondary" :label="t('inventory.importData')" icon="upload_file" @click="openImportDialog" />
       <q-btn color="primary" :label="t('finance.reload')" icon="refresh" unelevated @click="loadAll" :loading="store.loading" />
     </div>
 
@@ -5260,7 +5260,9 @@ function resolveRowEntityType(rawRow) {
   if (importEntityType.value !== 'mixed') return importEntityType.value
   const entityTypeSourceKey = importMapping.value.entity_type
   const mappedEntityValue = entityTypeSourceKey ? getImportValueBySourceKey(rawRow, entityTypeSourceKey) : undefined
-  return resolveImportEntityType({ ...rawRow, entity_type: mappedEntityValue }, 'product')
+  const resolved = resolveImportEntityType({ ...rawRow, entity_type: mappedEntityValue }, null)
+  if (['product', 'device'].includes(resolved)) return resolved
+  return null
 }
 
 function normalizeImportPayload(rawRow, rowEntityType = resolveRowEntityType(rawRow)) {
@@ -5298,6 +5300,10 @@ function normalizeImportPayload(rawRow, rowEntityType = resolveRowEntityType(raw
 }
 
 function validateImportPayload(payload, rowEntityType) {
+  if (!rowEntityType) {
+    if (importEntityType.value === 'mixed') return 'Entity Type must be product or device'
+    return 'Entity type is invalid'
+  }
   const required = (importFieldConfigs[rowEntityType] || []).filter(field => field.required)
   for (const field of required) {
     const value = payload[field.targetField]
@@ -5326,9 +5332,12 @@ async function runJsonImport() {
   let skipped = 0
 
   try {
+    const allowedEntityTypes = importEntityType.value === 'mixed'
+      ? ['product', 'device']
+      : ['product', 'device', 'location']
     for (const row of importRows.value) {
       const rowEntityType = resolveRowEntityType(row)
-      if (!['product', 'device', 'location'].includes(rowEntityType)) {
+      if (!allowedEntityTypes.includes(rowEntityType)) {
         skipped += 1
         continue
       }
