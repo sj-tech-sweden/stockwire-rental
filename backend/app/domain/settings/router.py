@@ -1262,7 +1262,12 @@ def _validate_outbound_integration_url(raw_url: str) -> str:
         raise HTTPException(status_code=400, detail="API URL must include a valid host")
 
     try:
-        resolved = socket.getaddrinfo(hostname, parsed.port or None, type=socket.SOCK_STREAM)
+        port = parsed.port
+    except ValueError:
+        raise HTTPException(status_code=400, detail="API URL contains an invalid port")
+
+    try:
+        resolved = socket.getaddrinfo(hostname, port or None, type=socket.SOCK_STREAM)
     except socket.gaierror:
         raise HTTPException(status_code=400, detail="API URL host could not be resolved")
 
@@ -1317,12 +1322,6 @@ class _ValidatedHTTPHandler(HTTPHandler):
 class _ValidatedHTTPSHandler(HTTPSHandler):
     def https_open(self, req):
         return self.do_open(_ValidatedHTTPSConnection, req)
-
-
-class _NoRedirectHandler(HTTPRedirectHandler):
-    def redirect_request(self, req, fp, code, msg, headers, newurl):  # noqa: D401, N803
-        return None
-
 
 def _open_outbound_integration_request(req: Request, timeout: int):
     _validate_outbound_integration_url(req.full_url)

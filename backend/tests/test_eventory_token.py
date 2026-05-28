@@ -1,4 +1,5 @@
 import pytest
+from urllib.error import URLError
 from urllib.parse import urljoin
 from urllib.request import Request
 
@@ -102,3 +103,20 @@ def test_open_outbound_integration_request_uses_no_redirect_handler(monkeypatch)
     assert captured["req"] is req
     assert captured["timeout"] == 7
     assert result == "opened"
+
+
+def test_validate_outbound_integration_url_rejects_invalid_port():
+    with pytest.raises(HTTPException) as exc_info:
+        settings_router._validate_outbound_integration_url("https://api.example.com:abc")
+
+    assert exc_info.value.status_code == 400
+    assert "invalid port" in str(exc_info.value.detail).lower()
+
+
+def test_validate_connected_outbound_socket_rejects_private_peer():
+    class _DummySocket:
+        def getpeername(self):
+            return ("127.0.0.1", 443)
+
+    with pytest.raises(URLError, match="disallowed network address"):
+        settings_router._validate_connected_outbound_socket(_DummySocket())

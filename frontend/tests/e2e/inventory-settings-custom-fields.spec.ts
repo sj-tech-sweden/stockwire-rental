@@ -15,11 +15,13 @@ test.describe('Inventory + settings custom fields flow', () => {
     ])
 
     await page.getByRole('tab', { name: 'Products' }).click()
-    await page.getByRole('button', { name: 'New product' }).click()
+    const newProductButton = page.getByRole('button', { name: 'New product' }).first()
+    await expect(newProductButton).toBeVisible({ timeout: 20_000 })
+    await newProductButton.click()
 
     const productDialog = page
-      .locator('.q-dialog')
-      .filter({ has: page.getByText('New product', { exact: true }) })
+      .getByRole('dialog')
+      .filter({ has: page.getByLabel('SKU', { exact: true }) })
       .first()
     await expect(productDialog).toBeVisible({ timeout: 20_000 })
 
