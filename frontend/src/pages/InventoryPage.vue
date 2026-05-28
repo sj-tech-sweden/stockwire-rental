@@ -2,7 +2,7 @@
   <q-page class="q-pa-md ec-page">
     <div class="row items-center q-mb-md">
       <div class="text-h5 col">{{ t('app.nav.inventory') }}</div>
-      <q-btn class="q-mr-sm" color="secondary" :label="t('inventory.importJson')" icon="upload_file" @click="openImportDialog" />
+      <q-btn class="q-mr-sm" color="secondary" :label="t('inventory.importData')" icon="upload_file" @click="openImportDialog" />
       <q-btn color="primary" :label="t('finance.reload')" icon="refresh" unelevated @click="loadAll" :loading="store.loading" />
     </div>
 
@@ -2173,7 +2173,7 @@
     <q-dialog v-model="importDialogOpen" persistent>
       <q-card style="min-width: 840px; max-width: 98vw" class="ec-card">
         <q-card-section>
-          <div class="text-h6">Import JSON</div>
+          <div class="text-h6">Import Data</div>
         </q-card-section>
         <q-card-section class="q-pt-none">
           <div class="row q-col-gutter-sm q-mb-sm">
@@ -2192,10 +2192,10 @@
             <div class="col-12 col-md-8">
               <q-file
                 v-model="importFile"
-                label="JSON file"
+                label="JSON or CSV file"
                 outlined
                 dense
-                accept=".json,application/json"
+                accept=".json,.csv,application/json,text/csv"
                 @update:model-value="parseImportFile"
               />
             </div>
@@ -2206,7 +2206,7 @@
           </q-banner>
 
           <div v-if="importRows.length" class="q-mb-sm text-caption text-grey-7">
-            Parsed {{ importRows.length }} records. Map Stockwire fields to JSON keys below.
+            Parsed {{ importRows.length }} records. Map Stockwire fields to source fields below.
           </div>
 
           <q-table
@@ -2283,6 +2283,7 @@ import { useCompactGrid } from '../composables/useCompactGrid'
 import EntityAttachmentsPanel from '../components/EntityAttachmentsPanel.vue'
 import { translateMaybePrefillCustomFieldLabel, translateMaybePrefillCustomFieldOption } from '../i18n/prefillContent'
 import { normalizeCurrencyCode } from '../constants/currencies'
+import { collectImportSourceKeys, convertDimensionValueToCm, getImportValueBySourceKey, parseImportRows, resolveImportEntityType } from '../utils/import-data'
 import { slugify } from 'src/utils/slugify'
 
 const $q = useQuasar()
@@ -5283,6 +5284,7 @@ async function doBulkDeleteLocations() {
 const importEntityOptions = [
   { label: 'Products', value: 'product' },
   { label: 'Devices', value: 'device' },
+  { label: 'Products + Devices', value: 'mixed' },
   { label: 'Locations', value: 'location' },
 ]
 
@@ -5318,6 +5320,37 @@ const importFieldConfigs = {
     { targetField: 'usage_hours', label: 'Usage Hours', required: false },
     { targetField: 'notes', label: 'Notes', required: false },
   ],
+  mixed: [
+    { targetField: 'entity_type', label: 'Entity Type (product/device)', required: false },
+    { targetField: 'sku', label: 'SKU', required: false },
+    { targetField: 'name', label: 'Name', required: false },
+    { targetField: 'brand', label: 'Brand', required: false },
+    { targetField: 'manufacturer', label: 'Manufacturer', required: false },
+    { targetField: 'supplier_name', label: 'Supplier', required: false },
+    { targetField: 'daily_rate', label: 'Daily Rate', required: false },
+    { targetField: 'product_type', label: 'Product Type', required: false },
+    { targetField: 'category_id', label: 'Category (id/name)', required: false },
+    { targetField: 'weight_kg', label: 'Weight (kg)', required: false },
+    { targetField: 'height_cm', label: 'Height (cm)', required: false },
+    { targetField: 'width_cm', label: 'Width (cm)', required: false },
+    { targetField: 'depth_cm', label: 'Depth (cm)', required: false },
+    { targetField: 'maintenance_interval_days', label: 'Maintenance Interval Days', required: false },
+    { targetField: 'power_consumption_watts', label: 'Power Consumption Watts', required: false },
+    { targetField: 'product_id', label: 'Product (id/sku/name)', required: false },
+    { targetField: 'asset_tag', label: 'Asset Tag', required: false },
+    { targetField: 'serial_number', label: 'Serial Number', required: false },
+    { targetField: 'barcode', label: 'Barcode', required: false },
+    { targetField: 'qr_code', label: 'QR Code', required: false },
+    { targetField: 'rfid', label: 'RFID', required: false },
+    { targetField: 'location_zone_id', label: 'Location (id/code/name)', required: false },
+    { targetField: 'status', label: 'Status', required: false },
+    { targetField: 'condition', label: 'Condition', required: false },
+    { targetField: 'purchase_date', label: 'Purchase Date', required: false },
+    { targetField: 'warranty_end_date', label: 'Warranty End Date', required: false },
+    { targetField: 'retire_date', label: 'Retire Date', required: false },
+    { targetField: 'usage_hours', label: 'Usage Hours', required: false },
+    { targetField: 'notes', label: 'Notes', required: false },
+  ],
   location: [
     { targetField: 'code', label: 'Code', required: true },
     { targetField: 'name', label: 'Name', required: true },
@@ -5330,7 +5363,7 @@ const importFieldConfigs = {
 
 const mappingColumns = [
   { name: 'label', label: 'Stockwire Field', field: 'label', align: 'left' },
-  { name: 'sourceKey', label: 'JSON Key', field: 'sourceKey', align: 'left' },
+  { name: 'sourceKey', label: 'Source Field', field: 'sourceKey', align: 'left' },
   { name: 'required', label: 'Required', field: 'required', align: 'left' },
 ]
 
@@ -5339,11 +5372,13 @@ const importSourceKeyOptions = computed(() => importSourceKeys.value.map(key => 
 
 const importPreviewRows = computed(() => {
   return (importRows.value || []).slice(0, 10).map((rawRow, idx) => {
-    const payload = normalizeImportPayload(rawRow)
-    const error = validateImportPayload(payload)
+    const rowEntityType = resolveRowEntityType(rawRow)
+    const payload = normalizeImportPayload(rawRow, rowEntityType)
+    const error = validateImportPayload(payload, rowEntityType)
     return {
       _preview_id: idx + 1,
       _index: idx + 1,
+      _entity_type: rowEntityType,
       _status: error ? 'invalid' : 'valid',
       _error: error,
       ...payload,
@@ -5356,7 +5391,16 @@ const importPreviewColumns = computed(() => {
     { name: '_index', label: '#', field: '_index', align: 'left' },
     { name: '_status', label: 'Status', field: '_status', align: 'left' },
   ]
+  if (importEntityType.value === 'mixed') {
+    cols.push({
+      name: '_entity_type',
+      label: 'Entity Type',
+      field: row => formatPreviewValue(row._entity_type),
+      align: 'left',
+    })
+  }
   for (const field of mappingRows.value) {
+    if (field.targetField === 'entity_type') continue
     cols.push({
       name: field.targetField,
       label: field.label,
@@ -5397,14 +5441,14 @@ async function parseImportFile(file) {
 
   try {
     const text = await file.text()
-    const parsed = JSON.parse(text)
-    const rows = Array.isArray(parsed) ? parsed : Array.isArray(parsed?.items) ? parsed.items : []
-    if (!Array.isArray(rows) || !rows.length) {
-      throw new Error('JSON must be an array or contain an items array')
+    const rows = parseImportRows(text, file?.name || '')
+    const detectedTypes = Array.from(new Set(rows.slice(0, 100).map(row => resolveImportEntityType(row)).filter(Boolean)))
+    if (detectedTypes.length > 1 && detectedTypes.includes('product') && detectedTypes.includes('device')) {
+      importEntityType.value = 'mixed'
+      resetImportMapping()
     }
     importRows.value = rows
-    const first = rows[0] || {}
-    importSourceKeys.value = Object.keys(first)
+    importSourceKeys.value = collectImportSourceKeys(rows)
     const map = { ...importMapping.value }
     for (const field of importFieldConfigs[importEntityType.value] || []) {
       if (!map[field.targetField]) {
@@ -5413,7 +5457,7 @@ async function parseImportFile(file) {
     }
     importMapping.value = map
   } catch (error) {
-    importDialogError.value = error?.message || 'Invalid JSON file'
+    importDialogError.value = error?.message || 'Invalid import file'
   }
 }
 
@@ -5457,25 +5501,40 @@ function resolveZoneId(value) {
   return byName?.id ?? null
 }
 
-function normalizeImportPayload(rawRow) {
+function resolveRowEntityType(rawRow) {
+  if (importEntityType.value !== 'mixed') return importEntityType.value
+  const entityTypeSourceKey = importMapping.value.entity_type
+  const mappedEntityValue = entityTypeSourceKey ? getImportValueBySourceKey(rawRow, entityTypeSourceKey) : undefined
+  const resolved = resolveImportEntityType({ ...rawRow, entity_type: mappedEntityValue }, null)
+  if (['product', 'device'].includes(resolved)) return resolved
+  return null
+}
+
+function normalizeImportPayload(rawRow, rowEntityType = resolveRowEntityType(rawRow)) {
   const payload = {}
-  for (const field of importFieldConfigs[importEntityType.value] || []) {
+  const fields = importFieldConfigs[rowEntityType] || []
+  for (const field of fields) {
     const sourceKey = importMapping.value[field.targetField]
     if (!sourceKey) continue
-    payload[field.targetField] = rawRow[sourceKey]
+    const rawValue = getImportValueBySourceKey(rawRow, sourceKey)
+    if (['height_cm', 'width_cm', 'depth_cm'].includes(field.targetField)) {
+      payload[field.targetField] = convertDimensionValueToCm(rawValue, sourceKey)
+    } else {
+      payload[field.targetField] = rawValue
+    }
   }
 
-  if (importEntityType.value === 'product') {
+  if (rowEntityType === 'product') {
     payload.category_id = resolveCategoryId(payload.category_id)
     if (!payload.product_type) payload.product_type = 'equipment'
   }
-  if (importEntityType.value === 'device') {
+  if (rowEntityType === 'device') {
     payload.product_id = resolveProductId(payload.product_id)
     payload.location_zone_id = resolveZoneId(payload.location_zone_id)
     if (!payload.status) payload.status = 'available'
     if (!payload.condition) payload.condition = 'good'
   }
-  if (importEntityType.value === 'location') {
+  if (rowEntityType === 'location') {
     payload.parent_id = resolveZoneId(payload.parent_id)
     if (!payload.zone_type) payload.zone_type = locationTypeOptions.value[0]?.value || 'rack'
     if (payload.sort_order === '' || payload.sort_order === undefined || payload.sort_order === null) payload.sort_order = 0
@@ -5485,8 +5544,12 @@ function normalizeImportPayload(rawRow) {
   return payload
 }
 
-function validateImportPayload(payload) {
-  const required = (importFieldConfigs[importEntityType.value] || []).filter(field => field.required)
+function validateImportPayload(payload, rowEntityType) {
+  if (!rowEntityType) {
+    if (importEntityType.value === 'mixed') return 'Entity Type must be product or device'
+    return 'Entity type is invalid'
+  }
+  const required = (importFieldConfigs[rowEntityType] || []).filter(field => field.required)
   for (const field of required) {
     const value = payload[field.targetField]
     if (value === undefined || value === null || value === '') {
@@ -5504,7 +5567,7 @@ function formatPreviewValue(value) {
 
 async function runJsonImport() {
   if (!importRows.value.length) {
-    importDialogError.value = 'Load a JSON file first'
+    importDialogError.value = 'Load a JSON or CSV file first'
     return
   }
 
@@ -5512,20 +5575,34 @@ async function runJsonImport() {
   importDialogError.value = ''
   let created = 0
   let skipped = 0
+  let unknownEntityTypeCount = 0
+  let validationFailureCount = 0
+  let apiFailureCount = 0
 
   try {
+    const allowedEntityTypes = importEntityType.value === 'mixed'
+      ? ['product', 'device']
+      : ['product', 'device', 'location']
     for (const row of importRows.value) {
-      const payload = normalizeImportPayload(row)
-      const validationError = validateImportPayload(payload)
+      const rowEntityType = resolveRowEntityType(row)
+      if (!allowedEntityTypes.includes(rowEntityType)) {
+        skipped += 1
+        unknownEntityTypeCount += 1
+        continue
+      }
+
+      const payload = normalizeImportPayload(row, rowEntityType)
+      const validationError = validateImportPayload(payload, rowEntityType)
       if (validationError) {
         skipped += 1
+        validationFailureCount += 1
         continue
       }
 
       try {
-        if (importEntityType.value === 'product') {
+        if (rowEntityType === 'product') {
           await store.createProduct(payload)
-        } else if (importEntityType.value === 'device') {
+        } else if (rowEntityType === 'device') {
           await store.createDevice(payload)
         } else {
           await store.createZone(payload)
@@ -5533,12 +5610,18 @@ async function runJsonImport() {
         created += 1
       } catch {
         skipped += 1
+        apiFailureCount += 1
       }
     }
 
     await loadAll()
     importDialogOpen.value = false
-    $q.notify({ type: created > 0 ? 'positive' : 'warning', message: `Import completed. Created: ${created}, skipped: ${skipped}` })
+    const skipDetails = []
+    if (unknownEntityTypeCount > 0) skipDetails.push(`${unknownEntityTypeCount} unsupported entity type`)
+    if (validationFailureCount > 0) skipDetails.push(`${validationFailureCount} validation error`)
+    if (apiFailureCount > 0) skipDetails.push(`${apiFailureCount} API error`)
+    const skipSuffix = skipDetails.length ? ` (${skipDetails.join(', ')})` : ''
+    $q.notify({ type: created > 0 ? 'positive' : 'warning', message: `Import completed. Created: ${created}, skipped: ${skipped}${skipSuffix}` })
   } finally {
     importing.value = false
   }
