@@ -601,7 +601,14 @@ def test_integration_connection(
             message="API URL is required to test connection",
         )
 
-    api_url = _validate_outbound_integration_url(api_url)
+    try:
+        api_url = _validate_outbound_integration_url(api_url)
+    except HTTPException as exc:
+        return IntegrationConnectionTestRead(
+            ok=False,
+            plugin=plugin_key,
+            message=str(exc.detail),
+        )
     parsed = urlparse(api_url)
     if parsed.scheme not in {"http", "https"} or not parsed.netloc:
         return IntegrationConnectionTestRead(
@@ -655,6 +662,7 @@ def test_integration_connection(
     req = Request(api_url, headers=headers, method="HEAD")
     try:
         with _open_outbound_integration_request(req, timeout=5) as response:
+            _ensure_public_response_peer(response, "API URL")
             status_code = int(getattr(response, "status", 0) or 0)
             return IntegrationConnectionTestRead(
                 ok=status_code < 500,
@@ -691,6 +699,7 @@ def test_integration_connection(
         get_req = Request(api_url, headers=headers, method="GET")
         try:
             with _open_outbound_integration_request(get_req, timeout=5) as response:
+                _ensure_public_response_peer(response, "API URL")
                 status_code = int(getattr(response, "status", 0) or 0)
                 return IntegrationConnectionTestRead(
                     ok=status_code < 500,
@@ -1323,34 +1332,33 @@ def _validate_outbound_integration_url(raw_url: str) -> str:
     if not hostname:
         raise HTTPException(status_code=400, detail="API URL must include a valid host")
 
+    if parsed.username is not None or parsed.password is not None:
+        raise HTTPException(status_code=400, detail="API URL must not contain credentials")
+
     try:
         port = parsed.port
     except ValueError:
         raise HTTPException(status_code=400, detail="API URL contains an invalid port")
 
+    if port is not None and port <= 0:
+        raise HTTPException(status_code=400, detail="API URL port is invalid")
+
     try:
         resolved = socket.getaddrinfo(hostname, port or None, type=socket.SOCK_STREAM)
-    except socket.gaierror:
+    except (OSError, UnicodeError):
         raise HTTPException(status_code=400, detail="API URL host could not be resolved")
 
     for entry in resolved:
         address = entry[4][0]
         ip_obj = ipaddress.ip_address(address)
         if _is_disallowed_outbound_ip(ip_obj):
-            raise HTTPException(status_code=400, detail="API URL points to a disallowed network address")
+            raise HTTPException(status_code=400, detail="API URL resolves to a non-public IP address")
 
     return candidate
 
 
 def _is_disallowed_outbound_ip(ip_obj: ipaddress.IPv4Address | ipaddress.IPv6Address) -> bool:
-    return (
-        ip_obj.is_private
-        or ip_obj.is_loopback
-        or ip_obj.is_link_local
-        or ip_obj.is_multicast
-        or ip_obj.is_reserved
-        or ip_obj.is_unspecified
-    )
+    return not ip_obj.is_global
 
 
 def _validate_connected_outbound_socket(sock: socket.socket):
@@ -1372,8 +1380,13 @@ class _ValidatedHTTPConnection(HTTPConnection):
 
 class _ValidatedHTTPSConnection(HTTPSConnection):
     def connect(self):
-        super().connect()
+        # Perform TCP connect only (via HTTPConnection) so we can validate
+        # the raw socket before the TLS handshake begins.
+        HTTPConnection.connect(self)
         _validate_connected_outbound_socket(self.sock)
+        # Now complete the TLS handshake, mirroring HTTPSConnection.connect.
+        server_hostname = self._tunnel_host or self.host
+        self.sock = self._context.wrap_socket(self.sock, server_hostname=server_hostname)
 
 
 class _ValidatedHTTPHandler(HTTPHandler):
