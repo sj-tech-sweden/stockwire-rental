@@ -5332,6 +5332,7 @@ async function runJsonImport() {
   let skipped = 0
   let unknownEntityTypeCount = 0
   let validationFailureCount = 0
+  let apiFailureCount = 0
 
   try {
     const allowedEntityTypes = importEntityType.value === 'mixed'
@@ -5364,6 +5365,7 @@ async function runJsonImport() {
         created += 1
       } catch {
         skipped += 1
+        apiFailureCount += 1
       }
     }
 
@@ -5372,6 +5374,7 @@ async function runJsonImport() {
     const skipDetails = []
     if (unknownEntityTypeCount > 0) skipDetails.push(`${unknownEntityTypeCount} unsupported entity type`)
     if (validationFailureCount > 0) skipDetails.push(`${validationFailureCount} validation error`)
+    if (apiFailureCount > 0) skipDetails.push(`${apiFailureCount} API error`)
     const skipSuffix = skipDetails.length ? ` (${skipDetails.join(', ')})` : ''
     $q.notify({ type: created > 0 ? 'positive' : 'warning', message: `Import completed. Created: ${created}, skipped: ${skipped}${skipSuffix}` })
   } finally {

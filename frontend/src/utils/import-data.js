@@ -223,6 +223,6 @@ export function convertDimensionValueToCm(value, sourceKey = '') {
   if (METER_UNITS.includes(unit)) return amount * 100
   if (CENTIMETER_UNITS.includes(unit)) return amount
   if (!unit && sourceIsMeters) return amount * 100
-  if (unit) return value
+  if (unit) return null
   return amount
 }

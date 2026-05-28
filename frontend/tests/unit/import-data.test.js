@@ -48,9 +48,9 @@ describe('import-data utilities', () => {
     expect(convertDimensionValueToCm('35cm')).toBe(35)
   })
 
-  it('returns original value for unrecognized non-empty units', () => {
-    expect(convertDimensionValueToCm('5mm')).toBe('5mm')
-    expect(convertDimensionValueToCm('2inch')).toBe('2inch')
+  it('returns null for unrecognized non-empty units', () => {
+    expect(convertDimensionValueToCm('5mm')).toBeNull()
+    expect(convertDimensionValueToCm('2inch')).toBeNull()
   })
 
   it('resolves entity type from row fields with fallback', () => {
