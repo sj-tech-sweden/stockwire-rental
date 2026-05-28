@@ -5122,38 +5122,38 @@ async function saveBulkCreateSubzones() {
     return
   }
 
-    // prepare codes: sanitize and avoid collisions when auto-generate enabled
-    const maxCodeLength = 50
-    const existingCodes = new Set((store.zones || []).map(z => String(z.code || '').toLowerCase()).filter(Boolean))
-    const items = []
-    for (const name of lines) {
-      let baseCode = bulkCreateAutoGenerateCode.value ? slugify(name) : String(name).trim()
-      if (!baseCode) baseCode = `zone-${items.length + 1}`
-      baseCode = String(baseCode).slice(0, maxCodeLength)
-      if (!baseCode) {
-        bulkCreateError.value = t('inventory.bulkCreateSubzones.invalidCode')
-        return
-      }
-
-      let code = baseCode
-      let suffix = 1
-      while (existingCodes.has(String(code || '').toLowerCase())) {
-        const suffixLabel = `-${suffix++}`
-        const maxBaseLength = Math.max(maxCodeLength - suffixLabel.length, 1)
-        code = `${baseCode.slice(0, maxBaseLength)}${suffixLabel}`
-      }
-      existingCodes.add(String(code || '').toLowerCase())
-      items.push({
-        code: String(code || '').trim(),
-        name,
-        zone_type: bulkCreateZoneType.value || 'rack',
-        barcode: null,
-        qr_code: null,
-        rfid: null,
-        sort_order: 0,
-        is_active: !!bulkCreateIsActive.value,
-      })
+  // prepare codes: sanitize and avoid collisions when auto-generate enabled
+  const maxCodeLength = 50
+  const existingCodes = new Set((store.zones || []).map(z => String(z.code || '').toLowerCase()).filter(Boolean))
+  const items = []
+  for (const name of lines) {
+    let baseCode = bulkCreateAutoGenerateCode.value ? slugify(name) : String(name).trim()
+    if (!baseCode) baseCode = `zone-${items.length + 1}`
+    baseCode = String(baseCode).slice(0, maxCodeLength)
+    if (!baseCode) {
+      bulkCreateError.value = t('inventory.bulkCreateSubzones.invalidCode')
+      return
     }
+
+    let code = baseCode
+    let suffix = 1
+    while (existingCodes.has(String(code || '').toLowerCase())) {
+      const suffixLabel = `-${suffix++}`
+      const maxBaseLength = Math.max(maxCodeLength - suffixLabel.length, 1)
+      code = `${baseCode.slice(0, maxBaseLength)}${suffixLabel}`
+    }
+    existingCodes.add(String(code || '').toLowerCase())
+    items.push({
+      code: String(code || '').trim(),
+      name,
+      zone_type: bulkCreateZoneType.value || 'rack',
+      barcode: null,
+      qr_code: null,
+      rfid: null,
+      sort_order: 0,
+      is_active: !!bulkCreateIsActive.value,
+    })
+  }
 
   saving.value = true
   bulkCreateError.value = ''
@@ -5167,6 +5167,8 @@ async function saveBulkCreateSubzones() {
       const conflicts = serverDetail.conflicts || []
       const msg = t('inventory.bulkCreateSubzones.conflictMessage')
       bulkCreateError.value = conflicts.length ? `${msg}: ${conflicts.join(', ')}` : msg
+    } else if (typeof serverDetail === 'string' && serverDetail.trim()) {
+      bulkCreateError.value = serverDetail.trim()
     } else {
       bulkCreateError.value = t('inventory.bulkCreateSubzones.failed')
     }

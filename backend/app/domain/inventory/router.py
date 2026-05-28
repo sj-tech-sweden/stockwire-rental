@@ -8,7 +8,7 @@ from collections import defaultdict
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
-from sqlalchemy.exc import IntegrityError, SQLAlchemyError
+from sqlalchemy.exc import DataError, IntegrityError, SQLAlchemyError
 
 from app.db.session import get_db
 from app.domain.auth.deps import get_current_user, require_admin, require_editor
@@ -100,9 +100,9 @@ def bulk_delete_locations(payload: BulkDeleteRequest, db: Session = Depends(get_
 
     try:
         db.commit()
-    except IntegrityError as exc:
+    except SQLAlchemyError as exc:
         db.rollback()
-        raise HTTPException(status_code=409, detail="Could not delete one or more locations") from exc
+        raise HTTPException(status_code=409, detail="Unable to bulk delete locations due to linked records") from exc
     if deleted:
         emit_realtime_event("inventory.updated", {"entity": "zone", "action": "bulk_delete", "count": deleted})
     return BulkOperationResult(deleted=deleted, skipped=skipped)
@@ -1586,6 +1586,9 @@ def create_subzones_bulk(location_id: int, payload: list[ZoneCreate], db: Sessio
 
         detail = {"message": "Code conflict", "conflicts": conflicts} if conflicts else "One or more zone codes conflict with existing entries"
         raise HTTPException(status_code=409, detail=detail) from exc
+    except DataError as exc:
+        db.rollback()
+        raise HTTPException(status_code=422, detail="One or more zone values are invalid") from exc
     except SQLAlchemyError as exc:
         db.rollback()
         raise HTTPException(status_code=400, detail="Failed to create subzones") from exc
