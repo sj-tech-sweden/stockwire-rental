@@ -5330,6 +5330,8 @@ async function runJsonImport() {
   importDialogError.value = ''
   let created = 0
   let skipped = 0
+  let unknownEntityTypeCount = 0
+  let validationFailureCount = 0
 
   try {
     const allowedEntityTypes = importEntityType.value === 'mixed'
@@ -5339,6 +5341,7 @@ async function runJsonImport() {
       const rowEntityType = resolveRowEntityType(row)
       if (!allowedEntityTypes.includes(rowEntityType)) {
         skipped += 1
+        unknownEntityTypeCount += 1
         continue
       }
 
@@ -5346,6 +5349,7 @@ async function runJsonImport() {
       const validationError = validateImportPayload(payload, rowEntityType)
       if (validationError) {
         skipped += 1
+        validationFailureCount += 1
         continue
       }
 
@@ -5365,7 +5369,11 @@ async function runJsonImport() {
 
     await loadAll()
     importDialogOpen.value = false
-    $q.notify({ type: created > 0 ? 'positive' : 'warning', message: `Import completed. Created: ${created}, skipped: ${skipped}` })
+    const skipDetails = []
+    if (unknownEntityTypeCount > 0) skipDetails.push(`${unknownEntityTypeCount} unsupported entity type`)
+    if (validationFailureCount > 0) skipDetails.push(`${validationFailureCount} validation error`)
+    const skipSuffix = skipDetails.length ? ` (${skipDetails.join(', ')})` : ''
+    $q.notify({ type: created > 0 ? 'positive' : 'warning', message: `Import completed. Created: ${created}, skipped: ${skipped}${skipSuffix}` })
   } finally {
     importing.value = false
   }

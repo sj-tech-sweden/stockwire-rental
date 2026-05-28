@@ -34,10 +34,23 @@ describe('import-data utilities', () => {
     expect(getImportValueBySourceKey(rows[0], 'dimensions.height')).toBe('1.2m')
   })
 
+  it('excludes __-prefixed internal keys from collected source keys', () => {
+    const rows = [{ sku: 'P-1', __import_entity_type: 'product' }]
+    const keys = collectImportSourceKeys(rows)
+
+    expect(keys).toContain('sku')
+    expect(keys).not.toContain('__import_entity_type')
+  })
+
   it('converts meter values to cm', () => {
     expect(convertDimensionValueToCm('1.5m')).toBe(150)
     expect(convertDimensionValueToCm('1.5', 'dimensions.height_m')).toBe(150)
     expect(convertDimensionValueToCm('35cm')).toBe(35)
+  })
+
+  it('returns original value for unrecognized non-empty units', () => {
+    expect(convertDimensionValueToCm('5mm')).toBe('5mm')
+    expect(convertDimensionValueToCm('2inch')).toBe('2inch')
   })
 
   it('resolves entity type from row fields with fallback', () => {

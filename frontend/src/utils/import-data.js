@@ -152,6 +152,7 @@ export function parseImportRows(text, filename = '') {
 function collectObjectKeys(obj, keys, prefix = '') {
   if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return
   for (const [key, value] of Object.entries(obj)) {
+    if (key.startsWith('__')) continue
     const path = prefix ? `${prefix}.${key}` : key
     keys.add(path)
     if (value && typeof value === 'object' && !Array.isArray(value)) {
@@ -222,5 +223,6 @@ export function convertDimensionValueToCm(value, sourceKey = '') {
   if (METER_UNITS.includes(unit)) return amount * 100
   if (CENTIMETER_UNITS.includes(unit)) return amount
   if (!unit && sourceIsMeters) return amount * 100
+  if (unit) return value
   return amount
 }

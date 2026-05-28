@@ -9,9 +9,11 @@ test.describe('Inventory + settings custom fields flow', () => {
     await page.goto(`${base}/inventory`)
     await page.waitForLoadState('networkidle', { timeout: 40_000 })
     await page.getByRole('tab', { name: 'Categories' }).click()
+    const resetButton = page.getByRole('button', { name: 'Reset category defaults' })
+    await expect(resetButton).toBeVisible({ timeout: 20_000 })
     await Promise.all([
       page.waitForResponse((res) => res.url().includes('/api/v1/inventory/categories/prefill') && res.ok(), { timeout: 20_000 }),
-      page.getByRole('button', { name: 'Reset category defaults' }).click(),
+      resetButton.click(),
     ])
 
     await page.getByRole('tab', { name: 'Products' }).click()
