@@ -611,6 +611,7 @@ def test_integration_connection(
     try:
         api_url = _validate_outbound_integration_url(api_url)
         _ensure_allowed_integration_host(plugin_key, api_url)
+        api_url = _canonicalize_allowed_integration_url(plugin_key, api_url)
     except HTTPException as exc:
         return IntegrationConnectionTestRead(
             ok=False,
@@ -1358,6 +1359,20 @@ def _ensure_allowed_integration_host(plugin_key: str, raw_url: str) -> None:
     allowed_hosts = INTEGRATION_ALLOWED_HOSTS.get(str(plugin_key or "").strip().lower(), set())
     if not hostname or (allowed_hosts and hostname not in allowed_hosts):
         raise HTTPException(status_code=400, detail="API URL host is not allowed for this integration")
+
+
+def _canonicalize_allowed_integration_url(plugin_key: str, raw_url: str) -> str:
+    parsed = urlparse(str(raw_url or "").strip())
+    hostname = (parsed.hostname or "").lower()
+    allowed_hosts = INTEGRATION_ALLOWED_HOSTS.get(str(plugin_key or "").strip().lower(), set())
+    if not hostname or not allowed_hosts or hostname not in allowed_hosts:
+        raise HTTPException(status_code=400, detail="API URL host is not allowed for this integration")
+    canonical_host = hostname
+    if parsed.port is not None:
+        netloc = f"{canonical_host}:{parsed.port}"
+    else:
+        netloc = canonical_host
+    return parsed._replace(netloc=netloc).geturl()
 
 
 def _validate_outbound_integration_url(raw_url: str) -> str:
