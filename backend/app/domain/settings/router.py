@@ -1382,7 +1382,7 @@ def _validate_outbound_integration_url(raw_url: str) -> str:
 
 
 def _is_disallowed_outbound_ip(ip_obj: ipaddress.IPv4Address | ipaddress.IPv6Address) -> bool:
-    return not ip_obj.is_global
+    return not ip_obj.is_global or ip_obj.is_multicast
 
 
 class _DisallowedOutboundPeerURLError(URLError):

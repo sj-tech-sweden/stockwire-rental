@@ -141,6 +141,24 @@ def test_validate_connected_outbound_socket_rejects_private_peer():
         settings_router._validate_connected_outbound_socket(_DummySocket())
 
 
+def test_validate_connected_outbound_socket_rejects_multicast_peer():
+    class _DummySocket:
+        def getpeername(self):
+            return ("224.0.0.1", 443)
+
+    with pytest.raises(URLError, match="disallowed network address"):
+        settings_router._validate_connected_outbound_socket(_DummySocket())
+
+
+def test_validate_outbound_integration_url_rejects_multicast(monkeypatch):
+    multicast_entry = (None, None, None, None, ("224.0.0.1", 0))
+    monkeypatch.setattr(socket, "getaddrinfo", lambda *_args, **_kwargs: [multicast_entry])
+    with pytest.raises(HTTPException) as exc_info:
+        settings_router._validate_outbound_integration_url("https://example.com/test")
+    assert exc_info.value.status_code == 400
+    assert "non-public" in str(exc_info.value.detail).lower()
+
+
 def test_is_public_http_url_invalid_port_no_exception():
     # Must return False, not raise ValueError
     assert _is_public_http_url("https://host:99999/") is False
