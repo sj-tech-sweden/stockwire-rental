@@ -610,6 +610,7 @@ def test_integration_connection(
 
     try:
         api_url = _validate_outbound_integration_url(api_url)
+        _ensure_allowed_integration_host(plugin_key, api_url)
     except HTTPException as exc:
         return IntegrationConnectionTestRead(
             ok=False,
@@ -1344,6 +1345,19 @@ def _normalize_eventory_instance(config: EventoryInstanceConfig) -> dict[str, ob
         "name": name,
         **base,
     }
+
+
+INTEGRATION_ALLOWED_HOSTS: dict[str, set[str]] = {
+    "eventory": {"api.eventory.com"},
+}
+
+
+def _ensure_allowed_integration_host(plugin_key: str, raw_url: str) -> None:
+    parsed = urlparse(str(raw_url or "").strip())
+    hostname = (parsed.hostname or "").lower()
+    allowed_hosts = INTEGRATION_ALLOWED_HOSTS.get(str(plugin_key or "").strip().lower(), set())
+    if not hostname or (allowed_hosts and hostname not in allowed_hosts):
+        raise HTTPException(status_code=400, detail="API URL host is not allowed for this integration")
 
 
 def _validate_outbound_integration_url(raw_url: str) -> str:
