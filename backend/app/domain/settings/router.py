@@ -1323,12 +1323,15 @@ def _normalize_eventory_instance(config: EventoryInstanceConfig) -> dict[str, ob
 
 def _validate_outbound_integration_url(raw_url: str) -> str:
     candidate = str(raw_url or "").strip()
-    parsed = urlparse(candidate)
+    try:
+        parsed = urlparse(candidate)
+        hostname = parsed.hostname
+    except ValueError:
+        raise HTTPException(status_code=400, detail="API URL contains an invalid host")
 
     if parsed.scheme not in {"http", "https"}:
         raise HTTPException(status_code=400, detail="API URL must use http or https")
 
-    hostname = parsed.hostname
     if not hostname:
         raise HTTPException(status_code=400, detail="API URL must include a valid host")
 
