@@ -1,3 +1,8 @@
+import socket
+from unittest.mock import patch
+from urllib.error import HTTPError, URLError
+
+
 def test_auth_crud(client):
     created = client.post(
         "/api/v1/auth/users",
@@ -142,6 +147,100 @@ def test_inventory_crud(client):
     assert zone_tree.status_code == 200 and len(zone_tree.json()) >= 1
     assert list_products.json()[0]["total_devices"] == 3
     assert list_products.json()[0]["in_store_devices"] == 3
+
+
+def test_eventory_connection_get_fallback_treats_http_error_as_reachable(client):
+    class FakeSocket:
+        def getpeername(self):
+            return ("1.1.1.1", 443)
+
+    class FakeRaw:
+        def __init__(self):
+            self._sock = FakeSocket()
+
+    class FakeBuffer:
+        def __init__(self):
+            self.raw = FakeRaw()
+
+    class FakeFp:
+        def __init__(self):
+            self.fp = FakeBuffer()
+
+        def close(self):
+            return None
+
+    class FakeOpener:
+        def open(self, req, timeout=0):
+            if req.get_method() == "HEAD":
+                raise URLError("head unsupported")
+            raise HTTPError(req.full_url, 302, "redirect blocked", None, FakeFp())
+
+    with patch("app.domain.settings.router.socket.getaddrinfo") as mock_getaddrinfo, patch(
+        "app.domain.settings.router.build_opener", return_value=FakeOpener()
+    ):
+        mock_getaddrinfo.return_value = [
+            (socket.AF_INET, socket.SOCK_STREAM, 0, "", ("1.1.1.1", 443)),
+        ]
+        response = client.post(
+            "/api/v1/settings/integrations/eventory/test",
+            json={"config": {"api_url": "https://api.example.com"}},
+        )
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "ok": True,
+        "plugin": "eventory",
+        "message": "Connection reached endpoint (GET status 302)",
+        "status_code": 302,
+    }
+
+
+def test_eventory_connection_private_peer_returns_structured_error(client):
+    class FakeSocket:
+        def getpeername(self):
+            return ("127.0.0.1", 443)
+
+    class FakeRaw:
+        def __init__(self):
+            self._sock = FakeSocket()
+
+    class FakeBuffer:
+        def __init__(self):
+            self.raw = FakeRaw()
+
+    class FakeResponse:
+        def __init__(self):
+            self.status = 200
+            self.fp = FakeBuffer()
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+    class FakeOpener:
+        def open(self, req, timeout=0):
+            return FakeResponse()
+
+    with patch("app.domain.settings.router.socket.getaddrinfo") as mock_getaddrinfo, patch(
+        "app.domain.settings.router.build_opener", return_value=FakeOpener()
+    ):
+        mock_getaddrinfo.return_value = [
+            (socket.AF_INET, socket.SOCK_STREAM, 0, "", ("1.1.1.1", 443)),
+        ]
+        response = client.post(
+            "/api/v1/settings/integrations/eventory/test",
+            json={"config": {"api_url": "https://api.example.com"}},
+        )
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "ok": False,
+        "plugin": "eventory",
+        "message": "API URL connected to a non-public IP address",
+        "status_code": None,
+    }
 
 
 def test_customers_and_venues_crud(client):
@@ -427,6 +526,60 @@ def test_settings_modules_crud(client):
     )
     assert updated_integrations.status_code == 200
     assert updated_integrations.json()["eventory_instances"][0]["sync_interval_minutes"] == 60
+
+    invalid_port_integrations = client.put(
+        "/api/v1/settings/integrations",
+        json={
+            "eventory_instances": [
+                {
+                    "id": "eventory-main",
+                    "name": "Eventory Main",
+                    "enabled": False,
+                    "api_url": "https://api.eventory.se:0",
+                    "api_key": "",
+                    "username": "",
+                    "password": "",
+                    "token_endpoint": "",
+                    "supplier_name": "Eventory",
+                    "sync_interval_minutes": 60,
+                    "price_margin_percent": 5,
+                }
+            ]
+        },
+    )
+    assert invalid_port_integrations.status_code == 422
+    assert invalid_port_integrations.json() == {"detail": "API URL contains an invalid port"}
+
+    with patch("app.domain.settings.router.socket.getaddrinfo") as mock_getaddrinfo:
+        mock_getaddrinfo.return_value = [
+            (socket.AF_INET, socket.SOCK_STREAM, 0, "", ("1.1.1.1", 443)),
+            (socket.AF_INET, socket.SOCK_STREAM, 0, "", ("127.0.0.1", 443)),
+        ]
+        mixed_dns = client.post(
+            "/api/v1/settings/integrations/eventory/test",
+            json={"config": {"api_url": "https://api.example.com"}},
+        )
+    assert mixed_dns.status_code == 200
+    assert mixed_dns.json() == {
+        "ok": False,
+        "plugin": "eventory",
+        "message": "API URL resolves to a non-public IP address",
+        "status_code": None,
+    }
+
+    with patch("app.domain.settings.router.socket.getaddrinfo") as mock_getaddrinfo:
+        zero_port = client.post(
+            "/api/v1/settings/integrations/eventory/test",
+            json={"config": {"api_url": "https://api.example.com:0"}},
+        )
+    assert zero_port.status_code == 200
+    assert zero_port.json() == {
+        "ok": False,
+        "plugin": "eventory",
+        "message": "API URL port is invalid",
+        "status_code": None,
+    }
+    mock_getaddrinfo.assert_not_called()
 
     auth_sso = client.get("/api/v1/settings/auth-sso")
     assert auth_sso.status_code == 200

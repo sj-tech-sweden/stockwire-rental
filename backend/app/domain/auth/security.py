@@ -9,11 +9,39 @@ from jose import jwt
 from app.config import settings
 
 
+def _get_password_pepper_bytes() -> bytes:
+    pepper = os.getenv("PASSWORD_PEPPER")
+    if pepper:
+        return pepper.encode("utf-8")
+    app_env_raw = os.getenv("APP_ENV")
+    if app_env_raw and app_env_raw.strip().lower() in {"development", "test"}:
+        return b"stockwire-default-password-pepper"
+    raise RuntimeError("PASSWORD_PEPPER must be set outside development/test environments")
+
+
+def validate_password_pepper() -> None:
+    """Call at application startup to fail fast if PASSWORD_PEPPER is misconfigured."""
+    _get_password_pepper_bytes()
+
+
+_PASSWORD_PBKDF2_ITERATIONS = 310_000
+
+
+def _derive_long_password(password_bytes: bytes) -> bytes:
+    return hashlib.pbkdf2_hmac(
+        "sha256",
+        password_bytes,
+        _get_password_pepper_bytes(),
+        _PASSWORD_PBKDF2_ITERATIONS,
+        dklen=32,
+    )
+
+
 def _prepare_password(password: str) -> bytes:
-    b = password.encode('utf-8')
-    # bcrypt input limit is 72 bytes; for longer inputs, use SHA256 pre-hash
+    b = password.encode("utf-8")
+    # bcrypt input limit is 72 bytes; for longer inputs, use keyed preprocessing.
     if len(b) > 72:
-        return hashlib.sha256(b).digest()
+        return _derive_long_password(b)
     return b
 
 
@@ -24,9 +52,10 @@ def hash_password(password: str) -> str:
 
 
 def verify_password(plain: str, hashed: str) -> bool:
-    pw = _prepare_password(plain)
+    hashed_bytes = hashed.encode("utf-8")
     try:
-        return bcrypt.checkpw(pw, hashed.encode('utf-8'))
+        pw = _prepare_password(plain)
+        return bcrypt.checkpw(pw, hashed_bytes)
     except Exception:
         return False
 
