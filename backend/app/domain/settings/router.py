@@ -1348,7 +1348,7 @@ def _normalize_eventory_instance(config: EventoryInstanceConfig) -> dict[str, ob
 
 
 INTEGRATION_ALLOWED_HOSTS: dict[str, set[str]] = {
-    "eventory": {"api.eventory.com"},
+    "eventory": {"api.eventory.se", "api.eventory.cc"},
 }
 
 
