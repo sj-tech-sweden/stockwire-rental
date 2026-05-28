@@ -42,7 +42,7 @@ function parseJsonRows(parsed) {
     if (composite.length) return composite
   }
 
-  throw new Error('JSON must be an array, contain an items array, or include products/devices arrays')
+  throw new Error('Import data must be an array, contain an items array, or include products/devices/locations/zones arrays')
 }
 
 function parseCsvRows(text) {
@@ -168,7 +168,7 @@ export function collectImportSourceKeys(rows) {
 
 export function getImportValueBySourceKey(row, sourceKey) {
   if (!row || !sourceKey) return undefined
-  if (Object.hasOwn(row, sourceKey)) return row[sourceKey]
+  if (Object.prototype.hasOwnProperty.call(row, sourceKey)) return row[sourceKey]
 
   const path = String(sourceKey).split('.').map(part => part.trim()).filter(Boolean)
   if (!path.length) return undefined
@@ -197,7 +197,8 @@ export function resolveImportEntityType(row, fallbackEntityType = null) {
 
 function sourceKeyIndicatesMeters(sourceKey) {
   if (!sourceKey) return false
-  return /(^|[._\s])(m|meter|meters|metre|metres)([._\s]|$)/i.test(String(sourceKey))
+  const escapedUnits = METER_UNITS.map(unit => unit.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+  return new RegExp(`(^|[._\\s])(${escapedUnits.join('|')})([._\\s]|$)`, 'i').test(String(sourceKey))
 }
 
 export function convertDimensionValueToCm(value, sourceKey = '') {

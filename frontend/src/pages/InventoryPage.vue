@@ -5076,7 +5076,7 @@ const importFieldConfigs = {
     { targetField: 'notes', label: 'Notes', required: false },
   ],
   mixed: [
-    { targetField: 'entity_type', label: 'Entity Type (product/device)', required: true },
+    { targetField: 'entity_type', label: 'Entity Type (product/device)', required: false },
     { targetField: 'sku', label: 'SKU', required: false },
     { targetField: 'name', label: 'Name', required: false },
     { targetField: 'brand', label: 'Brand', required: false },
@@ -5197,7 +5197,7 @@ async function parseImportFile(file) {
   try {
     const text = await file.text()
     const rows = parseImportRows(text, file?.name || '')
-    const detectedTypes = Array.from(new Set(rows.map(row => resolveImportEntityType(row)).filter(Boolean)))
+    const detectedTypes = Array.from(new Set(rows.slice(0, 100).map(row => resolveImportEntityType(row)).filter(Boolean)))
     if (detectedTypes.length > 1 && detectedTypes.includes('product') && detectedTypes.includes('device')) {
       importEntityType.value = 'mixed'
       resetImportMapping()
@@ -5258,8 +5258,8 @@ function resolveZoneId(value) {
 
 function resolveRowEntityType(rawRow) {
   if (importEntityType.value !== 'mixed') return importEntityType.value
-  const mappedEntityField = importMapping.value.entity_type
-  const mappedEntityValue = mappedEntityField ? getImportValueBySourceKey(rawRow, mappedEntityField) : undefined
+  const entityTypeSourceKey = importMapping.value.entity_type
+  const mappedEntityValue = entityTypeSourceKey ? getImportValueBySourceKey(rawRow, entityTypeSourceKey) : undefined
   return resolveImportEntityType({ ...rawRow, entity_type: mappedEntityValue }, 'product')
 }
 
