@@ -1835,7 +1835,7 @@ def _ensure_public_response_peer(response: object, label: str) -> None:
     peer_ip = _response_peer_ip(response)
     if peer_ip is None:
         raise HTTPException(status_code=502, detail=f"{label} peer address could not be verified")
-    if _is_blocked_ip(peer_ip):
+    if _is_disallowed_outbound_ip(peer_ip):
         raise HTTPException(status_code=502, detail=f"{label} connected to a non-public IP address")
 
 

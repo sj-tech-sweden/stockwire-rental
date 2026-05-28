@@ -328,6 +328,13 @@ def test_ensure_public_response_peer_rejects_private_ip():
     assert exc_info.value.detail == "Token endpoint connected to a non-public IP address"
 
 
+def test_ensure_public_response_peer_rejects_shared_cgnat_ip():
+    with pytest.raises(HTTPException) as exc_info:
+        _ensure_public_response_peer(_FakeResponse("100.64.0.1"), "Token endpoint")
+    assert exc_info.value.status_code == 502
+    assert exc_info.value.detail == "Token endpoint connected to a non-public IP address"
+
+
 def test_fetch_eventory_token_rejects_private_peer_after_public_dns_check():
     class FakeTokenResponse(_FakeResponse):
         def __enter__(self):
