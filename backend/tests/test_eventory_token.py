@@ -359,3 +359,33 @@ def test_fetch_eventory_token_rejects_private_peer_after_public_dns_check():
             )
     assert exc_info.value.status_code == 502
     assert exc_info.value.detail == "Token endpoint connected to a non-public IP address"
+
+
+def test_fetch_eventory_token_disallowed_peer_is_terminal(monkeypatch):
+    class FakeTokenResponse(_FakeResponse):
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+        def read(self):
+            return b'{"access_token":"secret"}'
+
+    calls: list[str] = []
+
+    def _fake_open(req, timeout):
+        calls.append(req.full_url)
+        if len(calls) == 1:
+            raise URLError("Outbound connection resolved to a disallowed network address")
+        return FakeTokenResponse("1.1.1.1")
+
+    monkeypatch.setattr(settings_router, "_is_public_http_url", lambda *_args, **_kwargs: True)
+    monkeypatch.setattr(settings_router, "_open_outbound_integration_request", _fake_open)
+
+    with pytest.raises(HTTPException) as exc_info:
+        _fetch_eventory_token("https://api.example.com", "", "user", "pass")
+
+    assert calls == ["https://api.example.com/login-json"]
+    assert exc_info.value.status_code == 502
+    assert exc_info.value.detail == "Token endpoint connected to a non-public IP address"

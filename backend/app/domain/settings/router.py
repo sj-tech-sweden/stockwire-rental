@@ -696,6 +696,12 @@ def test_integration_connection(
         finally:
             exc.close()
     except URLError as exc:
+        if _is_disallowed_outbound_peer_error(exc):
+            return IntegrationConnectionTestRead(
+                ok=False,
+                plugin=plugin_key,
+                message="API URL connected to a non-public IP address",
+            )
         get_req = Request(api_url, headers=headers, method="GET")
         try:
             with _open_outbound_integration_request(get_req, timeout=5) as response:
@@ -732,6 +738,18 @@ def test_integration_connection(
                 )
             finally:
                 get_exc.close()
+        except URLError as get_exc:
+            if _is_disallowed_outbound_peer_error(get_exc):
+                return IntegrationConnectionTestRead(
+                    ok=False,
+                    plugin=plugin_key,
+                    message="API URL connected to a non-public IP address",
+                )
+            return IntegrationConnectionTestRead(
+                ok=False,
+                plugin=plugin_key,
+                message=f"Connection failed: {get_exc.reason if hasattr(get_exc, 'reason') else str(get_exc)}",
+            )
         except Exception as get_exc:
             return IntegrationConnectionTestRead(
                 ok=False,
@@ -1367,6 +1385,21 @@ def _is_disallowed_outbound_ip(ip_obj: ipaddress.IPv4Address | ipaddress.IPv6Add
     return not ip_obj.is_global
 
 
+class _DisallowedOutboundPeerURLError(URLError):
+    pass
+
+
+def _is_disallowed_outbound_peer_error(exc: URLError) -> bool:
+    if isinstance(exc, _DisallowedOutboundPeerURLError):
+        return True
+    reason = getattr(exc, "reason", None)
+    if isinstance(reason, _DisallowedOutboundPeerURLError):
+        return True
+    if isinstance(reason, str) and "disallowed network address" in reason.lower():
+        return True
+    return "disallowed network address" in str(exc).lower()
+
+
 def _validate_connected_outbound_socket(sock: socket.socket):
     try:
         peer_ip = sock.getpeername()[0]
@@ -1375,7 +1408,7 @@ def _validate_connected_outbound_socket(sock: socket.socket):
 
     ip_obj = ipaddress.ip_address(peer_ip)
     if _is_disallowed_outbound_ip(ip_obj):
-        raise URLError("Outbound connection resolved to a disallowed network address")
+        raise _DisallowedOutboundPeerURLError("Outbound connection resolved to a disallowed network address")
 
 
 class _ValidatedHTTPConnection(HTTPConnection):
@@ -1403,6 +1436,7 @@ class _ValidatedHTTPHandler(HTTPHandler):
 class _ValidatedHTTPSHandler(HTTPSHandler):
     def https_open(self, req):
         return self.do_open(_ValidatedHTTPSConnection, req)
+
 
 def _open_outbound_integration_request(req: Request, timeout: int):
     _validate_outbound_integration_url(req.full_url)
@@ -1924,6 +1958,11 @@ def _fetch_eventory_token(api_url: str, token_endpoint: str, username: str, pass
             continue
         except HTTPException:
             raise
+        except URLError as exc:
+            if _is_disallowed_outbound_peer_error(exc):
+                raise HTTPException(status_code=502, detail="Token endpoint connected to a non-public IP address") from exc
+            last_error = exc
+            continue
         except Exception as exc:
             last_error = exc
             continue
