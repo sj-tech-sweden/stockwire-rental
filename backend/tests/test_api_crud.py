@@ -183,7 +183,7 @@ def test_eventory_connection_get_fallback_treats_http_error_as_reachable(client)
         ]
         response = client.post(
             "/api/v1/settings/integrations/eventory/test",
-            json={"config": {"api_url": "https://api.example.com"}},
+            json={"config": {"api_url": "https://api.eventory.se"}},
         )
 
     assert response.status_code == 200
@@ -231,7 +231,7 @@ def test_eventory_connection_private_peer_returns_structured_error(client):
         ]
         response = client.post(
             "/api/v1/settings/integrations/eventory/test",
-            json={"config": {"api_url": "https://api.example.com"}},
+            json={"config": {"api_url": "https://api.eventory.se"}},
         )
 
     assert response.status_code == 200
@@ -259,7 +259,7 @@ def test_eventory_connection_disallowed_head_peer_does_not_retry_get(client):
         ]
         response = client.post(
             "/api/v1/settings/integrations/eventory/test",
-            json={"config": {"api_url": "https://api.example.com"}},
+            json={"config": {"api_url": "https://api.eventory.se"}},
         )
 
     assert calls == ["HEAD"]
@@ -586,7 +586,7 @@ def test_settings_modules_crud(client):
         ]
         mixed_dns = client.post(
             "/api/v1/settings/integrations/eventory/test",
-            json={"config": {"api_url": "https://api.example.com"}},
+            json={"config": {"api_url": "https://api.eventory.se"}},
         )
     assert mixed_dns.status_code == 200
     assert mixed_dns.json() == {
@@ -599,7 +599,7 @@ def test_settings_modules_crud(client):
     with patch("app.domain.settings.router.socket.getaddrinfo") as mock_getaddrinfo:
         zero_port = client.post(
             "/api/v1/settings/integrations/eventory/test",
-            json={"config": {"api_url": "https://api.example.com:0"}},
+            json={"config": {"api_url": "https://api.eventory.se:0"}},
         )
     assert zero_port.status_code == 200
     assert zero_port.json() == {

@@ -118,7 +118,7 @@ def test_open_outbound_integration_request_uses_no_redirect_handler(monkeypatch)
 
 def test_validate_outbound_integration_url_rejects_invalid_port():
     with pytest.raises(HTTPException) as exc_info:
-        settings_router._validate_outbound_integration_url("https://api.example.com:abc")
+        settings_router._validate_outbound_integration_url("https://api.eventory.se:abc")
 
     assert exc_info.value.status_code == 400
     assert "invalid port" in str(exc_info.value.detail).lower()
@@ -127,9 +127,9 @@ def test_validate_outbound_integration_url_rejects_invalid_port():
 @pytest.mark.parametrize(
     "url",
     [
-        "https://user@example.com/test",
-        "https://:password@example.com/test",
-        "https://user:password@example.com/test",
+        "https://user@api.eventory.se/test",
+        "https://:password@api.eventory.se/test",
+        "https://user:password@api.eventory.se/test",
     ],
 )
 def test_validate_outbound_integration_url_rejects_credentials(url):
@@ -143,7 +143,7 @@ def test_validate_outbound_integration_url_rejects_credentials(url):
 def test_validate_outbound_integration_url_rejects_empty_resolution(monkeypatch):
     monkeypatch.setattr(socket, "getaddrinfo", lambda *_args, **_kwargs: [])
     with pytest.raises(HTTPException) as exc_info:
-        settings_router._validate_outbound_integration_url("https://example.com/test")
+        settings_router._validate_outbound_integration_url("https://api.eventory.se/test")
     assert exc_info.value.status_code == 400
     assert "could not be resolved" in str(exc_info.value.detail).lower()
 
@@ -176,7 +176,7 @@ def test_validate_outbound_integration_url_rejects_multicast(monkeypatch):
     multicast_entry = (None, None, None, None, ("224.0.0.1", 0))
     monkeypatch.setattr(socket, "getaddrinfo", lambda *_args, **_kwargs: [multicast_entry])
     with pytest.raises(HTTPException) as exc_info:
-        settings_router._validate_outbound_integration_url("https://example.com/test")
+        settings_router._validate_outbound_integration_url("https://api.eventory.se/test")
     assert exc_info.value.status_code == 400
     assert "non-public" in str(exc_info.value.detail).lower()
 
