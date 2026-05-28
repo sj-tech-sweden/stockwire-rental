@@ -1105,7 +1105,7 @@
             <div class="row items-center q-mb-sm">
               <div class="col">
                 <div v-if="locationForm.name" class="text-caption text-grey-7">
-                  {{ tr('inventory.generatedCodePreview', 'Generated: {slug}').replace('{slug}', slugify(locationForm.name)) }}
+                  {{ t('inventory.generatedCodePreview', { slug: slugify(locationForm.name) }) }}
                 </div>
               </div>
               <div class="col-auto">

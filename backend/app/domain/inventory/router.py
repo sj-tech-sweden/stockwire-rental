@@ -89,6 +89,7 @@ def bulk_delete_locations(payload: BulkDeleteRequest, db: Session = Depends(get_
             db.scalars(
                 select(Zone.parent_id)
                 .where(Zone.parent_id.in_(row_ids))
+                .where(Zone.id.not_in(row_ids))
                 .group_by(Zone.parent_id)
             ).all()
         )
@@ -1637,7 +1638,7 @@ def create_subzones_bulk(
         raise HTTPException(status_code=422, detail="One or more zone values are invalid") from exc
     except SQLAlchemyError as exc:
         db.rollback()
-        raise HTTPException(status_code=400, detail="Failed to create subzones") from exc
+        raise HTTPException(status_code=500, detail="Failed to create subzones") from exc
 
     # refresh created objects so fields like id are populated
     for zone in created:

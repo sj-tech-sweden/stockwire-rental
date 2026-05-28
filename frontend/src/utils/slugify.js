@@ -1,5 +1,5 @@
 export function slugify(input) {
-  const s = String(input || '').trim()
+  const s = String(input ?? '').trim()
   if (!s) return ''
   // Map Scandinavian letters to url-friendly letters
   const mapped = s
