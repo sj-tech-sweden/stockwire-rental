@@ -892,8 +892,6 @@ export default {
       invalidCode: 'Could not generate a valid code for one or more subzones',
       failed: 'Failed to create subzones',
       created: 'Subzones created',
-      emptyInput: 'Please enter at least one subzone name.',
-      createFailed: 'Failed to create subzones',
     },
     selectNodeAndChildren: 'Select node and children',
     bulkDeleteConfirm: 'Delete {count} selected location(s)? This cannot be undone.',

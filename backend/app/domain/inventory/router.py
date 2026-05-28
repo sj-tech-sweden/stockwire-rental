@@ -122,9 +122,12 @@ def bulk_delete_locations(payload: BulkDeleteRequest, db: Session = Depends(get_
 
     try:
         db.commit()
-    except SQLAlchemyError as exc:
+    except IntegrityError as exc:
         db.rollback()
         raise HTTPException(status_code=409, detail="Unable to bulk delete locations due to linked records") from exc
+    except SQLAlchemyError as exc:
+        db.rollback()
+        raise HTTPException(status_code=500, detail="Failed to bulk delete locations") from exc
     if deleted:
         emit_realtime_event("inventory.updated", {"entity": "zone", "action": "bulk_delete", "count": deleted})
     return BulkOperationResult(deleted=deleted, skipped=skipped)
@@ -1557,7 +1560,12 @@ def move_location(location_id: int, payload: ZoneMove, db: Session = Depends(get
 
 
 @router.post("/locations/{location_id}/subzones/bulk", response_model=list[ZoneRead])
-def create_subzones_bulk(location_id: int, payload: list[ZoneCreate], db: Session = Depends(get_db)) -> list[Zone]:
+def create_subzones_bulk(
+    location_id: int,
+    payload: list[ZoneCreate],
+    db: Session = Depends(get_db),
+    _: User = Depends(require_editor),
+) -> list[Zone]:
     parent = db.get(Zone, location_id)
     if parent is None:
         raise HTTPException(status_code=404, detail="Parent location not found")
@@ -1571,9 +1579,9 @@ def create_subzones_bulk(location_id: int, payload: list[ZoneCreate], db: Sessio
     for item in payload:
         code = (item.code or "").strip()
         if not code:
-            raise HTTPException(status_code=422, detail="Location code is required")
+            raise HTTPException(status_code=422, detail="Zone code is required")
         if len(code) > max_code_length:
-            raise HTTPException(status_code=422, detail=f"Location code must be at most {max_code_length} characters")
+            raise HTTPException(status_code=422, detail=f"Zone code must be at most {max_code_length} characters")
         lower_code = code.lower()
         previous = requested_code_by_lower.get(lower_code)
         if previous is not None:

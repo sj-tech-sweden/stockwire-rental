@@ -892,8 +892,6 @@ export default {
       invalidCode: 'Kunde inte skapa en giltig kod för en eller flera underzoner',
       failed: 'Kunde inte skapa underzoner',
       created: 'Underzoner skapade',
-      emptyInput: 'Ange minst ett underzonsnamn.',
-      createFailed: 'Det gick inte att skapa underzoner',
     },
     selectNodeAndChildren: 'Markera nod och barn',
     bulkDeleteConfirm: 'Radera {count} valda plats(er)? Detta kan inte ångras.',

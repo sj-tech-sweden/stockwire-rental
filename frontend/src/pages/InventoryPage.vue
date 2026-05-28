@@ -2283,6 +2283,7 @@ import { useCompactGrid } from '../composables/useCompactGrid'
 import EntityAttachmentsPanel from '../components/EntityAttachmentsPanel.vue'
 import { translateMaybePrefillCustomFieldLabel, translateMaybePrefillCustomFieldOption } from '../i18n/prefillContent'
 import { normalizeCurrencyCode } from '../constants/currencies'
+import { slugify } from 'src/utils/slugify'
 
 const $q = useQuasar()
 const { t } = useI18n()
@@ -2316,6 +2317,7 @@ const showCachedOfflineBanner = computed(() => (
 
 const PREFIX_MEMORY_STORAGE_KEY = 'inventory.prefix-memory.v1'
 const RETURN_INFO_STORAGE_KEY = 'inventory.return-info.v1'
+const ZONE_CODE_MAX_LENGTH = 50
 
 function customFieldLabel(label) {
   return translateMaybePrefillCustomFieldLabel(label, t)
@@ -5122,13 +5124,12 @@ async function saveBulkCreateSubzones() {
   }
 
   // prepare codes: sanitize and avoid collisions when auto-generate enabled
-  const maxCodeLength = 50
   const existingCodes = new Set((store.zones || []).map(z => String(z.code || '').toLowerCase()).filter(Boolean))
   const items = []
   for (const name of lines) {
     let baseCode = bulkCreateAutoGenerateCode.value ? slugify(name) : String(name).trim()
     if (!baseCode) baseCode = `zone-${items.length + 1}`
-    baseCode = String(baseCode).slice(0, maxCodeLength)
+    baseCode = String(baseCode).slice(0, ZONE_CODE_MAX_LENGTH)
     if (!baseCode) {
       bulkCreateError.value = t('inventory.bulkCreateSubzones.invalidCode')
       return
@@ -5138,7 +5139,7 @@ async function saveBulkCreateSubzones() {
     let suffix = 1
     while (existingCodes.has(String(code || '').toLowerCase())) {
       const suffixLabel = `-${suffix++}`
-      const maxBaseLength = Math.max(maxCodeLength - suffixLabel.length, 1)
+      const maxBaseLength = Math.max(ZONE_CODE_MAX_LENGTH - suffixLabel.length, 1)
       code = `${baseCode.slice(0, maxBaseLength)}${suffixLabel}`
     }
     existingCodes.add(String(code || '').toLowerCase())
@@ -5173,7 +5174,6 @@ async function saveBulkCreateSubzones() {
     }
   } finally {
     saving.value = false
-    await store.fetchZones()
   }
 }
 
@@ -5194,8 +5194,6 @@ const quickCreateForm = ref({
   condition: 'good',
   location_zone_id: null,
 })
-
-import { slugify } from 'src/utils/slugify'
 
 function openQuickCreateDevices(product) {
   quickCreateTargetProduct.value = product
