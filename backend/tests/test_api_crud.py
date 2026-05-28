@@ -996,3 +996,190 @@ def test_scan_operations_and_job_requirement_bulk(client):
     assert bulk_reqs.status_code == 200
     assert len(bulk_reqs.json()) == 1
     assert bulk_reqs.json()[0]["quantity_required"] == 5
+
+
+def test_inventory_bulk_delete_locations(client):
+    # Create parent zone
+    parent = client.post(
+        "/api/v1/inventory/zones",
+        json={"code": "BD-PARENT", "name": "Bulk Delete Parent", "zone_type": "room", "sort_order": 0, "is_active": True},
+    )
+    assert parent.status_code == 200
+    parent_id = parent.json()["id"]
+
+    # Create two child zones
+    child1 = client.post(
+        "/api/v1/inventory/zones",
+        json={"code": "BD-CHILD1", "name": "Bulk Delete Child 1", "zone_type": "rack", "parent_id": parent_id, "sort_order": 0, "is_active": True},
+    )
+    assert child1.status_code == 200
+    child1_id = child1.json()["id"]
+
+    child2 = client.post(
+        "/api/v1/inventory/zones",
+        json={"code": "BD-CHILD2", "name": "Bulk Delete Child 2", "zone_type": "rack", "parent_id": parent_id, "sort_order": 1, "is_active": True},
+    )
+    assert child2.status_code == 200
+    child2_id = child2.json()["id"]
+
+    # Create a standalone zone to delete
+    standalone = client.post(
+        "/api/v1/inventory/zones",
+        json={"code": "BD-STANDALONE", "name": "Bulk Delete Standalone", "zone_type": "room", "sort_order": 0, "is_active": True},
+    )
+    assert standalone.status_code == 200
+    standalone_id = standalone.json()["id"]
+
+    # Deleting parent when only one child is in the delete set should skip parent
+    result = client.post(
+        "/api/v1/inventory/locations/bulk-delete",
+        json={"ids": [parent_id, child1_id]},
+    )
+    assert result.status_code == 200
+    data = result.json()
+    # parent is skipped because child2 is not in the delete set
+    assert data["deleted"] == 1
+    assert data["skipped"] == 1
+
+    # Deleting parent together with ALL remaining children should succeed
+    result2 = client.post(
+        "/api/v1/inventory/locations/bulk-delete",
+        json={"ids": [parent_id, child2_id]},
+    )
+    assert result2.status_code == 200
+    data2 = result2.json()
+    assert data2["deleted"] == 2
+    assert data2["skipped"] == 0
+
+    # Deleting a standalone zone succeeds
+    result3 = client.post(
+        "/api/v1/inventory/locations/bulk-delete",
+        json={"ids": [standalone_id]},
+    )
+    assert result3.status_code == 200
+    assert result3.json()["deleted"] == 1
+
+
+def test_inventory_bulk_delete_locations_skips_zones_with_devices(client):
+    # Create a zone
+    zone = client.post(
+        "/api/v1/inventory/zones",
+        json={"code": "BD-DEV-ZONE", "name": "Zone With Device", "zone_type": "rack", "sort_order": 0, "is_active": True},
+    )
+    assert zone.status_code == 200
+    zone_id = zone.json()["id"]
+
+    # Create a product and attach a device to the zone
+    product = client.post(
+        "/api/v1/inventory/products",
+        json={"sku": "BD-DEV-SKU", "name": "BD Test Product", "category": "audio", "product_type": "equipment"},
+    )
+    assert product.status_code == 200
+    product_id = product.json()["id"]
+
+    device = client.post(
+        "/api/v1/inventory/devices",
+        json={
+            "product_id": product_id,
+            "asset_tag": "BD-DEV-001",
+            "location_zone_id": zone_id,
+            "status": "available",
+            "condition": "good",
+        },
+    )
+    assert device.status_code == 200
+
+    # Trying to bulk-delete the zone that has a linked device should skip it
+    result = client.post(
+        "/api/v1/inventory/locations/bulk-delete",
+        json={"ids": [zone_id]},
+    )
+    assert result.status_code == 200
+    data = result.json()
+    assert data["deleted"] == 0
+    assert data["skipped"] == 1
+
+
+def test_inventory_bulk_create_subzones(client):
+    # Create a parent zone
+    parent = client.post(
+        "/api/v1/inventory/zones",
+        json={"code": "BCS-PARENT", "name": "Bulk Create Subzones Parent", "zone_type": "room", "sort_order": 0, "is_active": True},
+    )
+    assert parent.status_code == 200
+    parent_id = parent.json()["id"]
+
+    # Bulk create subzones
+    result = client.post(
+        f"/api/v1/inventory/locations/{parent_id}/subzones/bulk",
+        json=[
+            {"code": "BCS-A", "name": "Subzone A", "zone_type": "rack", "sort_order": 0, "is_active": True},
+            {"code": "BCS-B", "name": "Subzone B", "zone_type": "rack", "sort_order": 1, "is_active": True},
+        ],
+    )
+    assert result.status_code == 200
+    created = result.json()
+    assert len(created) == 2
+    codes = {z["code"] for z in created}
+    assert codes == {"BCS-A", "BCS-B"}
+    for zone in created:
+        assert zone["parent_id"] == parent_id
+
+
+def test_inventory_bulk_create_subzones_conflict_within_payload(client):
+    # Create a parent zone
+    parent = client.post(
+        "/api/v1/inventory/zones",
+        json={"code": "BCS-DUP-PARENT", "name": "Bulk Create Dup Parent", "zone_type": "room", "sort_order": 0, "is_active": True},
+    )
+    assert parent.status_code == 200
+    parent_id = parent.json()["id"]
+
+    # Payload with duplicate codes should return 409
+    result = client.post(
+        f"/api/v1/inventory/locations/{parent_id}/subzones/bulk",
+        json=[
+            {"code": "BCS-DUP", "name": "Subzone Dup 1", "zone_type": "rack", "sort_order": 0, "is_active": True},
+            {"code": "BCS-DUP", "name": "Subzone Dup 2", "zone_type": "rack", "sort_order": 1, "is_active": True},
+        ],
+    )
+    assert result.status_code == 409
+    detail = result.json()["detail"]
+    assert detail["conflicts"] == ["BCS-DUP"]
+
+
+def test_inventory_bulk_create_subzones_conflict_with_existing(client):
+    # Create a parent zone
+    parent = client.post(
+        "/api/v1/inventory/zones",
+        json={"code": "BCS-EX-PARENT", "name": "Bulk Create Existing Parent", "zone_type": "room", "sort_order": 0, "is_active": True},
+    )
+    assert parent.status_code == 200
+    parent_id = parent.json()["id"]
+
+    # Create an existing zone with a code that will conflict
+    client.post(
+        "/api/v1/inventory/zones",
+        json={"code": "BCS-EXISTING", "name": "Existing Zone", "zone_type": "rack", "sort_order": 0, "is_active": True},
+    )
+
+    # Trying to bulk-create a subzone with the same code should return 409
+    result = client.post(
+        f"/api/v1/inventory/locations/{parent_id}/subzones/bulk",
+        json=[
+            {"code": "BCS-EXISTING", "name": "Conflicting Subzone", "zone_type": "rack", "sort_order": 0, "is_active": True},
+        ],
+    )
+    assert result.status_code == 409
+    detail = result.json()["detail"]
+    assert "BCS-EXISTING" in detail["conflicts"]
+
+
+def test_inventory_bulk_create_subzones_parent_not_found(client):
+    result = client.post(
+        "/api/v1/inventory/locations/999999/subzones/bulk",
+        json=[
+            {"code": "BCS-NOTFOUND", "name": "Subzone", "zone_type": "rack", "sort_order": 0, "is_active": True},
+        ],
+    )
+    assert result.status_code == 404

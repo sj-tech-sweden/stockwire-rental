@@ -1,4 +1,5 @@
 import json
+import re
 from typing import Any
 from datetime import date, timedelta
 
@@ -7,6 +8,7 @@ from collections import defaultdict
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import DataError, IntegrityError, SQLAlchemyError
 
 from app.db.session import get_db
 from app.domain.auth.deps import get_current_user, require_admin, require_editor
@@ -58,8 +60,78 @@ from app.domain.inventory.schemas import (
     ZoneTreeRead,
     ZoneUpdate,
 )
+ 
 
 router = APIRouter(prefix="/inventory", tags=["inventory"], dependencies=[Depends(get_current_user)])
+
+
+
+@router.post("/locations/bulk-delete", response_model=BulkOperationResult)
+def bulk_delete_locations(payload: BulkDeleteRequest, db: Session = Depends(get_db), _: User = Depends(require_editor)) -> BulkOperationResult:
+    ids = sorted(set(payload.ids))
+    rows = list(db.scalars(select(Zone).where(Zone.id.in_(ids))).all())
+    rows_by_id = {row.id: row for row in rows}
+    row_ids = [row.id for row in rows]
+
+    linked_device_zone_ids = (
+        set(
+            db.scalars(
+                select(Device.location_zone_id)
+                .where(Device.location_zone_id.in_(row_ids))
+                .group_by(Device.location_zone_id)
+            ).all()
+        )
+        if row_ids
+        else set()
+    )
+    child_parent_ids = (
+        set(
+            db.scalars(
+                select(Zone.parent_id)
+                .where(Zone.parent_id.in_(row_ids))
+                .where(Zone.id.not_in(row_ids))
+                .group_by(Zone.parent_id)
+            ).all()
+        )
+        if row_ids
+        else set()
+    )
+
+    def _depth(zone: Zone) -> int:
+        depth = 0
+        parent_id = zone.parent_id
+        seen: set[int] = set()
+        while parent_id is not None and parent_id in rows_by_id and parent_id not in seen:
+            seen.add(parent_id)
+            depth += 1
+            parent_id = rows_by_id[parent_id].parent_id
+        return depth
+
+    rows.sort(key=_depth, reverse=True)
+
+    deleted = 0
+    skipped = max(len(ids) - len(rows), 0)
+    for row in rows:
+        if row.id in linked_device_zone_ids:
+            skipped += 1
+            continue
+        if row.id in child_parent_ids:
+            skipped += 1
+            continue
+        db.delete(row)
+        deleted += 1
+
+    try:
+        db.commit()
+    except IntegrityError as exc:
+        db.rollback()
+        raise HTTPException(status_code=409, detail="Unable to bulk delete locations due to linked records") from exc
+    except SQLAlchemyError as exc:
+        db.rollback()
+        raise HTTPException(status_code=500, detail="Failed to bulk delete locations") from exc
+    if deleted:
+        emit_realtime_event("inventory.updated", {"entity": "zone", "action": "bulk_delete", "count": deleted})
+    return BulkOperationResult(deleted=deleted, skipped=skipped)
 
 
 @router.get("/bootstrap")
@@ -1486,6 +1558,94 @@ def update_location(location_id: int, payload: ZoneUpdate, db: Session = Depends
 @router.post("/locations/{location_id}/move", response_model=ZoneRead)
 def move_location(location_id: int, payload: ZoneMove, db: Session = Depends(get_db)) -> Zone:
     return move_zone(zone_id=location_id, payload=payload, db=db)
+
+
+@router.post("/locations/{location_id}/subzones/bulk", response_model=list[ZoneRead])
+def create_subzones_bulk(
+    location_id: int,
+    payload: list[ZoneCreate],
+    db: Session = Depends(get_db),
+    _: User = Depends(require_editor),
+) -> list[Zone]:
+    parent = db.get(Zone, location_id)
+    if parent is None:
+        raise HTTPException(status_code=404, detail="Parent location not found")
+
+    max_code_length = Zone.__table__.columns.code.type.length or 50
+    created: list[Zone] = []
+    # pre-check for conflicting codes to give a friendly 409 response
+    requested_codes: list[str] = []
+    requested_code_by_lower: dict[str, str] = {}
+    duplicate_codes: set[str] = set()
+    for item in payload:
+        code = (item.code or "").strip()
+        if not code:
+            raise HTTPException(status_code=422, detail="Zone code is required")
+        if len(code) > max_code_length:
+            raise HTTPException(status_code=422, detail=f"Zone code must be at most {max_code_length} characters")
+        lower_code = code.lower()
+        previous = requested_code_by_lower.get(lower_code)
+        if previous is not None:
+            duplicate_codes.add(previous)
+            duplicate_codes.add(code)
+        else:
+            requested_code_by_lower[lower_code] = code
+        requested_codes.append(code)
+    if duplicate_codes:
+        raise HTTPException(
+            status_code=409,
+            detail={"message": "Code conflict", "conflicts": sorted(duplicate_codes, key=str.lower)},
+        )
+    if requested_codes:
+        lower_codes = list(requested_code_by_lower.keys())
+        existing = list(db.scalars(select(Zone.code).where(func.lower(Zone.code).in_(lower_codes))).all())
+        if existing:
+            raise HTTPException(status_code=409, detail={"message": "Code conflict", "conflicts": existing})
+    for item, code in zip(payload, requested_codes):
+        # ensure child uses the provided payload but force the parent assignment
+        data = item.model_dump()
+        data["code"] = code
+        data["parent_id"] = location_id
+        zone = Zone(**data)
+        db.add(zone)
+        created.append(zone)
+
+    try:
+        db.commit()
+    except IntegrityError as exc:
+        db.rollback()
+        # attempt to extract conflicting codes if possible (Postgres / SQLite messages)
+        conflicts: list[str] = []
+        try:
+            orig = getattr(exc, 'orig', None) or exc
+            text = str(orig)
+
+            # Postgres pattern: Key (code)=(abc) already exists.
+            matches = re.findall(r"Key \(code\)=\(([^)]+)\)", text)
+            if matches:
+                conflicts.extend(matches)
+            # SQLite pattern: UNIQUE constraint failed: zones.code: abc
+            matches = re.findall(r"UNIQUE constraint failed: [^:]+: (.+)$", text)
+            if matches:
+                conflicts.extend([m.strip() for m in matches])
+        except Exception:
+            conflicts = []
+
+        detail = {"message": "Code conflict", "conflicts": conflicts} if conflicts else "One or more zone codes conflict with existing entries"
+        raise HTTPException(status_code=409, detail=detail) from exc
+    except DataError as exc:
+        db.rollback()
+        raise HTTPException(status_code=422, detail="One or more zone values are invalid") from exc
+    except SQLAlchemyError as exc:
+        db.rollback()
+        raise HTTPException(status_code=500, detail="Failed to create subzones") from exc
+
+    # refresh created objects so fields like id are populated
+    for zone in created:
+        db.refresh(zone)
+
+    emit_realtime_event("inventory.updated", {"entity": "zone", "action": "bulk_create", "count": len(created)})
+    return created
 
 
 def _build_category_tree(categories: list[InventoryCategory]) -> list[InventoryCategoryTreeRead]:
