@@ -137,6 +137,9 @@ def test_validate_connected_outbound_socket_rejects_private_peer():
         def getpeername(self):
             return ("127.0.0.1", 443)
 
+        def close(self):
+            return None
+
     with pytest.raises(URLError, match="disallowed network address"):
         settings_router._validate_connected_outbound_socket(_DummySocket())
 
@@ -145,6 +148,9 @@ def test_validate_connected_outbound_socket_rejects_multicast_peer():
     class _DummySocket:
         def getpeername(self):
             return ("224.0.0.1", 443)
+
+        def close(self):
+            return None
 
     with pytest.raises(URLError, match="disallowed network address"):
         settings_router._validate_connected_outbound_socket(_DummySocket())
