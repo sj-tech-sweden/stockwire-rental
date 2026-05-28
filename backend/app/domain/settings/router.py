@@ -56,6 +56,12 @@ from app.domain.storage.schemas import CompanyProfileRead, CompanyProfileUpdate
 
 router = APIRouter(prefix="/settings", tags=["settings"], dependencies=[Depends(get_current_user)])
 
+# Restrict outbound integration tests to known, trusted API hosts.
+# Keep this list aligned with supported integration providers.
+ALLOWED_OUTBOUND_INTEGRATION_HOSTS = {
+    "api.eventory.cc",
+}
+
 LOCATION_TYPES_KEY = "inventory.location_types"
 CATEGORY_PREFILL_PATHS_KEY = "inventory.category_prefill_paths"
 PRODUCT_DEFAULTS_KEY = "inventory.product_defaults"
@@ -1348,6 +1354,14 @@ def _validate_outbound_integration_url(raw_url: str) -> str:
         raise HTTPException(status_code=400, detail="API URL contains an invalid host")
 
     if parsed.scheme not in {"http", "https"}:
+        raise HTTPException(status_code=400, detail="API URL must use http or https")
+
+    if not hostname:
+        raise HTTPException(status_code=400, detail="API URL must include a hostname")
+
+    normalized_host = hostname.rstrip(".").lower()
+    if normalized_host not in ALLOWED_OUTBOUND_INTEGRATION_HOSTS:
+        raise HTTPException(status_code=400, detail="API URL host is not allowed")
         raise HTTPException(status_code=400, detail="API URL must use http or https")
 
     if not hostname:
