@@ -7,6 +7,7 @@ from collections import defaultdict
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import IntegrityError
 
 from app.db.session import get_db
 from app.domain.auth.deps import get_current_user, require_admin, require_editor
@@ -58,10 +59,32 @@ from app.domain.inventory.schemas import (
     ZoneTreeRead,
     ZoneUpdate,
 )
+    BulkDeleteRequest,
+    BulkOperationResult,
 
 router = APIRouter(prefix="/inventory", tags=["inventory"], dependencies=[Depends(get_current_user)])
 
 
+
+@router.post("/locations/bulk-delete", response_model=BulkOperationResult)
+def bulk_delete_locations(payload: BulkDeleteRequest, db: Session = Depends(get_db), _: User = Depends(require_editor)) -> BulkOperationResult:
+    ids = sorted(set(payload.ids))
+    rows = list(db.scalars(select(Zone).where(Zone.id.in_(ids))).all())
+
+    deleted = 0
+    skipped = max(len(ids) - len(rows), 0)
+    for row in rows:
+        linked_devices = db.scalar(select(func.count()).select_from(Device).where(Device.location_zone_id == row.id)) or 0
+        if linked_devices > 0:
+            skipped += 1
+            continue
+        db.delete(row)
+        deleted += 1
+
+    db.commit()
+    if deleted:
+        emit_realtime_event("inventory.updated", {"entity": "zone", "action": "bulk_delete", "count": deleted})
+    return BulkOperationResult(deleted=deleted, skipped=skipped)
 @router.get("/bootstrap")
 def bootstrap_status() -> dict[str, str]:
     return {"module": "inventory", "status": "scaffolded"}
@@ -1486,6 +1509,61 @@ def update_location(location_id: int, payload: ZoneUpdate, db: Session = Depends
 @router.post("/locations/{location_id}/move", response_model=ZoneRead)
 def move_location(location_id: int, payload: ZoneMove, db: Session = Depends(get_db)) -> Zone:
     return move_zone(zone_id=location_id, payload=payload, db=db)
+
+
+@router.post("/locations/{location_id}/subzones/bulk", response_model=list[ZoneRead])
+def create_subzones_bulk(location_id: int, payload: list[ZoneCreate], db: Session = Depends(get_db)) -> list[Zone]:
+    parent = db.get(Zone, location_id)
+    if parent is None:
+        raise HTTPException(status_code=404, detail="Parent location not found")
+
+    created: list[Zone] = []
+    # pre-check for conflicting codes to give a friendly 409 response
+    requested_codes = [ (item.code or "").strip() for item in payload if (item.code or "").strip() ]
+    if requested_codes:
+        lower_codes = [c.lower() for c in requested_codes]
+        existing = list(db.scalars(select(Zone.code).where(func.lower(Zone.code).in_(lower_codes))).all())
+        if existing:
+            raise HTTPException(status_code=409, detail={"message": "Code conflict", "conflicts": existing})
+    for item in payload:
+        # ensure child uses the provided payload but force the parent assignment
+        data = item.model_dump()
+        data["parent_id"] = location_id
+        zone = Zone(**data)
+        db.add(zone)
+        created.append(zone)
+
+    try:
+        db.commit()
+    except IntegrityError as exc:
+        db.rollback()
+        # attempt to extract conflicting codes if possible (Postgres / SQLite messages)
+        conflicts: list[str] = []
+        try:
+            orig = getattr(exc, 'orig', None) or exc
+            text = str(orig)
+            import re
+
+            # Postgres pattern: Key (code)=(abc) already exists.
+            matches = re.findall(r"Key \(code\)=\(([^)]+)\)", text)
+            if matches:
+                conflicts.extend(matches)
+            # SQLite pattern: UNIQUE constraint failed: zones.code: abc
+            matches = re.findall(r"UNIQUE constraint failed: [^:]+: (.+)$", text)
+            if matches:
+                conflicts.extend([m.strip() for m in matches])
+        except Exception:
+            conflicts = []
+
+        detail = {"message": "Code conflict", "conflicts": conflicts} if conflicts else "One or more zone codes conflict with existing entries"
+        raise HTTPException(status_code=409, detail=detail) from exc
+
+    # refresh created objects so fields like id are populated
+    for zone in created:
+        db.refresh(zone)
+
+    emit_realtime_event("inventory.updated", {"entity": "zone", "action": "bulk_create", "count": len(created)})
+    return created
 
 
 def _build_category_tree(categories: list[InventoryCategory]) -> list[InventoryCategoryTreeRead]:
