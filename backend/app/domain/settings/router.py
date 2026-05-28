@@ -1404,10 +1404,18 @@ def _validate_connected_outbound_socket(sock: socket.socket):
     try:
         peer_ip = sock.getpeername()[0]
     except OSError as exc:
+        try:
+            sock.close()
+        except OSError:
+            pass
         raise URLError("Unable to validate outbound peer address") from exc
 
     ip_obj = ipaddress.ip_address(peer_ip)
     if _is_disallowed_outbound_ip(ip_obj):
+        try:
+            sock.close()
+        except OSError:
+            pass
         raise _DisallowedOutboundPeerURLError("Outbound connection resolved to a disallowed network address")
 
 
