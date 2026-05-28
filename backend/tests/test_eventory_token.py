@@ -124,6 +124,22 @@ def test_validate_outbound_integration_url_rejects_invalid_port():
     assert "invalid port" in str(exc_info.value.detail).lower()
 
 
+@pytest.mark.parametrize(
+    "url",
+    [
+        "https://user@example.com/test",
+        "https://:password@example.com/test",
+        f"https://user{':'}password@example.com/test",
+    ],
+)
+def test_validate_outbound_integration_url_rejects_credentials(url):
+    with pytest.raises(HTTPException) as exc_info:
+        settings_router._validate_outbound_integration_url(url)
+
+    assert exc_info.value.status_code == 400
+    assert "must not contain credentials" in str(exc_info.value.detail).lower()
+
+
 def test_validate_outbound_integration_url_rejects_empty_resolution(monkeypatch):
     monkeypatch.setattr(socket, "getaddrinfo", lambda *_args, **_kwargs: [])
     with pytest.raises(HTTPException) as exc_info:
