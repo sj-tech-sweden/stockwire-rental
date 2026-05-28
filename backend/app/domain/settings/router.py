@@ -9,7 +9,7 @@ from http.client import HTTPConnection, HTTPSConnection
 from urllib.parse import urlencode
 from urllib.error import HTTPError, URLError
 from urllib.parse import urljoin, urlparse
-from urllib.request import Request, build_opener, HTTPRedirectHandler, HTTPHandler, HTTPSHandler, ProxyHandler, urlopen
+from urllib.request import Request, build_opener, HTTPRedirectHandler, HTTPHandler, HTTPSHandler, ProxyHandler
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from sqlalchemy import select
@@ -59,6 +59,7 @@ router = APIRouter(prefix="/settings", tags=["settings"], dependencies=[Depends(
 # Restrict outbound integration tests to known, trusted API hosts.
 # Keep this list aligned with supported integration providers.
 ALLOWED_OUTBOUND_INTEGRATION_HOSTS = {
+    "api.eventory.se",
     "api.eventory.cc",
 }
 
@@ -1362,10 +1363,6 @@ def _validate_outbound_integration_url(raw_url: str) -> str:
     normalized_host = hostname.rstrip(".").lower()
     if normalized_host not in ALLOWED_OUTBOUND_INTEGRATION_HOSTS:
         raise HTTPException(status_code=400, detail="API URL host is not allowed")
-        raise HTTPException(status_code=400, detail="API URL must use http or https")
-
-    if not hostname:
-        raise HTTPException(status_code=400, detail="API URL must include a valid host")
 
     if parsed.username is not None or parsed.password is not None:
         raise HTTPException(status_code=400, detail="API URL must not contain credentials")
@@ -1795,7 +1792,7 @@ def _fetch_eventory_products(
 
     req = Request(inventory_url, headers=headers, method="GET")
     try:
-        with urlopen(req, timeout=15) as response:
+        with _open_outbound_integration_request(req, timeout=15) as response:
             if int(getattr(response, "status", 0) or 0) != 200:
                 raise HTTPException(status_code=502, detail=f"Eventory inventory endpoint returned status {getattr(response, 'status', 0)}")
             payload = json.loads(response.read().decode("utf-8") or "[]")
@@ -2069,7 +2066,7 @@ def _fetch_eventory_rental_detail(api_url: str, headers: dict[str, str], rental_
     detail_url = urljoin(api_url.rstrip("/") + "/", f"rentals/{rental_id}")
     req = Request(detail_url, headers=headers, method="GET")
     try:
-        with urlopen(req, timeout=10) as resp:
+        with _open_outbound_integration_request(req, timeout=10) as resp:
             if int(getattr(resp, "status", 0) or 0) != 200:
                 return None, 0.0, 0, []
             data = json.loads(resp.read().decode("utf-8") or "{}")
@@ -2101,7 +2098,7 @@ def _fetch_eventory_products_legacy(api_url: str, headers: dict[str, str]) -> li
         target = urljoin(api_url.rstrip("/") + "/", endpoint)
         req = Request(target, headers=headers, method="GET")
         try:
-            with urlopen(req, timeout=15) as response:
+            with _open_outbound_integration_request(req, timeout=15) as response:
                 if int(getattr(response, "status", 0) or 0) != 200:
                     raise ValueError(f"status {getattr(response, 'status', 0)}")
                 body = json.loads(response.read().decode("utf-8") or "[]")
