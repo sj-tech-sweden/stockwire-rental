@@ -601,14 +601,21 @@ def test_integration_connection(
         )
 
     try:
-        _validate_integration_url(api_url, "API URL")
-    except HTTPException as exc:
+        api_url = _validate_outbound_api_url(api_url)
+    except ValueError as exc:
         return IntegrationConnectionTestRead(
             ok=False,
             plugin=plugin_key,
-            message=str(exc.detail),
+            message=str(exc),
         )
+
     parsed = urlparse(api_url)
+    if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+        return IntegrationConnectionTestRead(
+            ok=False,
+            plugin=plugin_key,
+            message="API URL must be an absolute http(s) URL",
+        )
 
     headers = {
         "User-Agent": "stockwire-rental-settings-test/1.0",
@@ -652,9 +659,10 @@ def test_integration_connection(
         headers["X-API-Key"] = api_key
         headers["Authorization"] = f"Bearer {api_key}"
 
+    opener = build_opener(_NoRedirectHandler())
     req = Request(api_url, headers=headers, method="HEAD")
     try:
-        with build_opener(_NoRedirectHandler()).open(req, timeout=5) as response:
+        with opener.open(req, timeout=5) as response:
             _ensure_public_response_peer(response, "API URL")
             status_code = int(getattr(response, "status", 0) or 0)
             return IntegrationConnectionTestRead(
@@ -691,7 +699,7 @@ def test_integration_connection(
     except URLError as exc:
         get_req = Request(api_url, headers=headers, method="GET")
         try:
-            with build_opener(_NoRedirectHandler()).open(get_req, timeout=5) as response:
+            with opener.open(get_req, timeout=5) as response:
                 _ensure_public_response_peer(response, "API URL")
                 status_code = int(getattr(response, "status", 0) or 0)
                 return IntegrationConnectionTestRead(
@@ -1361,6 +1369,51 @@ def _validate_url_port(raw_url: str, label: str) -> None:
         raise HTTPException(status_code=422, detail=f"{label} contains an invalid port") from exc
     if port is not None and port <= 0:
         raise HTTPException(status_code=422, detail=f"{label} contains an invalid port")
+
+
+def _is_public_ip_address(value: str) -> bool:
+    try:
+        ip = ipaddress.ip_address(value)
+    except ValueError:
+        return False
+    return ip.is_global
+
+
+def _validate_outbound_api_url(raw_url: str) -> str:
+    parsed = urlparse(str(raw_url or "").strip())
+    if parsed.scheme not in {"http", "https"}:
+        raise ValueError("API URL must use http or https")
+    if not parsed.hostname:
+        raise ValueError("API URL hostname is required")
+    if parsed.username is not None or parsed.password is not None:
+        raise ValueError("API URL must not contain credentials")
+
+    try:
+        parsed_port = parsed.port
+    except ValueError as exc:
+        raise ValueError("API URL port is invalid") from exc
+    if parsed_port is not None and parsed_port <= 0:
+        raise ValueError("API URL port is invalid")
+    resolved_port = parsed_port if parsed_port is not None else (443 if parsed.scheme == "https" else 80)
+
+    try:
+        resolved = socket.getaddrinfo(parsed.hostname, resolved_port, type=socket.SOCK_STREAM)
+    except (OSError, UnicodeError) as exc:
+        raise ValueError("API URL hostname could not be resolved") from exc
+
+    addresses = {str(entry[4][0]) for entry in resolved if entry and len(entry) > 4 and entry[4]}
+    if not addresses:
+        raise ValueError("API URL hostname could not be resolved")
+
+    for candidate_ip in addresses:
+        if not _is_public_ip_address(candidate_ip):
+            raise ValueError("API URL resolves to a non-public IP address")
+
+    hostname = str(parsed.hostname)
+    netloc = f"[{hostname}]" if ":" in hostname else hostname
+    if parsed_port is not None:
+        netloc = f"{netloc}:{parsed_port}"
+    return parsed._replace(netloc=netloc).geturl()
 
 
 def _parse_product_defaults(raw: str | None) -> dict[str, object]:
