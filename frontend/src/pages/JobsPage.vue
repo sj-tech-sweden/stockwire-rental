@@ -61,6 +61,27 @@
         </q-td>
       </template>
 
+      <template #body-cell-venue_name="props">
+        <q-td :props="props">
+          <div class="row items-center q-gutter-xs no-wrap">
+            <span>{{ props.value || t('jobs.unassigned') }}</span>
+            <q-btn
+              v-if="jobVenueMapLink(props.row)"
+              flat
+              dense
+              round
+              icon="open_in_new"
+              color="secondary"
+              size="sm"
+              :href="jobVenueMapLink(props.row)"
+              target="_blank"
+              rel="noopener noreferrer"
+              :aria-label="t('jobs.openVenueMap')"
+            />
+          </div>
+        </q-td>
+      </template>
+
       <template #body-cell-invoice_paid="props">
         <q-td :props="props">
           <q-badge :color="props.value ? 'positive' : 'warning'" :label="props.value ? t('jobs.paid') : t('jobs.unpaid')" />
@@ -86,7 +107,18 @@
             </q-card-section>
             <q-card-section class="q-pt-none q-pb-sm">
               <div class="text-caption">{{ t('jobs.customerLabel') }}: {{ customerNameForId(props.row.customer_id) || t('jobs.unassigned') }}</div>
-              <div class="text-caption">{{ t('jobs.venueLabel') }}: {{ venueNameForId(props.row.venue_id) || t('jobs.unassigned') }}</div>
+              <div class="text-caption">
+                {{ t('jobs.venueLabel') }}: {{ venueNameForId(props.row.venue_id) || t('jobs.unassigned') }}
+                <a
+                  v-if="jobVenueMapLink(props.row)"
+                  :href="jobVenueMapLink(props.row)"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="text-primary q-ml-xs"
+                >
+                  {{ t('jobs.openVenueMap') }}
+                </a>
+              </div>
               <div class="text-caption">{{ t('jobs.salesLabel') }}: {{ formatMoney(props.row.sales_price) }}</div>
               <div class="text-caption">{{ t('jobs.invoiceLabel') }}: {{ props.row.invoice_paid ? t('jobs.paid') : t('jobs.unpaid') }}</div>
               <div class="text-caption">{{ props.row.start_date || '-' }} {{ t('jobs.to') }} {{ props.row.end_date || '-' }}</div>
@@ -188,6 +220,30 @@
                   @filter="filterVenueOptions"
                 />
               </div>
+            </div>
+
+            <div v-if="selectedVenueMapEmbedUrl" class="q-mt-sm">
+              <q-responsive :ratio="16 / 9" class="rounded-borders" style="overflow: hidden; border: 1px solid #d6dbe2;">
+                <iframe
+                  :src="selectedVenueMapEmbedUrl"
+                  :title="t('jobs.venueMapPreview')"
+                  loading="lazy"
+                  referrerpolicy="no-referrer-when-downgrade"
+                  style="border: 0; width: 100%; height: 100%;"
+                />
+              </q-responsive>
+              <q-btn
+                flat
+                dense
+                no-caps
+                color="primary"
+                icon="open_in_new"
+                class="q-mt-xs"
+                :label="t('jobs.openVenueMap')"
+                :href="selectedVenueMapLink"
+                target="_blank"
+                rel="noopener noreferrer"
+              />
             </div>
 
             <div class="row q-col-gutter-sm q-mt-sm">
@@ -704,6 +760,7 @@ import { useCompactGrid } from '../composables/useCompactGrid'
 import EntityAttachmentsPanel from '../components/EntityAttachmentsPanel.vue'
 import { translateMaybePrefillCustomFieldLabel, translateMaybePrefillCustomFieldOption } from '../i18n/prefillContent'
 import { normalizeCurrencyCode } from '../constants/currencies'
+import { googleMapsEmbedUrl, googleMapsSearchUrl, locationQueryFromParts } from '../utils/maps'
 
 const $q = useQuasar()
 const compactGrid = useCompactGrid(1024)
@@ -1415,6 +1472,17 @@ const projectedJobPrice = computed(() => {
   return Number(total.toFixed(2))
 })
 
+const selectedVenueLocationQuery = computed(() => {
+  if (form.value.venue_id) {
+    const venue = venuesStore.venues.find(item => item.id === form.value.venue_id)
+    return locationQueryFromParts(venue || {})
+  }
+  return locationQueryFromParts(venueDraft.value)
+})
+
+const selectedVenueMapLink = computed(() => googleMapsSearchUrl(selectedVenueLocationQuery.value))
+const selectedVenueMapEmbedUrl = computed(() => googleMapsEmbedUrl(selectedVenueLocationQuery.value))
+
 watch(
   () => form.value.invoice_paid,
   (paid) => {
@@ -1616,6 +1684,12 @@ function customerNameForId(id) {
 
 function venueNameForId(id) {
   return venuesStore.venues.find(venue => venue.id === id)?.name ?? ''
+}
+
+function jobVenueMapLink(job) {
+  if (!job) return ''
+  const venue = venuesStore.venues.find(item => item.id === job.venue_id)
+  return googleMapsSearchUrl(locationQueryFromParts(venue || { name: job.venue_name }))
 }
 
 async function ensureCustomer() {
