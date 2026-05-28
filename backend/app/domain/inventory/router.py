@@ -71,6 +71,30 @@ def bulk_delete_locations(payload: BulkDeleteRequest, db: Session = Depends(get_
     ids = sorted(set(payload.ids))
     rows = list(db.scalars(select(Zone).where(Zone.id.in_(ids))).all())
     rows_by_id = {row.id: row for row in rows}
+    row_ids = [row.id for row in rows]
+
+    linked_device_zone_ids = (
+        set(
+            db.scalars(
+                select(Device.location_zone_id)
+                .where(Device.location_zone_id.in_(row_ids))
+                .group_by(Device.location_zone_id)
+            ).all()
+        )
+        if row_ids
+        else set()
+    )
+    child_parent_ids = (
+        set(
+            db.scalars(
+                select(Zone.parent_id)
+                .where(Zone.parent_id.in_(row_ids))
+                .group_by(Zone.parent_id)
+            ).all()
+        )
+        if row_ids
+        else set()
+    )
 
     def _depth(zone: Zone) -> int:
         depth = 0
@@ -87,12 +111,10 @@ def bulk_delete_locations(payload: BulkDeleteRequest, db: Session = Depends(get_
     deleted = 0
     skipped = max(len(ids) - len(rows), 0)
     for row in rows:
-        linked_devices = db.scalar(select(func.count()).select_from(Device).where(Device.location_zone_id == row.id)) or 0
-        if linked_devices > 0:
+        if row.id in linked_device_zone_ids:
             skipped += 1
             continue
-        has_children = db.scalar(select(func.count()).select_from(Zone).where(Zone.parent_id == row.id)) or 0
-        if has_children > 0:
+        if row.id in child_parent_ids:
             skipped += 1
             continue
         db.delete(row)
@@ -106,6 +128,8 @@ def bulk_delete_locations(payload: BulkDeleteRequest, db: Session = Depends(get_
     if deleted:
         emit_realtime_event("inventory.updated", {"entity": "zone", "action": "bulk_delete", "count": deleted})
     return BulkOperationResult(deleted=deleted, skipped=skipped)
+
+
 @router.get("/bootstrap")
 def bootstrap_status() -> dict[str, str]:
     return {"module": "inventory", "status": "scaffolded"}
@@ -1541,16 +1565,30 @@ def create_subzones_bulk(location_id: int, payload: list[ZoneCreate], db: Sessio
     max_code_length = Zone.__table__.columns.code.type.length or 50
     created: list[Zone] = []
     # pre-check for conflicting codes to give a friendly 409 response
-    requested_codes = []
+    requested_codes: list[str] = []
+    requested_code_by_lower: dict[str, str] = {}
+    duplicate_codes: set[str] = set()
     for item in payload:
         code = (item.code or "").strip()
         if not code:
             raise HTTPException(status_code=422, detail="Location code is required")
         if len(code) > max_code_length:
             raise HTTPException(status_code=422, detail=f"Location code must be at most {max_code_length} characters")
+        lower_code = code.lower()
+        previous = requested_code_by_lower.get(lower_code)
+        if previous is not None:
+            duplicate_codes.add(previous)
+            duplicate_codes.add(code)
+        else:
+            requested_code_by_lower[lower_code] = code
         requested_codes.append(code)
+    if duplicate_codes:
+        raise HTTPException(
+            status_code=409,
+            detail={"message": "Code conflict", "conflicts": sorted(duplicate_codes, key=str.lower)},
+        )
     if requested_codes:
-        lower_codes = [c.lower() for c in requested_codes]
+        lower_codes = list(requested_code_by_lower.keys())
         existing = list(db.scalars(select(Zone.code).where(func.lower(Zone.code).in_(lower_codes))).all())
         if existing:
             raise HTTPException(status_code=409, detail={"message": "Code conflict", "conflicts": existing})

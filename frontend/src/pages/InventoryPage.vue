@@ -1101,7 +1101,7 @@
         <q-card-section class="q-pt-none">
           <q-form ref="locationFormRef" @submit.prevent="saveLocation">
             <q-input v-model="locationForm.name" :label="t('users.name')" outlined dense class="q-mb-sm" :rules="[v => !!v || t('login.required')]" />
-            <q-input v-model="locationForm.code" :label="t('inventory.code')" outlined dense class="q-mb-sm" :rules="[v => !!v || t('login.required')]" @update:model-value="() => { locationCodeEdited.value = true }" />
+            <q-input v-model="locationForm.code" :label="t('inventory.code')" outlined dense class="q-mb-sm" :rules="[v => !!v || t('login.required')]" @update:model-value="() => { locationCodeEdited = true }" />
             <div class="row items-center q-mb-sm">
               <div class="col">
                 <div v-if="locationForm.name" class="text-caption text-grey-7">
@@ -1109,7 +1109,7 @@
                 </div>
               </div>
               <div class="col-auto">
-                <q-btn dense flat size="sm" :label="t('app.actions.reset')" color="primary" v-if="locationForm.name" @click="() => { locationForm.code = slugify(locationForm.name); locationCodeEdited.value = false }" />
+                <q-btn dense flat size="sm" :label="t('app.actions.reset')" color="primary" v-if="locationForm.name" @click="() => { locationForm.code = slugify(locationForm.name); locationCodeEdited = false }" />
               </div>
             </div>
             <div class="row q-col-gutter-sm q-mb-sm">
@@ -4979,6 +4979,9 @@ const emptyLocationForm = () => ({
   is_active: true,
 })
 const locationForm = ref(emptyLocationForm())
+// Single-location auto-generate toggle and edit-tracking
+const locationAutoGenerateCode = ref(true)
+const locationCodeEdited = ref(false)
 
 // Auto-generate `code` from `name` for location dialog when enabled
 watch(() => locationForm.value.name, (newName) => {
@@ -5060,10 +5063,6 @@ const bulkCreateIsActive = ref(true)
 const bulkCreateInterpretRanges = ref(true)
 const bulkCreateAutoGenerateCode = ref(true)
 const bulkCreateError = ref('')
-
-// Single-location auto-generate toggle and edit-tracking
-const locationAutoGenerateCode = ref(true)
-const locationCodeEdited = ref(false)
 
 function tr(key, fallback) {
   try {
