@@ -26,9 +26,12 @@ from app.domain.settings.schemas import (
     AuthSSOSettingsRead,
     AuthSSOSettingsUpdate,
     DEFAULT_BRAND_OPTIONS,
+    DEFAULT_BRAND_LINKS,
+    DEFAULT_BRAND_MANUFACTURER_MAP,
     DEFAULT_CATEGORY_PREFILL_PATHS,
     DEFAULT_LOCATION_TYPES,
     DEFAULT_MANUFACTURER_OPTIONS,
+    DEFAULT_MANUFACTURER_LINKS,
     CategoryPrefillPathsRead,
     CategoryPrefillPathsUpdate,
     EventoryProductRead,
@@ -159,9 +162,9 @@ def get_product_defaults(db: Session = Depends(get_db)) -> ProductDefaultsRead:
             "manufacturer_options": DEFAULT_MANUFACTURER_OPTIONS,
             "default_brand": DEFAULT_BRAND_OPTIONS[0],
             "default_manufacturer": DEFAULT_MANUFACTURER_OPTIONS[0],
-            "brand_manufacturer_map": {},
-            "brand_links": {},
-            "manufacturer_links": {},
+            "brand_manufacturer_map": DEFAULT_BRAND_MANUFACTURER_MAP,
+            "brand_links": DEFAULT_BRAND_LINKS,
+            "manufacturer_links": DEFAULT_MANUFACTURER_LINKS,
         },
     )
     data = _parse_product_defaults(setting.value_json)
@@ -182,9 +185,9 @@ def update_product_defaults(
             "manufacturer_options": DEFAULT_MANUFACTURER_OPTIONS,
             "default_brand": DEFAULT_BRAND_OPTIONS[0],
             "default_manufacturer": DEFAULT_MANUFACTURER_OPTIONS[0],
-            "brand_manufacturer_map": {},
-            "brand_links": {},
-            "manufacturer_links": {},
+            "brand_manufacturer_map": DEFAULT_BRAND_MANUFACTURER_MAP,
+            "brand_links": DEFAULT_BRAND_LINKS,
+            "manufacturer_links": DEFAULT_MANUFACTURER_LINKS,
         },
     )
 
@@ -1592,9 +1595,9 @@ def _parse_product_defaults(raw: str | None) -> dict[str, object]:
         "manufacturer_options": DEFAULT_MANUFACTURER_OPTIONS.copy(),
         "default_brand": DEFAULT_BRAND_OPTIONS[0],
         "default_manufacturer": DEFAULT_MANUFACTURER_OPTIONS[0],
-        "brand_manufacturer_map": {},
-        "brand_links": {},
-        "manufacturer_links": {},
+        "brand_manufacturer_map": DEFAULT_BRAND_MANUFACTURER_MAP.copy(),
+        "brand_links": DEFAULT_BRAND_LINKS.copy(),
+        "manufacturer_links": DEFAULT_MANUFACTURER_LINKS.copy(),
     }
     if not raw:
         return fallback
