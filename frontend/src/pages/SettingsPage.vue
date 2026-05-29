@@ -1134,10 +1134,13 @@ import { useInventoryStore } from '../stores/inventory'
 import { useJobsStore } from '../stores/jobs'
 import {
   DEFAULT_AUTH_SSO_SETTINGS,
+  DEFAULT_BRAND_LINKS,
+  DEFAULT_BRAND_MANUFACTURER_MAP,
   DEFAULT_BRAND_OPTIONS,
   DEFAULT_CATEGORY_PREFILL_PATHS,
   DEFAULT_INTEGRATIONS,
   DEFAULT_LOCATION_TYPES,
+  DEFAULT_MANUFACTURER_LINKS,
   DEFAULT_MANUFACTURER_OPTIONS,
   useSettingsStore,
 } from '../stores/settings'
@@ -1319,9 +1322,9 @@ const brandOptionsDraft = ref([...DEFAULT_BRAND_OPTIONS])
 const manufacturerOptionsDraft = ref([...DEFAULT_MANUFACTURER_OPTIONS])
 const defaultBrandDraft = ref(DEFAULT_BRAND_OPTIONS[0])
 const defaultManufacturerDraft = ref(DEFAULT_MANUFACTURER_OPTIONS[0])
-const brandManufacturerMapDraft = ref({})
-const brandLinksDraft = ref({})
-const manufacturerLinksDraft = ref({})
+const brandManufacturerMapDraft = ref({ ...DEFAULT_BRAND_MANUFACTURER_MAP })
+const brandLinksDraft = ref({ ...DEFAULT_BRAND_LINKS })
+const manufacturerLinksDraft = ref({ ...DEFAULT_MANUFACTURER_LINKS })
 const categoryPrefillDraftText = ref('')
 const integrationsDraft = ref({
   eventory_instances: DEFAULT_INTEGRATIONS.eventory_instances.map(instance => ({ ...instance })),
@@ -1905,9 +1908,9 @@ function resetProductDefaultsToDefaults() {
   manufacturerOptionsDraft.value = [...DEFAULT_MANUFACTURER_OPTIONS]
   defaultBrandDraft.value = DEFAULT_BRAND_OPTIONS[0] || null
   defaultManufacturerDraft.value = DEFAULT_MANUFACTURER_OPTIONS[0] || null
-  brandManufacturerMapDraft.value = {}
-  brandLinksDraft.value = {}
-  manufacturerLinksDraft.value = {}
+  brandManufacturerMapDraft.value = { ...DEFAULT_BRAND_MANUFACTURER_MAP }
+  brandLinksDraft.value = { ...DEFAULT_BRAND_LINKS }
+  manufacturerLinksDraft.value = { ...DEFAULT_MANUFACTURER_LINKS }
 }
 
 function normalizeEventoryInstanceKey(value) {
