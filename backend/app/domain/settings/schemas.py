@@ -58,6 +58,18 @@ DEFAULT_BRAND_OPTIONS = [
     "Festool",
     "Ryobi",
     "Husqvarna",
+    "Shure",
+    "Sennheiser",
+    "Yamaha",
+    "Allen & Heath",
+    "JBL Professional",
+    "d&b audiotechnik",
+    "L-Acoustics",
+    "Meyer Sound",
+    "Prolyte",
+    "Global Truss",
+    "ROE Visual",
+    "Absen",
 ]
 
 DEFAULT_MANUFACTURER_OPTIONS = [
@@ -68,6 +80,18 @@ DEFAULT_MANUFACTURER_OPTIONS = [
     "Stanley Black & Decker",
     "Festool",
     "Husqvarna Group",
+    "Shure Incorporated",
+    "Sennheiser electronic SE & Co. KG",
+    "Yamaha Corporation",
+    "Allen & Heath Limited",
+    "Harman International",
+    "d&b audiotechnik",
+    "L-Acoustics",
+    "Meyer Sound Laboratories",
+    "Prolyte Group",
+    "Global Truss",
+    "ROE Visual",
+    "Absen",
 ]
 
 DEFAULT_BRAND_MANUFACTURER_MAP = {
@@ -79,6 +103,18 @@ DEFAULT_BRAND_MANUFACTURER_MAP = {
     "Festool": "Festool",
     "Ryobi": "Techtronic Industries",
     "Husqvarna": "Husqvarna Group",
+    "Shure": "Shure Incorporated",
+    "Sennheiser": "Sennheiser electronic SE & Co. KG",
+    "Yamaha": "Yamaha Corporation",
+    "Allen & Heath": "Allen & Heath Limited",
+    "JBL Professional": "Harman International",
+    "d&b audiotechnik": "d&b audiotechnik",
+    "L-Acoustics": "L-Acoustics",
+    "Meyer Sound": "Meyer Sound Laboratories",
+    "Prolyte": "Prolyte Group",
+    "Global Truss": "Global Truss",
+    "ROE Visual": "ROE Visual",
+    "Absen": "Absen",
 }
 
 DEFAULT_BRAND_LINKS = {
@@ -90,6 +126,18 @@ DEFAULT_BRAND_LINKS = {
     "Festool": "https://www.festool.com/",
     "Ryobi": "https://www.ryobitools.com/",
     "Husqvarna": "https://www.husqvarna.com/",
+    "Shure": "https://www.shure.com/",
+    "Sennheiser": "https://www.sennheiser.com/",
+    "Yamaha": "https://www.yamaha.com/",
+    "Allen & Heath": "https://www.allen-heath.com/",
+    "JBL Professional": "https://jblpro.com/",
+    "d&b audiotechnik": "https://www.dbaudio.com/",
+    "L-Acoustics": "https://www.l-acoustics.com/",
+    "Meyer Sound": "https://meyersound.com/",
+    "Prolyte": "https://www.prolyte.com/",
+    "Global Truss": "https://www.globaltruss.com/",
+    "ROE Visual": "https://www.roevisual.com/",
+    "Absen": "https://www.absen.com/",
 }
 
 DEFAULT_MANUFACTURER_LINKS = {
@@ -100,6 +148,18 @@ DEFAULT_MANUFACTURER_LINKS = {
     "Stanley Black & Decker": "https://www.stanleyblackanddecker.com/",
     "Festool": "https://www.festool.com/",
     "Husqvarna Group": "https://www.husqvarnagroup.com/",
+    "Shure Incorporated": "https://www.shure.com/",
+    "Sennheiser electronic SE & Co. KG": "https://www.sennheiser.com/",
+    "Yamaha Corporation": "https://www.yamaha.com/",
+    "Allen & Heath Limited": "https://www.allen-heath.com/",
+    "Harman International": "https://www.harman.com/",
+    "d&b audiotechnik": "https://www.dbaudio.com/",
+    "L-Acoustics": "https://www.l-acoustics.com/",
+    "Meyer Sound Laboratories": "https://meyersound.com/",
+    "Prolyte Group": "https://www.prolyte.com/",
+    "Global Truss": "https://www.globaltruss.com/",
+    "ROE Visual": "https://www.roevisual.com/",
+    "Absen": "https://www.absen.com/",
 }
 
 
