@@ -40,8 +40,45 @@ export const DEFAULT_CATEGORY_PREFILL_PATHS = [
   ['Networking', 'Cables'],
 ]
 
-export const DEFAULT_BRAND_OPTIONS = ['generic', 'd&b', 'shure', 'sennheiser', 'martin', 'chamsys', 'blackmagic']
-export const DEFAULT_MANUFACTURER_OPTIONS = ['generic', 'd&b audiotechnik', 'shure', 'sennheiser', 'martin professional', 'chamsys', 'blackmagic design']
+export const DEFAULT_BRAND_OPTIONS = ['Bosch', 'Makita', 'Hilti', 'Milwaukee', 'DeWalt', 'Festool', 'Ryobi', 'Husqvarna']
+export const DEFAULT_MANUFACTURER_OPTIONS = [
+  'Bosch',
+  'Makita',
+  'Hilti',
+  'Techtronic Industries',
+  'Stanley Black & Decker',
+  'Festool',
+  'Husqvarna Group',
+]
+export const DEFAULT_BRAND_MANUFACTURER_MAP = {
+  Bosch: 'Bosch',
+  Makita: 'Makita',
+  Hilti: 'Hilti',
+  Milwaukee: 'Techtronic Industries',
+  DeWalt: 'Stanley Black & Decker',
+  Festool: 'Festool',
+  Ryobi: 'Techtronic Industries',
+  Husqvarna: 'Husqvarna Group',
+}
+export const DEFAULT_BRAND_LINKS = {
+  Bosch: 'https://www.bosch-professional.com/',
+  Makita: 'https://www.makita.com/',
+  Hilti: 'https://www.hilti.com/',
+  Milwaukee: 'https://www.milwaukeetool.com/',
+  DeWalt: 'https://www.dewalt.com/',
+  Festool: 'https://www.festool.com/',
+  Ryobi: 'https://www.ryobitools.com/',
+  Husqvarna: 'https://www.husqvarna.com/',
+}
+export const DEFAULT_MANUFACTURER_LINKS = {
+  Bosch: 'https://www.bosch.com/',
+  Makita: 'https://www.makita.com/',
+  Hilti: 'https://www.hilti.group/',
+  'Techtronic Industries': 'https://www.ttigroup.com/',
+  'Stanley Black & Decker': 'https://www.stanleyblackanddecker.com/',
+  Festool: 'https://www.festool.com/',
+  'Husqvarna Group': 'https://www.husqvarnagroup.com/',
+}
 export const DEFAULT_INTEGRATIONS = {
   eventory_instances: [
     {
@@ -114,9 +151,9 @@ export const useSettingsStore = defineStore('settings', () => {
   const manufacturerOptions = ref([...DEFAULT_MANUFACTURER_OPTIONS])
   const defaultBrand = ref(DEFAULT_BRAND_OPTIONS[0])
   const defaultManufacturer = ref(DEFAULT_MANUFACTURER_OPTIONS[0])
-  const brandManufacturerMap = ref({})
-  const brandLinks = ref({})
-  const manufacturerLinks = ref({})
+  const brandManufacturerMap = ref({ ...DEFAULT_BRAND_MANUFACTURER_MAP })
+  const brandLinks = ref({ ...DEFAULT_BRAND_LINKS })
+  const manufacturerLinks = ref({ ...DEFAULT_MANUFACTURER_LINKS })
   const integrations = ref(cloneIntegrations(DEFAULT_INTEGRATIONS))
   const authSsoSettings = ref(cloneAuthSsoSettings(DEFAULT_AUTH_SSO_SETTINGS))
   const companyProfile = ref({ ...DEFAULT_COMPANY_PROFILE })

@@ -50,24 +50,57 @@ DEFAULT_CATEGORY_PREFILL_PATHS = [
 ]
 
 DEFAULT_BRAND_OPTIONS = [
-    "generic",
-    "d&b",
-    "shure",
-    "sennheiser",
-    "martin",
-    "chamsys",
-    "blackmagic",
+    "Bosch",
+    "Makita",
+    "Hilti",
+    "Milwaukee",
+    "DeWalt",
+    "Festool",
+    "Ryobi",
+    "Husqvarna",
 ]
 
 DEFAULT_MANUFACTURER_OPTIONS = [
-    "generic",
-    "d&b audiotechnik",
-    "shure",
-    "sennheiser",
-    "martin professional",
-    "chamsys",
-    "blackmagic design",
+    "Bosch",
+    "Makita",
+    "Hilti",
+    "Techtronic Industries",
+    "Stanley Black & Decker",
+    "Festool",
+    "Husqvarna Group",
 ]
+
+DEFAULT_BRAND_MANUFACTURER_MAP = {
+    "Bosch": "Bosch",
+    "Makita": "Makita",
+    "Hilti": "Hilti",
+    "Milwaukee": "Techtronic Industries",
+    "DeWalt": "Stanley Black & Decker",
+    "Festool": "Festool",
+    "Ryobi": "Techtronic Industries",
+    "Husqvarna": "Husqvarna Group",
+}
+
+DEFAULT_BRAND_LINKS = {
+    "Bosch": "https://www.bosch-professional.com/",
+    "Makita": "https://www.makita.com/",
+    "Hilti": "https://www.hilti.com/",
+    "Milwaukee": "https://www.milwaukeetool.com/",
+    "DeWalt": "https://www.dewalt.com/",
+    "Festool": "https://www.festool.com/",
+    "Ryobi": "https://www.ryobitools.com/",
+    "Husqvarna": "https://www.husqvarna.com/",
+}
+
+DEFAULT_MANUFACTURER_LINKS = {
+    "Bosch": "https://www.bosch.com/",
+    "Makita": "https://www.makita.com/",
+    "Hilti": "https://www.hilti.group/",
+    "Techtronic Industries": "https://www.ttigroup.com/",
+    "Stanley Black & Decker": "https://www.stanleyblackanddecker.com/",
+    "Festool": "https://www.festool.com/",
+    "Husqvarna Group": "https://www.husqvarnagroup.com/",
+}
 
 
 class LocationTypeOptionsRead(BaseModel):

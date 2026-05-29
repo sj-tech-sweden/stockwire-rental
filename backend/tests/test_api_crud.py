@@ -2,6 +2,8 @@ import socket
 from unittest.mock import patch
 from urllib.error import HTTPError, URLError
 
+from app.domain.settings import router as settings_router
+
 
 def test_auth_crud(client):
     created = client.post(
@@ -500,6 +502,11 @@ def test_settings_modules_crud(client):
 
     product_defaults = client.get("/api/v1/settings/product-defaults")
     assert product_defaults.status_code == 200
+    assert product_defaults.json()["brand_options"] == settings_router.DEFAULT_BRAND_OPTIONS
+    assert product_defaults.json()["manufacturer_options"] == settings_router.DEFAULT_MANUFACTURER_OPTIONS
+    assert product_defaults.json()["brand_manufacturer_map"] == settings_router.DEFAULT_BRAND_MANUFACTURER_MAP
+    assert product_defaults.json()["brand_links"] == settings_router.DEFAULT_BRAND_LINKS
+    assert product_defaults.json()["manufacturer_links"] == settings_router.DEFAULT_MANUFACTURER_LINKS
 
     updated_product_defaults = client.put(
         "/api/v1/settings/product-defaults",
