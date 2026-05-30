@@ -711,9 +711,13 @@ export default {
     },
     overview: {
       products: 'Produkter: {count}',
+      rentals: 'Hyror: {count}',
       devices: 'Enheter: {count}',
       categories: 'Kategorier: {count}',
       storageLocations: 'Lagringsplatser: {count}',
+      maintenancePending: 'Underhåll väntar: {count}',
+      mostUsedDevice: 'Mest använd enhet: {device}',
+      noUsageData: 'Ingen användningsdata',
     },
     searchProducts: 'Sök produkter',
     newProduct: 'Ny produkt',

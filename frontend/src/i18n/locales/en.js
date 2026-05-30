@@ -711,9 +711,13 @@ export default {
     },
     overview: {
       products: 'Products: {count}',
+      rentals: 'Rentals: {count}',
       devices: 'Devices: {count}',
       categories: 'Categories: {count}',
       storageLocations: 'Storage Locations: {count}',
+      maintenancePending: 'Maintenance pending: {count}',
+      mostUsedDevice: 'Most used device: {device}',
+      noUsageData: 'No usage data',
     },
     searchProducts: 'Search products',
     newProduct: 'New product',

@@ -28,10 +28,13 @@
     <q-tab-panels v-model="tab" animated>
       <q-tab-panel name="overview" class="q-pa-none">
         <q-card class="ec-card q-pa-md">
-          <div class="text-subtitle1">{{ t('inventory.overview.products', { count: store.products.length }) }}</div>
+          <div class="text-subtitle1">{{ t('inventory.overview.products', { count: inventoryProductCount }) }}</div>
+          <div class="text-subtitle1">{{ t('inventory.overview.rentals', { count: rentalProducts.length }) }}</div>
           <div class="text-subtitle1">{{ t('inventory.overview.devices', { count: store.devices.length }) }}</div>
-          <div class="text-subtitle1">{{ t('inventory.overview.categories', { count: store.categories.length }) }}</div>
+          <div class="text-subtitle1">{{ t('inventory.overview.categories', { count: overviewCategoryCount }) }}</div>
           <div class="text-subtitle1">{{ t('inventory.overview.storageLocations', { count: store.zones.length }) }}</div>
+          <div class="text-subtitle1">{{ t('inventory.overview.maintenancePending', { count: overviewMaintenancePendingCount }) }}</div>
+          <div class="text-subtitle1">{{ t('inventory.overview.mostUsedDevice', { device: overviewMostUsedDeviceLabel }) }}</div>
         </q-card>
       </q-tab-panel>
 
@@ -2284,6 +2287,7 @@ import EntityAttachmentsPanel from '../components/EntityAttachmentsPanel.vue'
 import { translateMaybePrefillCustomFieldLabel, translateMaybePrefillCustomFieldOption } from '../i18n/prefillContent'
 import { normalizeCurrencyCode } from '../constants/currencies'
 import { collectImportSourceKeys, convertDimensionValueToCm, getImportValueBySourceKey, parseImportRows, resolveImportEntityType } from '../utils/import-data'
+import { countCategoryOverview, countPendingMaintenance, findMostUsedDevice, isRentalProduct } from '../utils/inventory-overview'
 import { slugify } from 'src/utils/slugify'
 
 const $q = useQuasar()
@@ -2613,7 +2617,7 @@ const scheduleColumns = [
 const filteredProducts = computed(() => {
   const needle = productSearch.value.trim().toLowerCase()
   const rows = store.products.filter(product => {
-    if (product?.is_rental_product || String(product?.product_type || '') === 'rental') return false
+    if (isRentalProduct(product)) return false
     if (productCategoryFilter.value && String(product.category || '') !== String(productCategoryFilter.value)) return false
     if (productTypeFilter.value && String(product.product_type || '') !== String(productTypeFilter.value)) return false
     if (productBrandFilter.value && String(product.brand || '') !== String(productBrandFilter.value)) return false
@@ -2646,8 +2650,17 @@ const filteredProducts = computed(() => {
 })
 
 const rentalProducts = computed(() =>
-  (store.products || []).filter(product => product?.is_rental_product || product?.product_type === 'rental')
+  (store.products || []).filter(product => isRentalProduct(product))
 )
+
+const inventoryProductCount = computed(() => (store.products || []).filter(product => !isRentalProduct(product)).length)
+const overviewCategoryCount = computed(() => countCategoryOverview(store.categories, store.categoryTree))
+const overviewMaintenancePendingCount = computed(() => countPendingMaintenance(store.maintenances))
+const overviewMostUsedDeviceLabel = computed(() => {
+  const device = findMostUsedDevice(store.devices)
+  if (!device) return t('inventory.overview.noUsageData')
+  return `${device.asset_tag || '—'} (${device.usage_hours}h)`
+})
 
 const rentalSupplierOptions = computed(() => {
   const values = [...new Set(rentalProducts.value.map(item => String(item.supplier_name || '').trim()).filter(Boolean))]
