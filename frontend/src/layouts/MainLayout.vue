@@ -200,6 +200,7 @@ watch(
     if (!perUserLocale) return
     setLocale(perUserLocale)
   },
+  { immediate: true },
 )
 
 async function logout() {
