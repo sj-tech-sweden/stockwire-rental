@@ -8,7 +8,7 @@ describe('PWA configuration', () => {
 
   it('builds the frontend in PWA mode with installable metadata', () => {
     const packageJson = JSON.parse(readFileSync(resolve(frontendRoot, 'package.json'), 'utf8'))
-    const config = quasarConfig()
+    const config = quasarConfig({})
     const manifestJson = JSON.parse(readFileSync(resolve(frontendRoot, 'src-pwa/manifest.json'), 'utf8'))
 
     expect(packageJson.scripts.dev).toContain('-m pwa')
@@ -38,7 +38,7 @@ describe('PWA configuration', () => {
   })
 
   it('caches runtime config for offline bootstrapping without precaching a stale env file', () => {
-    const config = quasarConfig()
+    const config = quasarConfig({})
     const runtimeConfigCache = config.pwa.workboxOptions.runtimeCaching.find(({ options }) => options?.cacheName === 'runtime-config')
 
     expect(config.pwa.manifestFilename).toBe('manifest.webmanifest')
