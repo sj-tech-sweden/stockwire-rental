@@ -123,6 +123,18 @@ def _get_backend_version() -> str:
         return "unknown"
 
 
+def _sanitize_release_url(value: str | None) -> str | None:
+    """Allow only HTTPS GitHub release links and drop everything else."""
+    if not value:
+        return None
+    parsed = urlparse(value)
+    if parsed.scheme != "https":
+        return None
+    if parsed.hostname not in {"github.com", "www.github.com"}:
+        return None
+    return value
+
+
 def _get_postgres_version(db: Session) -> str | None:
     try:
         return db.execute(text("SHOW server_version")).scalar_one_or_none()
@@ -175,9 +187,9 @@ def get_version(
         with build_opener().open(req, timeout=8) as resp:
             data = json.loads(resp.read().decode())
 
-        latest_tag = str(data.get("tag_name") or "").removeprefix("v")
+        latest_tag = str(data.get("tag_name") or "").strip().removeprefix("v")
         release_notes = str(data.get("body") or "").strip() or None
-        release_url = str(data.get("html_url") or "").strip() or None
+        release_url = _sanitize_release_url(str(data.get("html_url") or "").strip() or None)
 
         result.latest_version = latest_tag or None
         result.latest_release_notes = release_notes

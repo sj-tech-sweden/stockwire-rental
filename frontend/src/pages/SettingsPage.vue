@@ -1058,14 +1058,14 @@
             </div>
           </div>
 
-          <template v-if="versionCheckResult && versionCheckResult.latest_release_url">
+          <template v-if="safeLatestReleaseUrl">
             <q-btn
               flat
               dense
               color="primary"
               icon="open_in_new"
               :label="t('settings.about.viewRelease')"
-              :href="versionCheckResult.latest_release_url"
+              :href="safeLatestReleaseUrl"
               target="_blank"
               rel="noopener noreferrer"
               class="q-mb-md"
@@ -1202,7 +1202,7 @@
 </template>
 
 <script setup>
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { useQuasar } from 'quasar'
 import { useI18n } from 'vue-i18n'
@@ -1550,6 +1550,18 @@ const appVersion = process.env.APP_VERSION || '0.1.0'
 const versionCheckLoading = ref(false)
 const versionCheckResult = ref(null)
 const versionCheckError = ref(false)
+const safeLatestReleaseUrl = computed(() => {
+  const rawUrl = versionCheckResult.value?.latest_release_url
+  if (typeof rawUrl !== 'string' || !rawUrl.trim()) return null
+  try {
+    const parsed = new URL(rawUrl)
+    if (parsed.protocol !== 'https:') return null
+    if (parsed.hostname !== 'github.com' && parsed.hostname !== 'www.github.com') return null
+    return parsed.href
+  } catch {
+    return null
+  }
+})
 const versionInfo = reactive({
   backend_version: null,
   valkey_version: null,
