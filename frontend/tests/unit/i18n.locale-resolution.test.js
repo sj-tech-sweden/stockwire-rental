@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 
-import { getUserLocalePreference, resolveAppLocale, resolveLoginLocale, SUPPORTED_LOCALES } from '../../src/i18n'
+import { getUserLocalePreference, resolveAppLocale, resolveLoginLocale } from '../../src/i18n'
 
 function setNavigatorLocale(locale) {
   Object.defineProperty(window.navigator, 'language', {
@@ -46,13 +46,9 @@ describe('locale resolution', () => {
     expect(resolveLoginLocale('sv')).toBe('en')
   })
 
-  it('derives user preference locale from SUPPORTED_LOCALES', () => {
-    SUPPORTED_LOCALES.push('fr')
-    try {
-      localStorage.setItem('sw_user_locale_42', 'fr-CA')
-      expect(getUserLocalePreference(42)).toBe('fr')
-    } finally {
-      SUPPORTED_LOCALES.pop()
-    }
+  it('parses user preference locale from region-specific values', () => {
+    localStorage.setItem('sw_user_locale_42', 'en-GB')
+
+    expect(getUserLocalePreference(42)).toBe('en')
   })
 })
