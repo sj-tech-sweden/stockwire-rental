@@ -42,10 +42,11 @@ export function countPendingMaintenance(maintenances) {
 
 export function findMostUsedDevice(devices) {
   let selected = null
-  let selectedHours = 0
+  let selectedHours = Number.NEGATIVE_INFINITY
   for (const device of devices || []) {
     const usageHours = Number(device?.usage_hours)
-    if (!Number.isFinite(usageHours) || usageHours <= selectedHours) continue
+    if (!Number.isFinite(usageHours)) continue
+    if (selected && usageHours <= selectedHours) continue
     selected = device
     selectedHours = usageHours
   }

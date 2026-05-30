@@ -38,10 +38,18 @@ describe('inventory overview utilities', () => {
   it('selects device with highest usage hours', () => {
     const device = findMostUsedDevice([
       { asset_tag: 'DEV-1', usage_hours: 10 },
-      { asset_tag: 'DEV-2', usage_hours: 12.26 },
+      { asset_tag: 'DEV-2', usage_hours: 12.4 },
       { asset_tag: 'DEV-3', usage_hours: 12.2 },
     ])
 
-    expect(device).toEqual({ asset_tag: 'DEV-2', usage_hours: 12.3 })
+    expect(device).toEqual({ asset_tag: 'DEV-2', usage_hours: 12.4 })
+  })
+
+  it('returns a zero-hour device when it is the only measured usage', () => {
+    const device = findMostUsedDevice([
+      { asset_tag: 'DEV-0', usage_hours: 0 },
+    ])
+
+    expect(device).toEqual({ asset_tag: 'DEV-0', usage_hours: 0 })
   })
 })

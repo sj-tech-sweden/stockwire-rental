@@ -31,7 +31,7 @@
           <div class="text-subtitle1">{{ t('inventory.overview.products', { count: inventoryProductCount }) }}</div>
           <div class="text-subtitle1">{{ t('inventory.overview.rentals', { count: rentalProducts.length }) }}</div>
           <div class="text-subtitle1">{{ t('inventory.overview.devices', { count: store.devices.length }) }}</div>
-          <div class="text-subtitle1">{{ t('inventory.overview.categories', { count: overviewCategoryCount }) }}</div>
+          <div class="text-subtitle1">{{ t('inventory.overview.categories', { count: categoryOverviewCount }) }}</div>
           <div class="text-subtitle1">{{ t('inventory.overview.storageLocations', { count: store.zones.length }) }}</div>
           <div class="text-subtitle1">{{ t('inventory.overview.maintenancePending', { count: overviewMaintenancePendingCount }) }}</div>
           <div class="text-subtitle1">{{ t('inventory.overview.mostUsedDevice', { device: overviewMostUsedDeviceLabel }) }}</div>
@@ -2654,12 +2654,13 @@ const rentalProducts = computed(() =>
 )
 
 const inventoryProductCount = computed(() => (store.products || []).filter(product => !isRentalProduct(product)).length)
-const overviewCategoryCount = computed(() => countCategoryOverview(store.categories, store.categoryTree))
+const categoryOverviewCount = computed(() => countCategoryOverview(store.categories, store.categoryTree))
 const overviewMaintenancePendingCount = computed(() => countPendingMaintenance(store.maintenances))
 const overviewMostUsedDeviceLabel = computed(() => {
   const device = findMostUsedDevice(store.devices)
   if (!device) return t('inventory.overview.noUsageData')
-  return `${device.asset_tag || '—'} (${device.usage_hours}h)`
+  const assetTag = device.asset_tag || t('inventory.overview.unknownDevice')
+  return `${assetTag} (${device.usage_hours}h)`
 })
 
 const rentalSupplierOptions = computed(() => {
