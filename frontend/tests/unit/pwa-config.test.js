@@ -9,6 +9,7 @@ describe('PWA configuration', () => {
   it('builds the frontend in PWA mode with installable metadata', () => {
     const packageJson = JSON.parse(readFileSync(resolve(frontendRoot, 'package.json'), 'utf8'))
     const config = quasarConfig()
+    const manifestJson = JSON.parse(readFileSync(resolve(frontendRoot, 'src-pwa/manifest.json'), 'utf8'))
 
     expect(packageJson.scripts.dev).toContain('-m pwa')
     expect(packageJson.scripts.build).toContain('-m pwa')
@@ -20,6 +21,11 @@ describe('PWA configuration', () => {
         expect.objectContaining({ src: 'icons/icon-512x512.png', sizes: '512x512' }),
       ]),
     )
+    expect(manifestJson).toMatchObject({
+      display: 'standalone',
+      background_color: '#11181D',
+      theme_color: '#3F873F',
+    })
   })
 
   it('serves the generated PWA output and ships required icon assets', () => {
