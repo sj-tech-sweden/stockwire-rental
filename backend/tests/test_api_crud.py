@@ -955,6 +955,23 @@ def test_settings_version_check_updates_strips_single_v_prefix(client):
     assert data.get("latest_version") == "v1.2.3"
 
 
+def test_settings_version_check_updates_single_v_prefix(client):
+    payload = {
+        "tag_name": "v1.2.3",
+        "body": "notes",
+        "html_url": "https://example.com/release",
+    }
+
+    with patch("app.domain.settings.router.build_opener") as mock_opener:
+        response_context = mock_opener.return_value.open.return_value.__enter__.return_value
+        response_context.read.return_value = json.dumps(payload).encode()
+        response = client.get("/api/v1/settings/version", params={"check_updates": "true"})
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data.get("latest_version") == "1.2.3"
+
+
 def test_scan_operations_and_job_requirement_bulk(client):
     product = client.post(
         "/api/v1/inventory/products",

@@ -457,7 +457,6 @@ export default {
     about: {
       title: 'Om',
       description: 'Versionsinformation och uppdateringskontroll.',
-      currentVersion: 'Nuvarande version',
       frontendVersion: 'Frontend-version',
       backendVersion: 'Backend-version',
       valkeyVersion: 'Valkey-version',

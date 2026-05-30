@@ -457,7 +457,6 @@ export default {
     about: {
       title: 'About',
       description: 'Application version information and update check.',
-      currentVersion: 'Current version',
       frontendVersion: 'Frontend version',
       backendVersion: 'Backend version',
       valkeyVersion: 'Valkey version',

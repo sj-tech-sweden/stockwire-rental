@@ -131,6 +131,7 @@ def _get_postgres_version(db: Session) -> str | None:
 
 
 def _get_valkey_version() -> str | None:
+    client = None
     try:
         from app.config import settings
 
@@ -145,6 +146,9 @@ def _get_valkey_version() -> str | None:
         return str(info.get("redis_version") or "").strip() or None
     except (redis.RedisError, OSError):
         return None
+    finally:
+        if client is not None:
+            client.close()
 
 
 @router.get("/version", response_model=AppVersionRead)
@@ -181,7 +185,7 @@ def get_version(
         result.up_to_date = (latest_tag == backend_version) if latest_tag else None
     except (HTTPError, URLError, TimeoutError, json.JSONDecodeError, UnicodeDecodeError):
         # Network errors or unexpected responses — return without update info
-        return result
+        pass
 
     return result
 
