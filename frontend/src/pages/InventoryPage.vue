@@ -35,6 +35,7 @@
           <div class="text-subtitle1">{{ t('inventory.overview.storageLocations', { count: store.zones.length }) }}</div>
           <div class="text-subtitle1">{{ t('inventory.overview.maintenancePending', { count: overviewMaintenancePendingCount }) }}</div>
           <div class="text-subtitle1">{{ t('inventory.overview.mostUsedDevice', { device: overviewMostUsedDeviceLabel }) }}</div>
+          <div class="text-subtitle1">{{ t('inventory.overview.mostUsedProductByDays', { product: overviewMostUsedProductByUsageDaysLabel }) }}</div>
         </q-card>
       </q-tab-panel>
 
@@ -2287,7 +2288,13 @@ import EntityAttachmentsPanel from '../components/EntityAttachmentsPanel.vue'
 import { translateMaybePrefillCustomFieldLabel, translateMaybePrefillCustomFieldOption } from '../i18n/prefillContent'
 import { normalizeCurrencyCode } from '../constants/currencies'
 import { collectImportSourceKeys, convertDimensionValueToCm, getImportValueBySourceKey, parseImportRows, resolveImportEntityType } from '../utils/import-data'
-import { countCategoryOverview, countPendingMaintenance, findMostUsedDevice, isRentalProduct } from '../utils/inventory-overview'
+import {
+  countCategoryOverview,
+  countPendingMaintenance,
+  findMostUsedDevice,
+  findMostUsedProductByUsageDays,
+  isRentalProduct
+} from '../utils/inventory-overview'
 import { slugify } from 'src/utils/slugify'
 
 const $q = useQuasar()
@@ -2661,6 +2668,12 @@ const overviewMostUsedDeviceLabel = computed(() => {
   if (!device) return t('inventory.overview.noUsageData')
   const assetTag = device.asset_tag || t('inventory.overview.unknownDevice')
   return `${assetTag} (${device.usage_hours}h)`
+})
+const overviewMostUsedProductByUsageDaysLabel = computed(() => {
+  const usage = findMostUsedProductByUsageDays(store.products, jobsStore.requirements, jobsStore.jobs)
+  if (!usage) return t('inventory.overview.noProductUsageData')
+  const productName = usage.product?.name || t('inventory.overview.unknownProduct')
+  return `${productName} (${usage.usage_days} ${t('inventory.overview.days')})`
 })
 
 const rentalSupplierOptions = computed(() => {

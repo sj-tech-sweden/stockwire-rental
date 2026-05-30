@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { countCategoryOverview, countPendingMaintenance, findMostUsedDevice, isRentalProduct } from '../../src/utils/inventory-overview'
+import {
+  countCategoryOverview,
+  countPendingMaintenance,
+  findMostUsedDevice,
+  findMostUsedProductByUsageDays,
+  isRentalProduct
+} from '../../src/utils/inventory-overview'
 
 describe('inventory overview utilities', () => {
   it('detects rental products from flags and type', () => {
@@ -14,6 +20,16 @@ describe('inventory overview utilities', () => {
       { id: 3, children: [] },
     ])
     expect(count).toBe(3)
+  })
+
+  it('falls back to deduped flat categories when tree is a non-hierarchical fallback list', () => {
+    const categories = [
+      { id: 5, name: 'Audio' },
+      { id: 5, name: 'Audio duplicate' },
+      { name: 'Lighting' },
+      { name: 'lighting' },
+    ]
+    expect(countCategoryOverview(categories, categories)).toBe(2)
   })
 
   it('deduplicates flat category list when tree is unavailable', () => {
@@ -51,5 +67,37 @@ describe('inventory overview utilities', () => {
     ])
 
     expect(device).toEqual({ asset_tag: 'DEV-0', usage_hours: 0 })
+  })
+
+  it('returns no device when usage values are missing', () => {
+    const device = findMostUsedDevice([
+      { asset_tag: 'DEV-1', usage_hours: null },
+      { asset_tag: 'DEV-2', usage_hours: '' },
+    ])
+
+    expect(device).toBeNull()
+  })
+
+  it('selects product with highest usage days weighted by quantity', () => {
+    const usage = findMostUsedProductByUsageDays(
+      [
+        { id: 1, name: 'Camera kit' },
+        { id: 2, name: 'Light stand' },
+      ],
+      [
+        { product_id: 1, job_id: 10, quantity_required: 2 },
+        { product_id: 1, job_id: 11, quantity_required: 1 },
+        { product_id: 2, job_id: 10, quantity_required: 1 },
+      ],
+      [
+        { id: 10, start_date: '2026-01-01', end_date: '2026-01-03' },
+        { id: 11, start_date: '2026-01-05', end_date: '2026-01-05' },
+      ]
+    )
+
+    expect(usage).toEqual({
+      product: { id: 1, name: 'Camera kit' },
+      usage_days: 7,
+    })
   })
 })
