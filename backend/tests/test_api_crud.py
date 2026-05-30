@@ -845,6 +845,8 @@ def test_settings_version_check_updates_network_error(client):
     assert data.get("latest_version") is None
     assert data.get("up_to_date") is None
 
+
+def test_inventory_maintenance_system(client):
     product = client.post(
         "/api/v1/inventory/products",
         json={
