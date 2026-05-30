@@ -185,7 +185,10 @@ onMounted(() => {
     })
   }
 
-  const preferred = resolveAppLocale(authStore.me?.id || null)
+  const userId = authStore.me?.id || null
+  const preferred = userId
+    ? resolveAppLocale(userId)
+    : (localStorage.getItem('sw_locale') || resolveAppLocale(null))
   setLocale(preferred)
 })
 

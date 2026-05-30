@@ -37,9 +37,8 @@ export function getUserLocalePreference(userId) {
   const key = userId ? `sw_user_locale_${userId}` : 'sw_user_locale'
   const stored = String(localStorage.getItem(key) || '').trim().toLowerCase()
   if (!stored) return null
-  if (stored === 'sv' || stored.startsWith('sv-')) return 'sv'
-  if (stored === 'en' || stored.startsWith('en-')) return 'en'
-  return null
+  const base = stored.split('-')[0]
+  return SUPPORTED_LOCALES.includes(base) ? base : null
 }
 
 export function setUserLocalePreference(userId, locale) {
