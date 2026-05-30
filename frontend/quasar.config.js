@@ -63,6 +63,64 @@ export default configure(function () {
         }
       }
     },
+    pwa: {
+      workboxMode: 'GenerateSW',
+      injectRegister: 'auto',
+      swFilename: 'service-worker.js',
+      manifestFilename: 'manifest.webmanifest',
+      workboxOptions: {
+        cleanupOutdatedCaches: true,
+        clientsClaim: true,
+        skipWaiting: true,
+        globIgnores: ['**/env-config.js'],
+        runtimeCaching: [
+          {
+            urlPattern: /\/env-config\.js$/,
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'runtime-config',
+              networkTimeoutSeconds: 3,
+              cacheableResponse: {
+                statuses: [200]
+              }
+            }
+          }
+        ]
+      },
+      manifest: {
+        name: 'Stockwire Rental',
+        short_name: 'Stockwire',
+        description: 'Offline-capable rental inventory management for Stockwire.',
+        display: 'standalone',
+        orientation: 'portrait',
+        background_color: '#11181D',
+        theme_color: '#3F873F',
+        icons: [
+          {
+            src: 'icons/icon-192x192.png',
+            sizes: '192x192',
+            type: 'image/png'
+          },
+          {
+            src: 'icons/icon-192x192.png',
+            sizes: '192x192',
+            type: 'image/png',
+            purpose: 'maskable'
+          },
+          {
+            src: 'icons/icon-512x512.png',
+            sizes: '512x512',
+            type: 'image/png'
+          },
+          {
+            src: 'icons/icon-512x512.png',
+            sizes: '512x512',
+            type: 'image/png',
+            purpose: 'maskable'
+          }
+        ]
+      }
+    },
     devServer: {
       host: '0.0.0.0',
       port: 9000,
