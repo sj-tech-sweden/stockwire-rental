@@ -37,7 +37,7 @@ export function getUserLocalePreference(userId) {
   const key = userId ? `sw_user_locale_${userId}` : 'sw_user_locale'
   const stored = String(localStorage.getItem(key) || '').trim().toLowerCase()
   if (!stored) return null
-  const base = stored.split('-')[0]
+  const base = stored.split(/[-_]/)[0]
   return SUPPORTED_LOCALES.includes(base) ? base : null
 }
 

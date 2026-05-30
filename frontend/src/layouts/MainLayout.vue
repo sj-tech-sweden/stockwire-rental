@@ -94,7 +94,7 @@ import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '../stores/auth'
 import { useSettingsStore } from '../stores/settings'
-import { resolveAppLocale, setLocale } from '../i18n'
+import { getUserLocalePreference, resolveAppLocale, setLocale } from '../i18n'
 
 const drawerOpen = ref(false)
 // In "mini" screens we keep drawer collapsed by default but allow
@@ -191,6 +191,16 @@ onMounted(() => {
     : localStorage.getItem('sw_locale') || resolveAppLocale(null)
   setLocale(preferred)
 })
+
+watch(
+  () => authStore.me?.id,
+  (userId) => {
+    if (!userId) return
+    const perUserLocale = getUserLocalePreference(userId)
+    if (!perUserLocale) return
+    setLocale(perUserLocale)
+  },
+)
 
 async function logout() {
   authStore.logout()

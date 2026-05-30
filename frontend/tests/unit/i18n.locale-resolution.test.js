@@ -51,4 +51,10 @@ describe('locale resolution', () => {
 
     expect(getUserLocalePreference(42)).toBe('en')
   })
+
+  it('parses user preference locale from underscore region values', () => {
+    localStorage.setItem('sw_user_locale_42', 'sv_SE')
+
+    expect(getUserLocalePreference(42)).toBe('sv')
+  })
 })

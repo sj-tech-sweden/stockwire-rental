@@ -59,7 +59,7 @@
               dense
               outlined
               :label="t('app.language.userLanguage')"
-              :disable="saving"
+              :disable="saving || !authStore.me?.id"
               @update:model-value="onUserLocaleChange"
             />
           </div>
@@ -127,7 +127,9 @@ function applyFormFromMe() {
 function onUserLocaleChange(value) {
   const locale = setLocale(value)
   userLocale.value = locale
-  setUserLocalePreference(authStore.me?.id || null, locale)
+  if (authStore.me?.id) {
+    setUserLocalePreference(authStore.me.id, locale)
+  }
 }
 
 async function saveProfile() {
