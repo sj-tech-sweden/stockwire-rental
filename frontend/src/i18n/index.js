@@ -35,9 +35,11 @@ export function getCompanyDefaultLocale() {
 
 export function getUserLocalePreference(userId) {
   const key = userId ? `sw_user_locale_${userId}` : 'sw_user_locale'
-  const stored = localStorage.getItem(key) || ''
-  const normalized = normalizeLocale(stored)
-  return SUPPORTED_LOCALES.includes(normalized) ? normalized : null
+  const stored = String(localStorage.getItem(key) || '').trim().toLowerCase()
+  if (!stored) return null
+  if (stored === 'sv' || stored.startsWith('sv-')) return 'sv'
+  if (stored === 'en' || stored.startsWith('en-')) return 'en'
+  return null
 }
 
 export function setUserLocalePreference(userId, locale) {
@@ -49,7 +51,7 @@ export function setUserLocalePreference(userId, locale) {
 }
 
 export function resolveAppLocale(userId) {
-  return getUserLocalePreference(userId) || getCompanyDefaultLocale() || getBrowserLocale() || 'en'
+  return getUserLocalePreference(userId) || getBrowserLocale() || getCompanyDefaultLocale() || 'en'
 }
 
 export function resolveLoginLocale(companyDefault) {
