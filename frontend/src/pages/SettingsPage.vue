@@ -1546,7 +1546,7 @@ const offlineQueueDeferredIds = ref([])
 const offlineQueueFailedIdSet = computed(() => new Set(offlineQueueFailedIds.value))
 const offlineQueueDeferredIdSet = computed(() => new Set(offlineQueueDeferredIds.value))
 
-const appVersion = process.env.APP_VERSION || '0.1.0'
+const appVersion = process.env.APP_VERSION || null
 const versionCheckLoading = ref(false)
 const versionCheckResult = ref(null)
 const versionCheckError = ref(false)
@@ -1557,6 +1557,7 @@ const safeLatestReleaseUrl = computed(() => {
     const parsed = new URL(rawUrl)
     if (parsed.protocol !== 'https:') return null
     if (parsed.hostname !== 'github.com' && parsed.hostname !== 'www.github.com') return null
+    if (parsed.username || parsed.password) return null
     return parsed.href
   } catch {
     return null

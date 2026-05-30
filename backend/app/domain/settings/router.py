@@ -132,6 +132,8 @@ def _sanitize_release_url(value: str | None) -> str | None:
         return None
     if parsed.hostname not in {"github.com", "www.github.com"}:
         return None
+    if parsed.username or parsed.password:
+        return None
     return value
 
 

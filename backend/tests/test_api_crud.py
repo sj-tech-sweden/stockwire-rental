@@ -995,6 +995,8 @@ def test_settings_version_check_updates_rejects_unsafe_release_urls(client):
     for unsafe_url in [
         "http://github.com/sj-tech-sweden/stockwire-rental/releases/tag/v1.2.3",
         "https://malicious-site.com/fake-release",
+        "https://attacker@github.com/sj-tech-sweden/stockwire-rental/releases/tag/v1.2.3",
+        "https://user:pass@github.com/sj-tech-sweden/stockwire-rental/releases/tag/v1.2.3",
     ]:
         payload = {
             "tag_name": "v1.2.3",
