@@ -717,7 +717,7 @@ export default {
       storageLocations: 'Lagringsplatser: {count}',
       maintenancePending: 'Underhåll väntar: {count}',
       mostUsedDevice: 'Mest använd enhet: {device}',
-      mostUsedProductByDays: 'Mest använd produkt per dagar: {product}',
+      mostUsedProductByDays: 'Mest använda produkt efter antal användningsdagar: {product}',
       noUsageData: 'Ingen användningsdata',
       unknownDevice: 'Okänd enhet',
       noProductUsageData: 'Ingen produktanvändningsdata',
