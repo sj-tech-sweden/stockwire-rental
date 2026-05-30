@@ -199,6 +199,7 @@ export default {
       inventory: 'Lager',
       integrations: 'Integrationer',
       offlineQueue: 'Offline-kö',
+      about: 'Om',
     },
     auth: {
       title: 'Autentisering och åtkomst',
@@ -452,6 +453,19 @@ export default {
       noFailedToRetry: 'Inga misslyckade operationer att försöka igen',
       retryComplete: 'Omförsök klart: {flushed} tömda, {failed} misslyckade',
       retryFailedMessage: 'Omförsök misslyckades',
+    },
+    about: {
+      title: 'Om',
+      description: 'Versionsinformation och uppdateringskontroll.',
+      currentVersion: 'Nuvarande version',
+      checkForUpdates: 'Sök efter uppdateringar',
+      checking: 'Söker…',
+      upToDate: 'Uppdaterad',
+      updateAvailable: 'Uppdatering tillgänglig: {version}',
+      viewRelease: 'Visa release',
+      releaseNotes: 'Versionshistorik',
+      noReleaseNotes: 'Ingen versionshistorik tillgänglig.',
+      failedToCheck: 'Kunde inte söka efter uppdateringar.',
     },
     prefill: {
       categories: {

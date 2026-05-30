@@ -9,6 +9,7 @@
       <q-tab name="inventory" icon="account_tree" :label="t('settings.tabs.inventory')" />
       <q-tab name="integrations" icon="hub" :label="t('settings.tabs.integrations')" />
       <q-tab name="offline-queue" icon="sync" :label="t('settings.tabs.offlineQueue')" />
+      <q-tab name="about" icon="info" :label="t('settings.tabs.about')" />
     </q-tabs>
 
     <q-tab-panels v-model="tab" animated>
@@ -1000,6 +1001,73 @@
           </q-table>
         </q-card>
       </q-tab-panel>
+
+      <q-tab-panel name="about" class="q-pa-none">
+        <q-card class="ec-card q-pa-md">
+          <div class="text-subtitle1 q-mb-sm">{{ t('settings.about.title') }}</div>
+          <div class="text-caption text-grey-7 q-mb-md">{{ t('settings.about.description') }}</div>
+
+          <div class="row q-col-gutter-sm q-mb-md items-center">
+            <div class="col-auto">
+              <div class="text-body2 text-grey-6">{{ t('settings.about.currentVersion') }}</div>
+              <div class="text-h6">v{{ appVersion }}</div>
+            </div>
+          </div>
+
+          <div class="row q-col-gutter-sm q-mb-md items-center">
+            <div class="col-auto">
+              <q-btn
+                color="primary"
+                icon="system_update"
+                :label="t('settings.about.checkForUpdates')"
+                unelevated
+                :loading="versionCheckLoading"
+                @click="checkForUpdates"
+              />
+            </div>
+            <div v-if="versionCheckResult" class="col-auto">
+              <q-chip
+                v-if="versionCheckResult.up_to_date"
+                icon="check_circle"
+                color="positive"
+                text-color="white"
+                :label="t('settings.about.upToDate')"
+              />
+              <q-chip
+                v-else-if="versionCheckResult.latest_version"
+                icon="new_releases"
+                color="warning"
+                text-color="white"
+                :label="t('settings.about.updateAvailable', { version: versionCheckResult.latest_version })"
+              />
+            </div>
+            <div v-if="versionCheckError" class="col-auto text-negative text-caption">
+              {{ t('settings.about.failedToCheck') }}
+            </div>
+          </div>
+
+          <template v-if="versionCheckResult && versionCheckResult.latest_release_url">
+            <q-btn
+              flat
+              dense
+              color="primary"
+              icon="open_in_new"
+              :label="t('settings.about.viewRelease')"
+              :href="versionCheckResult.latest_release_url"
+              target="_blank"
+              class="q-mb-md"
+            />
+          </template>
+
+          <template v-if="versionCheckResult">
+            <div class="text-subtitle2 q-mb-sm">{{ t('settings.about.releaseNotes') }}</div>
+            <q-card flat bordered class="q-pa-sm">
+              <pre v-if="versionCheckResult.latest_release_notes" class="text-body2" style="white-space: pre-wrap; margin: 0">{{ versionCheckResult.latest_release_notes }}</pre>
+              <div v-else class="text-caption text-grey-7">{{ t('settings.about.noReleaseNotes') }}</div>
+            </q-card>
+          </template>
+        </q-card>
+      </q-tab-panel>
     </q-tab-panels>
 
     <q-dialog v-model="userDialogOpen" persistent>
@@ -1169,7 +1237,7 @@ import { getApiBaseUrl } from '../utils/runtime-config'
 
 const route = useRoute()
 const apiBaseUrl = getApiBaseUrl()
-const knownTabs = new Set(['auth', 'company', 'custom-fields', 'inventory', 'integrations', 'offline-queue'])
+const knownTabs = new Set(['auth', 'company', 'custom-fields', 'inventory', 'integrations', 'offline-queue', 'about'])
 const requestedTab = String(route.query.tab || '')
 const tab = ref(knownTabs.has(requestedTab) ? requestedTab : 'auth')
 const $q = useQuasar()
@@ -1464,6 +1532,25 @@ const offlineQueueDeferredIds = ref([])
 
 const offlineQueueFailedIdSet = computed(() => new Set(offlineQueueFailedIds.value))
 const offlineQueueDeferredIdSet = computed(() => new Set(offlineQueueDeferredIds.value))
+
+const appVersion = process.env.APP_VERSION || '0.1.0'
+const versionCheckLoading = ref(false)
+const versionCheckResult = ref(null)
+const versionCheckError = ref(false)
+
+async function checkForUpdates() {
+  versionCheckLoading.value = true
+  versionCheckError.value = false
+  versionCheckResult.value = null
+  try {
+    const { data } = await api.get('/api/v1/settings/version', { params: { check_updates: true } })
+    versionCheckResult.value = data
+  } catch {
+    versionCheckError.value = true
+  } finally {
+    versionCheckLoading.value = false
+  }
+}
 
 const offlineQueueColumns = [
   { name: 'method', label: 'Method', field: 'method', align: 'left' },

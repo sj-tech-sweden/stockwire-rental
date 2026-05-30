@@ -32,6 +32,7 @@ from app.domain.settings.schemas import (
     DEFAULT_LOCATION_TYPES,
     DEFAULT_MANUFACTURER_OPTIONS,
     DEFAULT_MANUFACTURER_LINKS,
+    AppVersionRead,
     CategoryPrefillPathsRead,
     CategoryPrefillPathsUpdate,
     EventoryProductRead,
@@ -108,6 +109,40 @@ ALLOWED_INTEGRATION_PLUGINS = {"eventory"}
 ALLOWED_SYNC_INTERVALS = {0, 15, 30, 60, 120, 240, 480, 1440}
 EVENTORY_SYNC_LOCK = threading.Lock()
 EVENTORY_SYNC_RUNNING: set[str] = set()
+
+APP_VERSION = "0.1.0"
+GITHUB_RELEASES_API_URL = "https://api.github.com/repos/sj-tech-sweden/stockwire-rental/releases/latest"
+
+
+@router.get("/version", response_model=AppVersionRead)
+def get_version(check_updates: bool = False) -> AppVersionRead:
+    """Return the current application version and, optionally, the latest available release."""
+    result = AppVersionRead(version=APP_VERSION)
+    if not check_updates:
+        return result
+
+    try:
+        req = Request(
+            GITHUB_RELEASES_API_URL,
+            headers={"Accept": "application/vnd.github+json", "User-Agent": "stockwire-rental"},
+        )
+        with build_opener().open(req, timeout=8) as resp:
+            data = json.loads(resp.read().decode())
+
+        latest_tag = str(data.get("tag_name") or "").lstrip("v")
+        release_notes = str(data.get("body") or "").strip() or None
+        release_url = str(data.get("html_url") or "").strip() or None
+
+        result.latest_version = latest_tag or None
+        result.latest_release_notes = release_notes
+        result.latest_release_url = release_url
+        result.up_to_date = (latest_tag == APP_VERSION) if latest_tag else None
+    except Exception:
+        # Network errors or unexpected responses — return without update info
+        pass
+
+    return result
+
 
 
 @router.get("/location-types", response_model=LocationTypeOptionsRead)

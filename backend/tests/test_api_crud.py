@@ -816,7 +816,35 @@ def test_settings_lists_and_defaults(client):
     assert updated_defaults.json()["default_manufacturer"] == "Yamaha Corp"
 
 
-def test_inventory_maintenance_system(client):
+def test_settings_version(client):
+    response = client.get("/api/v1/settings/version")
+    assert response.status_code == 200
+    data = response.json()
+    assert "version" in data
+    assert isinstance(data["version"], str)
+    assert data["version"]
+    # Without check_updates the update fields should be absent / null
+    assert data.get("latest_version") is None
+    assert data.get("up_to_date") is None
+
+
+def test_settings_version_check_updates_network_error(client):
+    """When GitHub is unreachable the endpoint still returns 200 with only the current version."""
+    from unittest.mock import patch
+    from urllib.error import URLError
+
+    with patch("app.domain.settings.router.build_opener") as mock_opener:
+        mock_opener.return_value.open.side_effect = URLError("network error")
+        response = client.get("/api/v1/settings/version", params={"check_updates": "true"})
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["version"]
+    assert data.get("latest_version") is None
+    assert data.get("up_to_date") is None
+
+
+
     product = client.post(
         "/api/v1/inventory/products",
         json={

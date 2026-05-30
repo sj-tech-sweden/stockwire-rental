@@ -199,6 +199,7 @@ export default {
       inventory: 'Inventory',
       integrations: 'Integrations',
       offlineQueue: 'Offline Queue',
+      about: 'About',
     },
     auth: {
       title: 'Authentication and Access',
@@ -452,6 +453,19 @@ export default {
       noFailedToRetry: 'No failed operations to retry',
       retryComplete: 'Retry complete: {flushed} flushed, {failed} failed',
       retryFailedMessage: 'Retry failed',
+    },
+    about: {
+      title: 'About',
+      description: 'Application version information and update check.',
+      currentVersion: 'Current version',
+      checkForUpdates: 'Check for updates',
+      checking: 'Checking…',
+      upToDate: 'Up to date',
+      updateAvailable: 'Update available: {version}',
+      viewRelease: 'View release',
+      releaseNotes: 'Release notes',
+      noReleaseNotes: 'No release notes available.',
+      failedToCheck: 'Failed to check for updates.',
     },
     prefill: {
       categories: {
