@@ -454,6 +454,9 @@ class LabelTemplateRead(LabelTemplateUpsert):
 
 class AppVersionRead(BaseModel):
     version: str
+    backend_version: str | None = None
+    postgres_version: str | None = None
+    valkey_version: str | None = None
     latest_version: str | None = None
     latest_release_notes: str | None = None
     latest_release_url: str | None = None

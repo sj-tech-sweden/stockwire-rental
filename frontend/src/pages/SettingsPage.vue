@@ -1008,9 +1008,21 @@
           <div class="text-caption text-grey-7 q-mb-md">{{ t('settings.about.description') }}</div>
 
           <div class="row q-col-gutter-sm q-mb-md items-center">
-            <div class="col-auto">
-              <div class="text-body2 text-grey-6">{{ t('settings.about.currentVersion') }}</div>
-              <div class="text-h6">v{{ appVersion }}</div>
+            <div class="col-12 col-md-6">
+              <div class="text-body2 text-grey-6">{{ t('settings.about.frontendVersion') }}</div>
+              <div class="text-h6">{{ appVersion ? `v${appVersion}` : '—' }}</div>
+            </div>
+            <div class="col-12 col-md-6">
+              <div class="text-body2 text-grey-6">{{ t('settings.about.backendVersion') }}</div>
+              <div class="text-h6">{{ versionInfo.backend_version ? `v${versionInfo.backend_version}` : '—' }}</div>
+            </div>
+            <div class="col-12 col-md-6">
+              <div class="text-body2 text-grey-6">{{ t('settings.about.valkeyVersion') }}</div>
+              <div class="text-h6">{{ versionInfo.valkey_version || '—' }}</div>
+            </div>
+            <div class="col-12 col-md-6">
+              <div class="text-body2 text-grey-6">{{ t('settings.about.postgresVersion') }}</div>
+              <div class="text-h6">{{ versionInfo.postgres_version || '—' }}</div>
             </div>
           </div>
 
@@ -1055,6 +1067,7 @@
               :label="t('settings.about.viewRelease')"
               :href="versionCheckResult.latest_release_url"
               target="_blank"
+              rel="noopener noreferrer"
               class="q-mb-md"
             />
           </template>
@@ -1537,6 +1550,28 @@ const appVersion = process.env.APP_VERSION || '0.1.0'
 const versionCheckLoading = ref(false)
 const versionCheckResult = ref(null)
 const versionCheckError = ref(false)
+const versionInfo = reactive({
+  backend_version: null,
+  valkey_version: null,
+  postgres_version: null,
+})
+
+function applyVersionInfo(data) {
+  versionInfo.backend_version = data?.backend_version ?? data?.version ?? null
+  versionInfo.valkey_version = data?.valkey_version ?? null
+  versionInfo.postgres_version = data?.postgres_version ?? null
+}
+
+async function fetchVersionInfo() {
+  try {
+    const { data } = await api.get('/api/v1/settings/version')
+    applyVersionInfo(data)
+  } catch {
+    versionInfo.backend_version = null
+    versionInfo.valkey_version = null
+    versionInfo.postgres_version = null
+  }
+}
 
 async function checkForUpdates() {
   versionCheckLoading.value = true
@@ -1545,6 +1580,7 @@ async function checkForUpdates() {
   try {
     const { data } = await api.get('/api/v1/settings/version', { params: { check_updates: true } })
     versionCheckResult.value = data
+    applyVersionInfo(data)
   } catch {
     versionCheckError.value = true
   } finally {
@@ -2944,6 +2980,7 @@ onMounted(async () => {
       settingsStore.fetchCompanyProfile(),
       jobsStore.fetchAll(),
       customersStore.fetchAll(),
+      fetchVersionInfo(),
     ])
     locationTypeDraft.value = [...settingsStore.locationTypes]
     brandOptionsDraft.value = [...settingsStore.brandOptions]
