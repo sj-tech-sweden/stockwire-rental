@@ -1,4 +1,8 @@
 import { configure } from 'quasar/wrappers'
+import { createRequire } from 'module'
+
+const require = createRequire(import.meta.url)
+const pkg = require('./package.json')
 
 export default configure(function () {
   const runningInContainer = Boolean(process.env.KUBERNETES_SERVICE_HOST || process.env.DOCKER)
@@ -26,6 +30,9 @@ export default configure(function () {
       target: {
         browser: ['es2022', 'firefox115', 'chrome115', 'safari14'],
         node: 'node20'
+      },
+      env: {
+        APP_VERSION: pkg.version,
       },
       vueRouterMode: 'history',
       extendViteConf(viteConf) {

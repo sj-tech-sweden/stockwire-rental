@@ -1,3 +1,4 @@
+import json
 import socket
 from unittest.mock import patch
 from urllib.error import HTTPError, URLError
@@ -816,6 +817,35 @@ def test_settings_lists_and_defaults(client):
     assert updated_defaults.json()["default_manufacturer"] == "Yamaha Corp"
 
 
+def test_settings_version(client):
+    response = client.get("/api/v1/settings/version")
+    assert response.status_code == 200
+    data = response.json()
+    assert "version" in data
+    assert isinstance(data["version"], str)
+    assert data["version"]
+    assert data.get("backend_version") == data["version"]
+    assert "postgres_version" in data
+    assert data.get("valkey_version") is None or isinstance(data.get("valkey_version"), str)
+    # Without check_updates the update fields should be absent / null
+    assert data.get("latest_version") is None
+    assert data.get("up_to_date") is None
+
+
+def test_settings_version_check_updates_network_error(client):
+    """When GitHub is unreachable the endpoint still returns 200 with only the current version."""
+    with patch("app.domain.settings.router.build_opener") as mock_opener:
+        mock_opener.return_value.open.side_effect = URLError("network error")
+        response = client.get("/api/v1/settings/version", params={"check_updates": "true"})
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["version"]
+    assert data.get("backend_version") == data["version"]
+    assert data.get("latest_version") is None
+    assert data.get("up_to_date") is None
+
+
 def test_inventory_maintenance_system(client):
     product = client.post(
         "/api/v1/inventory/products",
@@ -905,6 +935,84 @@ def test_inventory_maintenance_system(client):
     assert bulk_schedule.status_code == 200
     assert len(bulk_schedule.json()) == 2
     assert bulk_schedule.json()[0]["interval_mode"] == "runtime"
+
+
+def test_settings_version_check_updates_strips_single_v_prefix(client):
+    payload = {
+        "tag_name": "vv1.2.3",
+        "body": "notes",
+        "html_url": "https://example.com/release",
+    }
+
+    with patch("app.domain.settings.router.build_opener") as mock_opener:
+        response_context = mock_opener.return_value.open.return_value.__enter__.return_value
+        response_context.read.return_value = json.dumps(payload).encode()
+        response = client.get("/api/v1/settings/version", params={"check_updates": "true"})
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data.get("latest_version") == "v1.2.3"
+    assert data.get("latest_release_url") is None
+
+
+def test_settings_version_check_updates_single_v_prefix(client):
+    payload = {
+        "tag_name": "  v1.2.3  ",
+        "body": "notes",
+        "html_url": "https://github.com/sj-tech-sweden/stockwire-rental/releases/tag/v1.2.3",
+    }
+
+    with patch("app.domain.settings.router.build_opener") as mock_opener:
+        response_context = mock_opener.return_value.open.return_value.__enter__.return_value
+        response_context.read.return_value = json.dumps(payload).encode()
+        response = client.get("/api/v1/settings/version", params={"check_updates": "true"})
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data.get("latest_version") == "1.2.3"
+    assert data.get("latest_release_url") == "https://github.com/sj-tech-sweden/stockwire-rental/releases/tag/v1.2.3"
+
+
+def test_settings_version_check_updates_whitespace_without_prefix(client):
+    payload = {
+        "tag_name": "  1.2.3  ",
+        "body": "notes",
+        "html_url": "https://github.com/sj-tech-sweden/stockwire-rental/releases/tag/v1.2.3",
+    }
+
+    with patch("app.domain.settings.router.build_opener") as mock_opener:
+        response_context = mock_opener.return_value.open.return_value.__enter__.return_value
+        response_context.read.return_value = json.dumps(payload).encode()
+        response = client.get("/api/v1/settings/version", params={"check_updates": "true"})
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data.get("latest_version") == "1.2.3"
+    assert data.get("latest_release_url") == "https://github.com/sj-tech-sweden/stockwire-rental/releases/tag/v1.2.3"
+
+
+def test_settings_version_check_updates_rejects_unsafe_release_urls(client):
+    for unsafe_url in [
+        "http://github.com/sj-tech-sweden/stockwire-rental/releases/tag/v1.2.3",
+        "https://malicious-site.com/fake-release",
+        "https://attacker@github.com/sj-tech-sweden/stockwire-rental/releases/tag/v1.2.3",
+        "https://user:pass@github.com/sj-tech-sweden/stockwire-rental/releases/tag/v1.2.3",
+    ]:
+        payload = {
+            "tag_name": "v1.2.3",
+            "body": "notes",
+            "html_url": unsafe_url,
+        }
+
+        with patch("app.domain.settings.router.build_opener") as mock_opener:
+            response_context = mock_opener.return_value.open.return_value.__enter__.return_value
+            response_context.read.return_value = json.dumps(payload).encode()
+            response = client.get("/api/v1/settings/version", params={"check_updates": "true"})
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data.get("latest_version") == "1.2.3"
+        assert data.get("latest_release_url") is None
 
 
 def test_scan_operations_and_job_requirement_bulk(client):

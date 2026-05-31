@@ -6,13 +6,16 @@ import threading
 from collections.abc import Callable
 from datetime import datetime
 from http.client import HTTPConnection, HTTPSConnection
+from importlib import metadata
 from urllib.parse import urlencode
 from urllib.error import HTTPError, URLError
 from urllib.parse import urljoin, urlparse
 from urllib.request import Request, build_opener, HTTPRedirectHandler, HTTPHandler, HTTPSHandler, ProxyHandler
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
-from sqlalchemy import select
+import redis
+from sqlalchemy import select, text
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.db.session import SessionLocal, get_db
@@ -32,6 +35,7 @@ from app.domain.settings.schemas import (
     DEFAULT_LOCATION_TYPES,
     DEFAULT_MANUFACTURER_OPTIONS,
     DEFAULT_MANUFACTURER_LINKS,
+    AppVersionRead,
     CategoryPrefillPathsRead,
     CategoryPrefillPathsUpdate,
     EventoryProductRead,
@@ -108,6 +112,97 @@ ALLOWED_INTEGRATION_PLUGINS = {"eventory"}
 ALLOWED_SYNC_INTERVALS = {0, 15, 30, 60, 120, 240, 480, 1440}
 EVENTORY_SYNC_LOCK = threading.Lock()
 EVENTORY_SYNC_RUNNING: set[str] = set()
+
+GITHUB_RELEASES_API_URL = "https://api.github.com/repos/sj-tech-sweden/stockwire-rental/releases/latest"
+
+
+def _get_backend_version() -> str:
+    try:
+        return metadata.version("stockwire-rental-backend")
+    except metadata.PackageNotFoundError:
+        return "unknown"
+
+
+def _sanitize_release_url(value: str | None) -> str | None:
+    """Allow only HTTPS GitHub release links and drop everything else."""
+    if not value:
+        return None
+    parsed = urlparse(value)
+    if parsed.scheme != "https":
+        return None
+    if parsed.hostname not in {"github.com", "www.github.com"}:
+        return None
+    if parsed.username or parsed.password:
+        return None
+    return value
+
+
+def _get_postgres_version(db: Session) -> str | None:
+    try:
+        return db.execute(text("SHOW server_version")).scalar_one_or_none()
+    except SQLAlchemyError:
+        return None
+
+
+def _get_valkey_version() -> str | None:
+    client = None
+    try:
+        from app.config import settings
+
+        client = redis.Redis.from_url(
+            settings.redis_url,
+            decode_responses=True,
+            socket_connect_timeout=0.2,
+            socket_timeout=0.2,
+        )
+        info = client.info("server")
+        # Valkey reports its server version via the Redis-compatible `redis_version` field.
+        return str(info.get("redis_version") or "").strip() or None
+    except (redis.RedisError, OSError):
+        return None
+    finally:
+        if client is not None:
+            client.close()
+
+
+@router.get("/version", response_model=AppVersionRead)
+def get_version(
+    check_updates: bool = False,
+    db: Session = Depends(get_db),
+) -> AppVersionRead:
+    """Return the current application version and, optionally, the latest available release."""
+    backend_version = _get_backend_version()
+    result = AppVersionRead(
+        version=backend_version,
+        backend_version=backend_version,
+        postgres_version=_get_postgres_version(db),
+        valkey_version=_get_valkey_version(),
+    )
+    if not check_updates:
+        return result
+
+    try:
+        req = Request(
+            GITHUB_RELEASES_API_URL,
+            headers={"Accept": "application/vnd.github+json", "User-Agent": "stockwire-rental"},
+        )
+        with build_opener().open(req, timeout=8) as resp:
+            data = json.loads(resp.read().decode())
+
+        latest_tag = str(data.get("tag_name") or "").strip().removeprefix("v")
+        release_notes = str(data.get("body") or "").strip() or None
+        release_url = _sanitize_release_url(str(data.get("html_url") or "").strip() or None)
+
+        result.latest_version = latest_tag or None
+        result.latest_release_notes = release_notes
+        result.latest_release_url = release_url
+        result.up_to_date = (latest_tag == backend_version) if latest_tag else None
+    except (HTTPError, URLError, TimeoutError, json.JSONDecodeError, UnicodeDecodeError):
+        # Network errors or unexpected responses — return without update info
+        pass
+
+    return result
+
 
 
 @router.get("/location-types", response_model=LocationTypeOptionsRead)
