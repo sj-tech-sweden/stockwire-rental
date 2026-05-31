@@ -50,6 +50,19 @@
               </template>
             </q-input>
           </div>
+          <div class="col-12 col-md-6">
+            <q-select
+              v-model="userLocale"
+              :options="localeOptions"
+              emit-value
+              map-options
+              dense
+              outlined
+              :label="t('app.language.userLanguage')"
+              :disable="saving || !authStore.me?.id"
+              @update:model-value="onUserLocaleChange"
+            />
+          </div>
         </div>
 
         <div class="row items-center q-gutter-sm q-mt-md">
@@ -74,6 +87,7 @@ import { useQuasar } from 'quasar'
 import { useI18n } from 'vue-i18n'
 
 import { useAuthStore } from '../stores/auth'
+import { resolveAppLocale, setLocale, setUserLocalePreference } from '../i18n'
 
 const $q = useQuasar()
 const authStore = useAuthStore()
@@ -81,11 +95,16 @@ const { t } = useI18n()
 
 const saving = ref(false)
 const showPassword = ref(false)
+const userLocale = ref('en')
 const form = ref({
   full_name: '',
   email: '',
   password: '',
 })
+const localeOptions = computed(() => [
+  { label: t('app.language.english'), value: 'en' },
+  { label: t('app.language.swedish'), value: 'sv' },
+])
 
 const authSource = computed(() => String(authStore.me?.auth_source || 'local').toLowerCase())
 const isSsoManaged = computed(() => ['oidc', 'saml'].includes(authSource.value))
@@ -102,6 +121,14 @@ function applyFormFromMe() {
     full_name: String(authStore.me?.full_name || '').trim(),
     email: String(authStore.me?.email || '').trim(),
     password: '',
+  }
+}
+
+function onUserLocaleChange(value) {
+  const locale = setLocale(value)
+  userLocale.value = locale
+  if (authStore.me?.id) {
+    setUserLocalePreference(authStore.me.id, locale)
   }
 }
 
@@ -133,5 +160,10 @@ onMounted(async () => {
     // Ignore fetch errors, form will use local cached user if available.
   }
   applyFormFromMe()
+  const userId = authStore.me?.id || null
+  const preferred = userId
+    ? resolveAppLocale(userId)
+    : localStorage.getItem('sw_locale') || resolveAppLocale(null)
+  userLocale.value = setLocale(preferred)
 })
 </script>

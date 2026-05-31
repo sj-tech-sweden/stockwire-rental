@@ -23,17 +23,6 @@
           <span>{{ settingsStore.companyProfile?.company_name || t('app.name') }}</span>
         </q-toolbar-title>
         <div class="row items-center q-gutter-sm"> 
-          <q-select
-            v-model="userLocale"
-            :options="localeOptions"
-            emit-value
-            map-options
-            dense
-            outlined
-            :label="t('app.language.userLanguage')"
-            style="min-width: 150px"
-            @update:model-value="onUserLocaleChange"
-          />
           <q-btn
               flat
               round
@@ -105,7 +94,7 @@ import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '../stores/auth'
 import { useSettingsStore } from '../stores/settings'
-import { resolveAppLocale, setLocale, setUserLocalePreference } from '../i18n'
+import { getUserLocalePreference, resolveAppLocale, setLocale } from '../i18n'
 
 const drawerOpen = ref(false)
 // In "mini" screens we keep drawer collapsed by default but allow
@@ -120,13 +109,6 @@ const $q = useQuasar()
 const { t } = useI18n()
 
 const headerRef = ref(null)
-const userLocale = ref('en')
-
-const localeOptions = computed(() => [
-  { label: t('app.language.english'), value: 'en' },
-  { label: t('app.language.swedish'), value: 'sv' },
-])
-
 const headerStyle = computed(() => {
   const dark = $q.dark.isActive
   // Use explicit colors to avoid depending on other CSS variables that may be
@@ -203,9 +185,23 @@ onMounted(() => {
     })
   }
 
-  const preferred = resolveAppLocale(authStore.me?.id || null)
-  userLocale.value = setLocale(preferred)
+  const userId = authStore.me?.id || null
+  const preferred = userId
+    ? resolveAppLocale(userId)
+    : localStorage.getItem('sw_locale') || resolveAppLocale(null)
+  setLocale(preferred)
 })
+
+watch(
+  () => authStore.me?.id,
+  (userId) => {
+    if (!userId) return
+    const perUserLocale = getUserLocalePreference(userId)
+    if (!perUserLocale) return
+    setLocale(perUserLocale)
+  },
+  { immediate: true },
+)
 
 async function logout() {
   authStore.logout()
@@ -214,12 +210,6 @@ async function logout() {
 
 function goToProfile() {
   router.push('/profile')
-}
-
-function onUserLocaleChange(value) {
-  const locale = setLocale(value)
-  userLocale.value = locale
-  setUserLocalePreference(authStore.me?.id || null, locale)
 }
 
 function toggleDark() {

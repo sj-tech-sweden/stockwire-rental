@@ -13,8 +13,9 @@ const messages = {
 function normalizeLocale(raw) {
   const value = String(raw || '').trim().toLowerCase()
   if (!value) return 'en'
-  if (value === 'sv' || value.startsWith('sv-')) return 'sv'
-  if (value === 'en' || value.startsWith('en-')) return 'en'
+  const base = value.split(/[-_]/)[0]
+  if (base === 'sv') return 'sv'
+  if (base === 'en') return 'en'
   return 'en'
 }
 
@@ -22,8 +23,9 @@ export function getBrowserLocale() {
   const lang = navigator?.language || navigator?.languages?.[0] || ''
   const value = String(lang || '').trim().toLowerCase()
   if (!value) return null
-  if (value === 'sv' || value.startsWith('sv-')) return 'sv'
-  if (value === 'en' || value.startsWith('en-')) return 'en'
+  const base = value.split(/[-_]/)[0]
+  if (base === 'sv') return 'sv'
+  if (base === 'en') return 'en'
   return null
 }
 
@@ -34,10 +36,12 @@ export function getCompanyDefaultLocale() {
 }
 
 export function getUserLocalePreference(userId) {
-  const key = userId ? `sw_user_locale_${userId}` : 'sw_user_locale'
-  const stored = localStorage.getItem(key) || ''
-  const normalized = normalizeLocale(stored)
-  return SUPPORTED_LOCALES.includes(normalized) ? normalized : null
+  if (!userId) return null
+  const key = `sw_user_locale_${userId}`
+  const stored = String(localStorage.getItem(key) || '').trim().toLowerCase()
+  if (!stored) return null
+  const base = stored.split(/[-_]/)[0]
+  return SUPPORTED_LOCALES.includes(base) ? base : null
 }
 
 export function setUserLocalePreference(userId, locale) {
@@ -49,7 +53,7 @@ export function setUserLocalePreference(userId, locale) {
 }
 
 export function resolveAppLocale(userId) {
-  return getUserLocalePreference(userId) || getCompanyDefaultLocale() || getBrowserLocale() || 'en'
+  return getUserLocalePreference(userId) || getBrowserLocale() || getCompanyDefaultLocale() || 'en'
 }
 
 export function resolveLoginLocale(companyDefault) {
