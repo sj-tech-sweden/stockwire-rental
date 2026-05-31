@@ -160,6 +160,10 @@ onMounted(async () => {
     // Ignore fetch errors, form will use local cached user if available.
   }
   applyFormFromMe()
-  userLocale.value = setLocale(resolveAppLocale(authStore.me?.id || null))
+  const userId = authStore.me?.id || null
+  const preferred = userId
+    ? resolveAppLocale(userId)
+    : localStorage.getItem('sw_locale') || resolveAppLocale(null)
+  userLocale.value = setLocale(preferred)
 })
 </script>
