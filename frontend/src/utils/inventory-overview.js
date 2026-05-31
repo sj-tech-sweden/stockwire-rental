@@ -84,12 +84,15 @@ export function findMostUsedDevice(devices) {
 
 export function findMostUsedProductByUsageDays(products, requirements, jobs) {
   const jobsById = new Map((jobs || []).map(job => [String(job?.id), job]))
+  const productsById = new Map((products || []).map(product => [String(product?.id), product]))
   const totals = new Map()
   const reservingStatuses = new Set(['confirmed', 'in_progress'])
 
   for (const requirement of requirements || []) {
     const productId = requirement?.product_id ?? requirement?.productId
     if (productId == null) continue
+    const product = productsById.get(String(productId))
+    if (!product || isRentalProduct(product)) continue
 
     const quantity = Number(requirement?.quantity_required ?? requirement?.quantity ?? requirement?.qty ?? 0)
     if (!Number.isFinite(quantity) || quantity <= 0) continue
@@ -118,7 +121,7 @@ export function findMostUsedProductByUsageDays(products, requirements, jobs) {
   }
 
   if (selectedProductId == null || !Number.isFinite(selectedUsageDays)) return null
-  const selectedProduct = (products || []).find(product => String(product?.id) === selectedProductId) || null
+  const selectedProduct = productsById.get(selectedProductId) || null
   return {
     product: selectedProduct,
     usage_days: Math.round(selectedUsageDays * 100) / 100,

@@ -124,4 +124,26 @@ describe('inventory overview utilities', () => {
       usage_days: 1,
     })
   })
+
+  it('ignores rental and unknown products in usage-days totals', () => {
+    const usage = findMostUsedProductByUsageDays(
+      [
+        { id: 1, name: 'Camera kit' },
+        { id: 2, name: 'Rental light', is_rental_product: true },
+      ],
+      [
+        { product_id: 2, job_id: 30, quantity_required: 10 },
+        { product_id: 999, job_id: 30, quantity_required: 10 },
+        { product_id: 1, job_id: 30, quantity_required: 1 },
+      ],
+      [
+        { id: 30, status: 'confirmed', start_date: '2026-01-01', end_date: '2026-01-02' },
+      ]
+    )
+
+    expect(usage).toEqual({
+      product: { id: 1, name: 'Camera kit' },
+      usage_days: 2,
+    })
+  })
 })
