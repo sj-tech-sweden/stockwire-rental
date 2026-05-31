@@ -85,6 +85,7 @@ export function findMostUsedDevice(devices) {
 export function findMostUsedProductByUsageDays(products, requirements, jobs) {
   const jobsById = new Map((jobs || []).map(job => [String(job?.id), job]))
   const totals = new Map()
+  const reservingStatuses = new Set(['confirmed', 'in_progress'])
 
   for (const requirement of requirements || []) {
     const productId = requirement?.product_id ?? requirement?.productId
@@ -96,6 +97,7 @@ export function findMostUsedProductByUsageDays(products, requirements, jobs) {
     const jobId = requirement?.job_id ?? requirement?.jobId
     const job = jobsById.get(String(jobId))
     if (!job) continue
+    if (!reservingStatuses.has(String(job?.status || '').toLowerCase())) continue
 
     const startDate = toDate(job?.start_date ?? job?.startDate)
     const endDate = toDate(job?.end_date ?? job?.endDate ?? job?.start_date ?? job?.startDate)

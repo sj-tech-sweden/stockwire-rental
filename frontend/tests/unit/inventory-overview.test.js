@@ -90,14 +90,38 @@ describe('inventory overview utilities', () => {
         { product_id: 2, job_id: 10, quantity_required: 1 },
       ],
       [
-        { id: 10, start_date: '2026-01-01', end_date: '2026-01-03' },
-        { id: 11, start_date: '2026-01-05', end_date: '2026-01-05' },
+        { id: 10, status: 'confirmed', start_date: '2026-01-01', end_date: '2026-01-03' },
+        { id: 11, status: 'in_progress', start_date: '2026-01-05', end_date: '2026-01-05' },
       ]
     )
 
     expect(usage).toEqual({
       product: { id: 1, name: 'Camera kit' },
       usage_days: 7,
+    })
+  })
+
+  it('ignores draft and cancelled jobs in usage-days totals', () => {
+    const usage = findMostUsedProductByUsageDays(
+      [
+        { id: 1, name: 'Camera kit' },
+        { id: 2, name: 'Light stand' },
+      ],
+      [
+        { product_id: 1, job_id: 20, quantity_required: 10 },
+        { product_id: 1, job_id: 22, quantity_required: 10 },
+        { product_id: 2, job_id: 21, quantity_required: 1 },
+      ],
+      [
+        { id: 20, status: 'draft', start_date: '2026-01-01', end_date: '2026-01-03' },
+        { id: 21, status: 'confirmed', start_date: '2026-01-01', end_date: '2026-01-01' },
+        { id: 22, status: 'cancelled', start_date: '2026-01-01', end_date: '2026-01-03' },
+      ]
+    )
+
+    expect(usage).toEqual({
+      product: { id: 2, name: 'Light stand' },
+      usage_days: 1,
     })
   })
 })
