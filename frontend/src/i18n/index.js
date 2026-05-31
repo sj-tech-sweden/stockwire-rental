@@ -13,8 +13,9 @@ const messages = {
 function normalizeLocale(raw) {
   const value = String(raw || '').trim().toLowerCase()
   if (!value) return 'en'
-  if (value === 'sv' || value.startsWith('sv-')) return 'sv'
-  if (value === 'en' || value.startsWith('en-')) return 'en'
+  const base = value.split(/[-_]/)[0]
+  if (base === 'sv') return 'sv'
+  if (base === 'en') return 'en'
   return 'en'
 }
 
@@ -22,8 +23,9 @@ export function getBrowserLocale() {
   const lang = navigator?.language || navigator?.languages?.[0] || ''
   const value = String(lang || '').trim().toLowerCase()
   if (!value) return null
-  if (value === 'sv' || value.startsWith('sv-')) return 'sv'
-  if (value === 'en' || value.startsWith('en-')) return 'en'
+  const base = value.split(/[-_]/)[0]
+  if (base === 'sv') return 'sv'
+  if (base === 'en') return 'en'
   return null
 }
 

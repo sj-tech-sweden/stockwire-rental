@@ -27,8 +27,8 @@ describe('locale resolution', () => {
   })
 
   it('uses browser language before company default when no user preference exists', () => {
-    setNavigatorLocale('en-US')
-    localStorage.setItem('sw_company_default_language', 'sv')
+    setNavigatorLocale('en_US')
+    localStorage.setItem('sw_company_default_language', 'sv_SE')
 
     expect(resolveAppLocale(null)).toBe('en')
   })
