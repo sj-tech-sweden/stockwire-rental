@@ -40,6 +40,14 @@ describe('locale resolution', () => {
     expect(resolveAppLocale(null)).toBe('sv')
   })
 
+  it('ignores generic user locale key when user id is unavailable', () => {
+    setNavigatorLocale('en-US')
+    localStorage.setItem('sw_user_locale', 'sv')
+
+    expect(getUserLocalePreference(null)).toBeNull()
+    expect(resolveAppLocale(null)).toBe('en')
+  })
+
   it('uses browser language before server default on login locale resolution', () => {
     setNavigatorLocale('en-US')
 
