@@ -1,4 +1,5 @@
 from datetime import date, datetime
+from decimal import Decimal
 
 from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Integer, Numeric, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -79,6 +80,7 @@ class Device(Base):
     asset_tag: Mapped[str] = mapped_column(String(64), unique=True, index=True)
     serial_number: Mapped[str] = mapped_column(String(255), nullable=True)
     barcode: Mapped[str] = mapped_column(String(255), nullable=True, index=True)
+    source_serial_id: Mapped[str] = mapped_column(String(255), nullable=True, index=True)
     qr_code: Mapped[str] = mapped_column(String(255), nullable=True, index=True)
     rfid: Mapped[str] = mapped_column(String(255), nullable=True, index=True)
     location_zone_id: Mapped[int] = mapped_column(ForeignKey("zones.id"), nullable=True, index=True)
@@ -86,6 +88,13 @@ class Device(Base):
     status: Mapped[str] = mapped_column(String(50), default="available", index=True)
     condition: Mapped[str] = mapped_column(String(50), default="good", index=True)
     purchase_date: Mapped[date] = mapped_column(Date, nullable=True)
+    purchase_price: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=True)
+    purchased_from: Mapped[str] = mapped_column(String(255), nullable=True)
+    sold_price: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=True)
+    finance_upto: Mapped[str] = mapped_column(String(255), nullable=True)
+    finance_company: Mapped[str] = mapped_column(String(255), nullable=True)
+    finance_ref: Mapped[str] = mapped_column(String(255), nullable=True)
+    pre_prep: Mapped[str] = mapped_column(String(255), nullable=True)
     warranty_end_date: Mapped[date] = mapped_column(Date, nullable=True)
     retire_date: Mapped[date] = mapped_column(Date, nullable=True)
     usage_hours: Mapped[float] = mapped_column(Numeric(10, 2), nullable=True)

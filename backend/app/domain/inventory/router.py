@@ -2,10 +2,12 @@ import json
 import re
 from typing import Any
 from datetime import date, timedelta
+from decimal import Decimal, InvalidOperation
 
 from collections import defaultdict
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import UploadFile, File, Query
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import DataError, IntegrityError, SQLAlchemyError
@@ -63,6 +65,357 @@ from app.domain.inventory.schemas import (
  
 
 router = APIRouter(prefix="/inventory", tags=["inventory"], dependencies=[Depends(get_current_user)])
+
+
+def _coerce_decimal(value: Any) -> Decimal | None:
+    if value is None:
+        return None
+    text = str(value).strip()
+    if not text:
+        return None
+    try:
+        return Decimal(text)
+    except (InvalidOperation, ValueError):
+        return None
+
+
+@router.get('/import/presets/hirehop')
+def get_hirehop_import_preset() -> dict:
+    """Return the default HireHop import mapping as a preset for frontend import UI."""
+    try:
+        import json
+        from pathlib import Path
+
+        base = Path(__file__).resolve().parents[3] / 'scripts' / 'hirehop_mapping.json'
+        if not base.exists():
+            return {}
+        with open(base, 'r', encoding='utf8') as fh:
+            return json.load(fh)
+    except Exception:
+        return {}
+
+
+
+@router.post('/import')
+async def import_inventory(
+    file: UploadFile = File(...),
+    preset: str | None = Query('hirehop'),
+    dry_run: bool | None = Query(True),
+    update_existing: bool | None = Query(False),
+    limit: int | None = Query(None),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_editor),
+) -> dict:
+    """Upload an inventory file and import it. Supports `preset=hirehop`.
+
+    If `dry_run=true` (default) returns counts and samples without persisting.
+    """
+    import json
+    from app.domain.imports.hirehop import process_hirehop_data, load_mapping
+
+    content = await file.read()
+    try:
+        data = json.loads(content.decode('utf8'))
+    except Exception:
+        raise HTTPException(status_code=400, detail='Invalid JSON file')
+
+    if preset != 'hirehop':
+        raise HTTPException(status_code=400, detail='Unsupported preset')
+
+    # load default mapping from scripts
+    try:
+        from pathlib import Path
+
+        mapping_path = Path(__file__).resolve().parents[3] / 'scripts' / 'hirehop_mapping.json'
+        mapping = load_mapping(str(mapping_path)) if mapping_path.exists() else None
+    except Exception:
+        mapping = None
+
+    products_out, devices_out = process_hirehop_data(data, mapping=mapping, limit=limit)
+
+    if dry_run:
+        return {
+            'products': len(products_out),
+            'devices': len(devices_out),
+            'sample_products': products_out[:10],
+            'sample_devices': devices_out[:10],
+        }
+
+    # persist products
+    created_products = []
+    updated_products = []
+    source_to_product_id: dict = {}
+    for p in products_out:
+        src_id = p.get('source_id')
+        ext_ref = str(src_id) if src_id is not None else None
+
+        existing = None
+        if ext_ref:
+            try:
+                existing = db.scalar(
+                    select(Product).where(Product.external_source == 'hirehop').where(Product.external_reference == ext_ref)
+                )
+            except Exception:
+                existing = None
+
+        if existing:
+            # update a few useful fields to keep import idempotent
+            if p.get('sku'):
+                existing.sku = p.get('sku')
+            if p.get('title') or p.get('name'):
+                existing.name = p.get('title') or p.get('name')
+            if str(p.get('is_box') or '').strip().lower() in {'1', 'true', 'yes'}:
+                existing.product_type = 'case'
+            if p.get('brand') is not None:
+                existing.brand = p.get('brand')
+            if p.get('manufacturer') is not None:
+                existing.manufacturer = p.get('manufacturer')
+            if p.get('replace_cost') is not None:
+                existing.daily_rate = p.get('replace_cost')
+            if p.get('weight') is not None:
+                existing.weight_kg = p.get('weight')
+            if p.get('height_cm') is not None:
+                existing.height_cm = p.get('height_cm')
+            if p.get('width_cm') is not None:
+                existing.width_cm = p.get('width_cm')
+            if p.get('depth_cm') is not None:
+                existing.depth_cm = p.get('depth_cm')
+            matched_category = _resolve_hirehop_category(db, p)
+            if matched_category is not None:
+                existing.category_id = matched_category.id
+                existing.category = matched_category.name
+            try:
+                db.commit()
+                db.refresh(existing)
+                record_activity(
+                    db,
+                    user_id=current_user.id,
+                    entity_type='product',
+                    entity_id=existing.id,
+                    action='update',
+                    message=f'Updated product {existing.sku} - {existing.name}',
+                    details={'sku': existing.sku, 'name': existing.name},
+                )
+                emit_realtime_event('inventory.updated', {'entity': 'product', 'action': 'update', 'id': existing.id})
+                updated_products.append(_to_product_read(db, existing))
+                if src_id is not None:
+                    source_to_product_id[src_id] = existing.id
+            except Exception:
+                db.rollback()
+        else:
+            prod_data = {}
+            prod_data['sku'] = p.get('sku') or (f"HH-{src_id}" if src_id is not None else None)
+            prod_data['name'] = p.get('title') or p.get('name') or 'Imported product'
+            if str(p.get('is_box') or '').strip().lower() in {'1', 'true', 'yes'}:
+                prod_data['product_type'] = 'case'
+            prod_data['brand'] = p.get('brand')
+            prod_data['manufacturer'] = p.get('manufacturer')
+            matched_category = _resolve_hirehop_category(db, p)
+            if matched_category is not None:
+                prod_data['category_id'] = matched_category.id
+                prod_data['category'] = matched_category.name
+            prod_data['daily_rate'] = p.get('replace_cost') or p.get('daily_rate') or 0
+            prod_data['weight_kg'] = p.get('weight') or p.get('weight_kg')
+            prod_data['height_cm'] = p.get('height_cm')
+            prod_data['width_cm'] = p.get('width_cm')
+            prod_data['depth_cm'] = p.get('depth_cm')
+            prod_data['external_source'] = 'hirehop'
+            prod_data['external_reference'] = ext_ref
+
+            product = Product(**{k: v for k, v in prod_data.items() if v is not None})
+            db.add(product)
+            try:
+                db.commit()
+                db.refresh(product)
+                record_activity(
+                    db,
+                    user_id=current_user.id,
+                    entity_type='product',
+                    entity_id=product.id,
+                    action='create',
+                    message=f'Imported product {product.sku} - {product.name}',
+                    details={'sku': product.sku, 'name': product.name},
+                )
+                emit_realtime_event('inventory.updated', {'entity': 'product', 'action': 'create', 'id': product.id})
+                created_products.append(_to_product_read(db, product))
+                if src_id is not None:
+                    source_to_product_id[src_id] = product.id
+            except Exception:
+                db.rollback()
+
+    # persist devices
+    created_devices = []
+    updated_devices = []
+    skipped_devices = 0
+    for d in devices_out:
+        prod_src = d.get('product_source_id')
+        product_id = source_to_product_id.get(prod_src)
+        if not product_id:
+            skipped_devices += 1
+            continue
+
+        # avoid duplicates by HireHop source_serial_id, then serial_number or barcode
+        source_serial = d.get('source_serial_id')
+        serial = d.get('serial') or d.get('serial_number')
+        barcode = d.get('barcode')
+        exists_dev = None
+        try:
+            if source_serial:
+                exists_dev = db.scalar(select(Device).where(Device.source_serial_id == str(source_serial)))
+            if not exists_dev and serial:
+                exists_dev = db.scalar(select(Device).where(Device.serial_number == serial))
+            if not exists_dev and barcode:
+                exists_dev = db.scalar(select(Device).where(Device.barcode == barcode))
+        except Exception:
+            exists_dev = None
+
+        if exists_dev:
+            if update_existing:
+                # update fields on existing device
+                if serial:
+                    exists_dev.serial_number = serial
+                if barcode:
+                    exists_dev.barcode = barcode
+                if source_serial:
+                    exists_dev.source_serial_id = str(source_serial)
+                if d.get('purchase_date'):
+                    try:
+                        from datetime import datetime
+
+                        exists_dev.purchase_date = datetime.strptime(str(d.get('purchase_date')), '%Y-%m-%d').date()
+                    except Exception:
+                        pass
+                purchase_price = _coerce_decimal(d.get('purchase_price'))
+                if purchase_price is not None:
+                    exists_dev.purchase_price = purchase_price
+                purchased_from = str(d.get('purchased_from') or '').strip()
+                if purchased_from:
+                    exists_dev.purchased_from = purchased_from
+                sold_price = _coerce_decimal(d.get('sold_price'))
+                if sold_price is not None:
+                    exists_dev.sold_price = sold_price
+                finance_upto = str(d.get('finance_upto') or '').strip()
+                if finance_upto:
+                    exists_dev.finance_upto = finance_upto
+                finance_company = str(d.get('finance_company') or '').strip()
+                if finance_company:
+                    exists_dev.finance_company = finance_company
+                finance_ref = str(d.get('finance_ref') or '').strip()
+                if finance_ref:
+                    exists_dev.finance_ref = finance_ref
+                pre_prep = str(d.get('pre_prep') or '').strip()
+                if pre_prep:
+                    exists_dev.pre_prep = pre_prep
+                if d.get('retire_date'):
+                    try:
+                        from datetime import datetime
+
+                        exists_dev.retire_date = datetime.strptime(str(d.get('retire_date')), '%Y-%m-%d').date()
+                    except Exception:
+                        pass
+                depot = d.get('depot')
+                if depot:
+                    zone = db.scalar(select(Zone).where(Zone.code == depot))
+                    if zone is None:
+                        zone = db.scalar(select(Zone).where(Zone.name == depot))
+                    if zone:
+                        exists_dev.location_zone_id = zone.id
+                try:
+                    db.commit()
+                    db.refresh(exists_dev)
+                    updated_devices.append(_to_device_read(db, exists_dev))
+                except Exception:
+                    db.rollback()
+                    skipped_devices += 1
+                continue
+            else:
+                skipped_devices += 1
+                continue
+
+        device_data = {}
+        device_data['product_id'] = product_id
+        # map fields
+        if serial:
+            device_data['serial_number'] = serial
+        if barcode:
+            device_data['barcode'] = barcode
+        if d.get('source_serial_id'):
+            device_data['source_serial_id'] = str(d.get('source_serial_id'))
+        if d.get('purchase_date'):
+            try:
+                from datetime import datetime
+
+                device_data['purchase_date'] = datetime.strptime(str(d.get('purchase_date')), '%Y-%m-%d').date()
+            except Exception:
+                pass
+        purchase_price = _coerce_decimal(d.get('purchase_price'))
+        if purchase_price is not None:
+            device_data['purchase_price'] = purchase_price
+        if d.get('purchased_from') is not None:
+            purchased_from = str(d.get('purchased_from') or '').strip()
+            if purchased_from:
+                device_data['purchased_from'] = purchased_from
+        sold_price = _coerce_decimal(d.get('sold_price'))
+        if sold_price is not None:
+            device_data['sold_price'] = sold_price
+        if d.get('finance_upto') is not None:
+            finance_upto = str(d.get('finance_upto') or '').strip()
+            if finance_upto:
+                device_data['finance_upto'] = finance_upto
+        if d.get('finance_company') is not None:
+            finance_company = str(d.get('finance_company') or '').strip()
+            if finance_company:
+                device_data['finance_company'] = finance_company
+        if d.get('finance_ref') is not None:
+            finance_ref = str(d.get('finance_ref') or '').strip()
+            if finance_ref:
+                device_data['finance_ref'] = finance_ref
+        if d.get('pre_prep') is not None:
+            pre_prep = str(d.get('pre_prep') or '').strip()
+            if pre_prep:
+                device_data['pre_prep'] = pre_prep
+        if d.get('retire_date'):
+            try:
+                from datetime import datetime
+
+                device_data['retire_date'] = datetime.strptime(str(d.get('retire_date')), '%Y-%m-%d').date()
+            except Exception:
+                pass
+        # attempt to resolve depot -> zone id
+        depot = d.get('depot')
+        if depot:
+            zone = db.scalar(select(Zone).where(Zone.code == depot))
+            if zone is None:
+                zone = db.scalar(select(Zone).where(Zone.name == depot))
+            if zone:
+                device_data['location_zone_id'] = zone.id
+
+        # ensure asset_tag
+        if not device_data.get('asset_tag'):
+            product_obj = db.get(Product, product_id)
+            device_data['asset_tag'] = _generate_asset_tag(db, product=product_obj)
+
+        device = Device(**device_data)
+        db.add(device)
+        try:
+            db.commit()
+            db.refresh(device)
+            emit_realtime_event('inventory.updated', {'entity': 'device', 'action': 'create', 'id': device.id})
+            created_devices.append(_to_device_read(db, device))
+        except Exception:
+            db.rollback()
+            skipped_devices += 1
+            continue
+
+    return {
+        'created_products': len(created_products),
+        'created_devices': len(created_devices),
+        'updated_devices': len(updated_devices),
+        'skipped_devices': skipped_devices,
+        'products': created_products[:20],
+        'devices': created_devices[:20],
+        'updated_devices_rows': updated_devices[:20],
+    }
 
 
 
@@ -338,6 +691,40 @@ def _get_category_prefill_paths(db: Session) -> list[list[str]]:
     return paths or [path[:] for path in DEFAULT_CATEGORY_PREFILL_PATHS]
 
 
+def _find_category_by_path(db: Session, path: list[str] | None) -> InventoryCategory | None:
+    if not path:
+        return None
+
+    parent_id: int | None = None
+    current: InventoryCategory | None = None
+    for name in path:
+        part = str(name or '').strip()
+        if not part:
+            return None
+        current = db.scalar(
+            select(InventoryCategory)
+            .where(InventoryCategory.parent_id == parent_id)
+            .where(func.lower(InventoryCategory.name) == part.lower())
+        )
+        if current is None:
+            return None
+        parent_id = current.id
+    return current
+
+
+def _resolve_hirehop_category(db: Session, product_data: dict[str, Any]) -> InventoryCategory | None:
+    # Cases are the one safe special-case mapping worth applying automatically.
+    is_box = str(product_data.get('is_box') or '').strip().lower() in {'1', 'true', 'yes'}
+    if is_box:
+        return _find_category_by_path(db, ['Accessories', 'Cases']) or _find_category_by_path(db, ['Cases'])
+
+    category_path = product_data.get('category_path')
+    if isinstance(category_path, list):
+        return _find_category_by_path(db, [str(part) for part in category_path])
+
+    return None
+
+
 @router.get("/products", response_model=list[ProductRead])
 def list_products(db: Session = Depends(get_db)) -> list[ProductRead]:
     products = list(db.scalars(select(Product).order_by(Product.id)).all())
@@ -451,6 +838,7 @@ def bulk_update_products(
 @router.post("/products/bulk-delete", response_model=BulkOperationResult)
 def bulk_delete_products(
     payload: BulkDeleteRequest,
+    delete_linked_devices: bool = Query(False),
     db: Session = Depends(get_db),
     _: User = Depends(require_editor),
 ) -> BulkOperationResult:
@@ -461,9 +849,18 @@ def bulk_delete_products(
     skipped = max(len(ids) - len(rows), 0)
     for row in rows:
         linked_devices = db.scalar(select(func.count()).select_from(Device).where(Device.product_id == row.id)) or 0
+        linked_requirements = list(
+            db.scalars(select(JobRequirement).where(JobRequirement.product_id == row.id)).all()
+        )
         if linked_devices > 0:
-            skipped += 1
-            continue
+            if not delete_linked_devices:
+                skipped += 1
+                continue
+            linked_rows = list(db.scalars(select(Device).where(Device.product_id == row.id)).all())
+            for linked in linked_rows:
+                db.delete(linked)
+        for requirement in linked_requirements:
+            db.delete(requirement)
         db.delete(row)
         deleted += 1
 
@@ -2098,6 +2495,13 @@ def _to_device_read(db: Session, device: Device) -> DeviceRead:
             "status": device.status,
             "condition": device.condition,
             "purchase_date": device.purchase_date,
+            "purchase_price": device.purchase_price,
+            "purchased_from": device.purchased_from,
+            "sold_price": device.sold_price,
+            "finance_upto": device.finance_upto,
+            "finance_company": device.finance_company,
+            "finance_ref": device.finance_ref,
+            "pre_prep": device.pre_prep,
             "warranty_end_date": device.warranty_end_date,
             "retire_date": device.retire_date,
             "usage_hours": device.usage_hours,
@@ -2136,6 +2540,13 @@ def _build_lookup_details(db: Session, device: Device, product: Product | None) 
             "status": device.status,
             "condition": device.condition,
             "purchase_date": device.purchase_date,
+            "purchase_price": device.purchase_price,
+            "purchased_from": device.purchased_from,
+            "sold_price": device.sold_price,
+            "finance_upto": device.finance_upto,
+            "finance_company": device.finance_company,
+            "finance_ref": device.finance_ref,
+            "pre_prep": device.pre_prep,
             "warranty_end_date": device.warranty_end_date,
             "retire_date": device.retire_date,
             "usage_hours": device.usage_hours,
