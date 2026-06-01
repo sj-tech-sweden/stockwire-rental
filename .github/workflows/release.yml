@@ -81,7 +81,7 @@ jobs:
           cd frontend
           npm version --no-git-tag-version "$RELEASE_VERSION"
           cd ..
-          python - <<'PY'
+          python3 - <<'PY'
           import os
           import re
           from pathlib import Path
