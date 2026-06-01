@@ -149,7 +149,7 @@ jobs:
           fi
 
           if gh release view "$TAG" >/dev/null 2>&1; then
-            gh release edit "$TAG" --title "$TAG" --notes "$NOTES"
+            gh release edit "$TAG" --title "$TAG" --notes "$NOTES" --target "$RELEASE_SHA"
           else
             gh release create "$TAG" --title "$TAG" --notes "$NOTES" --target "$RELEASE_SHA"
           fi

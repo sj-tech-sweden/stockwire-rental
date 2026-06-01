@@ -40,7 +40,7 @@ jobs:
     if: >
       github.event_name != 'push' ||
       github.actor != 'github-actions[bot]' ||
-      !startsWith(github.event.head_commit.message, 'chore: sync app versions')
+      !startsWith(github.event.head_commit.message || '', 'chore: sync app versions')
     runs-on: ubuntu-latest
     permissions:
       contents: read
