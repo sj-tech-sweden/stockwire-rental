@@ -23,8 +23,6 @@ target product/device fields. A default mapping for HireHop is included.
 import argparse
 import json
 import os
-import sys
-from datetime import datetime
 
 try:
     import requests

@@ -5544,7 +5544,6 @@ async function loadHirehopPreset() {
     manufacturer: 'fields.tillverkare.value',
     weight: 'WEIGHT',
     category_id: 'CATEGORY_ID',
-    replace_cost: 'REPLACE_COST',
     barcode: 'BARCODE',
     height_cm: 'HEIGHT',
     width_cm: 'WIDTH',
