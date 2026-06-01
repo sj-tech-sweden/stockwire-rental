@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy.exc import DataError, IntegrityError, SQLAlchemyError
 
 from app.db.session import get_db
+from app.config import settings
 from app.domain.auth.deps import get_current_user, require_admin, require_editor
 from app.domain.auth.models import User
 from app.domain.audit.service import record_activity
@@ -74,7 +75,10 @@ def _coerce_decimal(value: Any) -> Decimal | None:
     if not text:
         return None
     try:
-        return Decimal(text)
+        quantized = Decimal(text).quantize(Decimal("0.01"))
+        if not quantized.is_finite():
+            return None
+        return quantized
     except (InvalidOperation, ValueError):
         return None
 
@@ -112,7 +116,22 @@ async def import_inventory(
     import json
     from app.domain.imports.hirehop import DEFAULT_MAPPING_PATH, process_hirehop_data, load_mapping
 
-    content = await file.read()
+    max_upload_bytes = max(1, int(settings.storage_max_upload_mb or 25)) * 1024 * 1024
+    chunks: list[bytes] = []
+    total_size = 0
+    while True:
+        chunk = await file.read(1024 * 1024)
+        if not chunk:
+            break
+        total_size += len(chunk)
+        if total_size > max_upload_bytes:
+            raise HTTPException(
+                status_code=status.HTTP_413_CONTENT_TOO_LARGE,
+                detail=f"File exceeds {max_upload_bytes // (1024 * 1024)}MB limit",
+            )
+        chunks.append(chunk)
+
+    content = b"".join(chunks)
     try:
         data = json.loads(content.decode('utf8'))
     except Exception:
@@ -845,9 +864,6 @@ def bulk_delete_products(
     skipped = max(len(ids) - len(rows), 0)
     for row in rows:
         linked_devices = db.scalar(select(func.count()).select_from(Device).where(Device.product_id == row.id)) or 0
-        linked_requirements = list(
-            db.scalars(select(JobRequirement).where(JobRequirement.product_id == row.id)).all()
-        )
         if linked_devices > 0:
             if not delete_linked_devices:
                 skipped += 1
@@ -855,6 +871,9 @@ def bulk_delete_products(
             linked_rows = list(db.scalars(select(Device).where(Device.product_id == row.id)).all())
             for linked in linked_rows:
                 db.delete(linked)
+        linked_requirements = list(
+            db.scalars(select(JobRequirement).where(JobRequirement.product_id == row.id)).all()
+        )
         for requirement in linked_requirements:
             db.delete(requirement)
         db.delete(row)

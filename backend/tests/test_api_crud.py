@@ -3,6 +3,7 @@ import socket
 from unittest.mock import patch
 from urllib.error import HTTPError, URLError
 
+from app.config import settings
 from app.domain.settings import router as settings_router
 
 
@@ -1445,3 +1446,35 @@ def test_import_inventory_unsupported_preset(client):
         files={"file": ("test.json", hirehop_data, "application/json")},
     )
     assert result.status_code == 400
+
+
+def test_import_inventory_preserves_zero_dimensions(client):
+    hirehop_data = json.dumps([
+        {
+            "ID": 1234,
+            "TITLE": "Zero-Dimension Product",
+            "HEIGHT": 0,
+            "WIDTH": 0,
+            "LENGTH": 0,
+        }
+    ]).encode()
+    result = client.post(
+        "/api/v1/inventory/import?preset=hirehop&dry_run=true",
+        files={"file": ("zero-dimensions.json", hirehop_data, "application/json")},
+    )
+    assert result.status_code == 200
+    sample = result.json()["sample_products"][0]
+    assert sample["height_cm"] == 0.0
+    assert sample["width_cm"] == 0.0
+    assert sample["depth_cm"] == 0.0
+
+
+def test_import_inventory_rejects_oversized_file(client):
+    with patch.object(settings, "storage_max_upload_mb", 1):
+        large_json = b'{"items": [' + (b'{"ID": 1},' * 120000) + b'{"ID": 2}]}'
+        result = client.post(
+            "/api/v1/inventory/import?preset=hirehop&dry_run=true",
+            files={"file": ("large.json", large_json, "application/json")},
+        )
+    assert result.status_code == 413
+    assert "File exceeds 1MB limit" in result.json()["detail"]

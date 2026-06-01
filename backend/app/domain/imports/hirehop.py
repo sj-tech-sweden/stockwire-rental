@@ -127,7 +127,7 @@ def process_hirehop_data(data: List[Dict], mapping: Dict = None, limit: int = No
             val = product.get(dim_field)
             if val is not None:
                 try:
-                    product[dim_field] = round(float(val) * 100, 2) or None
+                    product[dim_field] = round(float(val) * 100, 2)
                 except (TypeError, ValueError):
                     product[dim_field] = None
         products_out.append(product)
