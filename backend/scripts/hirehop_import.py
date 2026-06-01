@@ -125,9 +125,13 @@ def process(input_path, mapping, outdir, api_url=None, api_key=None, dry_run=Tru
                 for i in range(max(1, qty)):
                     dev = map_fields(cell or s, device_map)
                     dev['product_source_id'] = source_id
-                    # attach source serial entry id for traceability
+                    # attach source serial entry id for traceability; suffix with index when
+                    # a single row is expanded to multiple devices so each gets a unique id
                     if isinstance(s, dict) and s.get('id'):
-                        dev['source_serial_id'] = s.get('id')
+                        if qty > 1:
+                            dev['source_serial_id'] = f"{s.get('id')}:{i + 1}"
+                        else:
+                            dev['source_serial_id'] = str(s.get('id'))
                     # if qty >1 and there is no unique serial/barcode per device, leave blank
                     if qty > 1:
                         # if QTY>1 but a unique serial exists, still keep it on first device only

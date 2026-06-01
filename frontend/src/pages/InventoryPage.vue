@@ -5757,6 +5757,11 @@ async function runJsonImport() {
       importing.value = false
       return
     }
+    if (!isLikelyHirehopRows(importRows.value)) {
+      importDialogError.value = 'Server import is only supported for HireHop JSON files. Disable "Use server import" to import other file types.'
+      importing.value = false
+      return
+    }
     try {
       const fd = new FormData()
       fd.append('file', importFile.value)

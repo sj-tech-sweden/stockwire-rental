@@ -879,7 +879,14 @@ def bulk_delete_products(
         db.delete(row)
         deleted += 1
 
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError as exc:
+        db.rollback()
+        raise HTTPException(status_code=409, detail="Unable to bulk delete products due to linked records") from exc
+    except SQLAlchemyError as exc:
+        db.rollback()
+        raise HTTPException(status_code=500, detail="Failed to bulk delete products") from exc
     if deleted:
         emit_realtime_event("inventory.updated", {"entity": "product", "action": "bulk_delete", "count": deleted})
     return BulkOperationResult(deleted=deleted, skipped=skipped)

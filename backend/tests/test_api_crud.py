@@ -1383,9 +1383,11 @@ def test_hirehop_preset_endpoint_returns_mapping(client):
     result = client.get("/api/v1/inventory/import/presets/hirehop")
     assert result.status_code == 200
     data = result.json()
-    # Should contain product and device mapping keys
     assert isinstance(data, dict)
-    assert "product" in data or "device" in data or data == {}
+    assert "product" in data, "Preset must contain a 'product' mapping"
+    assert "device" in data, "Preset must contain a 'device' mapping"
+    assert isinstance(data["product"], dict), "'product' mapping must be a dict"
+    assert isinstance(data["device"], dict), "'device' mapping must be a dict"
 
 
 def test_import_inventory_dry_run(client):
