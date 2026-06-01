@@ -132,7 +132,19 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add frontend/package.json frontend/package-lock.json backend/pyproject.toml
           git commit -m "chore: sync app versions to ${RELEASE_VERSION}"
-          git push origin HEAD:main
+
+          MAX_RETRIES=3
+          for i in $(seq 1 $MAX_RETRIES); do
+            if git push origin HEAD:main; then
+              break
+            fi
+            if [ "$i" -eq "$MAX_RETRIES" ]; then
+              echo "Push failed after $MAX_RETRIES attempts"
+              exit 1
+            fi
+            git fetch origin main
+            git rebase origin/main
+          done
           echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
       - name: Create or update GitHub release
