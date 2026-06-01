@@ -7,7 +7,15 @@ flows. Designed to be imported and used by other backend code (not only CLI).
 from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
-DEFAULT_MAPPING_PATH = Path(__file__).resolve().parent / 'hirehop_mapping.json'
+_DEFAULT_MAPPING_CANDIDATES = (
+    Path(__file__).resolve().parent / 'hirehop_mapping.json',
+    Path.cwd() / 'scripts' / 'hirehop_mapping.json',
+    Path.cwd() / 'backend' / 'scripts' / 'hirehop_mapping.json',
+)
+DEFAULT_MAPPING_PATH = next(
+    (candidate for candidate in _DEFAULT_MAPPING_CANDIDATES if candidate.exists()),
+    _DEFAULT_MAPPING_CANDIDATES[0],
+)
 
 
 def _extract(obj: Any, path: str):

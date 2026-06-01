@@ -1638,10 +1638,10 @@
               <q-btn flat dense color="positive" icon="event_repeat" label="Create maintenance schedule" class="q-ml-xs" @click="openCreateMaintenance('schedule', deviceInfoTarget?.id)" />
             </div>
             <div class="col-12 col-md-6 text-caption text-grey-8">
-              Purchase: {{ formatMoney(deviceInfoTarget?.purchase_price) }} from {{ deviceInfoTarget?.purchased_from || '-' }}
+              Purchase: {{ deviceInfoTarget?.purchase_price == null ? '-' : formatMoney(deviceInfoTarget?.purchase_price) }} from {{ deviceInfoTarget?.purchased_from || '-' }}
             </div>
             <div class="col-12 col-md-6 text-caption text-grey-8">
-              Sold: {{ formatMoney(deviceInfoTarget?.sold_price) }} · Finance up to: {{ deviceInfoTarget?.finance_upto || '-' }}
+              Sold: {{ deviceInfoTarget?.sold_price == null ? '-' : formatMoney(deviceInfoTarget?.sold_price) }} · Finance up to: {{ deviceInfoTarget?.finance_upto || '-' }}
             </div>
             <div class="col-12 col-md-6 text-caption text-grey-8">
               Finance company: {{ deviceInfoTarget?.finance_company || '-' }} · Ref: {{ deviceInfoTarget?.finance_ref || '-' }}
