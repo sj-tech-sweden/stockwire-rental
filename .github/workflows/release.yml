@@ -134,7 +134,7 @@ jobs:
           git commit -m "chore: sync app versions to ${RELEASE_VERSION}"
 
           MAX_RETRIES=3
-          for i in $(seq 1 $MAX_RETRIES); do
+          for ((i=1; i<=MAX_RETRIES; i++)); do
             if git push origin HEAD:main; then
               break
             fi
@@ -142,8 +142,9 @@ jobs:
               echo "Push failed after $MAX_RETRIES attempts"
               exit 1
             fi
-            git fetch origin main
-            git rebase origin/main
+            echo "Push attempt $i failed; fetching and rebasing before retry"
+            git fetch origin main || { echo "git fetch failed"; exit 1; }
+            git rebase origin/main || { echo "git rebase failed"; exit 1; }
           done
           echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
