@@ -4466,9 +4466,9 @@ async function saveDevice() {
       status: deviceForm.value.status,
       condition: deviceForm.value.condition,
       purchase_date: normalizeOptionalDate(deviceForm.value.purchase_date),
-      purchase_price: deviceForm.value.purchase_price,
+      purchase_price: deviceForm.value.purchase_price === '' || deviceForm.value.purchase_price == null ? null : Number(deviceForm.value.purchase_price),
       purchased_from: deviceForm.value.purchased_from || null,
-      sold_price: deviceForm.value.sold_price,
+      sold_price: deviceForm.value.sold_price === '' || deviceForm.value.sold_price == null ? null : Number(deviceForm.value.sold_price),
       finance_upto: deviceForm.value.finance_upto || null,
       finance_company: deviceForm.value.finance_company || null,
       finance_ref: deviceForm.value.finance_ref || null,
@@ -5577,7 +5577,8 @@ async function loadHirehopPreset() {
   map['description'] = p.description || 'DESCRIPTION'
   map['weight_kg'] = p.weight || 'WEIGHT'
   map['category_id'] = p.category_id || 'CATEGORY_ID'
-  map['daily_rate'] = p.replace_cost || 'REPLACE_COST'
+  map['daily_rate'] = p.daily_rate || 'PRICE1'
+  map['rental_price'] = p.rental_price || 'PRICE2'
   map['barcode'] = p.barcode || 'BARCODE'
   map['height_cm'] = p.height_cm || 'HEIGHT'
   map['width_cm'] = p.width_cm || 'WIDTH'

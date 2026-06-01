@@ -1378,6 +1378,10 @@ def test_bulk_delete_products_cascades_devices_and_requirements(client):
     devices_list = client.get("/api/v1/inventory/devices")
     assert not any(d["id"] == device_id for d in devices_list.json())
 
+    # Verify linked job requirements are also deleted
+    reqs_list = client.get("/api/v1/jobs/requirements")
+    assert not any(r["product_id"] == product_id for r in reqs_list.json())
+
 
 def test_hirehop_preset_endpoint_returns_mapping(client):
     result = client.get("/api/v1/inventory/import/presets/hirehop")
@@ -1388,6 +1392,8 @@ def test_hirehop_preset_endpoint_returns_mapping(client):
     assert "device" in data, "Preset must contain a 'device' mapping"
     assert isinstance(data["product"], dict), "'product' mapping must be a dict"
     assert isinstance(data["device"], dict), "'device' mapping must be a dict"
+    assert data["product"].get("daily_rate") == "PRICE1", "Product mapping must map daily_rate to PRICE1"
+    assert data["product"].get("rental_price") == "PRICE2", "Product mapping must map rental_price to PRICE2"
 
 
 def test_import_inventory_dry_run(client):
@@ -1396,6 +1402,8 @@ def test_import_inventory_dry_run(client):
             "ID": 101,
             "TITLE": "Test Speaker",
             "REPLACE_COST": 1000,
+            "PRICE1": 25.00,
+            "PRICE2": 15.00,
             "serialnumbers": [
                 {"id": 1, "cell": {"SERIAL": "SN-001", "QTY": 1}},
             ],
@@ -1410,6 +1418,9 @@ def test_import_inventory_dry_run(client):
     assert "products" in data
     assert "devices" in data
     assert data["products"] >= 1
+    sample = data["sample_products"][0]
+    assert sample.get("daily_rate") == 25.00, "PRICE1 must map to daily_rate"
+    assert sample.get("rental_price") == 15.00, "PRICE2 must map to rental_price"
 
 
 def test_import_inventory_persist(client):
