@@ -1,0 +1,33 @@
+{
+  "product": {
+    "title": "TITLE",
+    "description": "DESCRIPTION",
+    "sku": "ID",
+    "name": "TITLE",
+    "brand": "fields.tillverkare.value",
+    "manufacturer": "fields.tillverkare.value",
+    "replace_cost": "REPLACE_COST",
+    "weight": "WEIGHT",
+    "category_id": "CATEGORY_ID",
+    "barcode": "BARCODE",
+    "external_id": "ID",
+    "height_cm": "HEIGHT",
+    "width_cm": "WIDTH",
+    "depth_cm": "LENGTH"
+  },
+  "device": {
+    "barcode": "BARCODE",
+    "serial": "SERIAL",
+    "purchase_date": "PURCHASE_DATE",
+    "retire_date": "RETIRE_DATE",
+    "purchase_price": "PURCHASE_PRICE",
+    "purchased_from": "PURCHASED_FROM",
+    "sold_price": "SOLD_PRICE",
+    "finance_upto": "FINANCE_UPTO",
+    "finance_company": "FINANCE_COMPANY",
+    "finance_ref": "FINANCE_REF",
+    "pre_prep": "PRE_PREP",
+    "depot": "DEPOT",
+    "qty": "QTY"
+  }
+}

@@ -118,7 +118,10 @@ def process(input_path, mapping, outdir, api_url=None, api_key=None, dry_run=Tru
             for s in serials:
                 # in HireHop export the useful data is often under `cell`
                 cell = s.get('cell') if isinstance(s, dict) else None
-                qty = int(extract(cell, device_map.get('qty', 'QTY')) or 1)
+                try:
+                    qty = int(float(extract(cell, device_map.get('qty', 'QTY')) or 1))
+                except (ValueError, TypeError):
+                    qty = 1
                 for i in range(max(1, qty)):
                     dev = map_fields(cell or s, device_map)
                     dev['product_source_id'] = source_id

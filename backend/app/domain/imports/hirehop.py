@@ -4,7 +4,10 @@ Provides functions to convert HireHop JSON exports into product and device
 objects suitable for persistence or further processing by backend import
 flows. Designed to be imported and used by other backend code (not only CLI).
 """
+from pathlib import Path
 from typing import Any, Dict, List, Tuple
+
+DEFAULT_MAPPING_PATH = Path(__file__).resolve().parent / 'hirehop_mapping.json'
 
 
 def _extract(obj: Any, path: str):

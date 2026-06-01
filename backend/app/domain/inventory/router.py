@@ -84,12 +84,11 @@ def get_hirehop_import_preset() -> dict:
     """Return the default HireHop import mapping as a preset for frontend import UI."""
     try:
         import json
-        from pathlib import Path
+        from app.domain.imports.hirehop import DEFAULT_MAPPING_PATH
 
-        base = Path(__file__).resolve().parents[3] / 'scripts' / 'hirehop_mapping.json'
-        if not base.exists():
+        if not DEFAULT_MAPPING_PATH.exists():
             return {}
-        with open(base, 'r', encoding='utf8') as fh:
+        with open(DEFAULT_MAPPING_PATH, 'r', encoding='utf8') as fh:
             return json.load(fh)
     except Exception:
         return {}
@@ -111,7 +110,7 @@ async def import_inventory(
     If `dry_run=true` (default) returns counts and samples without persisting.
     """
     import json
-    from app.domain.imports.hirehop import process_hirehop_data, load_mapping
+    from app.domain.imports.hirehop import DEFAULT_MAPPING_PATH, process_hirehop_data, load_mapping
 
     content = await file.read()
     try:
@@ -122,12 +121,9 @@ async def import_inventory(
     if preset != 'hirehop':
         raise HTTPException(status_code=400, detail='Unsupported preset')
 
-    # load default mapping from scripts
+    # load default mapping from the app package resource
     try:
-        from pathlib import Path
-
-        mapping_path = Path(__file__).resolve().parents[3] / 'scripts' / 'hirehop_mapping.json'
-        mapping = load_mapping(str(mapping_path)) if mapping_path.exists() else None
+        mapping = load_mapping(str(DEFAULT_MAPPING_PATH)) if DEFAULT_MAPPING_PATH.exists() else None
     except Exception:
         mapping = None
 
@@ -254,18 +250,18 @@ async def import_inventory(
             skipped_devices += 1
             continue
 
-        # avoid duplicates by HireHop source_serial_id, then serial_number or barcode
+        # avoid duplicates by HireHop source_serial_id, then serial_number or barcode (scoped to the same product)
         source_serial = d.get('source_serial_id')
         serial = d.get('serial') or d.get('serial_number')
         barcode = d.get('barcode')
         exists_dev = None
         try:
             if source_serial:
-                exists_dev = db.scalar(select(Device).where(Device.source_serial_id == str(source_serial)))
+                exists_dev = db.scalar(select(Device).where(Device.source_serial_id == str(source_serial), Device.product_id == product_id))
             if not exists_dev and serial:
-                exists_dev = db.scalar(select(Device).where(Device.serial_number == serial))
+                exists_dev = db.scalar(select(Device).where(Device.serial_number == serial, Device.product_id == product_id))
             if not exists_dev and barcode:
-                exists_dev = db.scalar(select(Device).where(Device.barcode == barcode))
+                exists_dev = db.scalar(select(Device).where(Device.barcode == barcode, Device.product_id == product_id))
         except Exception:
             exists_dev = None
 

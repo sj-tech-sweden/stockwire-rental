@@ -1298,3 +1298,150 @@ def test_inventory_bulk_create_subzones_parent_not_found(client):
         ],
     )
     assert result.status_code == 404
+
+def test_bulk_delete_products_skips_when_linked_devices_and_flag_false(client):
+    product = client.post(
+        "/api/v1/inventory/products",
+        json={"sku": "BDP-SKIP-01", "name": "Bulk Delete Skip Product", "daily_rate": "10.00"},
+    )
+    assert product.status_code == 200
+    product_id = product.json()["id"]
+
+    device = client.post(
+        "/api/v1/inventory/devices",
+        json={"product_id": product_id, "asset_tag": "BDP-SKIP-01-001", "status": "available", "condition": "good"},
+    )
+    assert device.status_code == 200
+
+    result = client.post(
+        "/api/v1/inventory/products/bulk-delete",
+        json={"ids": [product_id]},
+    )
+    assert result.status_code == 200
+    assert result.json()["deleted"] == 0
+    assert result.json()["skipped"] == 1
+
+    # Verify product still exists in list
+    products_list = client.get("/api/v1/inventory/products")
+    assert any(p["id"] == product_id for p in products_list.json())
+
+
+def test_bulk_delete_products_cascades_devices_and_requirements(client):
+    product = client.post(
+        "/api/v1/inventory/products",
+        json={"sku": "BDP-CASCADE-01", "name": "Bulk Delete Cascade Product", "daily_rate": "10.00"},
+    )
+    assert product.status_code == 200
+    product_id = product.json()["id"]
+
+    device = client.post(
+        "/api/v1/inventory/devices",
+        json={"product_id": product_id, "asset_tag": "BDP-CASCADE-01-001", "status": "available", "condition": "good"},
+    )
+    assert device.status_code == 200
+    device_id = device.json()["id"]
+
+    customer = client.post("/api/v1/customers", json={"name": "Cascade Customer", "email": "cascade@example.com"})
+    assert customer.status_code == 200
+    venue = client.post("/api/v1/venues", json={"name": "Cascade Venue", "city": "Stockholm"})
+    assert venue.status_code == 200
+    job = client.post(
+        "/api/v1/jobs",
+        json={
+            "job_code": "JOB-CASCADE-001",
+            "customer_id": customer.json()["id"],
+            "venue_id": venue.json()["id"],
+            "status": "confirmed",
+        },
+    )
+    assert job.status_code == 200
+
+    bulk_reqs = client.put(
+        f"/api/v1/jobs/{job.json()['id']}/requirements/bulk",
+        json={"items": [{"product_id": product_id, "quantity_required": 2, "quantity_picked": 0}]},
+    )
+    assert bulk_reqs.status_code == 200
+    assert len(bulk_reqs.json()) == 1
+
+    result = client.post(
+        "/api/v1/inventory/products/bulk-delete?delete_linked_devices=true",
+        json={"ids": [product_id]},
+    )
+    assert result.status_code == 200
+    assert result.json()["deleted"] == 1
+    assert result.json()["skipped"] == 0
+
+    # Verify product and device are deleted (not present in list)
+    products_list = client.get("/api/v1/inventory/products")
+    assert not any(p["id"] == product_id for p in products_list.json())
+    devices_list = client.get("/api/v1/inventory/devices")
+    assert not any(d["id"] == device_id for d in devices_list.json())
+
+
+def test_hirehop_preset_endpoint_returns_mapping(client):
+    result = client.get("/api/v1/inventory/import/presets/hirehop")
+    assert result.status_code == 200
+    data = result.json()
+    # Should contain product and device mapping keys
+    assert isinstance(data, dict)
+    assert "product" in data or "device" in data or data == {}
+
+
+def test_import_inventory_dry_run(client):
+    hirehop_data = json.dumps([
+        {
+            "ID": 101,
+            "TITLE": "Test Speaker",
+            "REPLACE_COST": 1000,
+            "serialnumbers": [
+                {"id": 1, "cell": {"SERIAL": "SN-001", "QTY": 1}},
+            ],
+        }
+    ]).encode()
+    result = client.post(
+        "/api/v1/inventory/import?preset=hirehop&dry_run=true",
+        files={"file": ("test.json", hirehop_data, "application/json")},
+    )
+    assert result.status_code == 200
+    data = result.json()
+    assert "products" in data
+    assert "devices" in data
+    assert data["products"] >= 1
+
+
+def test_import_inventory_persist(client):
+    hirehop_data = json.dumps([
+        {
+            "ID": 9901,
+            "TITLE": "Imported Speaker",
+            "REPLACE_COST": 500,
+            "serialnumbers": [
+                {"id": 11, "cell": {"SERIAL": "SN-IMP-001", "QTY": 1}},
+            ],
+        }
+    ]).encode()
+    result = client.post(
+        "/api/v1/inventory/import?preset=hirehop&dry_run=false",
+        files={"file": ("import.json", hirehop_data, "application/json")},
+    )
+    assert result.status_code == 200
+    data = result.json()
+    assert data["created_products"] == 1
+    assert data["created_devices"] == 1
+
+
+def test_import_inventory_invalid_json(client):
+    result = client.post(
+        "/api/v1/inventory/import?preset=hirehop&dry_run=true",
+        files={"file": ("bad.json", b"not valid json", "application/json")},
+    )
+    assert result.status_code == 400
+
+
+def test_import_inventory_unsupported_preset(client):
+    hirehop_data = json.dumps([{"ID": 1}]).encode()
+    result = client.post(
+        "/api/v1/inventory/import?preset=other&dry_run=true",
+        files={"file": ("test.json", hirehop_data, "application/json")},
+    )
+    assert result.status_code == 400

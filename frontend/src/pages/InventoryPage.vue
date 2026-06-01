@@ -2375,27 +2375,9 @@ function customFieldOption(option) {
   return translateMaybePrefillCustomFieldOption(option, t)
 }
 
-async function loadPrefixMemory() {
+function loadPrefixMemory() {
   if (typeof window === 'undefined') return
   try {
-    if (importUseServer.value) {
-      if (!importFile.value) {
-        importDialogError.value = 'No file selected for server import'
-        return
-      }
-      try {
-        const fd = new FormData()
-        fd.append('file', importFile.value)
-        const res = await api.post('/api/v1/inventory/import', fd, { params: { preset: 'hirehop', dry_run: false } })
-        await loadAll()
-        importDialogOpen.value = false
-        $q.notify({ type: 'positive', message: `Import completed. Created products: ${res.data.created_products}, devices: ${res.data.created_devices}` })
-        return
-      } catch (err) {
-        importDialogError.value = err?.response?.data?.detail || err?.message || 'Server import failed'
-        return
-      }
-    }
     const raw = window.localStorage.getItem(PREFIX_MEMORY_STORAGE_KEY)
     if (!raw) return
     const parsed = JSON.parse(raw)
@@ -4824,7 +4806,7 @@ async function saveBulkProducts() {
 async function runBulkDeleteProducts() {
   const ids = selectedRowIds(selectedProducts.value)
   if (!ids.length) return
-  if (!window.confirm(`Delete ${ids.length} selected products? Linked devices for these products will also be deleted.`)) return
+  if (!window.confirm(`Delete ${ids.length} selected products? All linked devices and job requirements for these products will also be deleted.`)) return
 
   saving.value = true
   try {
@@ -5545,7 +5527,11 @@ function resetImportMapping() {
 }
 
 function isLikelyHirehopRows(rows) {
-  return Array.isArray(rows) && rows.some(row => Array.isArray(row?.serialnumbers) || row?.ID !== undefined)
+  if (!Array.isArray(rows)) return false
+  return rows.some(row =>
+    Array.isArray(row?.serialnumbers) ||
+    (row?.ID !== undefined && (row?.TITLE !== undefined || row?.REPLACE_COST !== undefined || row?.serialnumbers !== undefined))
+  )
 }
 
 async function loadHirehopPreset() {
