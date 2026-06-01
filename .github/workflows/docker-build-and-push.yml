@@ -5,6 +5,10 @@ on:
     branches: [ main ]
   workflow_dispatch:
     inputs:
+      git_ref:
+        description: Optional git ref or SHA to build from
+        required: false
+        type: string
       version_tag:
         description: Optional semantic version tag (for example 1.2.3)
         required: false
@@ -16,6 +20,9 @@ on:
         default: true
   workflow_call:
     inputs:
+      git_ref:
+        required: false
+        type: string
       version_tag:
         required: false
         type: string
@@ -33,6 +40,8 @@ jobs:
       id-token: write
     steps:
       - uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.git_ref || github.sha }}
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v4
