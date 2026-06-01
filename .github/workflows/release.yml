@@ -30,6 +30,7 @@ jobs:
       contents: write
     outputs:
       tag: ${{ steps.semver.outputs.tag }}
+      release_sha: ${{ steps.commit_versions.outputs.sha }}
     steps:
       - uses: actions/checkout@v6
         with:
@@ -68,33 +69,89 @@ jobs:
           echo "New tag: $NEW_TAG"
           echo "tag=$NEW_TAG" >> $GITHUB_OUTPUT
 
-      - name: Generate changelog
-        id: changelog
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+
+      - name: Sync version metadata
+        env:
+          RELEASE_VERSION: ${{ steps.semver.outputs.tag }}
         run: |
-          git fetch --tags
-          LATEST=$(git describe --tags --abbrev=0 2>/dev/null || echo "0.0.0")
-          NEW_TAG=${{ steps.semver.outputs.tag }}
-          if [ "$LATEST" = "0.0.0" ]; then
-            CHANGELOG=$(git log --pretty=format:'- %s (%h)' -n 50)
-          else
-            CHANGELOG=$(git log --pretty=format:'- %s (%h)' $LATEST..HEAD)
+          cd frontend
+          npm version --no-git-tag-version "$RELEASE_VERSION"
+          cd ..
+          python3 - <<'PY'
+          import os
+          import re
+          from pathlib import Path
+
+          release_version = os.environ["RELEASE_VERSION"]
+          pyproject_path = Path("backend/pyproject.toml")
+          pyproject_text = pyproject_path.read_text()
+          updated_text, replacements = re.subn(
+              r'(?m)^version = ".*"$',
+              f'version = "{release_version}"',
+              pyproject_text,
+              count=1,
+          )
+          if replacements != 1:
+              raise SystemExit("Expected to update exactly one backend version field")
+          pyproject_path.write_text(updated_text)
+          PY
+
+      - name: Commit synced versions
+        id: commit_versions
+        env:
+          RELEASE_VERSION: ${{ steps.semver.outputs.tag }}
+        run: |
+          if git diff --quiet -- frontend/package.json frontend/package-lock.json backend/pyproject.toml; then
+            echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+            exit 0
           fi
-          if [ -z "$CHANGELOG" ]; then
-            CHANGELOG="No notable changes"
-          fi
-          echo "changelog<<EOF" >> $GITHUB_OUTPUT
-          echo "$CHANGELOG" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add frontend/package.json frontend/package-lock.json backend/pyproject.toml
+          git commit -m "chore: sync app versions to ${RELEASE_VERSION}"
+
+          MAX_RETRIES=3
+          for ((i=1; i<=MAX_RETRIES; i++)); do
+            if git push origin HEAD:main; then
+              break
+            fi
+            if [ "$i" -eq "$MAX_RETRIES" ]; then
+              echo "Push failed after $MAX_RETRIES attempts"
+              exit 1
+            fi
+            echo "Push attempt $i failed; fetching and rebasing before retry"
+            git fetch origin main || { echo "git fetch failed"; exit 1; }
+            git rebase origin/main || { echo "git rebase failed"; exit 1; }
+          done
+          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
       - name: Create or update GitHub release
         run: |
           TAG="${{ steps.semver.outputs.tag }}"
-          NOTES="${{ steps.changelog.outputs.changelog }}"
+          RELEASE_SHA="${{ steps.commit_versions.outputs.sha }}"
+
+          # Generate changelog from the synced commit so the notes always match
+          # the actual --target, even if a rebase was required during the push.
+          git fetch --tags
+          LATEST=$(git describe --tags --abbrev=0 "${RELEASE_SHA}^" 2>/dev/null || echo "0.0.0")
+          if [ "$LATEST" = "0.0.0" ]; then
+            NOTES=$(git log --pretty=format:'- %s (%h)' -n 50 "$RELEASE_SHA")
+          else
+            NOTES=$(git log --pretty=format:'- %s (%h)' "${LATEST}..${RELEASE_SHA}")
+          fi
+          if [ -z "$NOTES" ]; then
+            NOTES="No notable changes"
+          fi
 
           if gh release view "$TAG" >/dev/null 2>&1; then
-            gh release edit "$TAG" --title "$TAG" --notes "$NOTES"
+            gh release edit "$TAG" --title "$TAG" --notes "$NOTES" --target "$RELEASE_SHA"
           else
-            gh release create "$TAG" --title "$TAG" --notes "$NOTES" --target "$GITHUB_SHA"
+            gh release create "$TAG" --title "$TAG" --notes "$NOTES" --target "$RELEASE_SHA"
           fi
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -106,5 +163,6 @@ jobs:
       id-token: write
     uses: ./.github/workflows/docker-build-and-push.yml
     with:
+      git_ref: ${{ needs.create-release.outputs.release_sha }}
       version_tag: ${{ needs.create-release.outputs.tag }}
       push_latest: true
