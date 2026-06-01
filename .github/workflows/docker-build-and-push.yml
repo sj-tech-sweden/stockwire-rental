@@ -33,6 +33,11 @@ on:
 
 jobs:
   build-and-push:
+    # Skip push-triggered runs caused by the release version-sync commit to avoid
+    # building twice (the release workflow already calls this workflow via workflow_call).
+    if: >
+      github.event_name != 'push' ||
+      !startsWith(github.event.head_commit.message, 'chore: sync app versions')
     runs-on: ubuntu-latest
     permissions:
       contents: read

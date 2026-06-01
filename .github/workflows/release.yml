@@ -69,24 +69,6 @@ jobs:
           echo "New tag: $NEW_TAG"
           echo "tag=$NEW_TAG" >> $GITHUB_OUTPUT
 
-      - name: Generate changelog
-        id: changelog
-        run: |
-          git fetch --tags
-          LATEST=$(git describe --tags --abbrev=0 2>/dev/null || echo "0.0.0")
-          NEW_TAG=${{ steps.semver.outputs.tag }}
-          if [ "$LATEST" = "0.0.0" ]; then
-            CHANGELOG=$(git log --pretty=format:'- %s (%h)' -n 50)
-          else
-            CHANGELOG=$(git log --pretty=format:'- %s (%h)' $LATEST..HEAD)
-          fi
-          if [ -z "$CHANGELOG" ]; then
-            CHANGELOG="No notable changes"
-          fi
-          echo "changelog<<EOF" >> $GITHUB_OUTPUT
-          echo "$CHANGELOG" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
-
       - name: Setup Node
         uses: actions/setup-node@v6
         with:
@@ -151,8 +133,20 @@ jobs:
       - name: Create or update GitHub release
         run: |
           TAG="${{ steps.semver.outputs.tag }}"
-          NOTES="${{ steps.changelog.outputs.changelog }}"
           RELEASE_SHA="${{ steps.commit_versions.outputs.sha }}"
+
+          # Generate changelog from the synced commit so the notes always match
+          # the actual --target, even if a rebase was required during the push.
+          git fetch --tags
+          LATEST=$(git describe --tags --abbrev=0 "${RELEASE_SHA}^" 2>/dev/null || echo "0.0.0")
+          if [ "$LATEST" = "0.0.0" ]; then
+            NOTES=$(git log --pretty=format:'- %s (%h)' -n 50 "$RELEASE_SHA")
+          else
+            NOTES=$(git log --pretty=format:'- %s (%h)' "${LATEST}..${RELEASE_SHA}")
+          fi
+          if [ -z "$NOTES" ]; then
+            NOTES="No notable changes"
+          fi
 
           if gh release view "$TAG" >/dev/null 2>&1; then
             gh release edit "$TAG" --title "$TAG" --notes "$NOTES"
