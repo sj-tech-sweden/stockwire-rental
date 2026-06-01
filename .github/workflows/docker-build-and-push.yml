@@ -35,8 +35,11 @@ jobs:
   build-and-push:
     # Skip push-triggered runs caused by the release version-sync commit to avoid
     # building twice (the release workflow already calls this workflow via workflow_call).
+    # Require both the bot actor and the specific commit-message prefix so that a human
+    # commit starting with the same text is never accidentally suppressed.
     if: >
       github.event_name != 'push' ||
+      github.actor != 'github-actions[bot]' ||
       !startsWith(github.event.head_commit.message, 'chore: sync app versions')
     runs-on: ubuntu-latest
     permissions:
