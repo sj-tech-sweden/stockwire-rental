@@ -185,8 +185,10 @@ async def import_inventory(
                 existing.brand = p.get('brand')
             if p.get('manufacturer') is not None:
                 existing.manufacturer = p.get('manufacturer')
-            if p.get('replace_cost') is not None:
-                existing.daily_rate = p.get('replace_cost')
+            if p.get('daily_rate') is not None:
+                existing.daily_rate = p.get('daily_rate')
+            if p.get('rental_price') is not None:
+                existing.rental_price = p.get('rental_price')
             if p.get('weight') is not None:
                 existing.weight_kg = p.get('weight')
             if p.get('height_cm') is not None:
@@ -229,7 +231,8 @@ async def import_inventory(
             if matched_category is not None:
                 prod_data['category_id'] = matched_category.id
                 prod_data['category'] = matched_category.name
-            prod_data['daily_rate'] = p.get('replace_cost') or p.get('daily_rate') or 0
+            prod_data['daily_rate'] = p.get('daily_rate') or 0
+            prod_data['rental_price'] = p.get('rental_price') or 0
             prod_data['weight_kg'] = p.get('weight') or p.get('weight_kg')
             prod_data['height_cm'] = p.get('height_cm')
             prod_data['width_cm'] = p.get('width_cm')
@@ -869,6 +872,14 @@ def bulk_delete_products(
                 skipped += 1
                 continue
             linked_rows = list(db.scalars(select(Device).where(Device.product_id == row.id)).all())
+            linked_ids = [linked.id for linked in linked_rows]
+            # Clear case_device_id references pointing at these devices to avoid FK constraint violations
+            if linked_ids:
+                db.execute(
+                    Device.__table__.update()
+                    .where(Device.case_device_id.in_(linked_ids))
+                    .values(case_device_id=None)
+                )
             for linked in linked_rows:
                 db.delete(linked)
         linked_requirements = list(
