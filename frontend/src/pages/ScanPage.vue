@@ -1420,11 +1420,9 @@ async function submitDefectReport() {
       severity: defectSeverity.value || 'medium',
     })
 
-    const files = Array.isArray(defectFiles.value)
-      ? defectFiles.value
-      : defectFiles.value
-        ? [defectFiles.value]
-        : []
+    const files = defectFiles.value
+      ? (Array.isArray(defectFiles.value) ? defectFiles.value : [defectFiles.value])
+      : []
 
     let uploadFailed = false
     for (const file of files) {
@@ -1437,7 +1435,8 @@ async function submitDefectReport() {
         await api.post('/api/v1/storage/files', formData, {
           headers: { 'Content-Type': 'multipart/form-data' },
         })
-      } catch {
+      } catch (uploadError) {
+        console.error('Photo upload failed:', uploadError)
         uploadFailed = true
       }
     }
