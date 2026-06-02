@@ -19,6 +19,7 @@ from app.domain.finance.schemas import (
     FinancialTransactionRead,
     FinancialTransactionUpdate,
 )
+from app.domain.inventory.models import Device
 from app.domain.inventory.models import Product
 from app.domain.jobs.models import Job
 from app.domain.jobs.models import JobRequirement
@@ -184,6 +185,13 @@ def get_job_finance_insights(db: Session = Depends(get_db)) -> FinanceJobInsight
 def get_finance_summary(db: Session = Depends(get_db)) -> FinanceSummaryRead:
     rows = list(db.scalars(select(FinancialTransaction)).all())
     today = datetime.now(UTC).date()
+    warehouse_products_sum = db.scalar(select(func.coalesce(func.sum(Product.replace_cost), 0)))
+    warehouse_devices_sum = db.scalar(
+        select(func.coalesce(func.sum(Product.replace_cost), 0))
+        .join(Device, Device.product_id == Product.id)
+    )
+    warehouse_products_value = Decimal(str(warehouse_products_sum or 0))
+    warehouse_devices_value = Decimal(str(warehouse_devices_sum or 0))
 
     pending_amount = Decimal("0.00")
     overdue_amount = Decimal("0.00")
@@ -217,6 +225,9 @@ def get_finance_summary(db: Session = Depends(get_db)) -> FinanceSummaryRead:
         pending_amount=pending_amount,
         overdue_amount=overdue_amount,
         completed_amount=completed_amount,
+        warehouse_products_value=warehouse_products_value.quantize(Decimal("0.01")),
+        warehouse_devices_value=warehouse_devices_value.quantize(Decimal("0.01")),
+        warehouse_total_value=(warehouse_products_value + warehouse_devices_value).quantize(Decimal("0.01")),
     )
 
 

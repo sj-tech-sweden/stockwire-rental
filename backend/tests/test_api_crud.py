@@ -318,10 +318,27 @@ def test_customers_and_venues_crud(client):
 def test_jobs_and_finance_crud(client):
     product = client.post(
         "/api/v1/inventory/products",
-        json={"sku": "LGT-01", "name": "Light", "category": "lighting", "daily_rate": "250.00"},
+        json={"sku": "LGT-01", "name": "Light", "category": "lighting", "daily_rate": "250.00", "replace_cost": "2500.00"},
     )
     assert product.status_code == 200
     product_id = product.json()["id"]
+    assert float(product.json()["replace_cost"]) == 2500.0
+
+    zone = client.post(
+        "/api/v1/inventory/zones",
+        json={"code": "FIN-ZONE-1", "name": "Finance Zone", "zone_type": "warehouse", "sort_order": 0, "is_active": True},
+    )
+    assert zone.status_code == 200
+
+    device = client.post(
+        "/api/v1/inventory/devices",
+        json={
+            "product_id": product_id,
+            "asset_tag": "LGT-01-001",
+            "location_zone_id": zone.json()["id"],
+        },
+    )
+    assert device.status_code == 200
 
     customer = client.post(
         "/api/v1/customers",
@@ -434,6 +451,9 @@ def test_jobs_and_finance_crud(client):
     assert summary.status_code == 200
     assert summary.json()["total_transactions"] == 2
     assert summary.json()["completed_count"] == 2
+    assert float(summary.json()["warehouse_products_value"]) == 2500.0
+    assert float(summary.json()["warehouse_devices_value"]) == 2500.0
+    assert float(summary.json()["warehouse_total_value"]) == 5000.0
 
     insights = client.get("/api/v1/finance/job-insights")
     assert insights.status_code == 200

@@ -130,6 +130,9 @@ class FinanceSummaryRead(BaseModel):
     pending_amount: Decimal = Decimal("0.00")
     overdue_amount: Decimal = Decimal("0.00")
     completed_amount: Decimal = Decimal("0.00")
+    warehouse_products_value: Decimal = Decimal("0.00")
+    warehouse_devices_value: Decimal = Decimal("0.00")
+    warehouse_total_value: Decimal = Decimal("0.00")
 
 
 class JobFinanceInsightRead(BaseModel):
