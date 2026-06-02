@@ -513,11 +513,14 @@ def test_jobs_and_finance_crud(client):
 
     summary = client.get("/api/v1/finance/summary")
     assert summary.status_code == 200
-    assert summary.json()["total_transactions"] == 2
-    assert summary.json()["completed_count"] == 2
-    assert float(summary.json()["warehouse_products_value"]) == 200.0
-    assert float(summary.json()["warehouse_devices_value"]) == 4500.0
-    assert float(summary.json()["warehouse_total_value"]) == 4700.0
+    summary_json = summary.json()
+    assert summary_json["total_transactions"] == 2
+    assert summary_json["completed_count"] == 2
+    assert float(summary_json["warehouse_products_value"]) == 200.0
+    assert float(summary_json["warehouse_products_value"]) != 977.0
+    assert float(summary_json["warehouse_devices_value"]) == 4500.0
+    assert float(summary_json["warehouse_devices_value"]) != 14499.0
+    assert float(summary_json["warehouse_total_value"]) == 4700.0
 
     insights = client.get("/api/v1/finance/job-insights")
     assert insights.status_code == 200
