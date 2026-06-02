@@ -411,6 +411,28 @@ class DefectCommentRead(DefectCommentBase):
     model_config = {"from_attributes": True}
 
 
+class MaintenanceCommentBase(BaseModel):
+    comment: str
+
+
+class MaintenanceCommentCreate(MaintenanceCommentBase):
+    pass
+
+
+class MaintenanceCommentUpdate(BaseModel):
+    comment: str | None = None
+
+
+class MaintenanceCommentRead(MaintenanceCommentBase):
+    id: int
+    maintenance_id: int
+    created_by_user_id: int | None = None
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
 class DefectTimelineEntry(BaseModel):
     id: str
     entry_type: str
@@ -437,6 +459,9 @@ class InventoryScanRequest(BaseModel):
     interval_mode: str | None = None
     interval_value: int | None = None
     notes: str | None = None
+    defect_title: str | None = None
+    defect_description: str | None = None
+    defect_severity: str | None = None
 
 
 class InventoryScanResponse(BaseModel):

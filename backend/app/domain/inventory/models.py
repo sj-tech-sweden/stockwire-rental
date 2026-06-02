@@ -186,6 +186,28 @@ class DeviceMaintenance(Base):
         "DefectReport",
         back_populates="maintenance",
     )
+    comments: Mapped[list["MaintenanceComment"]] = relationship(
+        "MaintenanceComment",
+        back_populates="maintenance",
+        cascade="all, delete-orphan",
+    )
+
+
+class MaintenanceComment(Base):
+    __tablename__ = "maintenance_comments"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    maintenance_id: Mapped[int] = mapped_column(ForeignKey("device_maintenance.id", ondelete="CASCADE"), index=True)
+    comment: Mapped[str] = mapped_column(Text)
+    created_by_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), index=True)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
+
+    maintenance: Mapped[DeviceMaintenance] = relationship(back_populates="comments")
 
 
 class DefectReport(Base):
