@@ -947,6 +947,103 @@ def test_inventory_maintenance_system(client):
     assert bulk_schedule.json()[0]["interval_mode"] == "runtime"
 
 
+def test_inventory_defect_reports_comments_timeline(client):
+    product = client.post(
+        "/api/v1/inventory/products",
+        json={
+            "sku": "DEF-01",
+            "name": "Defect Device Product",
+            "daily_rate": "30.00",
+        },
+    )
+    assert product.status_code == 200
+    product_id = product.json()["id"]
+
+    device = client.post(
+        "/api/v1/inventory/devices",
+        json={
+            "product_id": product_id,
+            "asset_tag": "DEF-01-001",
+            "status": "in_service",
+            "condition": "fair",
+        },
+    )
+    assert device.status_code == 200
+    device_id = device.json()["id"]
+
+    maintenance = client.post(
+        "/api/v1/inventory/maintenance",
+        json={
+            "device_id": device_id,
+            "maintenance_type": "repair",
+            "status": "in_progress",
+            "notes": "Repair ticket",
+        },
+    )
+    assert maintenance.status_code == 200
+    maintenance_id = maintenance.json()["id"]
+
+    created_report = client.post(
+        "/api/v1/inventory/defect-reports",
+        json={
+            "device_id": device_id,
+            "maintenance_id": maintenance_id,
+            "title": "Audio output crackling",
+            "description": "Intermittent crackling on channel B",
+            "status": "open",
+            "severity": "high",
+        },
+    )
+    assert created_report.status_code == 200
+    report_id = created_report.json()["id"]
+    assert created_report.json()["asset_tag"] == "DEF-01-001"
+
+    updated_report = client.put(
+        f"/api/v1/inventory/defect-reports/{report_id}",
+        json={
+            "status": "in_progress",
+            "description": "Inspected connectors and isolation transformer",
+        },
+    )
+    assert updated_report.status_code == 200
+    assert updated_report.json()["status"] == "in_progress"
+
+    created_comment = client.post(
+        f"/api/v1/inventory/defect-reports/{report_id}/comments",
+        json={"comment": "Reproduced issue at 60% master volume"},
+    )
+    assert created_comment.status_code == 200
+    comment_id = created_comment.json()["id"]
+
+    updated_comment = client.put(
+        f"/api/v1/inventory/defect-comments/{comment_id}",
+        json={"comment": "Reproduced issue at 65% master volume"},
+    )
+    assert updated_comment.status_code == 200
+    assert updated_comment.json()["comment"] == "Reproduced issue at 65% master volume"
+
+    report_comments = client.get(f"/api/v1/inventory/defect-reports/{report_id}/comments")
+    assert report_comments.status_code == 200
+    assert len(report_comments.json()) == 1
+
+    by_device_timeline = client.get("/api/v1/inventory/defect-timeline", params={"device_id": device_id})
+    assert by_device_timeline.status_code == 200
+    assert [entry["entry_type"] for entry in by_device_timeline.json()] == ["defect_report", "defect_comment"]
+    assert by_device_timeline.json()[0]["status"] == "in_progress"
+
+    by_service_timeline = client.get("/api/v1/inventory/defect-timeline", params={"maintenance_id": maintenance_id})
+    assert by_service_timeline.status_code == 200
+    assert len(by_service_timeline.json()) == 2
+
+    deleted_comment = client.delete(f"/api/v1/inventory/defect-comments/{comment_id}")
+    assert deleted_comment.status_code == 200
+    assert deleted_comment.json() == {"ok": True}
+
+    deleted_report = client.delete(f"/api/v1/inventory/defect-reports/{report_id}")
+    assert deleted_report.status_code == 200
+    assert deleted_report.json() == {"ok": True}
+
+
 def test_settings_version_check_updates_strips_single_v_prefix(client):
     payload = {
         "tag_name": "vv1.2.3",

@@ -248,6 +248,8 @@ class ProductAccessoryUpsertRequest(BaseModel):
 MAINTENANCE_STATUSES = ["scheduled", "in_progress", "completed", "canceled"]
 MAINTENANCE_INTERVAL_MODES = ["calendar", "runtime"]
 MAINTENANCE_TYPES = ["inspection", "cleaning", "repair", "calibration", "pat_test", "scheduled"]
+DEFECT_STATUSES = ["open", "in_progress", "resolved", "closed"]
+DEFECT_SEVERITIES = ["low", "medium", "high", "critical"]
 
 
 class DeviceMaintenanceBase(BaseModel):
@@ -350,6 +352,79 @@ class MaintenanceScheduleBulkUpdateRequest(BaseModel):
         if not self.ids:
             raise ValueError("At least one id is required")
         return self
+
+
+class DefectReportBase(BaseModel):
+    device_id: int
+    maintenance_id: int | None = None
+    title: str
+    description: str | None = None
+    status: str = "open"
+    severity: str = "medium"
+
+
+class DefectReportCreate(DefectReportBase):
+    pass
+
+
+class DefectReportUpdate(BaseModel):
+    device_id: int | None = None
+    maintenance_id: int | None = None
+    title: str | None = None
+    description: str | None = None
+    status: str | None = None
+    severity: str | None = None
+
+
+class DefectReportRead(DefectReportBase):
+    id: int
+    created_by_user_id: int | None = None
+    created_at: datetime
+    updated_at: datetime
+    asset_tag: str | None = None
+    product_id: int | None = None
+    product_name: str | None = None
+    maintenance_type: str | None = None
+
+    model_config = {"from_attributes": True}
+
+
+class DefectCommentBase(BaseModel):
+    comment: str
+
+
+class DefectCommentCreate(DefectCommentBase):
+    pass
+
+
+class DefectCommentUpdate(BaseModel):
+    comment: str | None = None
+
+
+class DefectCommentRead(DefectCommentBase):
+    id: int
+    defect_report_id: int
+    created_by_user_id: int | None = None
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class DefectTimelineEntry(BaseModel):
+    id: str
+    entry_type: str
+    created_at: datetime
+    updated_at: datetime
+    defect_report_id: int
+    device_id: int
+    maintenance_id: int | None = None
+    status: str | None = None
+    severity: str | None = None
+    title: str | None = None
+    description: str | None = None
+    comment: str | None = None
+    created_by_user_id: int | None = None
 
 
 class InventoryScanRequest(BaseModel):

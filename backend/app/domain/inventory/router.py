@@ -17,7 +17,18 @@ from app.config import settings
 from app.domain.auth.deps import get_current_user, require_admin, require_editor
 from app.domain.auth.models import User
 from app.domain.audit.service import record_activity
-from app.domain.inventory.models import Device, DeviceMaintenance, DeviceMaintenanceSchedule, InventoryAuditLog, InventoryCategory, Product, ProductAccessory, Zone
+from app.domain.inventory.models import (
+    DefectComment,
+    DefectReport,
+    Device,
+    DeviceMaintenance,
+    DeviceMaintenanceSchedule,
+    InventoryAuditLog,
+    InventoryCategory,
+    Product,
+    ProductAccessory,
+    Zone,
+)
 from app.domain.jobs.models import Job, JobRequirement
 from app.domain.settings.models import AppSetting
 from app.domain.settings.schemas import DEFAULT_CATEGORY_PREFILL_PATHS
@@ -34,6 +45,13 @@ from app.domain.inventory.schemas import (
     BulkDeleteRequest,
     BulkOperationResult,
     DeviceBulkUpdateRequest,
+    DefectCommentCreate,
+    DefectCommentRead,
+    DefectCommentUpdate,
+    DefectReportCreate,
+    DefectReportRead,
+    DefectReportUpdate,
+    DefectTimelineEntry,
     DeviceMaintenanceRead,
     DeviceMaintenanceUpdate,
     DeviceRead,
@@ -55,6 +73,8 @@ from app.domain.inventory.schemas import (
     ProductRead,
     ProductUpdate,
     MAINTENANCE_STATUSES,
+    DEFECT_SEVERITIES,
+    DEFECT_STATUSES,
     MAINTENANCE_INTERVAL_MODES,
     MAINTENANCE_TYPES,
     ZoneCreate,
@@ -1509,6 +1529,236 @@ def update_maintenance_schedule(
     return _to_schedule_read(schedule)
 
 
+@router.get("/defect-reports", response_model=list[DefectReportRead])
+def list_defect_reports(
+    device_id: int | None = None,
+    maintenance_id: int | None = None,
+    status: str | None = None,
+    db: Session = Depends(get_db),
+) -> list[DefectReportRead]:
+    query = select(DefectReport).order_by(DefectReport.updated_at.desc(), DefectReport.id.desc())
+    if device_id is not None:
+        query = query.where(DefectReport.device_id == device_id)
+    if maintenance_id is not None:
+        query = query.where(DefectReport.maintenance_id == maintenance_id)
+    if status is not None:
+        _validate_defect_status(status)
+        query = query.where(DefectReport.status == status)
+    rows = list(db.scalars(query).all())
+    return [_to_defect_report_read(db, row) for row in rows]
+
+
+@router.post("/defect-reports", response_model=DefectReportRead)
+def create_defect_report(
+    payload: DefectReportCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_editor),
+) -> DefectReportRead:
+    data = payload.model_dump()
+    _validate_defect_report_payload(db, data)
+    report = DefectReport(
+        **data,
+        created_by_user_id=current_user.id,
+    )
+    db.add(report)
+    db.commit()
+    db.refresh(report)
+    emit_realtime_event("inventory.updated", {"entity": "defect_report", "action": "create", "id": report.id})
+    return _to_defect_report_read(db, report)
+
+
+@router.get("/defect-reports/{report_id}", response_model=DefectReportRead)
+def get_defect_report(report_id: int, db: Session = Depends(get_db)) -> DefectReportRead:
+    report = db.get(DefectReport, report_id)
+    if report is None:
+        raise HTTPException(status_code=404, detail="Defect report not found")
+    return _to_defect_report_read(db, report)
+
+
+@router.put("/defect-reports/{report_id}", response_model=DefectReportRead)
+def update_defect_report(
+    report_id: int,
+    payload: DefectReportUpdate,
+    db: Session = Depends(get_db),
+    _: User = Depends(require_editor),
+) -> DefectReportRead:
+    report = db.get(DefectReport, report_id)
+    if report is None:
+        raise HTTPException(status_code=404, detail="Defect report not found")
+
+    updates = payload.model_dump(exclude_unset=True)
+    _validate_defect_report_payload(
+        db,
+        {
+            "device_id": updates.get("device_id", report.device_id),
+            "maintenance_id": updates.get("maintenance_id", report.maintenance_id),
+            "status": updates.get("status"),
+            "severity": updates.get("severity"),
+            "title": updates.get("title"),
+        },
+    )
+    for key, value in updates.items():
+        setattr(report, key, value)
+    db.commit()
+    db.refresh(report)
+    emit_realtime_event("inventory.updated", {"entity": "defect_report", "action": "update", "id": report.id})
+    return _to_defect_report_read(db, report)
+
+
+@router.delete("/defect-reports/{report_id}")
+def delete_defect_report(
+    report_id: int,
+    db: Session = Depends(get_db),
+    _: User = Depends(require_editor),
+) -> dict[str, bool]:
+    report = db.get(DefectReport, report_id)
+    if report is None:
+        raise HTTPException(status_code=404, detail="Defect report not found")
+    db.delete(report)
+    db.commit()
+    emit_realtime_event("inventory.updated", {"entity": "defect_report", "action": "delete", "id": report_id})
+    return {"ok": True}
+
+
+@router.get("/defect-reports/{report_id}/comments", response_model=list[DefectCommentRead])
+def list_defect_comments(report_id: int, db: Session = Depends(get_db)) -> list[DefectCommentRead]:
+    _get_defect_report_or_404(db, report_id)
+    rows = list(
+        db.scalars(
+            select(DefectComment)
+            .where(DefectComment.defect_report_id == report_id)
+            .order_by(DefectComment.created_at.asc(), DefectComment.id.asc())
+        ).all()
+    )
+    return [DefectCommentRead.model_validate(row) for row in rows]
+
+
+@router.post("/defect-reports/{report_id}/comments", response_model=DefectCommentRead)
+def create_defect_comment(
+    report_id: int,
+    payload: DefectCommentCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_editor),
+) -> DefectCommentRead:
+    _get_defect_report_or_404(db, report_id)
+    if not payload.comment.strip():
+        raise HTTPException(status_code=400, detail="comment is required")
+    comment = DefectComment(
+        defect_report_id=report_id,
+        comment=payload.comment,
+        created_by_user_id=current_user.id,
+    )
+    db.add(comment)
+    db.commit()
+    db.refresh(comment)
+    emit_realtime_event("inventory.updated", {"entity": "defect_comment", "action": "create", "id": comment.id})
+    return DefectCommentRead.model_validate(comment)
+
+
+@router.put("/defect-comments/{comment_id}", response_model=DefectCommentRead)
+def update_defect_comment(
+    comment_id: int,
+    payload: DefectCommentUpdate,
+    db: Session = Depends(get_db),
+    _: User = Depends(require_editor),
+) -> DefectCommentRead:
+    row = db.get(DefectComment, comment_id)
+    if row is None:
+        raise HTTPException(status_code=404, detail="Defect comment not found")
+    updates = payload.model_dump(exclude_unset=True)
+    if "comment" in updates and not str(updates["comment"]).strip():
+        raise HTTPException(status_code=400, detail="comment is required")
+    for key, value in updates.items():
+        setattr(row, key, value)
+    db.commit()
+    db.refresh(row)
+    emit_realtime_event("inventory.updated", {"entity": "defect_comment", "action": "update", "id": row.id})
+    return DefectCommentRead.model_validate(row)
+
+
+@router.delete("/defect-comments/{comment_id}")
+def delete_defect_comment(
+    comment_id: int,
+    db: Session = Depends(get_db),
+    _: User = Depends(require_editor),
+) -> dict[str, bool]:
+    row = db.get(DefectComment, comment_id)
+    if row is None:
+        raise HTTPException(status_code=404, detail="Defect comment not found")
+    db.delete(row)
+    db.commit()
+    emit_realtime_event("inventory.updated", {"entity": "defect_comment", "action": "delete", "id": comment_id})
+    return {"ok": True}
+
+
+@router.get("/defect-timeline", response_model=list[DefectTimelineEntry])
+def list_defect_timeline(
+    device_id: int | None = None,
+    maintenance_id: int | None = None,
+    db: Session = Depends(get_db),
+) -> list[DefectTimelineEntry]:
+    if device_id is None and maintenance_id is None:
+        raise HTTPException(status_code=400, detail="Either device_id or maintenance_id is required")
+
+    reports_query = select(DefectReport)
+    if device_id is not None:
+        reports_query = reports_query.where(DefectReport.device_id == device_id)
+    if maintenance_id is not None:
+        reports_query = reports_query.where(DefectReport.maintenance_id == maintenance_id)
+    reports = list(db.scalars(reports_query).all())
+    report_ids = [row.id for row in reports]
+
+    comments: list[DefectComment] = []
+    if report_ids:
+        comments = list(
+            db.scalars(
+                select(DefectComment).where(DefectComment.defect_report_id.in_(report_ids))
+            ).all()
+        )
+
+    timeline: list[DefectTimelineEntry] = []
+    report_by_id = {row.id: row for row in reports}
+    for row in reports:
+        timeline.append(
+            DefectTimelineEntry(
+                id=f"report:{row.id}",
+                entry_type="defect_report",
+                created_at=row.created_at,
+                updated_at=row.updated_at,
+                defect_report_id=row.id,
+                device_id=row.device_id,
+                maintenance_id=row.maintenance_id,
+                status=row.status,
+                severity=row.severity,
+                title=row.title,
+                description=row.description,
+                created_by_user_id=row.created_by_user_id,
+            )
+        )
+    for row in comments:
+        report = report_by_id.get(row.defect_report_id)
+        if report is None:
+            continue
+        timeline.append(
+            DefectTimelineEntry(
+                id=f"comment:{row.id}",
+                entry_type="defect_comment",
+                created_at=row.created_at,
+                updated_at=row.updated_at,
+                defect_report_id=row.defect_report_id,
+                device_id=report.device_id,
+                maintenance_id=report.maintenance_id,
+                status=report.status,
+                severity=report.severity,
+                title=report.title,
+                comment=row.comment,
+                created_by_user_id=row.created_by_user_id,
+            )
+        )
+    timeline.sort(key=lambda item: (item.created_at, item.id))
+    return timeline
+
+
 @router.post("/scan/process", response_model=InventoryScanResponse)
 def process_scan(
     payload: InventoryScanRequest,
@@ -2237,6 +2487,38 @@ def _validate_maintenance_payload(db: Session, payload: dict) -> None:
         _validate_maintenance_interval_mode(payload["interval_mode"])
 
 
+def _validate_defect_status(status: str) -> None:
+    if status not in DEFECT_STATUSES:
+        raise HTTPException(status_code=400, detail=f"status must be one of: {', '.join(DEFECT_STATUSES)}")
+
+
+def _validate_defect_severity(severity: str) -> None:
+    if severity not in DEFECT_SEVERITIES:
+        raise HTTPException(status_code=400, detail=f"severity must be one of: {', '.join(DEFECT_SEVERITIES)}")
+
+
+def _validate_defect_report_payload(db: Session, payload: dict) -> None:
+    if payload.get("device_id") is not None:
+        device = db.get(Device, payload["device_id"])
+        if device is None:
+            raise HTTPException(status_code=404, detail="Device not found")
+
+    maintenance_id = payload.get("maintenance_id")
+    if maintenance_id is not None:
+        maintenance = db.get(DeviceMaintenance, maintenance_id)
+        if maintenance is None:
+            raise HTTPException(status_code=404, detail="Maintenance record not found")
+        if payload.get("device_id") is not None and maintenance.device_id != payload["device_id"]:
+            raise HTTPException(status_code=400, detail="maintenance_id does not belong to device_id")
+
+    if payload.get("status") is not None:
+        _validate_defect_status(payload["status"])
+    if payload.get("severity") is not None:
+        _validate_defect_severity(payload["severity"])
+    if payload.get("title") is not None and not str(payload["title"]).strip():
+        raise HTTPException(status_code=400, detail="title is required")
+
+
 def _effective_schedule_interval_value(db: Session, device_id: int, schedule: DeviceMaintenanceSchedule) -> int | None:
     if schedule.interval_value is not None:
         return schedule.interval_value
@@ -2347,6 +2629,37 @@ def _to_maintenance_read(db: Session, record: DeviceMaintenance) -> DeviceMainte
             "asset_tag": device.asset_tag if device else None,
         }
     )
+
+
+def _to_defect_report_read(db: Session, row: DefectReport) -> DefectReportRead:
+    device = db.get(Device, row.device_id)
+    product = db.get(Product, device.product_id) if device is not None else None
+    maintenance = db.get(DeviceMaintenance, row.maintenance_id) if row.maintenance_id is not None else None
+    return DefectReportRead.model_validate(
+        {
+            "id": row.id,
+            "device_id": row.device_id,
+            "maintenance_id": row.maintenance_id,
+            "title": row.title,
+            "description": row.description,
+            "status": row.status,
+            "severity": row.severity,
+            "created_by_user_id": row.created_by_user_id,
+            "created_at": row.created_at,
+            "updated_at": row.updated_at,
+            "asset_tag": device.asset_tag if device is not None else None,
+            "product_id": product.id if product is not None else None,
+            "product_name": product.name if product is not None else None,
+            "maintenance_type": maintenance.maintenance_type if maintenance is not None else None,
+        }
+    )
+
+
+def _get_defect_report_or_404(db: Session, report_id: int) -> DefectReport:
+    row = db.get(DefectReport, report_id)
+    if row is None:
+        raise HTTPException(status_code=404, detail="Defect report not found")
+    return row
 
 
 def _find_device_by_scan_code(db: Session, scan_code: str) -> Device | None:
