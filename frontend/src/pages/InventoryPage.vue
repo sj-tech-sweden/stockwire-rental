@@ -1604,7 +1604,7 @@
     <q-dialog v-model="deviceInfoDialogOpen" :maximized="isPhone">
       <q-card :style="isPhone ? 'width: 100vw; max-width: 100vw; height: 100vh' : 'min-width: 820px; max-width: 96vw'" class="ec-card">
         <q-card-section>
-          <div class="text-h6">Device Info · {{ deviceInfoTarget?.asset_tag || '-' }}</div>
+          <div class="text-h6">{{ t('inventory.infoDialogs.deviceTitle', { assetTag: deviceInfoTarget?.asset_tag || '-' }) }}</div>
           <div class="text-caption text-grey-7">
             {{ deviceInfoTarget ? (store.products.find(item => item.id === deviceInfoTarget.product_id)?.name || `Product #${deviceInfoTarget.product_id}`) : '-' }}
           </div>
@@ -1700,7 +1700,7 @@
               <q-item-section>
                 <q-item-label>{{ row.asset_tag }} · {{ productNameById(row.product_id) }}</q-item-label>
                 <q-item-label caption>
-                  Status: {{ row.status }} · Condition: {{ row.condition || 'n/a' }}
+                  {{ t('inventory.infoDialogs.deviceStatusCondition', { status: row.status, condition: row.condition || t('inventory.infoDialogs.notAvailable') }) }}
                   <span v-if="row.current_job_code"> · Job {{ row.current_job_code }}</span>
                 </q-item-label>
               </q-item-section>
@@ -1753,7 +1753,7 @@
               <q-item-section>
                 <q-item-label>{{ row.asset_tag }} · {{ productNameById(row.product_id) }}</q-item-label>
                 <q-item-label caption>
-                  Status: {{ row.status }} · Condition: {{ row.condition || 'n/a' }}
+                  {{ t('inventory.infoDialogs.deviceStatusCondition', { status: row.status, condition: row.condition || t('inventory.infoDialogs.notAvailable') }) }}
                   <span v-if="row.current_job_code"> · Job {{ row.current_job_code }}</span>
                 </q-item-label>
               </q-item-section>
@@ -1906,7 +1906,7 @@
           <EntityAttachmentsPanel
             entity-type="device"
             :entity-id="deviceInfoTarget?.id || null"
-            title="Device Documents"
+            :title="t('inventory.infoDialogs.deviceDocuments')"
             default-category="device-document"
             :read-only="true"
           />
@@ -1914,7 +1914,7 @@
 
         <q-card-actions :align="isPhone ? 'stretch' : 'right'" :class="isPhone ? 'q-pa-md bg-grey-2' : ''">
           <q-space />
-          <q-btn flat :class="isPhone ? 'full-width' : ''" label="Close" @click="deviceInfoDialogOpen = false" />
+          <q-btn flat :class="isPhone ? 'full-width' : ''" :label="t('app.actions.close')" @click="deviceInfoDialogOpen = false" />
         </q-card-actions>
       </q-card>
     </q-dialog>
@@ -1922,29 +1922,29 @@
     <q-dialog v-model="productInfoDialogOpen" :maximized="isPhone">
       <q-card :style="isPhone ? 'width: 100vw; max-width: 100vw; height: 100vh' : 'min-width: 860px; max-width: 96vw'" class="ec-card">
         <q-card-section>
-          <div class="text-h6">Product Info · {{ productInfoTarget?.sku || '-' }}</div>
+          <div class="text-h6">{{ t('inventory.infoDialogs.productTitle', { sku: productInfoTarget?.sku || '-' }) }}</div>
           <div class="text-caption text-grey-7">{{ productInfoTarget?.name || '-' }}</div>
         </q-card-section>
 
         <q-card-section class="q-pt-none" :style="isPhone ? 'max-height: calc(100vh - 140px); overflow: auto;' : ''">
           <div class="row q-col-gutter-sm q-mb-md">
-            <div class="col-12 col-md-4"><q-badge color="positive" text-color="white" :label="`Available: ${productInfoAvailability.available}`" /></div>
-            <div class="col-12 col-md-4"><q-badge color="warning" text-color="black" :label="`Reserved: ${productInfoAvailability.reserved}`" /></div>
-            <div class="col-12 col-md-4"><q-badge color="info" text-color="white" :label="`In use: ${productInfoAvailability.in_use}`" /></div>
+            <div class="col-12 col-md-4"><q-badge color="positive" text-color="white" :label="t('inventory.infoDialogs.available', { count: productInfoAvailability.available })" /></div>
+            <div class="col-12 col-md-4"><q-badge color="warning" text-color="black" :label="t('inventory.infoDialogs.reserved', { count: productInfoAvailability.reserved })" /></div>
+            <div class="col-12 col-md-4"><q-badge color="info" text-color="white" :label="t('inventory.infoDialogs.inUse', { count: productInfoAvailability.in_use })" /></div>
           </div>
 
           <q-list bordered separator class="rounded-borders q-mb-md">
             <q-item>
               <q-item-section>
-                <q-item-label>ID: {{ productInfoTarget?.id || '-' }} · Type: {{ productInfoTarget?.product_type || '-' }}</q-item-label>
+                <q-item-label>{{ t('inventory.infoDialogs.idType', { id: productInfoTarget?.id || '-', type: productInfoTarget?.product_type || '-' }) }}</q-item-label>
                 <q-item-label caption>
-                  Category: {{ productInfoTarget?.category || 'Uncategorized' }} · Brand: {{ productInfoTarget?.brand || '-' }} · Manufacturer: {{ productInfoTarget?.manufacturer || '-' }}
+                  {{ t('inventory.infoDialogs.categoryBrandManufacturer', { category: productInfoTarget?.category || t('inventory.uncategorized'), brand: productInfoTarget?.brand || '-', manufacturer: productInfoTarget?.manufacturer || '-' }) }}
                 </q-item-label>
                 <q-item-label caption>
-                  Daily rate: {{ formatMoney(productInfoTarget?.daily_rate) }} · Maintenance interval: {{ productInfoTarget?.maintenance_interval_days ?? '-' }} days
+                  {{ t('inventory.infoDialogs.dailyRateMaintenanceInterval', { dailyRate: formatMoney(productInfoTarget?.daily_rate), days: productInfoTarget?.maintenance_interval_days ?? '-' }) }}
                 </q-item-label>
                 <q-item-label caption>
-                  Weight: {{ productInfoTarget?.weight_kg ?? '-' }} kg · Size: {{ productInfoTarget?.height_cm ?? '-' }}x{{ productInfoTarget?.width_cm ?? '-' }}x{{ productInfoTarget?.depth_cm ?? '-' }} cm
+                  {{ t('inventory.infoDialogs.weightSize', { weight: productInfoTarget?.weight_kg ?? '-', height: productInfoTarget?.height_cm ?? '-', width: productInfoTarget?.width_cm ?? '-', depth: productInfoTarget?.depth_cm ?? '-' }) }}
                 </q-item-label>
               </q-item-section>
               <q-item-section side>
@@ -1962,13 +1962,17 @@
             </q-item>
           </q-list>
 
-          <div class="text-subtitle2 q-mb-sm">Linked Devices</div>
+          <div class="text-subtitle2 q-mb-sm">{{ t('inventory.infoDialogs.linkedDevices') }}</div>
           <q-list bordered separator class="rounded-borders q-mb-md">
             <q-item v-for="row in productInfoDevices" :key="row.id">
               <q-item-section>
                 <q-item-label>{{ row.asset_tag }}</q-item-label>
                 <q-item-label caption>
-                  Status: {{ row.status }} · Condition: {{ row.condition || 'n/a' }} · Location: {{ row.case_asset_tag ? `Case: ${row.case_asset_tag}` : (zoneNameById(row.location_zone_id) || 'Unassigned') }}
+                  {{ t('inventory.infoDialogs.deviceStatusConditionLocation', {
+                    status: row.status,
+                    condition: row.condition || t('inventory.infoDialogs.notAvailable'),
+                    location: row.case_asset_tag ? `Case: ${row.case_asset_tag}` : (zoneNameById(row.location_zone_id) || t('inventory.infoDialogs.unassigned')),
+                  }) }}
                 </q-item-label>
               </q-item-section>
               <q-item-section side top>
@@ -1997,17 +2001,17 @@
               </q-item-section>
             </q-item>
             <q-item v-if="!productInfoDevices.length">
-              <q-item-section><q-item-label caption>No devices linked to this product.</q-item-label></q-item-section>
+              <q-item-section><q-item-label caption>{{ t('inventory.infoDialogs.noDevicesLinkedToProduct') }}</q-item-label></q-item-section>
             </q-item>
           </q-list>
 
-          <div class="text-subtitle2 q-mb-sm">Linked Jobs</div>
+          <div class="text-subtitle2 q-mb-sm">{{ t('inventory.infoDialogs.linkedJobs') }}</div>
           <q-list bordered separator class="rounded-borders q-mb-md">
             <q-item v-for="row in productInfoJobs" :key="`product-job-${row.job_id}`">
               <q-item-section>
                 <q-item-label>{{ row.job_code || `Job #${row.job_id}` }}</q-item-label>
                 <q-item-label caption>
-                  Required: {{ row.quantity_required_total }} · Picked: {{ row.quantity_picked_total }}
+                  {{ t('inventory.infoDialogs.requiredPicked', { required: row.quantity_required_total, picked: row.quantity_picked_total }) }}
                 </q-item-label>
               </q-item-section>
               <q-item-section side>
@@ -2024,14 +2028,14 @@
               </q-item-section>
             </q-item>
             <q-item v-if="!productInfoJobs.length">
-              <q-item-section><q-item-label caption>No linked jobs found for this product.</q-item-label></q-item-section>
+              <q-item-section><q-item-label caption>{{ t('inventory.infoDialogs.noLinkedJobsForProduct') }}</q-item-label></q-item-section>
             </q-item>
           </q-list>
 
           <EntityAttachmentsPanel
             entity-type="product"
             :entity-id="productInfoTarget?.id || null"
-            title="Product Documents"
+            :title="t('inventory.infoDialogs.productDocuments')"
             default-category="product-document"
             :read-only="true"
           />
@@ -2039,7 +2043,7 @@
 
         <q-card-actions :align="isPhone ? 'stretch' : 'right'" :class="isPhone ? 'q-pa-md bg-grey-2' : ''">
           <q-space />
-          <q-btn flat :class="isPhone ? 'full-width' : ''" label="Close" @click="productInfoDialogOpen = false" />
+          <q-btn flat :class="isPhone ? 'full-width' : ''" :label="t('app.actions.close')" @click="productInfoDialogOpen = false" />
         </q-card-actions>
       </q-card>
     </q-dialog>
