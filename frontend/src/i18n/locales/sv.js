@@ -782,7 +782,7 @@ export default {
       caseLocation: 'Case: {assetTag}',
       noDevicesLinkedToProduct: 'Inga enheter länkade till denna produkt.',
       linkedJobs: 'Länkade jobb',
-      requiredPicked: 'Behövda: {required} · Plockade: {picked}',
+      requiredPicked: 'Krävs: {required} · Plockade: {picked}',
       noLinkedJobsForProduct: 'Inga länkade jobb hittades för denna produkt.',
       productDocuments: 'Produktdokument',
       deviceDocuments: 'Enhetsdokument',
