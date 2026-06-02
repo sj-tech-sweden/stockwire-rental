@@ -316,6 +316,20 @@ def test_customers_and_venues_crud(client):
 
 
 def test_jobs_and_finance_crud(client):
+    rental_supplier_product = client.post(
+        "/api/v1/inventory/products",
+        json={
+            "sku": "RNT-01",
+            "name": "Supplier Rental Fixture",
+            "category": "lighting",
+            "daily_rate": "100.00",
+            "replace_cost": "999.00",
+            "is_rental_product": True,
+            "eventory_available_qty": 10,
+        },
+    )
+    assert rental_supplier_product.status_code == 200
+
     stock_product = client.post(
         "/api/v1/inventory/products",
         json={
@@ -476,9 +490,9 @@ def test_jobs_and_finance_crud(client):
     assert summary.status_code == 200
     assert summary.json()["total_transactions"] == 2
     assert summary.json()["completed_count"] == 2
-    assert float(summary.json()["warehouse_products_value"]) == 600.0
+    assert float(summary.json()["warehouse_products_value"]) == 200.0
     assert float(summary.json()["warehouse_devices_value"]) == 4500.0
-    assert float(summary.json()["warehouse_total_value"]) == 5100.0
+    assert float(summary.json()["warehouse_total_value"]) == 4700.0
 
     insights = client.get("/api/v1/finance/job-insights")
     assert insights.status_code == 200

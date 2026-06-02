@@ -2,7 +2,7 @@ from datetime import UTC, date, datetime
 from decimal import Decimal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
-from sqlalchemy import Select, func, select
+from sqlalchemy import Select, exists, func, select
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
@@ -186,17 +186,16 @@ def get_finance_summary(db: Session = Depends(get_db)) -> FinanceSummaryRead:
     rows = list(db.scalars(select(FinancialTransaction)).all())
     today = datetime.now(UTC).date()
     warehouse_products_sum = db.scalar(
-        select(
-            func.coalesce(
-                func.sum(func.coalesce(Product.eventory_available_qty, 0) * func.coalesce(Product.replace_cost, 0)),
-                0,
-            )
+        select(func.coalesce(func.sum(Product.replace_cost), 0)).where(
+            Product.is_rental_product.is_(False),
+            ~exists(select(1).where(Device.product_id == Product.id)),
         )
     )
     warehouse_devices_sum = db.scalar(
         select(func.coalesce(func.sum(func.coalesce(Device.purchase_price, Product.replace_cost, 0)), 0))
         .select_from(Device)
         .join(Product, Device.product_id == Product.id)
+        .where(Product.is_rental_product.is_(False))
     )
     warehouse_products_value = Decimal(str(warehouse_products_sum or 0))
     warehouse_devices_value = Decimal(str(warehouse_devices_sum or 0))
