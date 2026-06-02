@@ -185,10 +185,18 @@ def get_job_finance_insights(db: Session = Depends(get_db)) -> FinanceJobInsight
 def get_finance_summary(db: Session = Depends(get_db)) -> FinanceSummaryRead:
     rows = list(db.scalars(select(FinancialTransaction)).all())
     today = datetime.now(UTC).date()
-    warehouse_products_sum = db.scalar(select(func.coalesce(func.sum(Product.replace_cost), 0)))
+    warehouse_products_sum = db.scalar(
+        select(
+            func.coalesce(
+                func.sum(func.coalesce(Product.eventory_available_qty, 0) * func.coalesce(Product.replace_cost, 0)),
+                0,
+            )
+        )
+    )
     warehouse_devices_sum = db.scalar(
-        select(func.coalesce(func.sum(Product.replace_cost), 0))
-        .join(Device, Device.product_id == Product.id)
+        select(func.coalesce(func.sum(func.coalesce(Device.purchase_price, Product.replace_cost, 0)), 0))
+        .select_from(Device)
+        .join(Product, Device.product_id == Product.id)
     )
     warehouse_products_value = Decimal(str(warehouse_products_sum or 0))
     warehouse_devices_value = Decimal(str(warehouse_devices_sum or 0))

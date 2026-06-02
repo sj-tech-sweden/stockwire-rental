@@ -316,6 +316,20 @@ def test_customers_and_venues_crud(client):
 
 
 def test_jobs_and_finance_crud(client):
+    stock_product = client.post(
+        "/api/v1/inventory/products",
+        json={
+            "sku": "CBL-01",
+            "name": "Cable",
+            "category": "accessories",
+            "daily_rate": "20.00",
+            "replace_cost": "200.00",
+            "eventory_available_qty": 3,
+        },
+    )
+    assert stock_product.status_code == 200
+    assert float(stock_product.json()["replace_cost"]) == 200.0
+
     product = client.post(
         "/api/v1/inventory/products",
         json={"sku": "LGT-01", "name": "Light", "category": "lighting", "daily_rate": "250.00", "replace_cost": "2500.00"},
@@ -336,9 +350,20 @@ def test_jobs_and_finance_crud(client):
             "product_id": product_id,
             "asset_tag": "LGT-01-001",
             "location_zone_id": zone.json()["id"],
+            "purchase_price": "2000.00",
         },
     )
     assert device.status_code == 200
+
+    device_without_purchase_price = client.post(
+        "/api/v1/inventory/devices",
+        json={
+            "product_id": product_id,
+            "asset_tag": "LGT-01-002",
+            "location_zone_id": zone.json()["id"],
+        },
+    )
+    assert device_without_purchase_price.status_code == 200
 
     customer = client.post(
         "/api/v1/customers",
@@ -451,9 +476,9 @@ def test_jobs_and_finance_crud(client):
     assert summary.status_code == 200
     assert summary.json()["total_transactions"] == 2
     assert summary.json()["completed_count"] == 2
-    assert float(summary.json()["warehouse_products_value"]) == 2500.0
-    assert float(summary.json()["warehouse_devices_value"]) == 2500.0
-    assert float(summary.json()["warehouse_total_value"]) == 5000.0
+    assert float(summary.json()["warehouse_products_value"]) == 600.0
+    assert float(summary.json()["warehouse_devices_value"]) == 4500.0
+    assert float(summary.json()["warehouse_total_value"]) == 5100.0
 
     insights = client.get("/api/v1/finance/job-insights")
     assert insights.status_code == 200
