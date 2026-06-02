@@ -189,6 +189,8 @@ async def import_inventory(
                 existing.daily_rate = p.get('daily_rate')
             if p.get('rental_price') is not None:
                 existing.rental_price = p.get('rental_price')
+            if p.get('replace_cost') is not None:
+                existing.replace_cost = p.get('replace_cost')
             if p.get('weight') is not None:
                 existing.weight_kg = p.get('weight')
             if p.get('height_cm') is not None:
@@ -233,7 +235,9 @@ async def import_inventory(
                 prod_data['category'] = matched_category.name
             prod_data['daily_rate'] = p.get('daily_rate') or 0
             prod_data['rental_price'] = p.get('rental_price') or 0
-            prod_data['weight_kg'] = p.get('weight') or p.get('weight_kg')
+            prod_data['replace_cost'] = p.get('replace_cost')
+            weight = p.get('weight') if p.get('weight') is not None else p.get('weight_kg')
+            prod_data['weight_kg'] = weight
             prod_data['height_cm'] = p.get('height_cm')
             prod_data['width_cm'] = p.get('width_cm')
             prod_data['depth_cm'] = p.get('depth_cm')

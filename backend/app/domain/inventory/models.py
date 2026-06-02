@@ -51,6 +51,7 @@ class Product(Base):
     maintenance_interval_days: Mapped[int] = mapped_column(Integer, nullable=True)
     power_consumption_watts: Mapped[float] = mapped_column(Numeric(10, 2), nullable=True)
     daily_rate: Mapped[float] = mapped_column(Numeric(10, 2), default=0)
+    replace_cost: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
 
     category_node: Mapped["InventoryCategory | None"] = relationship(back_populates="products")

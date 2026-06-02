@@ -5542,6 +5542,7 @@ async function loadHirehopPreset() {
     description: 'DESCRIPTION',
     brand: 'fields.tillverkare.value',
     manufacturer: 'fields.tillverkare.value',
+    replace_cost: 'REPLACE_COST',
     weight: 'WEIGHT',
     category_id: 'CATEGORY_ID',
     barcode: 'BARCODE',
@@ -5576,6 +5577,7 @@ async function loadHirehopPreset() {
   map['description'] = p.description || 'DESCRIPTION'
   map['weight_kg'] = p.weight || 'WEIGHT'
   map['category_id'] = p.category_id || 'CATEGORY_ID'
+  map['replace_cost'] = p.replace_cost || 'REPLACE_COST'
   map['daily_rate'] = p.daily_rate || 'PRICE1'
   map['rental_price'] = p.rental_price || 'PRICE2'
   map['barcode'] = p.barcode || 'BARCODE'

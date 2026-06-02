@@ -6,6 +6,7 @@
     "name": "TITLE",
     "brand": "fields.tillverkare.value",
     "manufacturer": "fields.tillverkare.value",
+    "replace_cost": "REPLACE_COST",
     "daily_rate": "PRICE1",
     "rental_price": "PRICE2",
     "weight": "WEIGHT",
