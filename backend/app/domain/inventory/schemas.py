@@ -68,6 +68,7 @@ class ProductBase(BaseModel):
     maintenance_interval_days: int | None = None
     power_consumption_watts: Decimal | None = None
     daily_rate: Decimal = Decimal("0.00")
+    replace_cost: Decimal | None = None
 
 
 class ProductCreate(ProductBase):
@@ -95,6 +96,7 @@ class ProductUpdate(BaseModel):
     maintenance_interval_days: int | None = None
     power_consumption_watts: Decimal | None = None
     daily_rate: Decimal | None = None
+    replace_cost: Decimal | None = None
 
 
 class ProductBulkUpdateRequest(BaseModel):

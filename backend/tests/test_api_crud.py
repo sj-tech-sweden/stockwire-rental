@@ -47,12 +47,14 @@ def test_inventory_crud(client):
             "maintenance_interval_days": 120,
             "power_consumption_watts": "560.00",
             "daily_rate": "300.00",
+            "replace_cost": "1500.00",
         },
     )
     assert product.status_code == 200
     product_id = product.json()["id"]
     assert product.json()["brand"] == "d&b"
     assert product.json()["maintenance_interval_days"] == 120
+    assert product.json()["replace_cost"] is not None
 
     updated_product = client.put(
         f"/api/v1/inventory/products/{product_id}",
@@ -61,6 +63,13 @@ def test_inventory_crud(client):
     assert updated_product.status_code == 200
     assert updated_product.json()["name"] == "Speaker Pro"
     assert updated_product.json()["total_devices"] == 0
+
+    updated_replace_cost = client.put(
+        f"/api/v1/inventory/products/{product_id}",
+        json={"replace_cost": "1750.55"},
+    )
+    assert updated_replace_cost.status_code == 200
+    assert float(updated_replace_cost.json()["replace_cost"]) == 1750.55
 
     device = client.post(
         "/api/v1/inventory/devices",
@@ -1428,7 +1437,7 @@ def test_import_inventory_persist(client):
         {
             "ID": 9901,
             "TITLE": "Imported Speaker",
-            "REPLACE_COST": 500,
+            "REPLACE_COST": 500.567,
             "serialnumbers": [
                 {"id": 11, "cell": {"SERIAL": "SN-IMP-001", "QTY": 1}},
             ],
@@ -1442,6 +1451,7 @@ def test_import_inventory_persist(client):
     data = result.json()
     assert data["created_products"] == 1
     assert data["created_devices"] == 1
+    assert float(data["products"][0]["replace_cost"]) == 500.57
 
 
 def test_import_inventory_invalid_json(client):

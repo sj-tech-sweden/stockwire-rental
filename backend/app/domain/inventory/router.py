@@ -189,8 +189,9 @@ async def import_inventory(
                 existing.daily_rate = p.get('daily_rate')
             if p.get('rental_price') is not None:
                 existing.rental_price = p.get('rental_price')
-            if p.get('replace_cost') is not None:
-                existing.replace_cost = p.get('replace_cost')
+            replace_cost = _coerce_decimal(p.get('replace_cost'))
+            if replace_cost is not None:
+                existing.replace_cost = replace_cost
             if p.get('weight') is not None:
                 existing.weight_kg = p.get('weight')
             if p.get('height_cm') is not None:
@@ -235,7 +236,7 @@ async def import_inventory(
                 prod_data['category'] = matched_category.name
             prod_data['daily_rate'] = p.get('daily_rate') or 0
             prod_data['rental_price'] = p.get('rental_price') or 0
-            prod_data['replace_cost'] = p.get('replace_cost')
+            prod_data['replace_cost'] = _coerce_decimal(p.get('replace_cost'))
             weight = p.get('weight') if p.get('weight') is not None else p.get('weight_kg')
             prod_data['weight_kg'] = weight
             prod_data['height_cm'] = p.get('height_cm')
@@ -2783,6 +2784,7 @@ def _to_product_read(db: Session, product: Product) -> ProductRead:
             "maintenance_interval_days": product.maintenance_interval_days,
             "power_consumption_watts": product.power_consumption_watts,
             "daily_rate": product.daily_rate,
+            "replace_cost": product.replace_cost,
             "eventory_available_qty": product.eventory_available_qty,
             "created_at": product.created_at,
             "total_devices": int(total_devices),
