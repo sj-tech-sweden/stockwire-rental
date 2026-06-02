@@ -188,9 +188,13 @@ def get_finance_summary(db: Session = Depends(get_db)) -> FinanceSummaryRead:
     # Business rule: supplier-rented Eventory quantities are excluded from warehouse valuation.
     # Owned non-serialized products are valued per product replace_cost, and serialized owned
     # inventory is valued via devices.
+    owned_product_filters = (
+        Product.is_rental_product.is_(False),
+        Product.product_type != "rental",
+    )
     warehouse_products_sum = db.scalar(
         select(func.coalesce(func.sum(Product.replace_cost), 0)).where(
-            Product.is_rental_product.is_(False),
+            *owned_product_filters,
             ~exists(select(1).where(Device.product_id == Product.id)),
         )
     )
@@ -199,7 +203,7 @@ def get_finance_summary(db: Session = Depends(get_db)) -> FinanceSummaryRead:
         .select_from(Device)
         .join(Product, Device.product_id == Product.id)
         .where(
-            Product.is_rental_product.is_(False),
+            *owned_product_filters,
             Device.status.in_(["available", "reserved", "maintenance"]),
         )
     )

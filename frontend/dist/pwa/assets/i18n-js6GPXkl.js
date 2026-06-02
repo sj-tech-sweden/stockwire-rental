@@ -1,1 +1,0 @@
-import{c as e,o as t,s as n}from"./index-CwZ8oDA8.js";var r=({app:r})=>{r.use(t),e(localStorage.getItem(`sw_locale`)||n(null))};export{r as default};

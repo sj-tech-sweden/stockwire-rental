@@ -330,6 +330,19 @@ def test_jobs_and_finance_crud(client):
     )
     assert rental_supplier_product.status_code == 200
 
+    rental_type_product = client.post(
+        "/api/v1/inventory/products",
+        json={
+            "sku": "RNT-02",
+            "name": "Rental Typed Fixture",
+            "category": "lighting",
+            "product_type": "rental",
+            "daily_rate": "125.00",
+            "replace_cost": "777.00",
+        },
+    )
+    assert rental_type_product.status_code == 200
+
     stock_product = client.post(
         "/api/v1/inventory/products",
         json={
@@ -378,6 +391,18 @@ def test_jobs_and_finance_crud(client):
         },
     )
     assert device_without_purchase_price.status_code == 200
+
+    in_use_device = client.post(
+        "/api/v1/inventory/devices",
+        json={
+            "product_id": product_id,
+            "asset_tag": "LGT-01-003",
+            "location_zone_id": zone.json()["id"],
+            "purchase_price": "9999.00",
+            "status": "in_use",
+        },
+    )
+    assert in_use_device.status_code == 200
 
     customer = client.post(
         "/api/v1/customers",
