@@ -198,7 +198,10 @@ def get_finance_summary(db: Session = Depends(get_db)) -> FinanceSummaryRead:
         select(func.coalesce(func.sum(func.coalesce(Device.purchase_price, Product.replace_cost, 0)), 0))
         .select_from(Device)
         .join(Product, Device.product_id == Product.id)
-        .where(Product.is_rental_product.is_(False))
+        .where(
+            Product.is_rental_product.is_(False),
+            Device.status.in_(["available", "reserved", "maintenance"]),
+        )
     )
     warehouse_products_value = Decimal(str(warehouse_products_sum or 0))
     warehouse_devices_value = Decimal(str(warehouse_devices_sum or 0))

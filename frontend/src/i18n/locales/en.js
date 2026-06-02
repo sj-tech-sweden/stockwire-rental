@@ -566,7 +566,7 @@ export default {
     warehouseDevicesValue: 'Warehouse Devices Value',
     warehouseTotalValue: 'Warehouse Total Value',
     fromProductReplaceCost: 'From product replace cost',
-    fromDeviceReplaceCost: 'From device replace cost',
+    fromDeviceReplaceCost: 'From device purchase price (replace cost fallback)',
     productsPlusDevices: 'Products + devices',
     jobsTotal: '{count} jobs total',
     activeJobsCount: '{count} active jobs',
