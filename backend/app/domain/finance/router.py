@@ -185,6 +185,8 @@ def get_job_finance_insights(db: Session = Depends(get_db)) -> FinanceJobInsight
 def get_finance_summary(db: Session = Depends(get_db)) -> FinanceSummaryRead:
     rows = list(db.scalars(select(FinancialTransaction)).all())
     today = datetime.now(UTC).date()
+    # Eventory quantity represents supplier-rented inventory, so owned non-serialized products
+    # are valued per product replace_cost while serialized owned inventory is valued via devices.
     warehouse_products_sum = db.scalar(
         select(func.coalesce(func.sum(Product.replace_cost), 0)).where(
             Product.is_rental_product.is_(False),
