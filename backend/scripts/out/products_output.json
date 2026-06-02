@@ -1,0 +1,2002 @@
+[
+  {
+    "title": "1510",
+    "description": "",
+    "sku": "",
+    "replace_cost": 5000,
+    "weight": 5.55,
+    "category_id": 273,
+    "external_id": 196,
+    "source_id": 196
+  },
+  {
+    "title": "16A till 32A CEE Adapter 1m",
+    "description": "",
+    "sku": "1000227",
+    "replace_cost": 250,
+    "weight": 1,
+    "category_id": 292,
+    "external_id": 83,
+    "source_id": 83
+  },
+  {
+    "title": "16A trefas 10m",
+    "description": "",
+    "sku": "1000345",
+    "replace_cost": 689,
+    "weight": 0,
+    "category_id": 292,
+    "external_id": 194,
+    "source_id": 194
+  },
+  {
+    "title": "2,5mm till 3,5mm för hörlurar",
+    "description": "",
+    "sku": "1000463",
+    "replace_cost": 0,
+    "weight": 0,
+    "category_id": 275,
+    "external_id": 207,
+    "source_id": 207
+  },
+  {
+    "title": "238 Mikrofon Support Rail",
+    "description": "",
+    "sku": "1000286",
+    "replace_cost": 169,
+    "weight": 0.18,
+    "category_id": 287,
+    "external_id": 138,
+    "source_id": 138
+  },
+  {
+    "title": "244N Magic arm",
+    "description": "",
+    "sku": "1000254",
+    "replace_cost": 1059,
+    "weight": 1.09,
+    "category_id": 287,
+    "external_id": 106,
+    "source_id": 106
+  },
+  {
+    "title": "264 Adapter 5/8\" for 035",
+    "description": "",
+    "sku": "1000207",
+    "replace_cost": 74,
+    "weight": 0,
+    "category_id": 285,
+    "external_id": 63,
+    "source_id": 63
+  },
+  {
+    "title": "32A trefas 10m",
+    "description": "",
+    "sku": "1000226",
+    "replace_cost": 1300,
+    "weight": 7,
+    "category_id": 292,
+    "external_id": 82,
+    "source_id": 82
+  },
+  {
+    "title": "32A trefas 20m",
+    "description": "",
+    "sku": "1000253",
+    "replace_cost": 1800,
+    "weight": 13,
+    "category_id": 292,
+    "external_id": 105,
+    "source_id": 105
+  },
+  {
+    "title": "32A trefas 5m",
+    "description": "",
+    "sku": "1000297",
+    "replace_cost": 764,
+    "weight": 5,
+    "category_id": 292,
+    "external_id": 149,
+    "source_id": 149
+  },
+  {
+    "title": "5073-1B Selflock Hook Easy",
+    "description": "",
+    "sku": "1000265",
+    "replace_cost": 238,
+    "weight": 0.48,
+    "category_id": 285,
+    "external_id": 117,
+    "source_id": 117
+  },
+  {
+    "title": "575 spot",
+    "description": "",
+    "sku": "",
+    "replace_cost": 0,
+    "weight": 24.5,
+    "category_id": 312,
+    "external_id": 73,
+    "source_id": 73
+  },
+  {
+    "title": "65\" TV",
+    "description": "",
+    "sku": "",
+    "replace_cost": 0,
+    "weight": 36.5,
+    "category_id": 301,
+    "external_id": 212,
+    "source_id": 212
+  },
+  {
+    "title": "65\"Dubbel TV-case",
+    "description": "",
+    "sku": "",
+    "replace_cost": 0,
+    "weight": 50,
+    "category_id": 273,
+    "external_id": 211,
+    "source_id": 211
+  },
+  {
+    "title": "8-kanaler 6+2 15m multi",
+    "description": "",
+    "sku": "1000344",
+    "replace_cost": 849,
+    "weight": 0,
+    "category_id": 275,
+    "external_id": 193,
+    "source_id": 193
+  },
+  {
+    "title": "822 Truss Support - TV Spigot",
+    "description": "",
+    "sku": "1000238",
+    "replace_cost": 249,
+    "weight": 0,
+    "category_id": 285,
+    "external_id": 93,
+    "source_id": 93
+  },
+  {
+    "title": "8231-B Swivel Coupler 50mm",
+    "description": "",
+    "sku": "1000299",
+    "replace_cost": 329,
+    "weight": 0.5,
+    "category_id": 285,
+    "external_id": 151,
+    "source_id": 151
+  },
+  {
+    "title": "87471 19\" Power Strip",
+    "description": "",
+    "sku": "1000208",
+    "replace_cost": 0,
+    "weight": 0,
+    "category_id": 291,
+    "external_id": 64,
+    "source_id": 64
+  },
+  {
+    "title": "888s",
+    "description": "",
+    "sku": "",
+    "replace_cost": 0,
+    "weight": 0,
+    "category_id": 303,
+    "external_id": 204,
+    "source_id": 204
+  },
+  {
+    "title": "Acclaim Fresnel 300-650W",
+    "description": "",
+    "sku": "",
+    "replace_cost": 2000,
+    "weight": 3.3,
+    "category_id": 309,
+    "external_id": 97,
+    "source_id": 97
+  },
+  {
+    "title": "ADJ Mega Tri 60",
+    "description": "",
+    "sku": "",
+    "replace_cost": 1300,
+    "weight": 3,
+    "category_id": 313,
+    "external_id": 129,
+    "source_id": 129
+  },
+  {
+    "title": "ADJ Mega Tripar Profile",
+    "description": "",
+    "sku": "",
+    "replace_cost": 500,
+    "weight": 1.2,
+    "category_id": 313,
+    "external_id": 51,
+    "source_id": 51
+  },
+  {
+    "title": "ADJ Mega Tripar Profile Plus",
+    "description": "",
+    "sku": "",
+    "replace_cost": 500,
+    "weight": 1.2,
+    "category_id": 313,
+    "external_id": 91,
+    "source_id": 91
+  },
+  {
+    "title": "AG-AC90",
+    "description": "Panasonics new AG-AC90A AVCCAM combines the high image quality, advanced functions and easy operation that professionals demand in a stylish, easy-to-handle design. The 12x optical zoom lens starts from a wide angle 29.8mm (35mm equivalent)",
+    "sku": "",
+    "replace_cost": 15355,
+    "weight": 1.78,
+    "category_id": 298,
+    "external_id": 4,
+    "source_id": 4
+  },
+  {
+    "title": "AG-AC90 Stromadapter VSK0726",
+    "description": "",
+    "sku": "1000166",
+    "replace_cost": 0,
+    "weight": 0,
+    "category_id": 294,
+    "external_id": 23,
+    "source_id": 23
+  },
+  {
+    "title": "Apparatkabel IEC C13",
+    "description": "",
+    "sku": "1000173",
+    "replace_cost": 0,
+    "weight": 0,
+    "category_id": 288,
+    "external_id": 30,
+    "source_id": 30
+  },
+  {
+    "title": "Apparatkabel IEC C13 Link",
+    "description": "",
+    "sku": "1000252",
+    "replace_cost": 0,
+    "weight": 0,
+    "category_id": 288,
+    "external_id": 104,
+    "source_id": 104
+  },
+  {
+    "title": "Apparatkabel IEC C7",
+    "description": "",
+    "sku": "1000176",
+    "replace_cost": 0,
+    "weight": 0,
+    "category_id": 288,
+    "external_id": 33,
+    "source_id": 33
+  },
+  {
+    "title": "Apple Thunderbolt 3 till TB2 Adapter",
+    "description": "",
+    "sku": "",
+    "replace_cost": 511.2,
+    "weight": 0,
+    "category_id": 297,
+    "external_id": 288,
+    "source_id": 288
+  },
+  {
+    "title": "AR2412",
+    "description": "",
+    "sku": "",
+    "replace_cost": 13490,
+    "weight": 6.5,
+    "category_id": 284,
+    "external_id": 187,
+    "source_id": 187
+  },
+  {
+    "title": "AR84",
+    "description": "",
+    "sku": "",
+    "replace_cost": 8199,
+    "weight": 3,
+    "category_id": 284,
+    "external_id": 188,
+    "source_id": 188
+  },
+  {
+    "title": "Audiobox USB",
+    "description": "",
+    "sku": "",
+    "replace_cost": 800,
+    "weight": 2.27,
+    "category_id": 282,
+    "external_id": 169,
+    "source_id": 169
+  },
+  {
+    "title": "BA 250/2 SE D 8.5",
+    "description": "",
+    "sku": "1000219",
+    "replace_cost": 0,
+    "weight": 0,
+    "category_id": 305,
+    "external_id": 75,
+    "source_id": 75
+  },
+  {
+    "title": "BiDirectional SDI/HDMI",
+    "description": "",
+    "sku": "",
+    "replace_cost": 939,
+    "weight": 0.17,
+    "category_id": 297,
+    "external_id": 179,
+    "source_id": 179
+  },
+  {
+    "title": "BNC-skarv",
+    "description": "",
+    "sku": "1000480",
+    "replace_cost": 77,
+    "weight": 0,
+    "category_id": 300,
+    "external_id": 215,
+    "source_id": 215
+  },
+  {
+    "title": "Boompole Pro",
+    "description": "Boompole Pro Ã¤r tillverkad i kolfiber och vÃ¤ger dÃ¤rfÃ¶r bara 535g. Den gÃ¥r att strÃ¤cka ut frÃ¥n 81cm till 300cm. Boompole Pro Ã¤r designad fÃ¶r att anvÃ¤ndas tillsammans med professionella shotgunmikrofoner som t.ex. RÃ¶de NTG3 och Ã¤ven med vin",
+    "sku": "1000515",
+    "replace_cost": 2333,
+    "weight": 0.54,
+    "category_id": 287,
+    "external_id": 227,
+    "source_id": 227
+  },
+  {
+    "title": "Byggcentral 32A",
+    "description": "",
+    "sku": "",
+    "replace_cost": 1280,
+    "weight": 1,
+    "category_id": 289,
+    "external_id": 195,
+    "source_id": 195
+  },
+  {
+    "title": "C451EB - kondensator",
+    "description": "",
+    "sku": "",
+    "replace_cost": 3666,
+    "weight": 0.13,
+    "category_id": 283,
+    "external_id": 171,
+    "source_id": 171
+  },
+  {
+    "title": "Cam Link 4K",
+    "description": "",
+    "sku": "",
+    "replace_cost": 1245,
+    "weight": 0.02,
+    "category_id": 293,
+    "external_id": 225,
+    "source_id": 225
+  },
+  {
+    "title": "Cat Snake 3FC",
+    "description": "RJ45 socket to 4x XLR 3-pin female\r\nAnalogue cable whip that uses the 4 wire pairs and the shielding of a network cable rather than a 4-channel multicore to send 4 analogue signals from A to B.\r\nCompatible with any shielded network cable with an RJ45 or Ethercon connector of any length\r\nCan also be used for DMX",
+    "sku": "",
+    "replace_cost": 267,
+    "weight": 0.4,
+    "category_id": 284,
+    "external_id": 292,
+    "source_id": 292
+  },
+  {
+    "title": "Cat Snake 3MC",
+    "description": "RJ45 socket to 4x XLR 3-pin male\r\nAnalogue cable whip that uses the 4 wire pairs and the shielding of a network cable rather than a 4-channel multicore to send 4 analogue signals from A to B.\r\nCompatible with any shielded network cable with an RJ45 or Ethercon connector of any length\r\nCan also be used for DMX",
+    "sku": "",
+    "replace_cost": 267,
+    "weight": 0.4,
+    "category_id": 284,
+    "external_id": 291,
+    "source_id": 291
+  },
+  {
+    "title": "CAT5E kabel 50m på vinda",
+    "description": "",
+    "sku": "1000266",
+    "replace_cost": 2499,
+    "weight": 1,
+    "category_id": 317,
+    "external_id": 118,
+    "source_id": 118
+  },
+  {
+    "title": "Cat6 skarv NE8 FF",
+    "description": "",
+    "sku": "1000259",
+    "replace_cost": 199,
+    "weight": 0,
+    "category_id": 317,
+    "external_id": 111,
+    "source_id": 111
+  },
+  {
+    "title": "CAT6E 3m Ethercon",
+    "description": "",
+    "sku": "2938007268",
+    "replace_cost": 119,
+    "weight": 0.1,
+    "category_id": 317,
+    "external_id": 295,
+    "source_id": 295
+  },
+  {
+    "title": "CAT6E 5m Ethercon",
+    "description": "",
+    "sku": "2938007267",
+    "replace_cost": 156,
+    "weight": 0.2,
+    "category_id": 317,
+    "external_id": 294,
+    "source_id": 294
+  },
+  {
+    "title": "CC-192PL cameracase",
+    "description": "",
+    "sku": "1000151",
+    "replace_cost": 0,
+    "weight": 0,
+    "category_id": 273,
+    "external_id": 8,
+    "source_id": 8
+  },
+  {
+    "title": "CC50403 Base Plate Steel 600mm",
+    "description": "",
+    "sku": "1000284",
+    "replace_cost": 1200,
+    "weight": 12.8,
+    "category_id": 287,
+    "external_id": 136,
+    "source_id": 136
+  },
+  {
+    "title": "Copper Hammer 500g",
+    "description": "",
+    "sku": "1000273",
+    "replace_cost": 329,
+    "weight": 0.5,
+    "category_id": 302,
+    "external_id": 125,
+    "source_id": 125
+  },
+  {
+    "title": "CQ18T",
+    "description": "",
+    "sku": "",
+    "replace_cost": 10000,
+    "weight": 3.8,
+    "category_id": 279,
+    "external_id": 267,
+    "source_id": 267
+  },
+  {
+    "title": "CQ18T Softcase",
+    "description": "",
+    "sku": "",
+    "replace_cost": 867,
+    "weight": 0,
+    "category_id": 273,
+    "external_id": 268,
+    "source_id": 268
+  },
+  {
+    "title": "CSE5NH5 5M ethercon to rj45",
+    "description": "",
+    "sku": "1000274",
+    "replace_cost": 399,
+    "weight": 0,
+    "category_id": 317,
+    "external_id": 126,
+    "source_id": 126
+  },
+  {
+    "title": "CT200 cabletester",
+    "description": "",
+    "sku": "",
+    "replace_cost": 539,
+    "weight": 0,
+    "category_id": 302,
+    "external_id": 109,
+    "source_id": 109
+  },
+  {
+    "title": "D6",
+    "description": "",
+    "sku": "",
+    "replace_cost": 2375,
+    "weight": 0.25,
+    "category_id": 283,
+    "external_id": 172,
+    "source_id": 172
+  },
+  {
+    "title": "D610",
+    "description": "",
+    "sku": "",
+    "replace_cost": 10000,
+    "weight": 0.76,
+    "category_id": 298,
+    "external_id": 226,
+    "source_id": 226
+  },
+  {
+    "title": "D610S Dimmerpack 32A",
+    "description": "",
+    "sku": "",
+    "replace_cost": 4180,
+    "weight": 8.6,
+    "category_id": 308,
+    "external_id": 112,
+    "source_id": 112
+  },
+  {
+    "title": "DaVinci Resolve Speed Editor",
+    "description": "",
+    "sku": "",
+    "replace_cost": 4699,
+    "weight": 0.78,
+    "category_id": 293,
+    "external_id": 233,
+    "source_id": 233
+  },
+  {
+    "title": "DDS-405 4-channel dimmer",
+    "description": "",
+    "sku": "",
+    "replace_cost": 1658,
+    "weight": 2,
+    "category_id": 308,
+    "external_id": 81,
+    "source_id": 81
+  },
+  {
+    "title": "Decklink Duo 2",
+    "description": "With four separate 3G-SDI connections\r\nSupports formats in SD and HD up to 1080p60\r\nSDI video inputs: 4 bidirectional 12-bit SD/HD connectors independently configurable as inputs or outputs\r\nSDI video outputs: 4 bidirectional 12-bit SD/HD ports independently configurable as input or output\r\nSDI audio inputs: 16 channels embedded in SD and HD\r\nSDI audio outputs: 16 channels embedded in SD and HD\r\nSync input: Tri-Sync or Black Burst\r\nComputer interface: PCI Express with 4 lanes Generation 2\r\nCompatible with 4-, 8- and 16-lane PCI Express slots\r\nSupported codecs: AVC-Intra, AVCHD, Canon XF MPEG2, Digital SLR, DV-NTSC, DV-PAL, DVCPRO50, DVCPROHD, DPX, HDV, HEVC, XDCAM EX, XDCAM HD, XDCAM HD422, DNxHR & DNxHD, Apple ProRes 4444, Apple ProRes, 422 HQ, Apple ProRes 422, Apple ProRes LT, Apple ProRes 422 Proxy, uncompressed 8-bit 4: 2:2, uncompressed 10 bit 4:2:2, uncompressed 10 bit 4:4:4\r\nIncluded software: Media Express, Disk Speed Test, LiveKey, Blackmagic Desktop Video Utility and Blackmagic drivers for Mac OS and Windows. - Media Express, Blackmagic Desktop Video Utility and Blackmagic drivers on Linux.\r\nSupported software applications: DaVinci Resolve, Fusion, Final Cut Pro X, Adobe Premiere Pro CC, Adobe After Effects CC, Adobe Photoshop CC, Avid Media Composer, Avid Pro Tools, Steinberg Cubase, Steinberg Nuendo and many more.\r\nSD video standards: 525i/59.94 NTSC, 625i/50 PAL\r\nHD video standards: 720p/50, 720p/59.94, 720p/60, 1080p/23.98,\r\n1080p/24, 1080p/25, 1080p/29.97, 1080p/30, 1080p/50, 1080p/59,\r\n1080p/59.94, 1080p/60, 1080PsF/23.98, 1080PsF/24, 1080PsF/25,\r\n1080PsF/29.97, 1080PsF/30, 1080i/50, 1080i/59.94, 1080i/60\r\nSDI compliance: SMPTE 259M, SMPTE 292M, SMPTE 296M, SMPTE 372M, SMPTE 425M, ITU-R BT.656 and ITU-R BT.601\r\nSupported SDI metadata: RP 188/SMPTE 12M-2 and Closed Captioning.\r\nAudio sampling rate: Standard television sampling rate of 48 kHz and 24 bit\r\nSDI colour accuracy: 8-, 10- and 12-bit RGB 4:4:4 in all modes up to 1080p/30 and 8- and 10-bit YUV 4:2:2 in all modes\r\n12-Bit RGB 4:4:4 supported in playback mode only\r\nSDI video sampling rate: 8-, 10- and 12-bit RGB 4:4:4 in all modes\r\nUp to 1080p/30 and 8- and 10-bit YUV 4:2:2 in all modes\r\n12-bit RGB 4:4:4 is only supported in playback mode\r\nColour space: REC 601, REC 709\r\nColour space conversion: hardware-based in real time\r\nHD downconversion: high quality built-in software downconverter for playback and capture\r\nChoice of letterbox and anamorphic 16:9 output modes for downconverted SD.\r\nHD upconversion: built-in high quality software upconversion from SD to 720HD or 1080HD on input\r\nChoice of 4:3 pillarbox, 14:9 zoom and 16:9 zoom\r\nCross-conversion: built-in, high-quality software cross-conversion from 720HD to 1080HD and 1080HD to 720HD on playback\r\nReal-time effects: DaVinci Resolve, Final Cut Pro X internal effects, Adobe Premiere Pro CC Mercury Playback Engine effects, Avid Media Composer internal effects.\r\nOperating systems: Mac Mojave 10.14, Mac Catalina 10.15 or higher, Windows 8.1 and 10, both 64 bit, Linux\r\nPower consumption: 10 W",
+    "sku": "",
+    "replace_cost": 4639.2,
+    "weight": 0.1,
+    "category_id": 294,
+    "external_id": 284,
+    "source_id": 284
+  },
+  {
+    "title": "DFIN Diversity Fin Antenna 470-698MHz",
+    "description": "Diversity FinÂ® Ã¤r en multifunktionell antenn fÃ¶r trÃ¥dlÃ¶sa mikrofoner med en tvÃ¤rpolariserad design. Levereras med skyddande hÃ¶lje. Den kombinerar en LPDA och en dipolantenn i en ortogonal (rÃ¤tvinklig) konfiguration. DFIN fÃ¥ngar bÃ¥de upp ver",
+    "sku": "",
+    "replace_cost": 6570,
+    "weight": 0,
+    "category_id": 275,
+    "external_id": 247,
+    "source_id": 247
+  },
+  {
+    "title": "DI100 aktiv di-box",
+    "description": "",
+    "sku": "",
+    "replace_cost": 422,
+    "weight": 0,
+    "category_id": 280,
+    "external_id": 216,
+    "source_id": 216
+  },
+  {
+    "title": "DI400P passiv di-box",
+    "description": "",
+    "sku": "",
+    "replace_cost": 325,
+    "weight": 0,
+    "category_id": 280,
+    "external_id": 217,
+    "source_id": 217
+  },
+  {
+    "title": "Dimmer 12 kanaler",
+    "description": "",
+    "sku": "",
+    "replace_cost": 0,
+    "weight": 0,
+    "category_id": 308,
+    "external_id": 173,
+    "source_id": 173
+  },
+  {
+    "title": "Discokula",
+    "description": "",
+    "sku": "1000162",
+    "replace_cost": 0,
+    "weight": 0,
+    "category_id": 304,
+    "external_id": 19,
+    "source_id": 19
+  },
+  {
+    "title": "DMX 10m",
+    "description": "",
+    "sku": "1000175",
+    "replace_cost": 200,
+    "weight": 0.1,
+    "category_id": 306,
+    "external_id": 32,
+    "source_id": 32
+  },
+  {
+    "title": "DMX 1m",
+    "description": "",
+    "sku": "1000212",
+    "replace_cost": 120,
+    "weight": 0.01,
+    "category_id": 306,
+    "external_id": 68,
+    "source_id": 68
+  },
+  {
+    "title": "DMX 20m",
+    "description": "",
+    "sku": "1000163",
+    "replace_cost": 300,
+    "weight": 0,
+    "category_id": 306,
+    "external_id": 20,
+    "source_id": 20
+  },
+  {
+    "title": "DMX 2m",
+    "description": "",
+    "sku": "1000174",
+    "replace_cost": 150,
+    "weight": 0.2,
+    "category_id": 306,
+    "external_id": 31,
+    "source_id": 31
+  },
+  {
+    "title": "DMX 2m 3-Pin",
+    "description": "2 meter DMX 3-pin",
+    "sku": "",
+    "replace_cost": 0,
+    "weight": 0,
+    "category_id": 306,
+    "external_id": 272,
+    "source_id": 272
+  },
+  {
+    "title": "DMX 2m 5-Pin",
+    "description": "5-Polig dmx-kabel 2m",
+    "sku": "",
+    "replace_cost": 0,
+    "weight": 0,
+    "category_id": 306,
+    "external_id": 275,
+    "source_id": 275
+  },
+  {
+    "title": "DMX 3m",
+    "description": "",
+    "sku": "1000211",
+    "replace_cost": 170,
+    "weight": 0.03,
+    "category_id": 306,
+    "external_id": 67,
+    "source_id": 67
+  },
+  {
+    "title": "DMX 3m 3-Pin",
+    "description": "3 meter dmx kabel 3-pin",
+    "sku": "",
+    "replace_cost": 0,
+    "weight": 0,
+    "category_id": 306,
+    "external_id": 273,
+    "source_id": 273
+  },
+  {
+    "title": "DMX 3m 5-Pin",
+    "description": "5-polig DMX-kabel 3 meter",
+    "sku": "",
+    "replace_cost": 0,
+    "weight": 0,
+    "category_id": 306,
+    "external_id": 276,
+    "source_id": 276
+  },
+  {
+    "title": "DMX 3pin hane - 5 pin hona",
+    "description": "",
+    "sku": "1000191",
+    "replace_cost": 45,
+    "weight": 0,
+    "category_id": 306,
+    "external_id": 48,
+    "source_id": 48
+  },
+  {
+    "title": "DMX 50m",
+    "description": "",
+    "sku": "1000204",
+    "replace_cost": 1768,
+    "weight": 2,
+    "category_id": 306,
+    "external_id": 60,
+    "source_id": 60
+  },
+  {
+    "title": "DMX 5m",
+    "description": "",
+    "sku": "1000190",
+    "replace_cost": 190,
+    "weight": 0.05,
+    "category_id": 306,
+    "external_id": 47,
+    "source_id": 47
+  },
+  {
+    "title": "DMX 5m 3-Pin",
+    "description": "3 polig dmx kabel 5 meter",
+    "sku": "",
+    "replace_cost": 0,
+    "weight": 0,
+    "category_id": 306,
+    "external_id": 274,
+    "source_id": 274
+  },
+  {
+    "title": "DMX 5m 5-Pin",
+    "description": "5-polig dmx-kabel 5 meter.",
+    "sku": "",
+    "replace_cost": 0,
+    "weight": 0,
+    "category_id": 306,
+    "external_id": 277,
+    "source_id": 277
+  },
+  {
+    "title": "DMX 5pin hane -3pin hona",
+    "description": "",
+    "sku": "1000160",
+    "replace_cost": 45,
+    "weight": 0,
+    "category_id": 306,
+    "external_id": 17,
+    "source_id": 17
+  },
+  {
+    "title": "DMX splitter",
+    "description": "",
+    "sku": "",
+    "replace_cost": 1111,
+    "weight": 2.3,
+    "category_id": 304,
+    "external_id": 77,
+    "source_id": 77
+  },
+  {
+    "title": "DMX Terminator 110 Ohm",
+    "description": "",
+    "sku": "1000216",
+    "replace_cost": 55,
+    "weight": 0,
+    "category_id": 304,
+    "external_id": 72,
+    "source_id": 72
+  },
+  {
+    "title": "DMX-case",
+    "description": "",
+    "sku": "",
+    "replace_cost": 0,
+    "weight": 0,
+    "category_id": 273,
+    "external_id": 152,
+    "source_id": 152
+  },
+  {
+    "title": "DR-701D",
+    "description": "Multitrack Field Recorder\r\n\r\n6 Balanced microphone/line inputs (4 XLR/TRS combo jacks, 2 TRS jacks)",
+    "sku": "",
+    "replace_cost": 5000,
+    "weight": 0.65,
+    "category_id": 275,
+    "external_id": 232,
+    "source_id": 232
+  },
+  {
+    "title": "DTS Flash 2000L",
+    "description": "",
+    "sku": "",
+    "replace_cost": 1499,
+    "weight": 1,
+    "category_id": 309,
+    "external_id": 107,
+    "source_id": 107
+  },
+  {
+    "title": "Dual Docking Charger for SLXD1/2, SB903",
+    "description": "Laddstation med dubbel dockning fÃ¶r tvÃ¥ SLXD-sÃ¤ndare med SB903 litiumjonbatterier. Laddstationen kan Ã¤ven ladda SB903 batterier separat. Ladda tvÃ¥ SB903-batterier, tvÃ¥ beltpackssÃ¤ndare, tvÃ¥ handhÃ¥llna sÃ¤ndare eller en kombination av dessa.",
+    "sku": "",
+    "replace_cost": 957,
+    "weight": 0.28,
+    "category_id": 275,
+    "external_id": 251,
+    "source_id": 251
+  },
+  {
+    "title": "DXS12",
+    "description": "",
+    "sku": "",
+    "replace_cost": 8025,
+    "weight": 33,
+    "category_id": 281,
+    "external_id": 266,
+    "source_id": 266
+  },
+  {
+    "title": "E904",
+    "description": "",
+    "sku": "",
+    "replace_cost": 2035,
+    "weight": 0.13,
+    "category_id": 283,
+    "external_id": 170,
+    "source_id": 170
+  },
+  {
+    "title": "E906",
+    "description": "",
+    "sku": "",
+    "replace_cost": 1955,
+    "weight": 0.14,
+    "category_id": 283,
+    "external_id": 166,
+    "source_id": 166
+  },
+  {
+    "title": "E945",
+    "description": "",
+    "sku": "",
+    "replace_cost": 1999,
+    "weight": 0.37,
+    "category_id": 283,
+    "external_id": 89,
+    "source_id": 89
+  },
+  {
+    "title": "Elation Enode4",
+    "description": "",
+    "sku": "",
+    "replace_cost": 0,
+    "weight": 5,
+    "category_id": 304,
+    "external_id": 264,
+    "source_id": 264
+  },
+  {
+    "title": "Elation Platinum Beam 5R",
+    "description": "",
+    "sku": "",
+    "replace_cost": 7000,
+    "weight": 14.5,
+    "category_id": 312,
+    "external_id": 256,
+    "source_id": 256
+  },
+  {
+    "title": "EUROLITE THEATRE SPOT 650/1000 FRESNEL BK",
+    "description": "",
+    "sku": "",
+    "replace_cost": 825,
+    "weight": 4.5,
+    "category_id": 309,
+    "external_id": 239,
+    "source_id": 239
+  },
+  {
+    "title": "EUROLITE THEATRE SPOT 650/1000 FRESNEL Case",
+    "description": "",
+    "sku": "",
+    "replace_cost": 0,
+    "weight": 70,
+    "category_id": 273,
+    "external_id": 240,
+    "source_id": 240
+  },
+  {
+    "title": "F31100-B Truss 1,0m Black",
+    "description": "",
+    "sku": "1000282",
+    "replace_cost": 629,
+    "weight": 1.4,
+    "category_id": 286,
+    "external_id": 134,
+    "source_id": 134
+  },
+  {
+    "title": "F31150 Truss 1,5 m",
+    "description": "",
+    "sku": "1000241",
+    "replace_cost": 766,
+    "weight": 1.9,
+    "category_id": 286,
+    "external_id": 96,
+    "source_id": 96
+  },
+  {
+    "title": "F31200-B Truss 2,0m Black",
+    "description": "",
+    "sku": "1000281",
+    "replace_cost": 869,
+    "weight": 2.4,
+    "category_id": 286,
+    "external_id": 133,
+    "source_id": 133
+  },
+  {
+    "title": "Freeport headset",
+    "description": "",
+    "sku": "",
+    "replace_cost": 0,
+    "weight": 1,
+    "category_id": 283,
+    "external_id": 175,
+    "source_id": 175
+  },
+  {
+    "title": "Front-case",
+    "description": "",
+    "sku": "",
+    "replace_cost": 0,
+    "weight": 0,
+    "category_id": 273,
+    "external_id": 157,
+    "source_id": 157
+  },
+  {
+    "title": "FS-2 Footswitch",
+    "description": "2-way switch\r\nLength of cable: 3.5 m",
+    "sku": "",
+    "replace_cost": 119,
+    "weight": 0.2,
+    "category_id": 344,
+    "external_id": 293,
+    "source_id": 293
+  },
+  {
+    "title": "Gigabar",
+    "description": "",
+    "sku": "",
+    "replace_cost": 0,
+    "weight": 2.5,
+    "category_id": 313,
+    "external_id": 28,
+    "source_id": 28
+  },
+  {
+    "title": "GLD-80",
+    "description": "",
+    "sku": "",
+    "replace_cost": 30000,
+    "weight": 21.2,
+    "category_id": 279,
+    "external_id": 186,
+    "source_id": 186
+  },
+  {
+    "title": "Grand MA3 Light",
+    "description": "",
+    "sku": "",
+    "replace_cost": 380000,
+    "weight": 33,
+    "category_id": 307,
+    "external_id": 265,
+    "source_id": 265
+  },
+  {
+    "title": "GrandMA2 onPC Command Wing",
+    "description": "",
+    "sku": "",
+    "replace_cost": 50000,
+    "weight": 6,
+    "category_id": 307,
+    "external_id": 241,
+    "source_id": 241
+  },
+  {
+    "title": "GY 9,5 300W",
+    "description": "",
+    "sku": "1000198",
+    "replace_cost": 0,
+    "weight": 0,
+    "category_id": 305,
+    "external_id": 54,
+    "source_id": 54
+  },
+  {
+    "title": "HA8000 V2 hörlursförstarkare",
+    "description": "",
+    "sku": "",
+    "replace_cost": 1625,
+    "weight": 1.9,
+    "category_id": 275,
+    "external_id": 189,
+    "source_id": 189
+  },
+  {
+    "title": "Handspel 4m 500kg",
+    "description": "",
+    "sku": "",
+    "replace_cost": 995,
+    "weight": 10,
+    "category_id": 285,
+    "external_id": 257,
+    "source_id": 257
+  },
+  {
+    "title": "HDMI 2m",
+    "description": "",
+    "sku": "1000194",
+    "replace_cost": 300,
+    "weight": 0,
+    "category_id": 300,
+    "external_id": 50,
+    "source_id": 50
+  },
+  {
+    "title": "HDMI kabel 15m",
+    "description": "",
+    "sku": "1000315",
+    "replace_cost": 800,
+    "weight": 0,
+    "category_id": 300,
+    "external_id": 165,
+    "source_id": 165
+  },
+  {
+    "title": "HDMI kabel 30M Optisk",
+    "description": "",
+    "sku": "",
+    "replace_cost": 749,
+    "weight": 0.5,
+    "category_id": 300,
+    "external_id": 287,
+    "source_id": 287
+  },
+  {
+    "title": "HDMI skarv hona-hona",
+    "description": "",
+    "sku": "1000178",
+    "replace_cost": 100,
+    "weight": 0,
+    "category_id": 300,
+    "external_id": 35,
+    "source_id": 35
+  },
+  {
+    "title": "HDMI-cat receiver 221",
+    "description": "",
+    "sku": "",
+    "replace_cost": 0,
+    "weight": 0.26,
+    "category_id": 293,
+    "external_id": 164,
+    "source_id": 164
+  },
+  {
+    "title": "HDMI-cat transmitter 221",
+    "description": "",
+    "sku": "",
+    "replace_cost": 0,
+    "weight": 0.26,
+    "category_id": 293,
+    "external_id": 163,
+    "source_id": 163
+  },
+  {
+    "title": "HDMI-DVI",
+    "description": "",
+    "sku": "1000177",
+    "replace_cost": 200,
+    "weight": 0,
+    "category_id": 300,
+    "external_id": 34,
+    "source_id": 34
+  },
+  {
+    "title": "HDMI-extenderkit",
+    "description": "",
+    "sku": "1000153",
+    "replace_cost": 0,
+    "weight": 0,
+    "category_id": 273,
+    "external_id": 10,
+    "source_id": 10
+  },
+  {
+    "title": "HDMI-kabel 1m",
+    "description": "",
+    "sku": "1000397",
+    "replace_cost": 150,
+    "weight": 0,
+    "category_id": 300,
+    "external_id": 199,
+    "source_id": 199
+  },
+  {
+    "title": "HDMI-SDI 3G Converter",
+    "description": "Converter from HDMI to SDI signals up to 1080p/60\r\n3G-SDI connections\r\nAutomatically recognises SD and HD formats\r\nInput: HDMI type A\r\nOutput: 2x SDI\r\nImpedance: 75 Ohm\r\nSDI formats: SD-SDI, HD-SDI, 3G-SDI\r\nIncludes international power supply (DC / 5 V)",
+    "sku": "",
+    "replace_cost": 475,
+    "weight": 0.25,
+    "category_id": 297,
+    "external_id": 271,
+    "source_id": 271
+  },
+  {
+    "title": "HM-4",
+    "description": "Share a single stereo source with up to 4 headphone pairs\r\n1 x 6.3 mm jack stereo input and 4x 6.3 mm jack stereo outputs with individual volume controls\r\nIncludes 12V power supply",
+    "sku": "",
+    "replace_cost": 420,
+    "weight": 0.2,
+    "category_id": 278,
+    "external_id": 270,
+    "source_id": 270
+  },
+  {
+    "title": "HMD-660E",
+    "description": "",
+    "sku": "",
+    "replace_cost": 511,
+    "weight": 0.25,
+    "category_id": 303,
+    "external_id": 234,
+    "source_id": 234
+  },
+  {
+    "title": "HMD-660X",
+    "description": "",
+    "sku": "",
+    "replace_cost": 525,
+    "weight": 0.25,
+    "category_id": 303,
+    "external_id": 269,
+    "source_id": 269
+  },
+  {
+    "title": "Högtalarstativ-Davids",
+    "description": "",
+    "sku": "1000498",
+    "replace_cost": 0,
+    "weight": 0,
+    "category_id": 287,
+    "external_id": 221,
+    "source_id": 221
+  },
+  {
+    "title": "Hörsnäcka genomskinlig",
+    "description": "",
+    "sku": "1000462",
+    "replace_cost": 0,
+    "weight": 0,
+    "category_id": 303,
+    "external_id": 206,
+    "source_id": 206
+  },
+  {
+    "title": "HS80M - studiomonitor",
+    "description": "",
+    "sku": "",
+    "replace_cost": 3000,
+    "weight": 11.3,
+    "category_id": 281,
+    "external_id": 128,
+    "source_id": 128
+  },
+  {
+    "title": "IEM-kit",
+    "description": "",
+    "sku": "",
+    "replace_cost": 0,
+    "weight": 16,
+    "category_id": 274,
+    "external_id": 224,
+    "source_id": 224
+  },
+  {
+    "title": "iLive iDR-32 mixrack",
+    "description": "",
+    "sku": "",
+    "replace_cost": 15000,
+    "weight": 11.5,
+    "category_id": 279,
+    "external_id": 185,
+    "source_id": 185
+  },
+  {
+    "title": "iLive T80",
+    "description": "",
+    "sku": "",
+    "replace_cost": 15000,
+    "weight": 28,
+    "category_id": 279,
+    "external_id": 184,
+    "source_id": 184
+  },
+  {
+    "title": "iMac 20\" early 2008",
+    "description": "",
+    "sku": "",
+    "replace_cost": 0,
+    "weight": 9.1,
+    "category_id": 316,
+    "external_id": 167,
+    "source_id": 167
+  },
+  {
+    "title": "Insertkabel 1m",
+    "description": "",
+    "sku": "1000192",
+    "replace_cost": 189,
+    "weight": 0,
+    "category_id": 275,
+    "external_id": 49,
+    "source_id": 49
+  },
+  {
+    "title": "iPad mini 4",
+    "description": "",
+    "sku": "",
+    "replace_cost": 0,
+    "weight": 0.3,
+    "category_id": 316,
+    "external_id": 114,
+    "source_id": 114
+  },
+  {
+    "title": "Ipadhallare 19718",
+    "description": "IpadhÃ¥llare fÃ¶r ipad mini 4",
+    "sku": "1000258",
+    "replace_cost": 411,
+    "weight": 0.3,
+    "category_id": 316,
+    "external_id": 110,
+    "source_id": 110
+  },
+  {
+    "title": "iTestMic",
+    "description": "",
+    "sku": "",
+    "replace_cost": 3500,
+    "weight": 0,
+    "category_id": 283,
+    "external_id": 115,
+    "source_id": 115
+  },
+  {
+    "title": "K518LE onear",
+    "description": "",
+    "sku": "1000170",
+    "replace_cost": 0,
+    "weight": 0,
+    "category_id": 275,
+    "external_id": 27,
+    "source_id": 27
+  },
+  {
+    "title": "KH25 video stand",
+    "description": "Max belastning på 5kg och mittspreader ger mer stabilitet till ditt stativ\r\nPanoreringsarmen går att flytta mellan höger och vänster sida av stativhuvudet\r\nTålig stativväska ingår\r\n60mm Bowl - nivellering\r\nGummifötter och spik",
+    "sku": "",
+    "replace_cost": 1990,
+    "weight": 3.2,
+    "category_id": 287,
+    "external_id": 7,
+    "source_id": 7
+  },
+  {
+    "title": "komradio-case",
+    "description": "",
+    "sku": "",
+    "replace_cost": 0,
+    "weight": 0,
+    "category_id": 273,
+    "external_id": 209,
+    "source_id": 209
+  },
+  {
+    "title": "Laddplatta",
+    "description": "",
+    "sku": "",
+    "replace_cost": 0,
+    "weight": 0,
+    "category_id": 303,
+    "external_id": 208,
+    "source_id": 208
+  },
+  {
+    "title": "LED Par56 Pro 24x3W",
+    "description": "",
+    "sku": "",
+    "replace_cost": 0,
+    "weight": 2.2,
+    "category_id": 313,
+    "external_id": 29,
+    "source_id": 29
+  },
+  {
+    "title": "LED tri 60-case",
+    "description": "",
+    "sku": "",
+    "replace_cost": 0,
+    "weight": 11,
+    "category_id": 273,
+    "external_id": 154,
+    "source_id": 154
+  },
+  {
+    "title": "LED Tripar-case",
+    "description": "",
+    "sku": "",
+    "replace_cost": 0,
+    "weight": 12.3,
+    "category_id": 273,
+    "external_id": 44,
+    "source_id": 44
+  },
+  {
+    "title": "Linebox-case",
+    "description": "",
+    "sku": "",
+    "replace_cost": 0,
+    "weight": 0,
+    "category_id": 273,
+    "external_id": 218,
+    "source_id": 218
+  },
+  {
+    "title": "Linkkabel DMX+IEC 3m",
+    "description": "",
+    "sku": "1000304",
+    "replace_cost": 400,
+    "weight": 0.05,
+    "category_id": 314,
+    "external_id": 156,
+    "source_id": 156
+  },
+  {
+    "title": "Lithium Ion Recharable Battery for SLXD",
+    "description": "Shure litiumjon uppladdningsbart batteri fÃ¶r SLXD sÃ¤ndare. Vill du veta exakt hur mycket batteritid som finns kvar? SB903 uppladdningsbara litiumjonbatterier ger dig batteritid i realtid uttryckt i timmar och minuter och batteristatus. AnvÃ¤nds til",
+    "sku": "",
+    "replace_cost": 375,
+    "weight": 0,
+    "category_id": 275,
+    "external_id": 250,
+    "source_id": 250
+  },
+  {
+    "title": "LSA28-36 Stand Adapter 28-36mm",
+    "description": "",
+    "sku": "1000285",
+    "replace_cost": 85,
+    "weight": 0,
+    "category_id": 287,
+    "external_id": 137,
+    "source_id": 137
+  },
+  {
+    "title": "LST-310 Ljusstativ",
+    "description": "",
+    "sku": "1000188",
+    "replace_cost": 449,
+    "weight": 3.2,
+    "category_id": 287,
+    "external_id": 45,
+    "source_id": 45
+  },
+  {
+    "title": "MA120 MKII",
+    "description": "",
+    "sku": "",
+    "replace_cost": 0,
+    "weight": 16.52,
+    "category_id": 281,
+    "external_id": 146,
+    "source_id": 146
+  },
+  {
+    "title": "MA150",
+    "description": "",
+    "sku": "",
+    "replace_cost": 0,
+    "weight": 25,
+    "category_id": 281,
+    "external_id": 147,
+    "source_id": 147
+  },
+  {
+    "title": "Macbook Pro",
+    "description": "",
+    "sku": "",
+    "replace_cost": 0,
+    "weight": 2.02,
+    "category_id": 316,
+    "external_id": 16,
+    "source_id": 16
+  },
+  {
+    "title": "Macbook stromadapter",
+    "description": "",
+    "sku": "1000161",
+    "replace_cost": 0,
+    "weight": 0,
+    "category_id": 316,
+    "external_id": 18,
+    "source_id": 18
+  },
+  {
+    "title": "Mavic pro",
+    "description": "4K-kamera med stabiliserad gimbal\r\nLÃÂ¤ngre rÃÂ¤ckvidd med FULL HD 1080p videostreaming\r\nFlygtid i upp till 27 minuter\r\nUndviker objekt\r\nVisuell spÃÂ¥rning",
+    "sku": "",
+    "replace_cost": 10000,
+    "weight": 0.74,
+    "category_id": 293,
+    "external_id": 229,
+    "source_id": 229
+  },
+  {
+    "title": "Mercury Helios 3S",
+    "description": "The powerful expansion solution that adds an external PCIe slot to your Thunderbolt 3 equipped laptop, space-constrained Mac, or Windows PC desktop.",
+    "sku": "",
+    "replace_cost": 2780,
+    "weight": 1.6,
+    "category_id": 294,
+    "external_id": 285,
+    "source_id": 285
+  },
+  {
+    "title": "MG16/6FX",
+    "description": "",
+    "sku": "",
+    "replace_cost": 5000,
+    "weight": 5.5,
+    "category_id": 279,
+    "external_id": 183,
+    "source_id": 183
+  },
+  {
+    "title": "Micro converter HDMI to SDI",
+    "description": "",
+    "sku": "",
+    "replace_cost": 966,
+    "weight": 0.15,
+    "category_id": 297,
+    "external_id": 178,
+    "source_id": 178
+  },
+  {
+    "title": "Micro converter SDI to HDMI",
+    "description": "",
+    "sku": "",
+    "replace_cost": 966,
+    "weight": 0.15,
+    "category_id": 297,
+    "external_id": 177,
+    "source_id": 177
+  },
+  {
+    "title": "Microphone arm",
+    "description": "",
+    "sku": "1000588",
+    "replace_cost": 0,
+    "weight": 1.8,
+    "category_id": 287,
+    "external_id": 236,
+    "source_id": 236
+  },
+  {
+    "title": "Mikrofon-case SM58",
+    "description": "",
+    "sku": "",
+    "replace_cost": 0,
+    "weight": 9,
+    "category_id": 273,
+    "external_id": 201,
+    "source_id": 201
+  },
+  {
+    "title": "Mini bodypack w. VolumeControl",
+    "description": "",
+    "sku": "",
+    "replace_cost": 600,
+    "weight": 0.12,
+    "category_id": 278,
+    "external_id": 190,
+    "source_id": 190
+  },
+  {
+    "title": "Mini DP-VGA",
+    "description": "",
+    "sku": "1000179",
+    "replace_cost": 100,
+    "weight": 0,
+    "category_id": 293,
+    "external_id": 36,
+    "source_id": 36
+  },
+  {
+    "title": "Mini tele 3,5mm hane-tele 6,3mm hona stereo",
+    "description": "",
+    "sku": "1000180",
+    "replace_cost": 0,
+    "weight": 0,
+    "category_id": 275,
+    "external_id": 37,
+    "source_id": 37
+  },
+  {
+    "title": "Minitele 3,5mm forlangning 2m stereo",
+    "description": "",
+    "sku": "1000184",
+    "replace_cost": 0,
+    "weight": 0,
+    "category_id": 275,
+    "external_id": 41,
+    "source_id": 41
+  },
+  {
+    "title": "Minuette Fresnel",
+    "description": "",
+    "sku": "",
+    "replace_cost": 800,
+    "weight": 2.2,
+    "category_id": 309,
+    "external_id": 99,
+    "source_id": 99
+  },
+  {
+    "title": "Minuette Profil",
+    "description": "",
+    "sku": "",
+    "replace_cost": 1200,
+    "weight": 3.3,
+    "category_id": 309,
+    "external_id": 98,
+    "source_id": 98
+  },
+  {
+    "title": "MKE 600 shotgun",
+    "description": "Shotgunmikrofon perfekt fÃ¶r din videokamera. Maximal dÃ¤mpning av sidoljud genom utmÃ¤rkta riktningsegenskaper. \"Low Cut\"-filter minimerar vindbrus. Mycket bra dÃ¤mpning av brus frÃ¥n sjÃ¤lva konstruktionen.",
+    "sku": "",
+    "replace_cost": 2899,
+    "weight": 0.13,
+    "category_id": 283,
+    "external_id": 9,
+    "source_id": 9
+  },
+  {
+    "title": "Monofon",
+    "description": "",
+    "sku": "1000461",
+    "replace_cost": 0,
+    "weight": 0,
+    "category_id": 303,
+    "external_id": 205,
+    "source_id": 205
+  },
+  {
+    "title": "MPX-405 4-channel dimmer",
+    "description": "",
+    "sku": "",
+    "replace_cost": 1355,
+    "weight": 2.4,
+    "category_id": 308,
+    "external_id": 57,
+    "source_id": 57
+  },
+  {
+    "title": "MSR400",
+    "description": "",
+    "sku": "",
+    "replace_cost": 0,
+    "weight": 23,
+    "category_id": 281,
+    "external_id": 144,
+    "source_id": 144
+  },
+  {
+    "title": "ODE Open DMX Ethernet",
+    "description": "",
+    "sku": "",
+    "replace_cost": 2000,
+    "weight": 0.26,
+    "category_id": 307,
+    "external_id": 94,
+    "source_id": 94
+  },
+  {
+    "title": "OKERO Dimmer 1219 12x13A",
+    "description": "12 kanalig 32A dimmer. 12x13A",
+    "sku": "",
+    "replace_cost": 0,
+    "weight": 0,
+    "category_id": 308,
+    "external_id": 278,
+    "source_id": 278
+  },
+  {
+    "title": "P2418HT touchscreen",
+    "description": "",
+    "sku": "",
+    "replace_cost": 1500,
+    "weight": 9.5,
+    "category_id": 301,
+    "external_id": 116,
+    "source_id": 116
+  },
+  {
+    "title": "PA M 12 ECO MKII",
+    "description": "",
+    "sku": "",
+    "replace_cost": 0,
+    "weight": 12.5,
+    "category_id": 281,
+    "external_id": 148,
+    "source_id": 148
+  },
+  {
+    "title": "Par 36 650W 120V",
+    "description": "",
+    "sku": "1000256",
+    "replace_cost": 0,
+    "weight": 0,
+    "category_id": 305,
+    "external_id": 108,
+    "source_id": 108
+  },
+  {
+    "title": "Par 64",
+    "description": "",
+    "sku": "",
+    "replace_cost": 0,
+    "weight": 0.5,
+    "category_id": 309,
+    "external_id": 90,
+    "source_id": 90
+  },
+  {
+    "title": "PD-332 PDU 32A",
+    "description": "",
+    "sku": "",
+    "replace_cost": 4200,
+    "weight": 8.2,
+    "category_id": 289,
+    "external_id": 80,
+    "source_id": 80
+  },
+  {
+    "title": "PG58",
+    "description": "",
+    "sku": "",
+    "replace_cost": 0,
+    "weight": 0,
+    "category_id": 283,
+    "external_id": 202,
+    "source_id": 202
+  },
+  {
+    "title": "PHS-260 MH",
+    "description": "",
+    "sku": "",
+    "replace_cost": 3000,
+    "weight": 24,
+    "category_id": 312,
+    "external_id": 66,
+    "source_id": 66
+  },
+  {
+    "title": "Pinspot",
+    "description": "",
+    "sku": "",
+    "replace_cost": 0,
+    "weight": 0,
+    "category_id": 309,
+    "external_id": 52,
+    "source_id": 52
+  },
+  {
+    "title": "Power-case",
+    "description": "",
+    "sku": "",
+    "replace_cost": 0,
+    "weight": 0,
+    "category_id": 273,
+    "external_id": 153,
+    "source_id": 153
+  },
+  {
+    "title": "Pro D2",
+    "description": "",
+    "sku": "",
+    "replace_cost": 2000,
+    "weight": 0.61,
+    "category_id": 280,
+    "external_id": 135,
+    "source_id": 135
+  },
+  {
+    "title": "Pro-Smoke Super (ZRMix) 5l",
+    "description": "",
+    "sku": "1000240",
+    "replace_cost": 0,
+    "weight": 1,
+    "category_id": 311,
+    "external_id": 95,
+    "source_id": 95
+  },
+  {
+    "title": "Rigging steel 2T 1m",
+    "description": "",
+    "sku": "1000267",
+    "replace_cost": 353,
+    "weight": 0.5,
+    "category_id": 285,
+    "external_id": 119,
+    "source_id": 119
+  },
+  {
+    "title": "Rigging steel 2T 2m",
+    "description": "",
+    "sku": "1000268",
+    "replace_cost": 622,
+    "weight": 0.5,
+    "category_id": 285,
+    "external_id": 120,
+    "source_id": 120
+  },
+  {
+    "title": "Rigging-case",
+    "description": "",
+    "sku": "",
+    "replace_cost": 0,
+    "weight": 40,
+    "category_id": 273,
+    "external_id": 197,
+    "source_id": 197
+  },
+  {
+    "title": "Ronin S",
+    "description": "De starka motorerna gÃ¶r att den Ã¤ven fungerar med tyngre kameror\r\nLÃ¤tt att se skÃ¤rmen tack vare motorernas placering\r\nFungerar med DJI Follow Focus-tillbehÃ¶r",
+    "sku": "",
+    "replace_cost": 4999,
+    "weight": 1.86,
+    "category_id": 293,
+    "external_id": 228,
+    "source_id": 228
+  },
+  {
+    "title": "RSC2",
+    "description": "De starka motorerna gÃ¶r att den Ã¤ven fungerar med tyngre kameror\r\nLÃ¤tt att se skÃ¤rmen tack vare motorernas placering\r\nFungerar med DJI Follow Focus-tillbehÃ¶r",
+    "sku": "",
+    "replace_cost": 5200,
+    "weight": 1.22,
+    "category_id": 293,
+    "external_id": 231,
+    "source_id": 231
+  },
+  {
+    "title": "Schackle 2T HC2 Black",
+    "description": "",
+    "sku": "1000275",
+    "replace_cost": 57,
+    "weight": 0.1,
+    "category_id": 285,
+    "external_id": 127,
+    "source_id": 127
+  },
+  {
+    "title": "SDI 10M",
+    "description": "",
+    "sku": "1000331",
+    "replace_cost": 639,
+    "weight": 0,
+    "category_id": 300,
+    "external_id": 181,
+    "source_id": 181
+  },
+  {
+    "title": "SDI 20M",
+    "description": "",
+    "sku": "2938007261",
+    "replace_cost": 1020,
+    "weight": 0,
+    "category_id": 300,
+    "external_id": 286,
+    "source_id": 286
+  },
+  {
+    "title": "SDI 25M",
+    "description": "",
+    "sku": "1000330",
+    "replace_cost": 1200,
+    "weight": 0,
+    "category_id": 300,
+    "external_id": 180,
+    "source_id": 180
+  },
+  {
+    "title": "SDI 2M",
+    "description": "",
+    "sku": "1000332",
+    "replace_cost": 285,
+    "weight": 0,
+    "category_id": 300,
+    "external_id": 182,
+    "source_id": 182
+  },
+  {
+    "title": "SDI 50m på vinda",
+    "description": "",
+    "sku": "1000477",
+    "replace_cost": 4000,
+    "weight": 2,
+    "category_id": 300,
+    "external_id": 214,
+    "source_id": 214
+  },
+  {
+    "title": "SDI-extenderkit",
+    "description": "",
+    "sku": "",
+    "replace_cost": 0,
+    "weight": 0,
+    "category_id": 273,
+    "external_id": 198,
+    "source_id": 198
+  },
+  {
+    "title": "Single MK II - 1 channel dimmer",
+    "description": "",
+    "sku": "",
+    "replace_cost": 1222,
+    "weight": 1.26,
+    "category_id": 308,
+    "external_id": 46,
+    "source_id": 46
+  },
+  {
+    "title": "Skarvkabel 10A/2-vags/10m",
+    "description": "",
+    "sku": "1000214",
+    "replace_cost": 251,
+    "weight": 2,
+    "category_id": 291,
+    "external_id": 70,
+    "source_id": 70
+  },
+  {
+    "title": "Skarvkabel 10A/2-vags/15m",
+    "description": "",
+    "sku": "1000213",
+    "replace_cost": 328,
+    "weight": 3,
+    "category_id": 291,
+    "external_id": 69,
+    "source_id": 69
+  },
+  {
+    "title": "Skarvkabel 10A/2-vags/20m",
+    "description": "",
+    "sku": "1000229",
+    "replace_cost": 404,
+    "weight": 5,
+    "category_id": 291,
+    "external_id": 85,
+    "source_id": 85
+  },
+  {
+    "title": "Skarvkabel 10A/2-vags/30m",
+    "description": "",
+    "sku": "1000228",
+    "replace_cost": 558,
+    "weight": 7,
+    "category_id": 291,
+    "external_id": 84,
+    "source_id": 84
+  },
+  {
+    "title": "Skarvkabel 10A/2-vags/3m",
+    "description": "",
+    "sku": "1000215",
+    "replace_cost": 144,
+    "weight": 0.6,
+    "category_id": 291,
+    "external_id": 71,
+    "source_id": 71
+  },
+  {
+    "title": "Skarvkabel 10A/2-vags/5m",
+    "description": "",
+    "sku": "1000232",
+    "replace_cost": 174,
+    "weight": 1,
+    "category_id": 291,
+    "external_id": 87,
+    "source_id": 87
+  },
+  {
+    "title": "Skarvkabel 10A/2/schuko/2/euro/3m",
+    "description": "",
+    "sku": "1000250",
+    "replace_cost": 100,
+    "weight": 0.5,
+    "category_id": 291,
+    "external_id": 102,
+    "source_id": 102
+  },
+  {
+    "title": "Skarvkabel 10A/3-vags/1,5m",
+    "description": "",
+    "sku": "1000220",
+    "replace_cost": 80,
+    "weight": 0.25,
+    "category_id": 291,
+    "external_id": 76,
+    "source_id": 76
+  },
+  {
+    "title": "Skarvkabel 10A/3-vags/10m",
+    "description": "",
+    "sku": "1100564",
+    "replace_cost": 251,
+    "weight": 2,
+    "category_id": 291,
+    "external_id": 283,
+    "source_id": 283
+  },
+  {
+    "title": "Skarvkabel 10A/3-vags/15m",
+    "description": "",
+    "sku": "1000197",
+    "replace_cost": 331,
+    "weight": 3,
+    "category_id": 291,
+    "external_id": 53,
+    "source_id": 53
+  },
+  {
+    "title": "Skarvkabel 10A/3-vags/2m",
+    "description": "",
+    "sku": "1000218",
+    "replace_cost": 132,
+    "weight": 0.5,
+    "category_id": 291,
+    "external_id": 74,
+    "source_id": 74
+  },
+  {
+    "title": "Skarvkabel 10A/3-vags/30m",
+    "description": "",
+    "sku": "1000247",
+    "replace_cost": 561,
+    "weight": 7,
+    "category_id": 291,
+    "external_id": 100,
+    "source_id": 100
+  }
+]

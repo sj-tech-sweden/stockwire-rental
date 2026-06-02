@@ -202,8 +202,12 @@ export const useInventoryStore = defineStore('inventory', () => {
     return data
   }
 
-  async function bulkDeleteProducts(ids) {
-    const { data } = await api.post('/api/v1/inventory/products/bulk-delete', { ids })
+  async function bulkDeleteProducts(ids, options = {}) {
+    const { data } = await api.post('/api/v1/inventory/products/bulk-delete', { ids }, {
+      params: {
+        delete_linked_devices: !!options.deleteLinkedDevices,
+      },
+    })
     await fetchAll()
     return data
   }

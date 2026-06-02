@@ -1060,6 +1060,13 @@
               <div class="col-12 col-md-4"><q-select v-model="deviceForm.location_zone_id" :options="locationSelectOptions" label="Location" outlined dense emit-value map-options clearable /></div>
               <div class="col-12 col-md-4"><q-select v-model="deviceForm.case_device_id" :options="caseDeviceOptions" label="Inside case" outlined dense emit-value map-options clearable /></div>
               <div class="col-12 col-md-4"><q-input v-model="deviceForm.purchase_date" type="date" label="Purchase date" outlined dense @update:model-value="onPurchaseDateChanged" /></div>
+              <div class="col-12 col-md-4"><q-input v-model.number="deviceForm.purchase_price" type="number" step="0.01" label="Purchase price" outlined dense /></div>
+              <div class="col-12 col-md-4"><q-input v-model="deviceForm.purchased_from" label="Purchased from" outlined dense /></div>
+              <div class="col-12 col-md-4"><q-input v-model.number="deviceForm.sold_price" type="number" step="0.01" label="Sold price" outlined dense /></div>
+              <div class="col-12 col-md-4"><q-input v-model="deviceForm.finance_upto" label="Finance up to" outlined dense /></div>
+              <div class="col-12 col-md-4"><q-input v-model="deviceForm.finance_company" label="Finance company" outlined dense /></div>
+              <div class="col-12 col-md-4"><q-input v-model="deviceForm.finance_ref" label="Finance ref" outlined dense /></div>
+              <div class="col-12 col-md-4"><q-input v-model="deviceForm.pre_prep" label="Pre-prep" outlined dense /></div>
               <div class="col-12 col-md-4"><q-input v-model="deviceForm.warranty_end_date" type="date" label="Warranty end" outlined dense @update:model-value="onWarrantyEndDateChanged" /></div>
               <div class="col-12 col-md-4"><q-input v-model="deviceForm.retire_date" type="date" label="Retire date" outlined dense /></div>
               <div class="col-12"><q-input v-model="deviceForm.notes" type="textarea" autogrow label="Notes" outlined dense /></div>
@@ -1629,6 +1636,18 @@
             <div class="col-12">
               <q-btn flat dense color="secondary" icon="build" label="Create maintenance task" @click="openCreateMaintenance('task', deviceInfoTarget?.id)" />
               <q-btn flat dense color="positive" icon="event_repeat" label="Create maintenance schedule" class="q-ml-xs" @click="openCreateMaintenance('schedule', deviceInfoTarget?.id)" />
+            </div>
+            <div class="col-12 col-md-6 text-caption text-grey-8">
+              Purchase: {{ deviceInfoTarget?.purchase_price == null ? '-' : formatMoney(deviceInfoTarget?.purchase_price) }} from {{ deviceInfoTarget?.purchased_from || '-' }}
+            </div>
+            <div class="col-12 col-md-6 text-caption text-grey-8">
+              Sold: {{ deviceInfoTarget?.sold_price == null ? '-' : formatMoney(deviceInfoTarget?.sold_price) }} · Finance up to: {{ deviceInfoTarget?.finance_upto || '-' }}
+            </div>
+            <div class="col-12 col-md-6 text-caption text-grey-8">
+              Finance company: {{ deviceInfoTarget?.finance_company || '-' }} · Ref: {{ deviceInfoTarget?.finance_ref || '-' }}
+            </div>
+            <div class="col-12 col-md-6 text-caption text-grey-8">
+              Pre-prep: {{ deviceInfoTarget?.pre_prep || '-' }}
             </div>
           </div>
 
@@ -2242,6 +2261,22 @@
             </template>
           </q-table>
 
+          <div class="q-mb-sm row items-center q-gutter-sm">
+            <div class="col-auto">
+              <q-btn size="sm" flat label="Load HireHop preset" @click="loadHirehopPreset" />
+            </div>
+            <div class="col-auto">
+              <q-toggle dense v-model="importUseServer" label="Use server import" />
+            </div>
+            <div class="col-auto">
+              <q-toggle dense v-model="updateExistingDevices" label="Update existing devices" />
+            </div>
+          </div>
+
+          <div class="text-caption text-grey-7 q-mb-md">
+            HireHop imports require server import for serial numbers, barcodes, quantity expansion, and device metadata. This is enabled automatically when a HireHop file or preset is detected.
+          </div>
+
           <div v-if="importPreviewRows.length" class="q-mt-md">
             <div class="text-subtitle2 q-mb-xs">Preview (first 10 transformed rows)</div>
             <q-table
@@ -2296,6 +2331,7 @@ import {
   isRentalProduct
 } from '../utils/inventory-overview'
 import { slugify } from 'src/utils/slugify'
+import { api } from '../boot/axios'
 
 const $q = useQuasar()
 const { t } = useI18n()
@@ -4054,7 +4090,7 @@ const deviceFieldCaptureModeButtons = computed(() => {
 const emptyDeviceForm = () => ({
   product_id: null, asset_tag: '', serial_number: '', barcode: '', qr_code: '', rfid: '',
   location_zone_id: null, case_device_id: null, status: 'available', condition: 'good',
-  purchase_date: '', warranty_end_date: '', retire_date: '', usage_hours: null, notes: '',
+  purchase_date: '', purchase_price: null, purchased_from: '', sold_price: null, finance_upto: '', finance_company: '', finance_ref: '', pre_prep: '', warranty_end_date: '', retire_date: '', usage_hours: null, notes: '',
 })
 const deviceForm = ref(emptyDeviceForm())
 
@@ -4354,6 +4390,13 @@ function openEditDevice(device) {
     status: device.status ?? 'available',
     condition: device.condition ?? 'good',
     purchase_date: device.purchase_date || '',
+    purchase_price: device.purchase_price ?? null,
+    purchased_from: device.purchased_from ?? '',
+    sold_price: device.sold_price ?? null,
+    finance_upto: device.finance_upto ?? '',
+    finance_company: device.finance_company ?? '',
+    finance_ref: device.finance_ref ?? '',
+    pre_prep: device.pre_prep ?? '',
     warranty_end_date: device.warranty_end_date || '',
     retire_date: device.retire_date || '',
     usage_hours: device.usage_hours ?? null,
@@ -4423,6 +4466,13 @@ async function saveDevice() {
       status: deviceForm.value.status,
       condition: deviceForm.value.condition,
       purchase_date: normalizeOptionalDate(deviceForm.value.purchase_date),
+      purchase_price: deviceForm.value.purchase_price === '' || deviceForm.value.purchase_price === null || deviceForm.value.purchase_price === undefined ? null : Number(deviceForm.value.purchase_price),
+      purchased_from: deviceForm.value.purchased_from || null,
+      sold_price: deviceForm.value.sold_price === '' || deviceForm.value.sold_price === null || deviceForm.value.sold_price === undefined ? null : Number(deviceForm.value.sold_price),
+      finance_upto: deviceForm.value.finance_upto || null,
+      finance_company: deviceForm.value.finance_company || null,
+      finance_ref: deviceForm.value.finance_ref || null,
+      pre_prep: deviceForm.value.pre_prep || null,
       warranty_end_date: normalizeOptionalDate(deviceForm.value.warranty_end_date),
       retire_date: normalizeOptionalDate(deviceForm.value.retire_date),
       usage_hours: deviceForm.value.usage_hours,
@@ -4756,11 +4806,11 @@ async function saveBulkProducts() {
 async function runBulkDeleteProducts() {
   const ids = selectedRowIds(selectedProducts.value)
   if (!ids.length) return
-  if (!window.confirm(`Delete ${ids.length} selected products? Products linked to devices will be skipped.`)) return
+  if (!window.confirm(`Delete ${ids.length} selected products? All linked devices and job requirements for these products will also be deleted.`)) return
 
   saving.value = true
   try {
-    const result = await store.bulkDeleteProducts(ids)
+    const result = await store.bulkDeleteProducts(ids, { deleteLinkedDevices: true })
     selectedProducts.value = []
     $q.notify({ type: 'positive', message: `Products deleted: ${result?.deleted || 0}, skipped: ${result?.skipped || 0}` })
   } catch (error) {
@@ -5275,6 +5325,8 @@ const importFile = ref(null)
 const importRows = ref([])
 const importSourceKeys = ref([])
 const importMapping = ref({})
+const importUseServer = ref(false)
+const updateExistingDevices = ref(false)
 
 // bulk-delete dialog
 const bulkDeleteDialogOpen = ref(false)
@@ -5342,6 +5394,13 @@ const importFieldConfigs = {
     { targetField: 'status', label: 'Status', required: false },
     { targetField: 'condition', label: 'Condition', required: false },
     { targetField: 'purchase_date', label: 'Purchase Date', required: false },
+    { targetField: 'purchase_price', label: 'Purchase Price', required: false },
+    { targetField: 'purchased_from', label: 'Purchased From', required: false },
+    { targetField: 'sold_price', label: 'Sold Price', required: false },
+    { targetField: 'finance_upto', label: 'Finance Up To', required: false },
+    { targetField: 'finance_company', label: 'Finance Company', required: false },
+    { targetField: 'finance_ref', label: 'Finance Reference', required: false },
+    { targetField: 'pre_prep', label: 'Pre-prep', required: false },
     { targetField: 'warranty_end_date', label: 'Warranty End Date', required: false },
     { targetField: 'retire_date', label: 'Retire Date', required: false },
     { targetField: 'usage_hours', label: 'Usage Hours', required: false },
@@ -5373,6 +5432,13 @@ const importFieldConfigs = {
     { targetField: 'status', label: 'Status', required: false },
     { targetField: 'condition', label: 'Condition', required: false },
     { targetField: 'purchase_date', label: 'Purchase Date', required: false },
+    { targetField: 'purchase_price', label: 'Purchase Price', required: false },
+    { targetField: 'purchased_from', label: 'Purchased From', required: false },
+    { targetField: 'sold_price', label: 'Sold Price', required: false },
+    { targetField: 'finance_upto', label: 'Finance Up To', required: false },
+    { targetField: 'finance_company', label: 'Finance Company', required: false },
+    { targetField: 'finance_ref', label: 'Finance Reference', required: false },
+    { targetField: 'pre_prep', label: 'Pre-prep', required: false },
     { targetField: 'warranty_end_date', label: 'Warranty End Date', required: false },
     { targetField: 'retire_date', label: 'Retire Date', required: false },
     { targetField: 'usage_hours', label: 'Usage Hours', required: false },
@@ -5460,6 +5526,81 @@ function resetImportMapping() {
   importMapping.value = map
 }
 
+function isLikelyHirehopRows(rows) {
+  if (!Array.isArray(rows)) return false
+  return rows.some(row =>
+    Array.isArray(row?.serialnumbers) ||
+    (row?.ID !== undefined && (row?.TITLE !== undefined || row?.REPLACE_COST !== undefined || row?.serialnumbers !== undefined))
+  )
+}
+
+async function loadHirehopPreset() {
+  const fallbackProductPreset = {
+    sku: 'ID',
+    name: 'TITLE',
+    title: 'TITLE',
+    description: 'DESCRIPTION',
+    brand: 'fields.tillverkare.value',
+    manufacturer: 'fields.tillverkare.value',
+    replace_cost: 'REPLACE_COST',
+    weight: 'WEIGHT',
+    category_id: 'CATEGORY_ID',
+    barcode: 'BARCODE',
+    height_cm: 'HEIGHT',
+    width_cm: 'WIDTH',
+    depth_cm: 'LENGTH',
+  }
+
+  let preset = {}
+  try {
+    const res = await api.get('/api/v1/inventory/import/presets/hirehop')
+    preset = res.data || {}
+  } catch (err) {
+    // Keep import usable even when preset endpoint is unavailable.
+    preset = {}
+  }
+
+  // Use product-only mode for frontend preview; server handles device/serialnumber expansion
+  importEntityType.value = 'product'
+  importUseServer.value = true
+  resetImportMapping()
+
+  // Merge server preset over fallback so required keys are always present.
+  const p = { ...fallbackProductPreset, ...(preset.product || {}) }
+  const map = { ...importMapping.value }
+
+  // Directly assign: map[stockwireField] = hirehopSourceKey
+  map['sku'] = p.sku || p.external_id || 'ID'
+  map['name'] = p.name || p.title || 'TITLE'
+  map['brand'] = p.brand || 'fields.tillverkare.value'
+  map['manufacturer'] = p.manufacturer || 'fields.tillverkare.value'
+  map['description'] = p.description || 'DESCRIPTION'
+  map['weight_kg'] = p.weight || 'WEIGHT'
+  map['category_id'] = p.category_id || 'CATEGORY_ID'
+  map['replace_cost'] = p.replace_cost || 'REPLACE_COST'
+  map['daily_rate'] = p.daily_rate || 'PRICE1'
+  map['rental_price'] = p.rental_price || 'PRICE2'
+  map['barcode'] = p.barcode || 'BARCODE'
+  map['height_cm'] = p.height_cm || 'HEIGHT'
+  map['width_cm'] = p.width_cm || 'WIDTH'
+  map['depth_cm'] = p.depth_cm || 'LENGTH'
+
+  importMapping.value = map
+  // importSourceKeys will be refreshed when user picks a file; seed with known HireHop keys
+  importSourceKeys.value = [
+    'ID', 'TITLE', 'DESCRIPTION', 'BARCODE', 'REPLACE_COST', 'WEIGHT', 'CATEGORY_ID',
+    'fields.tillverkare.value',
+    'HEIGHT', 'WIDTH', 'LENGTH',
+    'PRICE1', 'PRICE2', 'STATUS', 'LOCATION', 'MEMO', 'PART_NUMBER',
+  ]
+
+  if (preset.product) {
+    $q.notify({ type: 'positive', message: 'HireHop preset loaded' })
+  } else {
+    $q.notify({ type: 'warning', message: 'HireHop preset endpoint unavailable; loaded built-in preset' })
+  }
+}
+
 async function parseImportFile(file) {
   importDialogError.value = ''
   importRows.value = []
@@ -5469,16 +5610,24 @@ async function parseImportFile(file) {
   try {
     const text = await file.text()
     const rows = parseImportRows(text, file?.name || '')
+    if (isLikelyHirehopRows(rows)) {
+      importUseServer.value = true
+    }
     const detectedTypes = Array.from(new Set(rows.slice(0, 100).map(row => resolveImportEntityType(row)).filter(Boolean)))
     if (detectedTypes.length > 1 && detectedTypes.includes('product') && detectedTypes.includes('device')) {
       importEntityType.value = 'mixed'
-      resetImportMapping()
+      // Only reset mapping if the current mapping is still the default (key==value),
+      // so a loaded preset isn't overwritten when the user selects a file.
+      const isDefaultMap = Object.keys(importMapping.value || {}).length > 0 && Object.entries(importMapping.value).every(([k, v]) => v === k)
+      if (isDefaultMap) resetImportMapping()
     }
     importRows.value = rows
     importSourceKeys.value = collectImportSourceKeys(rows)
     const map = { ...importMapping.value }
     for (const field of importFieldConfigs[importEntityType.value] || []) {
-      if (!map[field.targetField]) {
+      // Only auto-fill fields that are still pointing at themselves (not set by a preset)
+      const currentVal = map[field.targetField]
+      if (!currentVal || currentVal === field.targetField) {
         map[field.targetField] = importSourceKeys.value.includes(field.targetField) ? field.targetField : null
       }
     }
@@ -5530,6 +5679,9 @@ function resolveZoneId(value) {
 
 function resolveRowEntityType(rawRow) {
   if (importEntityType.value !== 'mixed') return importEntityType.value
+  // If the JSON row looks like a HireHop product (has serialnumbers array), prefer product
+  if (rawRow && (Array.isArray(rawRow.serialnumbers) || Array.isArray(getImportValueBySourceKey(rawRow, 'serialnumbers')))) return 'product'
+
   const entityTypeSourceKey = importMapping.value.entity_type
   const mappedEntityValue = entityTypeSourceKey ? getImportValueBySourceKey(rawRow, entityTypeSourceKey) : undefined
   const resolved = resolveImportEntityType({ ...rawRow, entity_type: mappedEntityValue }, null)
@@ -5600,6 +5752,36 @@ async function runJsonImport() {
 
   importing.value = true
   importDialogError.value = ''
+  // Server-side import: upload file and let backend process (supports update_existing)
+  if (importUseServer.value) {
+    if (!importFile.value) {
+      importDialogError.value = 'No file selected for server import'
+      importing.value = false
+      return
+    }
+    if (!isLikelyHirehopRows(importRows.value)) {
+      importDialogError.value = 'Server import is only supported for HireHop JSON files. Disable "Use server import" to import other file types.'
+      importing.value = false
+      return
+    }
+    try {
+      const fd = new FormData()
+      fd.append('file', importFile.value)
+      const res = await api.post('/api/v1/inventory/import', fd, { params: { preset: 'hirehop', dry_run: false, update_existing: updateExistingDevices.value } })
+      await loadAll()
+      importDialogOpen.value = false
+      importing.value = false
+      const createdProducts = res.data.created_products || 0
+      const createdDevices = res.data.created_devices || 0
+      const updatedDevices = res.data.updated_devices || 0
+      $q.notify({ type: 'positive', message: `Import completed. Created products: ${createdProducts}, created devices: ${createdDevices}, updated devices: ${updatedDevices}` })
+      return
+    } catch (err) {
+      importDialogError.value = err?.response?.data?.detail || err?.message || 'Server import failed'
+      importing.value = false
+      return
+    }
+  }
   let created = 0
   let skipped = 0
   let unknownEntityTypeCount = 0

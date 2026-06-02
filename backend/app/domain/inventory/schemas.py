@@ -68,6 +68,7 @@ class ProductBase(BaseModel):
     maintenance_interval_days: int | None = None
     power_consumption_watts: Decimal | None = None
     daily_rate: Decimal = Decimal("0.00")
+    replace_cost: Decimal | None = None
 
 
 class ProductCreate(ProductBase):
@@ -95,6 +96,7 @@ class ProductUpdate(BaseModel):
     maintenance_interval_days: int | None = None
     power_consumption_watts: Decimal | None = None
     daily_rate: Decimal | None = None
+    replace_cost: Decimal | None = None
 
 
 class ProductBulkUpdateRequest(BaseModel):
@@ -149,6 +151,13 @@ class DeviceBase(BaseModel):
     status: str = "available"
     condition: str = "good"
     purchase_date: date | None = None
+    purchase_price: Decimal | None = None
+    purchased_from: str | None = None
+    sold_price: Decimal | None = None
+    finance_upto: str | None = None
+    finance_company: str | None = None
+    finance_ref: str | None = None
+    pre_prep: str | None = None
     warranty_end_date: date | None = None
     retire_date: date | None = None
     usage_hours: Decimal | None = None
@@ -178,9 +187,17 @@ class DeviceUpdate(BaseModel):
     qr_code: str | None = None
     rfid: str | None = None
     location_zone_id: int | None = None
+    case_device_id: int | None = None
     status: str | None = None
     condition: str | None = None
     purchase_date: date | None = None
+    purchase_price: Decimal | None = None
+    purchased_from: str | None = None
+    sold_price: Decimal | None = None
+    finance_upto: str | None = None
+    finance_company: str | None = None
+    finance_ref: str | None = None
+    pre_prep: str | None = None
     warranty_end_date: date | None = None
     retire_date: date | None = None
     usage_hours: Decimal | None = None
