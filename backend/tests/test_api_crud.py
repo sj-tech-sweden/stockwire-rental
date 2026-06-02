@@ -1008,6 +1008,14 @@ def test_inventory_defect_reports_comments_timeline(client):
     assert updated_report.status_code == 200
     assert updated_report.json()["status"] == "in_progress"
 
+    for field in ("device_id", "title", "status", "severity"):
+        invalid_null_update = client.put(
+            f"/api/v1/inventory/defect-reports/{report_id}",
+            json={field: None},
+        )
+        assert invalid_null_update.status_code == 400
+        assert invalid_null_update.json()["detail"] == f"{field} cannot be null"
+
     created_comment = client.post(
         f"/api/v1/inventory/defect-reports/{report_id}/comments",
         json={"comment": "  Reproduced issue at 60% master volume  "},
@@ -1022,6 +1030,13 @@ def test_inventory_defect_reports_comments_timeline(client):
     )
     assert updated_comment.status_code == 200
     assert updated_comment.json()["comment"] == "Reproduced issue at 65% master volume"
+
+    invalid_comment_null = client.put(
+        f"/api/v1/inventory/defect-comments/{comment_id}",
+        json={"comment": None},
+    )
+    assert invalid_comment_null.status_code == 400
+    assert invalid_comment_null.json()["detail"] == "comment is required"
 
     report_comments = client.get(f"/api/v1/inventory/defect-reports/{report_id}/comments")
     assert report_comments.status_code == 200
@@ -1106,6 +1121,44 @@ def test_inventory_maintenance_comments_crud(client):
     listed_after_delete = client.get(f"/api/v1/inventory/maintenance/{maintenance_id}/comments")
     assert listed_after_delete.status_code == 200
     assert listed_after_delete.json() == []
+
+
+def test_storage_upload_supports_defect_report_entity(client):
+    product = client.post(
+        "/api/v1/inventory/products",
+        json={"sku": "DEF-UP-01", "name": "Defect Upload Product", "daily_rate": "20.00"},
+    )
+    assert product.status_code == 200
+
+    device = client.post(
+        "/api/v1/inventory/devices",
+        json={
+            "product_id": product.json()["id"],
+            "asset_tag": "DEF-UP-001",
+            "status": "in_service",
+            "condition": "good",
+        },
+    )
+    assert device.status_code == 200
+
+    report = client.post(
+        "/api/v1/inventory/defect-reports",
+        json={"device_id": device.json()["id"], "title": "Upload check"},
+    )
+    assert report.status_code == 200
+
+    uploaded = client.post(
+        "/api/v1/storage/files",
+        data={
+            "entity_type": "defect_report",
+            "entity_id": str(report.json()["id"]),
+            "category": "photo",
+        },
+        files={"file": ("defect.jpg", b"fake-image-bytes", "image/jpeg")},
+    )
+    assert uploaded.status_code == 201
+    assert uploaded.json()["entity_type"] == "defect_report"
+    assert uploaded.json()["entity_id"] == report.json()["id"]
 
 
 def test_settings_version_check_updates_strips_single_v_prefix(client):

@@ -1695,8 +1695,9 @@ def update_defect_report(
         raise HTTPException(status_code=404, detail="Defect report not found")
 
     updates = payload.model_dump(exclude_unset=True)
-    if "device_id" in updates and updates["device_id"] is None:
-        raise HTTPException(status_code=400, detail="device_id cannot be null")
+    for required_field in ("device_id", "title", "status", "severity"):
+        if required_field in updates and updates[required_field] is None:
+            raise HTTPException(status_code=400, detail=f"{required_field} cannot be null")
     _validate_defect_report_payload(
         db,
         {
@@ -1778,6 +1779,8 @@ def update_defect_comment(
         raise HTTPException(status_code=404, detail="Defect comment not found")
     updates = payload.model_dump(exclude_unset=True)
     if "comment" in updates:
+        if updates["comment"] is None:
+            raise HTTPException(status_code=400, detail="comment is required")
         comment_text = str(updates["comment"]).strip()
         if not comment_text:
             raise HTTPException(status_code=400, detail="comment is required")
