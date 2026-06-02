@@ -16,6 +16,7 @@ const requiredKeys = [
   'linkedDevices',
   'deviceStatusCondition',
   'deviceStatusConditionLocation',
+  'caseLocation',
   'noDevicesLinkedToProduct',
   'linkedJobs',
   'requiredPicked',

@@ -1971,7 +1971,9 @@
                   {{ t('inventory.infoDialogs.deviceStatusConditionLocation', {
                     status: row.status,
                     condition: row.condition || t('inventory.infoDialogs.notAvailable'),
-                    location: row.case_asset_tag ? `Case: ${row.case_asset_tag}` : (zoneNameById(row.location_zone_id) || t('inventory.infoDialogs.unassigned')),
+                    location: row.case_asset_tag
+                      ? t('inventory.infoDialogs.caseLocation', { assetTag: row.case_asset_tag })
+                      : (zoneNameById(row.location_zone_id) || t('inventory.infoDialogs.unassigned')),
                   }) }}
                 </q-item-label>
               </q-item-section>

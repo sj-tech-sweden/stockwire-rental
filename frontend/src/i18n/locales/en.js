@@ -779,6 +779,7 @@ export default {
       linkedDevices: 'Linked Devices',
       deviceStatusCondition: 'Status: {status} · Condition: {condition}',
       deviceStatusConditionLocation: 'Status: {status} · Condition: {condition} · Location: {location}',
+      caseLocation: 'Case: {assetTag}',
       noDevicesLinkedToProduct: 'No devices linked to this product.',
       linkedJobs: 'Linked Jobs',
       requiredPicked: 'Required: {required} · Picked: {picked}',
