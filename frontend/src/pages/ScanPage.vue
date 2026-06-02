@@ -252,6 +252,14 @@
             :loading="saving"
             @click="markLookupDeviceNotFunctioning"
           />
+          <q-btn
+            color="warning"
+            unelevated
+            icon="warning"
+            :label="t('scan.markAsDefective')"
+            :loading="saving"
+            @click="openDefectDialog"
+          />
         </div>
 
         <q-card v-if="scanAction === 'lookup' && lastLookupResult" flat bordered class="q-mt-md lookup-details-card">
@@ -497,6 +505,72 @@
           </q-card-section>
         </q-card>
       </q-dialog>
+
+      <q-dialog v-model="defectDialogOpen" persistent>
+        <q-card style="min-width: 340px; max-width: 500px; width: 100%">
+          <q-card-section class="row items-center q-pb-none">
+            <div class="text-h6">{{ t('scan.defectReportDialogTitle') }}</div>
+            <q-space />
+            <q-btn icon="close" flat round dense v-close-popup :disable="defectSaving" />
+          </q-card-section>
+          <q-card-section class="q-pt-sm">
+            <q-input
+              v-model="defectTitle"
+              :label="t('scan.defectTitleLabel')"
+              :placeholder="t('scan.defectTitlePlaceholder')"
+              outlined
+              dense
+              class="q-mb-sm"
+              :rules="[v => !!v?.trim() || t('scan.required')]"
+              ref="defectTitleRef"
+            />
+            <q-input
+              v-model="defectDescription"
+              :label="t('scan.defectDescriptionLabel')"
+              :placeholder="t('scan.defectDescriptionPlaceholder')"
+              outlined
+              dense
+              type="textarea"
+              autogrow
+              class="q-mb-sm"
+            />
+            <q-select
+              v-model="defectSeverity"
+              :label="t('scan.defectSeverityLabel')"
+              :options="defectSeverityOptions"
+              outlined
+              dense
+              emit-value
+              map-options
+              class="q-mb-sm"
+            />
+            <q-file
+              v-model="defectFiles"
+              :label="t('scan.defectPhotosLabel')"
+              outlined
+              dense
+              multiple
+              accept="image/*"
+              clearable
+            >
+              <template #prepend>
+                <q-icon name="photo_camera" />
+              </template>
+            </q-file>
+          </q-card-section>
+          <q-card-actions align="right" class="q-pb-md q-pr-md">
+            <q-btn flat :label="t('app.actions.cancel')" v-close-popup :disable="defectSaving" />
+            <q-btn
+              color="warning"
+              unelevated
+              icon="warning"
+              :label="t('scan.markAsDefective')"
+              :loading="defectSaving"
+              @click="submitDefectReport"
+            />
+          </q-card-actions>
+        </q-card>
+      </q-dialog>
     </div>
   </q-page>
 </template>
@@ -506,6 +580,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useQuasar } from 'quasar'
 import { useI18n } from 'vue-i18n'
 
+import { api } from '../boot/axios'
 import { useInventoryStore } from '../stores/inventory'
 import { useJobsStore } from '../stores/jobs'
 import { useCompactGrid } from '../composables/useCompactGrid'
@@ -548,6 +623,14 @@ const nfcRunning = ref(false)
 const nfcError = ref('')
 let nfcReader = null
 const showShortcutHelp = ref(false)
+
+const defectDialogOpen = ref(false)
+const defectTitle = ref('')
+const defectDescription = ref('')
+const defectSeverity = ref('medium')
+const defectFiles = ref(null)
+const defectSaving = ref(false)
+const defectTitleRef = ref(null)
 
 const supportsCamera = computed(() => {
   return typeof navigator !== 'undefined'
@@ -1295,6 +1378,80 @@ async function markLookupDeviceNotFunctioning() {
     scanResultSuccess.value = false
   } finally {
     saving.value = false
+  }
+}
+
+const defectSeverityOptions = computed(() => [
+  { label: t('scan.defectSeverityLow'), value: 'low' },
+  { label: t('scan.defectSeverityMedium'), value: 'medium' },
+  { label: t('scan.defectSeverityHigh'), value: 'high' },
+  { label: t('scan.defectSeverityCritical'), value: 'critical' },
+])
+
+function openDefectDialog() {
+  const deviceId = maintenanceTargetDeviceId.value
+  if (!deviceId) {
+    scanResultMessage.value = t('scan.scanDeviceFirst')
+    scanResultSuccess.value = false
+    return
+  }
+  defectTitle.value = ''
+  defectDescription.value = ''
+  defectSeverity.value = 'medium'
+  defectFiles.value = null
+  defectDialogOpen.value = true
+}
+
+async function submitDefectReport() {
+  const deviceId = maintenanceTargetDeviceId.value
+  if (!deviceId) return
+  const title = String(defectTitle.value || '').trim()
+  if (!title) {
+    if (defectTitleRef.value) defectTitleRef.value.validate()
+    return
+  }
+
+  defectSaving.value = true
+  try {
+    const { data: report } = await api.post('/api/v1/inventory/defect-reports', {
+      device_id: deviceId,
+      title,
+      description: String(defectDescription.value || '').trim() || null,
+      severity: defectSeverity.value || 'medium',
+    })
+
+    const files = Array.isArray(defectFiles.value)
+      ? defectFiles.value
+      : defectFiles.value
+        ? [defectFiles.value]
+        : []
+
+    let uploadFailed = false
+    for (const file of files) {
+      try {
+        const formData = new FormData()
+        formData.append('file', file)
+        formData.append('entity_type', 'defect_report')
+        formData.append('entity_id', String(report.id))
+        formData.append('category', 'photo')
+        await api.post('/api/v1/storage/files', formData, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        })
+      } catch {
+        uploadFailed = true
+      }
+    }
+
+    defectDialogOpen.value = false
+    scanResultMessage.value = uploadFailed
+      ? t('scan.defectPhotoUploadFailed')
+      : t('scan.defectReportCreated')
+    scanResultSuccess.value = true
+  } catch (error) {
+    scanResultMessage.value = error?.response?.data?.detail || t('scan.defectReportFailed')
+    scanResultSuccess.value = false
+  } finally {
+    defectSaving.value = false
   }
 }
 
