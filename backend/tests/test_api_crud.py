@@ -515,7 +515,7 @@ def test_jobs_and_finance_crud(client):
     assert summary.status_code == 200
     summary_json = summary.json()
     expected_products_value = 200.0  # owned stock product only; rental-typed product is excluded
-    expected_devices_value = 4500.0  # 2000 purchase_price + 2500 replace_cost fallback; in_use device is excluded
+    expected_devices_value = 4500.0  # available device 2000 purchase_price + available device 2500 replace_cost fallback; in_use 9999 device is excluded
     assert summary_json["total_transactions"] == 2
     assert summary_json["completed_count"] == 2
     assert float(summary_json["warehouse_products_value"]) == expected_products_value
