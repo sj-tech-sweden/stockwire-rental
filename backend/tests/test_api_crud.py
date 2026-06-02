@@ -316,12 +316,92 @@ def test_customers_and_venues_crud(client):
 
 
 def test_jobs_and_finance_crud(client):
+    rental_supplier_product = client.post(
+        "/api/v1/inventory/products",
+        json={
+            "sku": "RNT-01",
+            "name": "Supplier Rental Fixture",
+            "category": "lighting",
+            "daily_rate": "100.00",
+            "replace_cost": "999.00",
+            "is_rental_product": True,
+            "eventory_available_qty": 10,
+        },
+    )
+    assert rental_supplier_product.status_code == 200
+
+    rental_type_product = client.post(
+        "/api/v1/inventory/products",
+        json={
+            "sku": "RNT-02",
+            "name": "Rental Typed Fixture",
+            "category": "lighting",
+            "product_type": "rental",
+            "daily_rate": "125.00",
+            "replace_cost": "777.00",
+        },
+    )
+    assert rental_type_product.status_code == 200
+
+    stock_product = client.post(
+        "/api/v1/inventory/products",
+        json={
+            "sku": "CBL-01",
+            "name": "Cable",
+            "category": "accessories",
+            "daily_rate": "20.00",
+            "replace_cost": "200.00",
+        },
+    )
+    assert stock_product.status_code == 200
+    assert float(stock_product.json()["replace_cost"]) == 200.0
+
     product = client.post(
         "/api/v1/inventory/products",
-        json={"sku": "LGT-01", "name": "Light", "category": "lighting", "daily_rate": "250.00"},
+        json={"sku": "LGT-01", "name": "Light", "category": "lighting", "daily_rate": "250.00", "replace_cost": "2500.00"},
     )
     assert product.status_code == 200
     product_id = product.json()["id"]
+    assert float(product.json()["replace_cost"]) == 2500.0
+
+    zone = client.post(
+        "/api/v1/inventory/zones",
+        json={"code": "FIN-ZONE-1", "name": "Finance Zone", "zone_type": "warehouse", "sort_order": 0, "is_active": True},
+    )
+    assert zone.status_code == 200
+
+    device = client.post(
+        "/api/v1/inventory/devices",
+        json={
+            "product_id": product_id,
+            "asset_tag": "LGT-01-001",
+            "location_zone_id": zone.json()["id"],
+            "purchase_price": "2000.00",
+        },
+    )
+    assert device.status_code == 200
+
+    device_without_purchase_price = client.post(
+        "/api/v1/inventory/devices",
+        json={
+            "product_id": product_id,
+            "asset_tag": "LGT-01-002",
+            "location_zone_id": zone.json()["id"],
+        },
+    )
+    assert device_without_purchase_price.status_code == 200
+
+    in_use_device = client.post(
+        "/api/v1/inventory/devices",
+        json={
+            "product_id": product_id,
+            "asset_tag": "LGT-01-003",
+            "location_zone_id": zone.json()["id"],
+            "purchase_price": "9999.00",
+            "status": "in_use",
+        },
+    )
+    assert in_use_device.status_code == 200
 
     customer = client.post(
         "/api/v1/customers",
@@ -432,8 +512,14 @@ def test_jobs_and_finance_crud(client):
 
     summary = client.get("/api/v1/finance/summary")
     assert summary.status_code == 200
-    assert summary.json()["total_transactions"] == 2
-    assert summary.json()["completed_count"] == 2
+    summary_json = summary.json()
+    expected_products_value = 200.0  # owned stock product only; rental-typed product is excluded
+    expected_devices_value = 4500.0  # available device 2000 purchase_price + available device 2500 replace_cost fallback; in_use 9999 device is excluded
+    assert summary_json["total_transactions"] == 2
+    assert summary_json["completed_count"] == 2
+    assert float(summary_json["warehouse_products_value"]) == expected_products_value
+    assert float(summary_json["warehouse_devices_value"]) == expected_devices_value
+    assert float(summary_json["warehouse_total_value"]) == expected_products_value + expected_devices_value
 
     insights = client.get("/api/v1/finance/job-insights")
     assert insights.status_code == 200

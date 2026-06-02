@@ -111,6 +111,36 @@
       </div>
     </div>
 
+    <div class="row q-col-gutter-sm q-mb-md">
+      <div class="col-12 col-sm-6 col-lg-4">
+        <q-card flat bordered class="ec-card">
+          <q-card-section>
+            <div class="text-caption text-grey-7">{{ t('finance.warehouseProductsValue') }}</div>
+            <div class="text-h6">{{ formatMoney(summary.warehouse_products_value) }}</div>
+            <div class="text-caption text-grey-6">{{ t('finance.fromProductReplaceCost') }}</div>
+          </q-card-section>
+        </q-card>
+      </div>
+      <div class="col-12 col-sm-6 col-lg-4">
+        <q-card flat bordered class="ec-card">
+          <q-card-section>
+            <div class="text-caption text-grey-7">{{ t('finance.warehouseDevicesValue') }}</div>
+            <div class="text-h6">{{ formatMoney(summary.warehouse_devices_value) }}</div>
+            <div class="text-caption text-grey-6">{{ t('finance.fromDevicePurchasePrice') }}</div>
+          </q-card-section>
+        </q-card>
+      </div>
+      <div class="col-12 col-sm-6 col-lg-4">
+        <q-card flat bordered class="ec-card">
+          <q-card-section>
+            <div class="text-caption text-grey-7">{{ t('finance.warehouseTotalValue') }}</div>
+            <div class="text-h6">{{ formatMoney(summary.warehouse_total_value) }}</div>
+            <div class="text-caption text-grey-6">{{ t('finance.productsPlusDevices') }}</div>
+          </q-card-section>
+        </q-card>
+      </div>
+    </div>
+
     <q-card flat bordered class="ec-card q-mb-md">
       <q-card-section>
         <div class="text-subtitle2 q-mb-sm">{{ t('finance.topJobsByProjectedValue') }}</div>

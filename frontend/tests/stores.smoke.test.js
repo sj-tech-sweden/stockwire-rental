@@ -67,4 +67,29 @@ describe('stores smoke', () => {
 
     expect(store.transactions).toHaveLength(1)
   })
+
+  it('finance store fetches summary including warehouse values', async () => {
+    getMock.mockResolvedValueOnce({
+      data: {
+        currency: 'SEK',
+        total_transactions: 1,
+        pending_count: 0,
+        overdue_count: 0,
+        completed_count: 1,
+        pending_amount: '0.00',
+        overdue_amount: '0.00',
+        completed_amount: '1200.00',
+        warehouse_products_value: '2500.00',
+        warehouse_devices_value: '5000.00',
+        warehouse_total_value: '7500.00',
+      }
+    })
+    const store = useFinanceStore()
+
+    await store.fetchSummary()
+
+    expect(store.summary.warehouse_products_value).toBe('2500.00')
+    expect(store.summary.warehouse_devices_value).toBe('5000.00')
+    expect(store.summary.warehouse_total_value).toBe('7500.00')
+  })
 })

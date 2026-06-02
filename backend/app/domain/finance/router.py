@@ -2,7 +2,7 @@ from datetime import UTC, date, datetime
 from decimal import Decimal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
-from sqlalchemy import Select, func, select
+from sqlalchemy import Select, exists, func, select
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
@@ -19,6 +19,7 @@ from app.domain.finance.schemas import (
     FinancialTransactionRead,
     FinancialTransactionUpdate,
 )
+from app.domain.inventory.models import Device
 from app.domain.inventory.models import Product
 from app.domain.jobs.models import Job
 from app.domain.jobs.models import JobRequirement
@@ -184,6 +185,30 @@ def get_job_finance_insights(db: Session = Depends(get_db)) -> FinanceJobInsight
 def get_finance_summary(db: Session = Depends(get_db)) -> FinanceSummaryRead:
     rows = list(db.scalars(select(FinancialTransaction)).all())
     today = datetime.now(UTC).date()
+    # Business rule: products marked as rental (is_rental_product=True or product_type="rental")
+    # are excluded from warehouse valuation. Owned non-serialized products are valued per product
+    # replace_cost, and serialized owned inventory is valued via in-store devices.
+    owned_product_filters = (
+        Product.is_rental_product.is_(False),
+        Product.product_type != "rental",
+    )
+    warehouse_products_sum = db.scalar(
+        select(func.coalesce(func.sum(Product.replace_cost), 0)).where(
+            *owned_product_filters,
+            ~exists(select(1).where(Device.product_id == Product.id)),
+        )
+    )
+    warehouse_devices_sum = db.scalar(
+        select(func.coalesce(func.sum(func.coalesce(Device.purchase_price, Product.replace_cost, 0)), 0))
+        .select_from(Device)
+        .join(Product, Device.product_id == Product.id)
+        .where(
+            *owned_product_filters,
+            Device.status.in_(["available", "reserved", "maintenance"]),
+        )
+    )
+    warehouse_products_value = Decimal(str(warehouse_products_sum or 0))
+    warehouse_devices_value = Decimal(str(warehouse_devices_sum or 0))
 
     pending_amount = Decimal("0.00")
     overdue_amount = Decimal("0.00")
@@ -217,6 +242,9 @@ def get_finance_summary(db: Session = Depends(get_db)) -> FinanceSummaryRead:
         pending_amount=pending_amount,
         overdue_amount=overdue_amount,
         completed_amount=completed_amount,
+        warehouse_products_value=warehouse_products_value.quantize(Decimal("0.01")),
+        warehouse_devices_value=warehouse_devices_value.quantize(Decimal("0.01")),
+        warehouse_total_value=(warehouse_products_value + warehouse_devices_value).quantize(Decimal("0.01")),
     )
 
 

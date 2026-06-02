@@ -15,6 +15,9 @@ export const useFinanceStore = defineStore('finance', () => {
     pending_amount: '0.00',
     overdue_amount: '0.00',
     completed_amount: '0.00',
+    warehouse_products_value: '0.00',
+    warehouse_devices_value: '0.00',
+    warehouse_total_value: '0.00',
   })
   const jobInsights = ref({
     jobs_total: 0,
