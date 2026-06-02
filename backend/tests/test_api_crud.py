@@ -351,7 +351,6 @@ def test_jobs_and_finance_crud(client):
             "category": "accessories",
             "daily_rate": "20.00",
             "replace_cost": "200.00",
-            "eventory_available_qty": 3,
         },
     )
     assert stock_product.status_code == 200

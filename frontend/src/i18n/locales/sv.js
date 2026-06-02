@@ -566,7 +566,7 @@ export default {
     warehouseDevicesValue: 'Lagervärde enheter',
     warehouseTotalValue: 'Totalt lagervärde',
     fromProductReplaceCost: 'Från produkters ersättningskostnad',
-    fromDeviceReplaceCost: 'Från enheters inköpspris (ersättningskostnad som reserv)',
+    fromDevicePurchasePrice: 'Från enheters inköpspris (ersättningskostnad som reserv)',
     productsPlusDevices: 'Produkter + enheter',
     jobsTotal: '{count} jobb totalt',
     activeJobsCount: '{count} aktiva jobb',

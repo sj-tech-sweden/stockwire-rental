@@ -126,7 +126,7 @@
           <q-card-section>
             <div class="text-caption text-grey-7">{{ t('finance.warehouseDevicesValue') }}</div>
             <div class="text-h6">{{ formatMoney(summary.warehouse_devices_value) }}</div>
-            <div class="text-caption text-grey-6">{{ t('finance.fromDeviceReplaceCost') }}</div>
+            <div class="text-caption text-grey-6">{{ t('finance.fromDevicePurchasePrice') }}</div>
           </q-card-section>
         </q-card>
       </div>
