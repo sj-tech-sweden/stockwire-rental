@@ -1545,7 +1545,34 @@ def list_defect_reports(
         _validate_defect_status(status)
         query = query.where(DefectReport.status == status)
     rows = list(db.scalars(query).all())
-    return [_to_defect_report_read(db, row) for row in rows]
+
+    # Batch-load related entities to avoid N+1 queries
+    device_ids = list({row.device_id for row in rows if row.device_id is not None})
+    maintenance_ids = list({row.maintenance_id for row in rows if row.maintenance_id is not None})
+    devices_by_id: dict[int, Device] = (
+        {d.id: d for d in db.scalars(select(Device).where(Device.id.in_(device_ids))).all()}
+        if device_ids
+        else {}
+    )
+    product_ids = list({d.product_id for d in devices_by_id.values() if d.product_id is not None})
+    products_by_id: dict[int, Product] = (
+        {p.id: p for p in db.scalars(select(Product).where(Product.id.in_(product_ids))).all()}
+        if product_ids
+        else {}
+    )
+    maintenance_by_id: dict[int, DeviceMaintenance] = (
+        {m.id: m for m in db.scalars(select(DeviceMaintenance).where(DeviceMaintenance.id.in_(maintenance_ids))).all()}
+        if maintenance_ids
+        else {}
+    )
+
+    result = []
+    for row in rows:
+        device = devices_by_id.get(row.device_id)
+        product = products_by_id.get(device.product_id) if device is not None and device.product_id is not None else None
+        maintenance = maintenance_by_id.get(row.maintenance_id) if row.maintenance_id is not None else None
+        result.append(_hydrate_defect_report_read(row, device, product, maintenance))
+    return result
 
 
 @router.post("/defect-reports", response_model=DefectReportRead)
@@ -1587,6 +1614,8 @@ def update_defect_report(
         raise HTTPException(status_code=404, detail="Defect report not found")
 
     updates = payload.model_dump(exclude_unset=True)
+    if "device_id" in updates and updates["device_id"] is None:
+        raise HTTPException(status_code=400, detail="device_id cannot be null")
     _validate_defect_report_payload(
         db,
         {
@@ -1755,7 +1784,12 @@ def list_defect_timeline(
                 created_by_user_id=row.created_by_user_id,
             )
         )
-    timeline.sort(key=lambda item: (item.created_at, item.id))
+    timeline.sort(key=lambda item: (
+        item.created_at,
+        0 if item.entry_type == "defect_report" else 1,
+        item.defect_report_id,
+        int(item.id.split(":")[1]) if ":" in item.id else 0,
+    ))
     return timeline
 
 
@@ -2631,10 +2665,12 @@ def _to_maintenance_read(db: Session, record: DeviceMaintenance) -> DeviceMainte
     )
 
 
-def _to_defect_report_read(db: Session, row: DefectReport) -> DefectReportRead:
-    device = db.get(Device, row.device_id)
-    product = db.get(Product, device.product_id) if device is not None else None
-    maintenance = db.get(DeviceMaintenance, row.maintenance_id) if row.maintenance_id is not None else None
+def _hydrate_defect_report_read(
+    row: DefectReport,
+    device: Device | None,
+    product: Product | None,
+    maintenance: DeviceMaintenance | None,
+) -> DefectReportRead:
     return DefectReportRead.model_validate(
         {
             "id": row.id,
@@ -2653,6 +2689,13 @@ def _to_defect_report_read(db: Session, row: DefectReport) -> DefectReportRead:
             "maintenance_type": maintenance.maintenance_type if maintenance is not None else None,
         }
     )
+
+
+def _to_defect_report_read(db: Session, row: DefectReport) -> DefectReportRead:
+    device = db.get(Device, row.device_id)
+    product = db.get(Product, device.product_id) if device is not None else None
+    maintenance = db.get(DeviceMaintenance, row.maintenance_id) if row.maintenance_id is not None else None
+    return _hydrate_defect_report_read(row, device, product, maintenance)
 
 
 def _get_defect_report_or_404(db: Session, report_id: int) -> DefectReport:
