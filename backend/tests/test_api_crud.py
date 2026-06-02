@@ -520,7 +520,7 @@ def test_jobs_and_finance_crud(client):
     assert summary_json["completed_count"] == 2
     assert float(summary_json["warehouse_products_value"]) == expected_products_value
     assert float(summary_json["warehouse_devices_value"]) == expected_devices_value
-    assert float(summary_json["warehouse_total_value"]) == 4700.0
+    assert float(summary_json["warehouse_total_value"]) == expected_products_value + expected_devices_value
 
     insights = client.get("/api/v1/finance/job-insights")
     assert insights.status_code == 200
