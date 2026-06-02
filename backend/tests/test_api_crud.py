@@ -1010,14 +1010,15 @@ def test_inventory_defect_reports_comments_timeline(client):
 
     created_comment = client.post(
         f"/api/v1/inventory/defect-reports/{report_id}/comments",
-        json={"comment": "Reproduced issue at 60% master volume"},
+        json={"comment": "  Reproduced issue at 60% master volume  "},
     )
     assert created_comment.status_code == 200
     comment_id = created_comment.json()["id"]
+    assert created_comment.json()["comment"] == "Reproduced issue at 60% master volume"
 
     updated_comment = client.put(
         f"/api/v1/inventory/defect-comments/{comment_id}",
-        json={"comment": "Reproduced issue at 65% master volume"},
+        json={"comment": "  Reproduced issue at 65% master volume  "},
     )
     assert updated_comment.status_code == 200
     assert updated_comment.json()["comment"] == "Reproduced issue at 65% master volume"
@@ -1042,6 +1043,69 @@ def test_inventory_defect_reports_comments_timeline(client):
     deleted_report = client.delete(f"/api/v1/inventory/defect-reports/{report_id}")
     assert deleted_report.status_code == 200
     assert deleted_report.json() == {"ok": True}
+
+
+def test_inventory_maintenance_comments_crud(client):
+    product = client.post(
+        "/api/v1/inventory/products",
+        json={"sku": "MNC-01", "name": "Maintenance Comment Product", "daily_rate": "20.00"},
+    )
+    assert product.status_code == 200
+
+    device = client.post(
+        "/api/v1/inventory/devices",
+        json={
+            "product_id": product.json()["id"],
+            "asset_tag": "MNC-01-001",
+            "status": "in_service",
+            "condition": "good",
+        },
+    )
+    assert device.status_code == 200
+
+    maintenance = client.post(
+        "/api/v1/inventory/maintenance",
+        json={
+            "device_id": device.json()["id"],
+            "maintenance_type": "inspection",
+            "status": "scheduled",
+        },
+    )
+    assert maintenance.status_code == 200
+    maintenance_id = maintenance.json()["id"]
+
+    created_comment = client.post(
+        f"/api/v1/inventory/maintenance/{maintenance_id}/comments",
+        json={"comment": "  First maintenance note  "},
+    )
+    assert created_comment.status_code == 200
+    comment_id = created_comment.json()["id"]
+    assert created_comment.json()["comment"] == "First maintenance note"
+
+    listed_comments = client.get(f"/api/v1/inventory/maintenance/{maintenance_id}/comments")
+    assert listed_comments.status_code == 200
+    assert [row["id"] for row in listed_comments.json()] == [comment_id]
+
+    updated_comment = client.put(
+        f"/api/v1/inventory/maintenance-comments/{comment_id}",
+        json={"comment": "  Updated maintenance note  "},
+    )
+    assert updated_comment.status_code == 200
+    assert updated_comment.json()["comment"] == "Updated maintenance note"
+
+    invalid_update = client.put(
+        f"/api/v1/inventory/maintenance-comments/{comment_id}",
+        json={"comment": "   "},
+    )
+    assert invalid_update.status_code == 400
+
+    deleted_comment = client.delete(f"/api/v1/inventory/maintenance-comments/{comment_id}")
+    assert deleted_comment.status_code == 200
+    assert deleted_comment.json() == {"ok": True}
+
+    listed_after_delete = client.get(f"/api/v1/inventory/maintenance/{maintenance_id}/comments")
+    assert listed_after_delete.status_code == 200
+    assert listed_after_delete.json() == []
 
 
 def test_settings_version_check_updates_strips_single_v_prefix(client):

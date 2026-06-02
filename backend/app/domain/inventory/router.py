@@ -1751,11 +1751,12 @@ def create_defect_comment(
     current_user: User = Depends(require_editor),
 ) -> DefectCommentRead:
     _get_defect_report_or_404(db, report_id)
-    if not payload.comment.strip():
+    comment_text = payload.comment.strip()
+    if not comment_text:
         raise HTTPException(status_code=400, detail="comment is required")
     comment = DefectComment(
         defect_report_id=report_id,
-        comment=payload.comment,
+        comment=comment_text,
         created_by_user_id=current_user.id,
     )
     db.add(comment)
@@ -1776,8 +1777,11 @@ def update_defect_comment(
     if row is None:
         raise HTTPException(status_code=404, detail="Defect comment not found")
     updates = payload.model_dump(exclude_unset=True)
-    if "comment" in updates and not str(updates["comment"]).strip():
-        raise HTTPException(status_code=400, detail="comment is required")
+    if "comment" in updates:
+        comment_text = str(updates["comment"]).strip()
+        if not comment_text:
+            raise HTTPException(status_code=400, detail="comment is required")
+        updates["comment"] = comment_text
     for key, value in updates.items():
         setattr(row, key, value)
     db.commit()

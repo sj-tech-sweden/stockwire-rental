@@ -240,17 +240,9 @@
             color="primary"
             unelevated
             icon="build_circle"
-              :label="t('scan.markNeedsMaintenance')"
+            :label="t('scan.markNeedsMaintenance')"
             :loading="saving"
             @click="scheduleMaintenanceFromLookup"
-          />
-          <q-btn
-            color="negative"
-            unelevated
-            icon="report_problem"
-              :label="t('scan.markNotFunctioning')"
-            :loading="saving"
-            @click="markLookupDeviceNotFunctioning"
           />
           <q-btn
             color="warning"
@@ -1315,66 +1307,6 @@ async function scheduleMaintenanceFromLookup() {
     scanResultSuccess.value = !!response.success
   } catch (error) {
     scanResultMessage.value = error?.response?.data?.detail || t('scan.maintenanceScheduleFailed')
-    scanResultSuccess.value = false
-  } finally {
-    saving.value = false
-  }
-}
-
-async function markLookupDeviceNotFunctioning() {
-  const deviceId = maintenanceTargetDeviceId.value
-  if (!deviceId) {
-    scanResultMessage.value = t('scan.scanDeviceFirst')
-    scanResultSuccess.value = false
-    return
-  }
-
-  const confirmed = await new Promise((resolve) => {
-    $q.dialog({
-      title: t('scan.markNotFunctioningConfirmTitle'),
-      message: t('scan.markNotFunctioningConfirmMessage'),
-      cancel: true,
-      persistent: true,
-      ok: { color: 'negative', label: t('scan.confirm') },
-    })
-      .onOk(() => resolve(true))
-      .onCancel(() => resolve(false))
-      .onDismiss(() => resolve(false))
-  })
-
-  if (!confirmed) return
-
-  saving.value = true
-  scanResultMessage.value = ''
-  scanResultSuccess.value = false
-  try {
-    const existing = store.devices.find(item => item.id === deviceId)
-    const existingNotes = String(existing?.notes || '').trim()
-    const marker = t('scan.markedNotFunctioningNote')
-    const notes = existingNotes.includes(marker) ? existingNotes : `${existingNotes}${existingNotes ? '\n' : ''}${marker}`
-
-    await store.updateDevice(deviceId, {
-      status: 'maintenance',
-      condition: 'damaged',
-      notes,
-    })
-
-    if (scanAction.value === 'lookup') {
-      const refreshedLookup = await store.processScan({
-        scan_code: String(lastLookupCode.value || '').trim(),
-        action: 'lookup',
-      })
-      lastLookupResult.value = refreshedLookup
-    } else {
-      lastIntakeResult.value = {
-        ...(lastIntakeResult.value || {}),
-        success: true,
-      }
-    }
-    scanResultMessage.value = t('scan.deviceMarkedNotFunctioning')
-    scanResultSuccess.value = true
-  } catch (error) {
-    scanResultMessage.value = error?.response?.data?.detail || t('scan.failedMarkDeviceNotFunctioning')
     scanResultSuccess.value = false
   } finally {
     saving.value = false
