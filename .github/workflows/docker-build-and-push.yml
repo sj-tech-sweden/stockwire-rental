@@ -70,7 +70,11 @@ jobs:
         run: |
           OWNER="${{ github.repository_owner }}"
           VERSION_TAG="${{ inputs.version_tag || '' }}"
-          PUSH_LATEST="${{ inputs.push_latest || github.event.inputs.push_latest || 'true' }}"
+          PUSH_LATEST="${{ inputs.push_latest }}"
+          # For push-triggered runs where workflow inputs are not wired, apply default
+          if [ -z "$PUSH_LATEST" ]; then
+            PUSH_LATEST="true"
+          fi
 
           backend_tags=""
           frontend_tags=""

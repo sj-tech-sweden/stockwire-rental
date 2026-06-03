@@ -1578,6 +1578,7 @@ async function fetchVersionInfo() {
     applyVersionInfo(data)
   } catch {
     versionInfo.backend_version = null
+    versionInfo.image_tag = null
     versionInfo.valkey_version = null
     versionInfo.postgres_version = null
   }
