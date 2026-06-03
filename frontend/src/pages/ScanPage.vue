@@ -501,7 +501,7 @@
       </q-dialog>
 
       <q-dialog v-model="defectDialogOpen" persistent>
-        <q-card style="width: 340px; max-width: min(500px, 95vw)">
+        <q-card style="width: 95vw; max-width: 500px">
           <q-card-section class="row items-center q-pb-none">
             <div class="text-h6">{{ t('scan.defectReportDialogTitle') }}</div>
             <q-space />
