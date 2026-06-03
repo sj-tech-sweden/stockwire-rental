@@ -1174,7 +1174,7 @@ function clearMoveDestination() {
   scanZoneCode.value = ''
   scanCode.value = ''
   scanResultMessage.value = t('scan.destinationClearedStep1')
-  scanResultSuccess.value = !uploadFailed
+  scanResultSuccess.value = true
   focusScanCodeInput()
 }
 
@@ -1377,7 +1377,7 @@ async function submitDefectReport() {
     scanResultMessage.value = uploadFailed
       ? t('scan.defectPhotoUploadFailed')
       : t('scan.defectReportCreated')
-    scanResultSuccess.value = true
+    scanResultSuccess.value = !uploadFailed
   } catch (error) {
     scanResultMessage.value = error?.response?.data?.detail || t('scan.defectReportFailed')
     scanResultSuccess.value = false
