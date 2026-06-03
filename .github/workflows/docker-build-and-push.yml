@@ -69,8 +69,13 @@ jobs:
         shell: bash
         run: |
           OWNER="${{ github.repository_owner }}"
-          VERSION_TAG="${{ inputs.version_tag || '' }}"
+          VERSION_TAG="${{ inputs.version_tag || github.event.inputs.version_tag || '' }}"
+          # inputs.push_latest works for workflow_call; github.event.inputs.push_latest works for
+          # workflow_dispatch. For push-triggered runs neither is set, so default to true.
           PUSH_LATEST="${{ inputs.push_latest }}"
+          if [ -z "$PUSH_LATEST" ]; then
+            PUSH_LATEST="${{ github.event.inputs.push_latest }}"
+          fi
           BUILD_VERSION="$VERSION_TAG"
           # For push-triggered runs where workflow inputs are not wired, apply default
           if [ -z "$PUSH_LATEST" ]; then

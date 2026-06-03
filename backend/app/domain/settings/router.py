@@ -7,9 +7,8 @@ from collections.abc import Callable
 from datetime import datetime
 from http.client import HTTPConnection, HTTPSConnection
 from importlib import metadata
-from urllib.parse import urlencode
 from urllib.error import HTTPError, URLError
-from urllib.parse import urljoin, urlparse
+from urllib.parse import urlencode, urljoin, urlparse
 from urllib.request import Request, build_opener, HTTPRedirectHandler, HTTPHandler, HTTPSHandler, ProxyHandler
 import os
 from pathlib import Path
@@ -138,7 +137,7 @@ def _get_image_tag() -> str | None:
             txt = version_file.read_text(encoding="utf-8").strip()
             if txt and txt != "unknown":
                 return txt
-    except OSError:
+    except (OSError, UnicodeDecodeError):
         pass
 
     return None
