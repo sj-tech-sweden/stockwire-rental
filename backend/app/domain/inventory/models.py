@@ -118,6 +118,9 @@ class Device(Base):
     maintenance_records: Mapped[list["DeviceMaintenance"]] = relationship(
         "DeviceMaintenance", back_populates="device", cascade="all, delete-orphan"
     )
+    defect_reports: Mapped[list["DefectReport"]] = relationship(
+        "DefectReport", back_populates="device", cascade="all, delete-orphan"
+    )
 
 
 class ProductAccessory(Base):
@@ -179,6 +182,80 @@ class DeviceMaintenance(Base):
 
     device: Mapped[Device] = relationship(back_populates="maintenance_records")
     schedule: Mapped[DeviceMaintenanceSchedule | None] = relationship(back_populates="maintenance_records")
+    defect_reports: Mapped[list["DefectReport"]] = relationship(
+        "DefectReport",
+        back_populates="maintenance",
+    )
+    comments: Mapped[list["MaintenanceComment"]] = relationship(
+        "MaintenanceComment",
+        back_populates="maintenance",
+        cascade="all, delete-orphan",
+    )
+
+
+class MaintenanceComment(Base):
+    __tablename__ = "maintenance_comments"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    maintenance_id: Mapped[int] = mapped_column(ForeignKey("device_maintenance.id", ondelete="CASCADE"), index=True)
+    comment: Mapped[str] = mapped_column(Text)
+    created_by_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow, index=True)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow,
+    )
+
+    maintenance: Mapped[DeviceMaintenance] = relationship(back_populates="comments")
+
+
+class DefectReport(Base):
+    __tablename__ = "defect_reports"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    device_id: Mapped[int] = mapped_column(ForeignKey("devices.id", ondelete="CASCADE"), index=True)
+    maintenance_id: Mapped[int | None] = mapped_column(
+        ForeignKey("device_maintenance.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    title: Mapped[str] = mapped_column(String(255))
+    description: Mapped[str] = mapped_column(Text, nullable=True)
+    status: Mapped[str] = mapped_column(String(40), default="open", index=True)
+    severity: Mapped[str] = mapped_column(String(20), default="medium", index=True)
+    created_by_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow, index=True)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow,
+    )
+
+    device: Mapped[Device] = relationship(back_populates="defect_reports")
+    maintenance: Mapped[DeviceMaintenance | None] = relationship(back_populates="defect_reports")
+    comments: Mapped[list["DefectComment"]] = relationship(
+        "DefectComment",
+        back_populates="defect_report",
+        cascade="all, delete-orphan",
+    )
+
+
+class DefectComment(Base):
+    __tablename__ = "defect_comments"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    defect_report_id: Mapped[int] = mapped_column(ForeignKey("defect_reports.id", ondelete="CASCADE"), index=True)
+    comment: Mapped[str] = mapped_column(Text)
+    created_by_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow, index=True)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow,
+    )
+
+    defect_report: Mapped[DefectReport] = relationship(back_populates="comments")
 
 
 class Zone(Base):

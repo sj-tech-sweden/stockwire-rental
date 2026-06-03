@@ -16,7 +16,7 @@ from app.domain.storage.service import StorageService
 
 router = APIRouter(prefix="/storage", tags=["storage"])
 
-ALLOWED_ENTITY_TYPES = {"company", "job", "product", "device", "maintenance"}
+ALLOWED_ENTITY_TYPES = {"company", "job", "product", "device", "maintenance", "defect_report"}
 COMPANY_PROFILE_KEY = "company.profile"
 LOGO_VARIANT_TO_FIELD = {
     "default": "logo_file_id",

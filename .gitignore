@@ -15,6 +15,9 @@ frontend/.quasar/prod-spa/
 frontend/.quasar/prod-pwa/
 frontend/.quasar/dev-pwa/
 
+# Local storage uploads
+backend/data/uploads/
+
 # Env
 .env
 infra/env/.env
