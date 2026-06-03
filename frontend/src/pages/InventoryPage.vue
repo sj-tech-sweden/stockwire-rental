@@ -282,7 +282,7 @@
                       <div v-if="props.row.rental_price != null" class="col-auto">
                         <q-badge color="grey-8" text-color="white" :label="`${t('inventory.columnSupplierPrice')}: ${formatMoney(props.row.rental_price)}`" />
                       </div>
-                      <div v-if="props.row.daily_rate" class="col-auto">
+                      <div v-if="props.row.daily_rate != null" class="col-auto">
                         <q-badge color="primary" text-color="white" :label="`${t('inventory.columnClientPrice')}: ${formatMoney(props.row.daily_rate)}`" />
                       </div>
                       <div class="col-auto">
