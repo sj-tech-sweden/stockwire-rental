@@ -69,7 +69,7 @@ jobs:
         shell: bash
         run: |
           OWNER="${{ github.repository_owner }}"
-          VERSION_TAG="${{ inputs.version_tag || github.event.inputs.version_tag || '' }}"
+          VERSION_TAG="${{ inputs.version_tag || '' }}"
           PUSH_LATEST="${{ inputs.push_latest || github.event.inputs.push_latest || 'true' }}"
 
           backend_tags=""
@@ -112,7 +112,7 @@ jobs:
           context: ./backend
           file: ./backend/Dockerfile
           build-args: |
-            VERSION=${{ inputs.version_tag || github.event.inputs.version_tag || '' }}
+            VERSION=${{ inputs.version_tag || '' }}
 
       - name: Build and push frontend image
         uses: docker/build-push-action@v7
