@@ -279,7 +279,7 @@
                       <div class="col-auto">
                         <q-badge color="teal-7" text-color="white" :label="`${t('inventory.columnQty')}: ${Math.max(0, Number(props.row.eventory_available_qty || 0))}`" />
                       </div>
-                      <div v-if="props.row.rental_price" class="col-auto">
+                      <div v-if="props.row.rental_price != null" class="col-auto">
                         <q-badge color="grey-8" text-color="white" :label="`${t('inventory.columnSupplierPrice')}: ${formatMoney(props.row.rental_price)}`" />
                       </div>
                       <div v-if="props.row.daily_rate" class="col-auto">
