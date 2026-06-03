@@ -23,7 +23,7 @@ COPY tests /app/tests
 COPY scripts /app/scripts
 
 # Write build-time VERSION into the image so the running app can expose it
-RUN /bin/sh -c 'echo "${VERSION}" > /app/VERSION || true'
+RUN /bin/sh -c 'echo "${VERSION}" > /app/VERSION'
 
 EXPOSE 8000
 

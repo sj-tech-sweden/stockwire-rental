@@ -949,7 +949,7 @@ def test_settings_version_image_tag_precedence(client):
         settings_router, "_get_postgres_version", return_value="15.0"
     ), patch.object(settings_router, "_get_valkey_version", return_value="8.0.0"), patch.dict(
         settings_router.os.environ,
-        {"IMAGE_TAG": "env-1.2.3", "VERSION": "", "APP_IMAGE_TAG": ""},
+        {"IMAGE_TAG": "env-1.2.3", "VERSION": ""},
         clear=False,
     ), patch.object(settings_router.Path, "exists", return_value=True), patch.object(
         settings_router.Path, "read_text", return_value="file-9.9.9"
@@ -965,7 +965,7 @@ def test_settings_version_image_tag_falls_back_to_version_file(client):
         settings_router, "_get_postgres_version", return_value="15.0"
     ), patch.object(settings_router, "_get_valkey_version", return_value="8.0.0"), patch.dict(
         settings_router.os.environ,
-        {"IMAGE_TAG": "", "VERSION": "", "APP_IMAGE_TAG": ""},
+        {"IMAGE_TAG": "", "VERSION": ""},
         clear=False,
     ), patch.object(settings_router.Path, "exists", return_value=True), patch.object(
         settings_router.Path, "read_text", return_value="file-9.9.9"
@@ -981,7 +981,7 @@ def test_settings_version_image_tag_missing_returns_null(client):
         settings_router, "_get_postgres_version", return_value="15.0"
     ), patch.object(settings_router, "_get_valkey_version", return_value="8.0.0"), patch.dict(
         settings_router.os.environ,
-        {"IMAGE_TAG": "", "VERSION": "", "APP_IMAGE_TAG": ""},
+        {"IMAGE_TAG": "", "VERSION": ""},
         clear=False,
     ), patch.object(settings_router.Path, "exists", return_value=False):
         response = client.get("/api/v1/settings/version")

@@ -1010,7 +1010,7 @@
           <div class="row q-col-gutter-sm q-mb-md items-center">
             <div class="col-12 col-md-6">
               <div class="text-body2 text-grey-6">{{ t('settings.about.imageTag') }}</div>
-              <div class="text-h6">{{ versionInfo.image_tag ? `v${versionInfo.image_tag}` : '—' }}</div>
+              <div class="text-h6">{{ versionInfo.image_tag || '—' }}</div>
             </div>
             <div class="col-12 col-md-6">
               <div class="text-body2 text-grey-6">{{ t('settings.about.valkeyVersion') }}</div>

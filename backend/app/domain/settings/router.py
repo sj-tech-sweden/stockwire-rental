@@ -127,9 +127,13 @@ def _get_backend_version() -> str:
 
 def _get_image_tag() -> str | None:
     # Prefer explicit environment variable set at container runtime
-    env_tag = os.environ.get("IMAGE_TAG") or os.environ.get("VERSION") or os.environ.get("APP_IMAGE_TAG")
-    if env_tag:
-        return str(env_tag).strip() or None
+    env_tag = os.environ.get("IMAGE_TAG")
+    if env_tag and env_tag.strip():
+        return str(env_tag).strip()
+
+    version_tag = os.environ.get("VERSION")
+    if version_tag and version_tag.strip():
+        return str(version_tag).strip()
 
     # Fall back to reading /app/VERSION written at build time
     try:
