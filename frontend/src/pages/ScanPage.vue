@@ -652,7 +652,7 @@ const scanActionGroupButtons = computed(() => [
 
 const scanActionGroupButtonsDisplay = computed(() =>
   $q.screen.lt.sm
-    ? scanActionGroupButtons.value.map(({ icon, value, label }) => ({ icon, value, attrs: { 'aria-label': label, title: label } }))
+    ? scanActionGroupButtons.value.map(({ icon, value, label }) => ({ icon, value, title: label, 'aria-label': label }))
     : scanActionGroupButtons.value
 )
 
