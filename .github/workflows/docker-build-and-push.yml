@@ -71,9 +71,17 @@ jobs:
           OWNER="${{ github.repository_owner }}"
           VERSION_TAG="${{ inputs.version_tag || '' }}"
           PUSH_LATEST="${{ inputs.push_latest }}"
+          BUILD_VERSION="$VERSION_TAG"
           # For push-triggered runs where workflow inputs are not wired, apply default
           if [ -z "$PUSH_LATEST" ]; then
             PUSH_LATEST="true"
+          fi
+          if [ -z "$BUILD_VERSION" ]; then
+            if [ "${{ github.event_name }}" = "push" ]; then
+              BUILD_VERSION="latest"
+            else
+              BUILD_VERSION="unknown"
+            fi
           fi
 
           backend_tags=""
@@ -106,6 +114,7 @@ jobs:
             echo "frontend_tags<<EOF"
             echo -e "$frontend_tags"
             echo "EOF"
+            echo "build_version=$BUILD_VERSION"
           } >> "$GITHUB_OUTPUT"
 
       - name: Build and push backend image
@@ -116,7 +125,7 @@ jobs:
           context: ./backend
           file: ./backend/Dockerfile
           build-args: |
-            VERSION=${{ inputs.version_tag || '' }}
+            VERSION=${{ steps.image_tags.outputs.build_version }}
 
       - name: Build and push frontend image
         uses: docker/build-push-action@v7
@@ -126,4 +135,4 @@ jobs:
           context: ./frontend
           file: ./frontend/Dockerfile
           build-args: |
-            VERSION=${{ inputs.version_tag || '' }}
+            VERSION=${{ steps.image_tags.outputs.build_version }}
