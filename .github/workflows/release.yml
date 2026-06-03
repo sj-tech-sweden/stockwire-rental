@@ -54,6 +54,18 @@ jobs:
             echo "type=${{ github.event.inputs.release_type }}" >> "$GITHUB_OUTPUT"
           fi
 
+      - name: Compute next semver tag
+        id: semver
+        run: |
+          git fetch --tags
+          LATEST=$(git describe --tags --abbrev=0 2>/dev/null || echo "0.0.0")
+          IFS='.' read -r MAJ MIN PAT <<<"$LATEST"
+          TYPE=${{ steps.rtype.outputs.type }}
+          if [ "$TYPE" = "major" ]; then MAJ=$((MAJ+1)); MIN=0; PAT=0; fi
+          if [ "$TYPE" = "minor" ]; then MIN=$((MIN+1)); PAT=0; fi
+          if [ "$TYPE" = "patch" ]; then PAT=$((PAT+1)); fi
+          echo "tag=${MAJ}.${MIN}.${PAT}" >> "$GITHUB_OUTPUT"
+
       - name: Set release SHA output
         id: set_release_sha
         run: |

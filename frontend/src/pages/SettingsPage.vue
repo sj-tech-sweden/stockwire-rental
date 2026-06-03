@@ -1009,12 +1009,8 @@
 
           <div class="row q-col-gutter-sm q-mb-md items-center">
             <div class="col-12 col-md-6">
-              <div class="text-body2 text-grey-6">{{ t('settings.about.frontendVersion') }}</div>
-              <div class="text-h6">{{ (versionInfo.image_tag || appVersion) ? `v${versionInfo.image_tag || appVersion}` : '—' }}</div>
-            </div>
-            <div class="col-12 col-md-6">
-              <div class="text-body2 text-grey-6">{{ t('settings.about.backendVersion') }}</div>
-              <div class="text-h6">{{ (versionInfo.image_tag || versionInfo.backend_version) ? `v${versionInfo.image_tag || versionInfo.backend_version}` : '—' }}</div>
+              <div class="text-body2 text-grey-6">{{ t('settings.about.imageTag') }}</div>
+              <div class="text-h6">{{ versionInfo.image_tag ? `v${versionInfo.image_tag}` : '—' }}</div>
             </div>
             <div class="col-12 col-md-6">
               <div class="text-body2 text-grey-6">{{ t('settings.about.valkeyVersion') }}</div>
@@ -1546,7 +1542,6 @@ const offlineQueueDeferredIds = ref([])
 const offlineQueueFailedIdSet = computed(() => new Set(offlineQueueFailedIds.value))
 const offlineQueueDeferredIdSet = computed(() => new Set(offlineQueueDeferredIds.value))
 
-const appVersion = process.env.APP_VERSION || null
 const versionCheckLoading = ref(false)
 const versionCheckResult = ref(null)
 const versionCheckError = ref(false)
