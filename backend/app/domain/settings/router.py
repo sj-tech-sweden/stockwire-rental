@@ -131,10 +131,6 @@ def _get_image_tag() -> str | None:
     if env_tag and env_tag.strip():
         return str(env_tag).strip()
 
-    version_tag = os.environ.get("VERSION")
-    if version_tag and version_tag.strip():
-        return str(version_tag).strip()
-
     # Fall back to reading /app/VERSION written at build time
     try:
         version_file = Path("/app/VERSION")

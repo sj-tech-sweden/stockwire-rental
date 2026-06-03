@@ -5,6 +5,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONPATH=/app
 
 ARG VERSION=unknown
+# Runtime IMAGE_TAG can override this build-time default.
 ENV IMAGE_TAG=$VERSION
 
 WORKDIR /app
