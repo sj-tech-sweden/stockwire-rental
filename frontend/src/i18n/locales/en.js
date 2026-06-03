@@ -797,6 +797,7 @@ export default {
     },
     rentalProducts: 'Rental Products',
     newRentalProduct: 'New rental product',
+    openRentalProductInfo: 'Open rental product info',
     editRentalProduct: 'Edit rental product',
     general: 'General',
     pricingAndSync: 'Pricing and Sync',

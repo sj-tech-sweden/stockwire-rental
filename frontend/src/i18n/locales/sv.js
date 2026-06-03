@@ -797,6 +797,7 @@ export default {
     },
     rentalProducts: 'Hyresprodukter',
     newRentalProduct: 'Ny hyresprodukt',
+    openRentalProductInfo: 'Öppna hyresproduktinfo',
     editRentalProduct: 'Redigera hyresprodukt',
     general: 'Allmant',
     pricingAndSync: 'Prissattning och synk',

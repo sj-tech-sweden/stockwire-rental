@@ -297,7 +297,7 @@
                     </div>
                   </q-card-section>
                   <q-card-actions align="right">
-                    <q-btn flat dense icon="info" :color="infoActionColor" class="inventory-action-contrast" aria-label="Open rental product info" @click="openRentalProductInfo(props.row)" />
+                    <q-btn flat dense icon="info" :color="infoActionColor" class="inventory-action-contrast" :aria-label="t('inventory.openRentalProductInfo')" @click="openRentalProductInfo(props.row)" />
                     <q-btn flat dense icon="edit" color="primary" :aria-label="t('inventory.editRentalProduct')" @click="openEditRentalProduct(props.row)" />
                   </q-card-actions>
                 </q-card>
