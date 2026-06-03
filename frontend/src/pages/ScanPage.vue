@@ -10,7 +10,7 @@
           <div class="text-caption text-grey-4">{{ t('scan.subtitle') }}</div>
         </div>
 
-        <div class="row q-gutter-sm q-mb-md justify-center">
+        <div class="row q-mb-md">
           <q-btn-toggle
             :model-value="scanActionGroup"
             toggle-color="primary"
@@ -18,7 +18,9 @@
             text-color="grey-2"
             unelevated
             no-caps
-            :options="scanActionGroupButtons"
+            spread
+            class="full-width"
+            :options="scanActionGroupButtonsDisplay"
             @update:model-value="onScanGroupChanged"
           />
         </div>
@@ -470,7 +472,7 @@
       </q-card>
 
       <q-dialog v-model="showShortcutHelp">
-        <q-card style="min-width: 320px; max-width: 460px">
+        <q-card style="width: min(460px, 95vw)">
           <q-card-section class="row items-center q-pb-none">
             <div class="text-h6">{{ t('scan.scannerShortcuts') }}</div>
             <q-space />
@@ -499,7 +501,7 @@
       </q-dialog>
 
       <q-dialog v-model="defectDialogOpen" persistent>
-        <q-card style="min-width: 340px; max-width: 500px; width: 100%">
+        <q-card style="width: 95vw; max-width: 500px">
           <q-card-section class="row items-center q-pb-none">
             <div class="text-h6">{{ t('scan.defectReportDialogTitle') }}</div>
             <q-space />
@@ -647,6 +649,12 @@ const scanActionGroupButtons = computed(() => [
   { label: t('scan.intake'), value: 'intake', icon: 'assignment_return' },
   { label: t('scan.rentalOps'), value: 'rental_ops', icon: 'inventory_2' },
 ])
+
+const scanActionGroupButtonsDisplay = computed(() =>
+  $q.screen.lt.sm
+    ? scanActionGroupButtons.value.map(({ icon, value, label }) => ({ icon, value, title: label, 'aria-label': label }))
+    : scanActionGroupButtons.value
+)
 
 const scanActionGroupState = ref({
   outtake: 'job_out',
