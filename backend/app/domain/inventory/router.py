@@ -1663,8 +1663,7 @@ def create_defect_report(
     current_user: User = Depends(require_editor),
 ) -> DefectReportRead:
     data = payload.model_dump()
-    data["title"] = str(data["title"]).strip()
-    data["description"] = (str(data["description"]).strip() or None) if data.get("description") is not None else None
+    _normalize_defect_report_text_fields(data)
     _validate_defect_report_payload(db, data)
     report = DefectReport(
         **data,
@@ -1700,14 +1699,7 @@ def update_defect_report(
     for required_field in ("device_id", "title", "status", "severity"):
         if required_field in updates and updates[required_field] is None:
             raise HTTPException(status_code=400, detail=f"{required_field} cannot be null")
-    if "title" in updates:
-        updates["title"] = str(updates["title"]).strip()
-    if "description" in updates:
-        updates["description"] = (
-            str(updates["description"]).strip() or None
-            if updates["description"] is not None
-            else None
-        )
+    _normalize_defect_report_text_fields(updates)
     _validate_defect_report_payload(
         db,
         {
@@ -2682,6 +2674,14 @@ def _validate_defect_report_payload(db: Session, payload: dict) -> None:
         _validate_defect_severity(payload["severity"])
     if payload.get("title") is not None and not str(payload["title"]).strip():
         raise HTTPException(status_code=400, detail="title is required")
+
+
+def _normalize_defect_report_text_fields(payload: dict) -> None:
+    if "title" in payload and payload["title"] is not None:
+        payload["title"] = str(payload["title"]).strip()
+    if "description" in payload:
+        description = payload["description"]
+        payload["description"] = (str(description).strip() or None) if description is not None else None
 
 
 def _effective_schedule_interval_value(db: Session, device_id: int, schedule: DeviceMaintenanceSchedule) -> int | None:
