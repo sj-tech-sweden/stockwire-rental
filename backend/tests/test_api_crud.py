@@ -1074,8 +1074,8 @@ def test_inventory_defect_reports_comments_timeline(client):
         json={
             "device_id": device_id,
             "maintenance_id": maintenance_id,
-            "title": "Audio output crackling",
-            "description": "Intermittent crackling on channel B",
+            "title": "  Audio output crackling  ",
+            "description": "   ",
             "status": "open",
             "severity": "high",
         },
@@ -1083,15 +1083,20 @@ def test_inventory_defect_reports_comments_timeline(client):
     assert created_report.status_code == 200
     report_id = created_report.json()["id"]
     assert created_report.json()["asset_tag"] == "DEF-01-001"
+    assert created_report.json()["title"] == "Audio output crackling"
+    assert created_report.json()["description"] is None
 
     updated_report = client.put(
         f"/api/v1/inventory/defect-reports/{report_id}",
         json={
+            "title": "  Audio output crackling (updated)  ",
             "status": "in_progress",
-            "description": "Inspected connectors and isolation transformer",
+            "description": "  Inspected connectors and isolation transformer  ",
         },
     )
     assert updated_report.status_code == 200
+    assert updated_report.json()["title"] == "Audio output crackling (updated)"
+    assert updated_report.json()["description"] == "Inspected connectors and isolation transformer"
     assert updated_report.json()["status"] == "in_progress"
 
     for field in ("device_id", "title", "status", "severity"):

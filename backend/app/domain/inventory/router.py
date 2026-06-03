@@ -1663,6 +1663,8 @@ def create_defect_report(
     current_user: User = Depends(require_editor),
 ) -> DefectReportRead:
     data = payload.model_dump()
+    data["title"] = str(data["title"]).strip()
+    data["description"] = (str(data["description"]).strip() or None) if data.get("description") is not None else None
     _validate_defect_report_payload(db, data)
     report = DefectReport(
         **data,
@@ -1698,6 +1700,14 @@ def update_defect_report(
     for required_field in ("device_id", "title", "status", "severity"):
         if required_field in updates and updates[required_field] is None:
             raise HTTPException(status_code=400, detail=f"{required_field} cannot be null")
+    if "title" in updates:
+        updates["title"] = str(updates["title"]).strip()
+    if "description" in updates:
+        updates["description"] = (
+            str(updates["description"]).strip() or None
+            if updates["description"] is not None
+            else None
+        )
     _validate_defect_report_payload(
         db,
         {
