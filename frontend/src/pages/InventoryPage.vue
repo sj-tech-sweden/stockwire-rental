@@ -1675,7 +1675,7 @@
               />
             </div>
             <div class="col-12">
-              <q-btn flat dense color="secondary" icon="build" label="Create maintenance task" @click="openCreateMaintenance('task', deviceInfoTarget?.id)" />
+              <q-btn flat dense color="positive" icon="build" label="Create maintenance task" @click="openCreateMaintenance('task', deviceInfoTarget?.id)" />
               <q-btn flat dense color="positive" icon="event_repeat" label="Create maintenance schedule" class="q-ml-xs" @click="openCreateMaintenance('schedule', deviceInfoTarget?.id)" />
             </div>
             <div class="col-12 col-md-6 text-caption text-grey-8">
