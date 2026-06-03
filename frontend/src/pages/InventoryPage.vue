@@ -290,7 +290,7 @@
                           v-if="isSyncedEventoryProduct(props.row)"
                           color="info"
                           text-color="white"
-                          :label="`Synced: ${eventoryInstanceLabelById(props.row.external_reference)}`"
+                          :label="t('inventory.linkedEventoryInstance', { instance: eventoryInstanceLabelById(props.row.external_reference) })"
                         />
                         <q-badge v-else color="grey-6" text-color="white" :label="t('home.manual')" />
                       </div>
