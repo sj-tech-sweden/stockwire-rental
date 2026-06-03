@@ -297,7 +297,7 @@
     </q-table>
 
     <q-dialog v-model="dialogOpen" persistent>
-      <q-card style="min-width: 680px; max-width: 95vw" class="ec-card">
+      <q-card style="width: 680px; max-width: 95vw" class="ec-card">
         <q-card-section>
           <div class="text-h6">{{ editing ? t('finance.editTransaction') : t('finance.newTransaction') }}</div>
         </q-card-section>

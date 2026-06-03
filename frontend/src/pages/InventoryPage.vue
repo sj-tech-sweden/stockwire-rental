@@ -231,6 +231,8 @@
             flat
             bordered
             dense
+            :grid="compactGrid"
+            :hide-header="compactGrid"
             :pagination="{ rowsPerPage: 50 }"
             :rows-per-page-options="[10, 25, 50, 100, 200]"
           >
@@ -261,6 +263,45 @@
                 <q-btn flat dense round icon="info" :color="infoActionColor" class="q-mr-xs inventory-action-contrast" @click="openRentalProductInfo(props.row)" />
                 <q-btn flat dense round icon="edit" color="primary" @click="openEditRentalProduct(props.row)" />
               </q-td>
+            </template>
+            <template #item="props">
+              <div class="q-pa-xs col-12">
+                <q-card flat bordered>
+                  <q-card-section class="q-pb-sm">
+                    <div class="text-subtitle2">{{ props.row.sku }} · {{ props.row.name }}</div>
+                    <div class="text-caption text-grey-7">
+                      {{ props.row.category || '—' }}
+                      <span v-if="props.row.supplier_name"> · {{ props.row.supplier_name }}</span>
+                    </div>
+                  </q-card-section>
+                  <q-card-section class="q-pt-none q-pb-sm">
+                    <div class="row q-col-gutter-xs">
+                      <div class="col-auto">
+                        <q-badge color="teal-7" text-color="white" :label="`${t('inventory.columnQty')}: ${Math.max(0, Number(props.row.eventory_available_qty || 0))}`" />
+                      </div>
+                      <div v-if="props.row.rental_price" class="col-auto">
+                        <q-badge color="grey-8" text-color="white" :label="`${t('inventory.columnSupplierPrice')}: ${formatMoney(props.row.rental_price)}`" />
+                      </div>
+                      <div v-if="props.row.daily_rate" class="col-auto">
+                        <q-badge color="primary" text-color="white" :label="`${t('inventory.columnClientPrice')}: ${formatMoney(props.row.daily_rate)}`" />
+                      </div>
+                      <div class="col-auto">
+                        <q-badge
+                          v-if="isSyncedEventoryProduct(props.row)"
+                          color="info"
+                          text-color="white"
+                          :label="`Synced: ${eventoryInstanceLabelById(props.row.external_reference)}`"
+                        />
+                        <q-badge v-else color="grey-6" text-color="white" :label="t('home.manual')" />
+                      </div>
+                    </div>
+                  </q-card-section>
+                  <q-card-actions align="right">
+                    <q-btn flat dense icon="info" :color="infoActionColor" class="inventory-action-contrast" @click="openRentalProductInfo(props.row)" />
+                    <q-btn flat dense icon="edit" color="primary" @click="openEditRentalProduct(props.row)" />
+                  </q-card-actions>
+                </q-card>
+              </div>
             </template>
           </q-table>
         </q-card>
@@ -1088,7 +1129,7 @@
     </q-dialog>
 
     <q-dialog v-model="categoryDialogOpen" persistent>
-      <q-card style="min-width: 520px; max-width: 95vw" class="ec-card">
+      <q-card style="width: 520px; max-width: 95vw" class="ec-card">
         <q-card-section><div class="text-h6">{{ categoryEditing ? t('inventory.editCategory') : t('inventory.newCategory') }}</div></q-card-section>
         <q-card-section class="q-pt-none">
           <q-form ref="categoryFormRef" @submit.prevent="saveCategory">
@@ -1107,7 +1148,7 @@
     </q-dialog>
 
     <q-dialog v-model="locationDialogOpen" persistent>
-      <q-card style="min-width: 560px; max-width: 95vw" class="ec-card">
+      <q-card style="width: 560px; max-width: 95vw" class="ec-card">
         <q-card-section><div class="text-h6">{{ locationEditing ? t('inventory.editLocation') : t('inventory.newLocation') }}</div></q-card-section>
         <q-card-section class="q-pt-none">
           <q-form ref="locationFormRef" @submit.prevent="saveLocation">
@@ -1181,7 +1222,7 @@
     </q-dialog>
 
     <q-dialog v-model="bulkCreateDialogOpen" persistent>
-      <q-card style="min-width: 520px; max-width: 95vw" class="ec-card">
+      <q-card style="width: 520px; max-width: 95vw" class="ec-card">
         <q-card-section>
           <div class="text-h6">{{ tr('inventory.bulkCreateSubzones.title', 'Create multiple subzones') }}</div>
           <div class="text-caption text-grey-7">{{ tr('inventory.bulkCreateSubzones.hint', 'Enter one subzone name per line. These will be created as children of the chosen location.') }}</div>
@@ -1229,7 +1270,7 @@
     </q-dialog>
 
     <q-dialog v-model="quickCreateDialogOpen" persistent>
-      <q-card style="min-width: 560px; max-width: 95vw" class="ec-card">
+      <q-card style="width: 560px; max-width: 95vw" class="ec-card">
         <q-card-section>
           <div class="text-h6">{{ t('inventory.createDevices') }}</div>
           <div class="text-caption text-grey-7">{{ quickCreateTargetProduct?.sku }} - {{ quickCreateTargetProduct?.name }}</div>
@@ -1268,7 +1309,7 @@
     </q-dialog>
 
     <q-dialog v-model="maintenanceDialogOpen" persistent>
-      <q-card style="min-width: 720px; max-width: 95vw" class="ec-card">
+      <q-card style="width: 720px; max-width: 95vw" class="ec-card">
         <q-card-section><div class="text-h6">{{ maintenanceDialogTitle }}</div></q-card-section>
         <q-card-section class="q-pt-none">
           <q-form ref="maintenanceFormRef" @submit.prevent="saveMaintenance">
@@ -1364,7 +1405,7 @@
     </q-dialog>
 
     <q-dialog v-model="maintenanceScheduleDialogOpen" persistent>
-      <q-card style="min-width: 560px; max-width: 95vw" class="ec-card">
+      <q-card style="width: 560px; max-width: 95vw" class="ec-card">
         <q-card-section><div class="text-h6">{{ t('inventory.editMaintenanceSchedule') }}</div></q-card-section>
         <q-card-section class="q-pt-none">
           <q-form ref="maintenanceScheduleFormRef" @submit.prevent="saveMaintenanceSchedule">
@@ -1386,7 +1427,7 @@
     </q-dialog>
 
     <q-dialog v-model="maintenanceCompleteDialogOpen" persistent>
-      <q-card style="min-width: 520px; max-width: 95vw" class="ec-card">
+      <q-card style="width: 520px; max-width: 95vw" class="ec-card">
         <q-card-section>
           <div class="text-h6">{{ t('inventory.completeMaintenanceTask') }}</div>
           <div class="text-caption text-grey-7" v-if="maintenanceCompleteTarget">
@@ -1408,7 +1449,7 @@
     </q-dialog>
 
     <q-dialog v-model="deviceFieldCaptureDialogOpen" persistent @hide="stopDeviceFieldCapture">
-      <q-card style="min-width: 560px; max-width: 95vw" class="ec-card device-capture-card">
+      <q-card style="width: 560px; max-width: 95vw" class="ec-card device-capture-card">
         <q-card-section class="text-center">
           <div class="device-capture-icon-wrap q-mb-sm">
             <q-icon name="qr_code_scanner" size="34px" color="white" />
@@ -1467,7 +1508,7 @@
     </q-dialog>
 
     <q-dialog v-model="bulkProductDialogOpen" persistent>
-      <q-card style="min-width: 560px; max-width: 95vw" class="ec-card">
+      <q-card style="width: 560px; max-width: 95vw" class="ec-card">
         <q-card-section><div class="text-h6">{{ t('inventory.bulkEditProducts') }}</div></q-card-section>
         <q-card-section class="q-pt-none">
           <div class="text-caption text-grey-7 q-mb-sm">{{ t('inventory.updatingProductsCount', { count: selectedProducts.length }) }}</div>
@@ -1542,7 +1583,7 @@
     </q-dialog>
 
     <q-dialog v-model="bulkDeviceDialogOpen" persistent>
-      <q-card style="min-width: 520px; max-width: 95vw" class="ec-card">
+      <q-card style="width: 520px; max-width: 95vw" class="ec-card">
         <q-card-section><div class="text-h6">{{ t('inventory.bulkEditDevices') }}</div></q-card-section>
         <q-card-section class="q-pt-none">
           <div class="text-caption text-grey-7 q-mb-sm">{{ t('inventory.updatingDevicesCount', { count: selectedDevices.length }) }}</div>
@@ -1561,7 +1602,7 @@
     </q-dialog>
 
     <q-dialog v-model="bulkMaintenanceDialogOpen" persistent>
-      <q-card style="min-width: 520px; max-width: 95vw" class="ec-card">
+      <q-card style="width: 520px; max-width: 95vw" class="ec-card">
         <q-card-section><div class="text-h6">{{ t('inventory.bulkEditMaintenanceTasks') }}</div></q-card-section>
         <q-card-section class="q-pt-none">
           <div class="text-caption text-grey-7 q-mb-sm">{{ t('inventory.updatingTasksCount', { count: selectedMaintenance.length }) }}</div>
@@ -1581,7 +1622,7 @@
     </q-dialog>
 
     <q-dialog v-model="bulkScheduleDialogOpen" persistent>
-      <q-card style="min-width: 520px; max-width: 95vw" class="ec-card">
+      <q-card style="width: 520px; max-width: 95vw" class="ec-card">
         <q-card-section><div class="text-h6">{{ t('inventory.bulkEditSchedules') }}</div></q-card-section>
         <q-card-section class="q-pt-none">
           <div class="text-caption text-grey-7 q-mb-sm">{{ t('inventory.updatingSchedulesCount', { count: selectedSchedules.length }) }}</div>
@@ -2200,7 +2241,7 @@
     </q-dialog>
 
     <q-dialog v-model="importDialogOpen" persistent>
-      <q-card style="min-width: 840px; max-width: 98vw" class="ec-card">
+      <q-card style="width: 840px; max-width: 98vw" class="ec-card">
         <q-card-section>
           <div class="text-h6">Import Data</div>
         </q-card-section>

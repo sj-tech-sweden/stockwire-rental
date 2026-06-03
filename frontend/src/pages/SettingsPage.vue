@@ -1084,7 +1084,7 @@
     </q-tab-panels>
 
     <q-dialog v-model="userDialogOpen" persistent>
-      <q-card style="min-width: 460px; max-width: 95vw" class="ec-card">
+      <q-card style="width: 460px; max-width: 95vw" class="ec-card">
         <q-card-section>
           <div class="text-h6">{{ userEditing ? t('settings.auth.editUser') : t('settings.auth.newUser') }}</div>
         </q-card-section>
@@ -1138,7 +1138,7 @@
     </q-dialog>
 
     <q-dialog v-model="apiKeyDialogOpen" persistent>
-      <q-card style="min-width: 460px; max-width: 95vw" class="ec-card">
+      <q-card style="width: 460px; max-width: 95vw" class="ec-card">
         <q-card-section>
           <div class="text-h6">{{ t('settings.auth.createApiKeyTitle') }}</div>
         </q-card-section>
@@ -1155,7 +1155,7 @@
     </q-dialog>
 
     <q-dialog v-model="fieldDialogOpen" persistent>
-      <q-card style="min-width: 560px; max-width: 95vw" class="ec-card">
+      <q-card style="width: 560px; max-width: 95vw" class="ec-card">
         <q-card-section>
           <div class="text-h6">{{ fieldEditing ? t('settings.customFields.editField') : t('settings.customFields.newField') }}</div>
         </q-card-section>
