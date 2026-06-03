@@ -1010,11 +1010,11 @@
           <div class="row q-col-gutter-sm q-mb-md items-center">
             <div class="col-12 col-md-6">
               <div class="text-body2 text-grey-6">{{ t('settings.about.frontendVersion') }}</div>
-              <div class="text-h6">{{ appVersion ? `v${appVersion}` : '—' }}</div>
+              <div class="text-h6">{{ (versionInfo.image_tag || appVersion) ? `v${versionInfo.image_tag || appVersion}` : '—' }}</div>
             </div>
             <div class="col-12 col-md-6">
               <div class="text-body2 text-grey-6">{{ t('settings.about.backendVersion') }}</div>
-              <div class="text-h6">{{ versionInfo.backend_version ? `v${versionInfo.backend_version}` : '—' }}</div>
+              <div class="text-h6">{{ (versionInfo.image_tag || versionInfo.backend_version) ? `v${versionInfo.image_tag || versionInfo.backend_version}` : '—' }}</div>
             </div>
             <div class="col-12 col-md-6">
               <div class="text-body2 text-grey-6">{{ t('settings.about.valkeyVersion') }}</div>
@@ -1565,12 +1565,14 @@ const safeLatestReleaseUrl = computed(() => {
 })
 const versionInfo = reactive({
   backend_version: null,
+  image_tag: null,
   valkey_version: null,
   postgres_version: null,
 })
 
 function applyVersionInfo(data) {
   versionInfo.backend_version = data?.backend_version ?? data?.version ?? null
+  versionInfo.image_tag = data?.image_tag ?? null
   versionInfo.valkey_version = data?.valkey_version ?? null
   versionInfo.postgres_version = data?.postgres_version ?? null
 }

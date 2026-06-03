@@ -11,6 +11,8 @@ from urllib.parse import urlencode
 from urllib.error import HTTPError, URLError
 from urllib.parse import urljoin, urlparse
 from urllib.request import Request, build_opener, HTTPRedirectHandler, HTTPHandler, HTTPSHandler, ProxyHandler
+import os
+from pathlib import Path
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 import redis
@@ -123,6 +125,24 @@ def _get_backend_version() -> str:
         return "unknown"
 
 
+def _get_image_tag() -> str | None:
+    # Prefer explicit environment variable set at container runtime
+    env_tag = os.environ.get("IMAGE_TAG") or os.environ.get("VERSION") or os.environ.get("APP_IMAGE_TAG")
+    if env_tag:
+        return str(env_tag).strip() or None
+
+    # Fall back to reading /app/VERSION written at build time
+    try:
+        version_file = Path("/app/VERSION")
+        if version_file.exists():
+            txt = version_file.read_text(encoding="utf-8").strip()
+            return txt or None
+    except OSError:
+        pass
+
+    return None
+
+
 def _sanitize_release_url(value: str | None) -> str | None:
     """Allow only HTTPS GitHub release links and drop everything else."""
     if not value:
@@ -178,6 +198,8 @@ def get_version(
         postgres_version=_get_postgres_version(db),
         valkey_version=_get_valkey_version(),
     )
+    # include image tag if available (written during Docker build or passed at runtime)
+    result.image_tag = _get_image_tag()
     if not check_updates:
         return result
 
