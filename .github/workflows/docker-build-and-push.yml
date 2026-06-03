@@ -89,6 +89,12 @@ jobs:
             fi
           fi
 
+          # Avoid accidentally overwriting :latest from a manual run with no explicit version tag
+          if [ "$PUSH_LATEST" = "false" ] && [ -z "$VERSION_TAG" ]; then
+            echo "version_tag is required when push_latest=false" >&2
+            exit 1
+          fi
+
           backend_tags=""
           frontend_tags=""
 
