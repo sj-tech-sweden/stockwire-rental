@@ -472,7 +472,7 @@
       </q-card>
 
       <q-dialog v-model="showShortcutHelp">
-        <q-card style="width: 320px; max-width: min(460px, 95vw)">
+        <q-card style="width: min(460px, 95vw)">
           <q-card-section class="row items-center q-pb-none">
             <div class="text-h6">{{ t('scan.scannerShortcuts') }}</div>
             <q-space />
