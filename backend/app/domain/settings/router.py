@@ -129,7 +129,7 @@ def _get_image_tag() -> str | None:
     # Prefer explicit environment variable set at container runtime
     env_tag = os.environ.get("IMAGE_TAG")
     if env_tag and env_tag.strip():
-        return str(env_tag).strip()
+        return env_tag.strip()
 
     # Fall back to reading /app/VERSION written at build time
     try:

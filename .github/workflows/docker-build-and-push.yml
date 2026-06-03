@@ -122,4 +122,4 @@ jobs:
           context: ./frontend
           file: ./frontend/Dockerfile
           build-args: |
-            VERSION=${{ inputs.version_tag || github.event.inputs.version_tag || '' }}
+            VERSION=${{ inputs.version_tag || '' }}
