@@ -127,16 +127,17 @@ def _get_backend_version() -> str:
 
 def _get_image_tag() -> str | None:
     # Prefer explicit environment variable set at container runtime
-    env_tag = os.environ.get("IMAGE_TAG")
-    if env_tag and env_tag.strip():
-        return env_tag.strip()
+    env_tag = os.environ.get("IMAGE_TAG", "").strip()
+    if env_tag and env_tag != "unknown":
+        return env_tag
 
     # Fall back to reading /app/VERSION written at build time
     try:
         version_file = Path("/app/VERSION")
         if version_file.exists():
             txt = version_file.read_text(encoding="utf-8").strip()
-            return txt or None
+            if txt and txt != "unknown":
+                return txt
     except OSError:
         pass
 
@@ -218,7 +219,7 @@ def get_version(
         result.latest_version = latest_tag or None
         result.latest_release_notes = release_notes
         result.latest_release_url = release_url
-        result.up_to_date = (latest_tag == backend_version) if latest_tag else None
+        result.up_to_date = (latest_tag == (result.image_tag or backend_version)) if latest_tag else None
     except (HTTPError, URLError, TimeoutError, json.JSONDecodeError, UnicodeDecodeError):
         # Network errors or unexpected responses — return without update info
         pass
