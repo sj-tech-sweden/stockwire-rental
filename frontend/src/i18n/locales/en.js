@@ -459,6 +459,7 @@ export default {
       description: 'Application version information and update check.',
       frontendVersion: 'Frontend version',
       backendVersion: 'Backend version',
+      imageTag: 'Image tag',
       valkeyVersion: 'Valkey version',
       postgresVersion: 'Postgres version',
       checkForUpdates: 'Check for updates',

@@ -7,10 +7,11 @@ from collections.abc import Callable
 from datetime import datetime
 from http.client import HTTPConnection, HTTPSConnection
 from importlib import metadata
-from urllib.parse import urlencode
 from urllib.error import HTTPError, URLError
-from urllib.parse import urljoin, urlparse
+from urllib.parse import urlencode, urljoin, urlparse
 from urllib.request import Request, build_opener, HTTPRedirectHandler, HTTPHandler, HTTPSHandler, ProxyHandler
+import os
+from pathlib import Path
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 import redis
@@ -123,6 +124,25 @@ def _get_backend_version() -> str:
         return "unknown"
 
 
+def _get_image_tag() -> str | None:
+    # Prefer explicit environment variable set at container runtime
+    env_tag = os.environ.get("IMAGE_TAG", "").strip()
+    if env_tag and env_tag != "unknown":
+        return env_tag
+
+    # Fall back to reading /app/VERSION written at build time
+    try:
+        version_file = Path("/app/VERSION")
+        if version_file.exists():
+            txt = version_file.read_text(encoding="utf-8").strip()
+            if txt and txt != "unknown":
+                return txt
+    except (OSError, UnicodeDecodeError):
+        pass
+
+    return None
+
+
 def _sanitize_release_url(value: str | None) -> str | None:
     """Allow only HTTPS GitHub release links and drop everything else."""
     if not value:
@@ -178,6 +198,8 @@ def get_version(
         postgres_version=_get_postgres_version(db),
         valkey_version=_get_valkey_version(),
     )
+    # include image tag if available (written during Docker build or passed at runtime)
+    result.image_tag = _get_image_tag()
     if not check_updates:
         return result
 
@@ -196,7 +218,7 @@ def get_version(
         result.latest_version = latest_tag or None
         result.latest_release_notes = release_notes
         result.latest_release_url = release_url
-        result.up_to_date = (latest_tag == backend_version) if latest_tag else None
+        result.up_to_date = (latest_tag == (result.image_tag or backend_version)) if latest_tag else None
     except (HTTPError, URLError, TimeoutError, json.JSONDecodeError, UnicodeDecodeError):
         # Network errors or unexpected responses — return without update info
         pass

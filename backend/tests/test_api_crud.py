@@ -921,6 +921,8 @@ def test_settings_version(client):
     assert isinstance(data["version"], str)
     assert data["version"]
     assert data.get("backend_version") == data["version"]
+    assert "image_tag" in data
+    assert data.get("image_tag") is None or isinstance(data.get("image_tag"), str)
     assert "postgres_version" in data
     assert data.get("valkey_version") is None or isinstance(data.get("valkey_version"), str)
     # Without check_updates the update fields should be absent / null
@@ -940,6 +942,55 @@ def test_settings_version_check_updates_network_error(client):
     assert data.get("backend_version") == data["version"]
     assert data.get("latest_version") is None
     assert data.get("up_to_date") is None
+
+
+def test_settings_version_image_tag_precedence(client):
+    with patch.object(settings_router, "_get_backend_version", return_value="1.0.0"), patch.object(
+        settings_router, "_get_postgres_version", return_value="15.0"
+    ), patch.object(settings_router.Path, "exists", return_value=True), patch.object(
+        settings_router.Path, "read_text", return_value="file-9.9.9"
+    ):
+        with patch.object(settings_router, "_get_valkey_version", return_value="8.0.0"), patch.dict(
+            settings_router.os.environ,
+            {"IMAGE_TAG": "env-1.2.3"},
+            clear=False,
+        ):
+            response = client.get("/api/v1/settings/version")
+
+    assert response.status_code == 200
+    assert response.json()["image_tag"] == "env-1.2.3"
+
+
+def test_settings_version_image_tag_falls_back_to_version_file(client):
+    with patch.object(settings_router, "_get_backend_version", return_value="1.0.0"), patch.object(
+        settings_router, "_get_postgres_version", return_value="15.0"
+    ), patch.object(settings_router.Path, "exists", return_value=True), patch.object(
+        settings_router.Path, "read_text", return_value="file-9.9.9"
+    ):
+        with patch.object(settings_router, "_get_valkey_version", return_value="8.0.0"), patch.dict(
+            settings_router.os.environ,
+            {"IMAGE_TAG": ""},
+            clear=False,
+        ):
+            response = client.get("/api/v1/settings/version")
+
+    assert response.status_code == 200
+    assert response.json()["image_tag"] == "file-9.9.9"
+
+
+def test_settings_version_image_tag_missing_returns_null(client):
+    with patch.object(settings_router, "_get_backend_version", return_value="1.0.0"), patch.object(
+        settings_router, "_get_postgres_version", return_value="15.0"
+    ), patch.object(settings_router.Path, "exists", return_value=False):
+        with patch.object(settings_router, "_get_valkey_version", return_value="8.0.0"), patch.dict(
+            settings_router.os.environ,
+            {"IMAGE_TAG": ""},
+            clear=False,
+        ):
+            response = client.get("/api/v1/settings/version")
+
+    assert response.status_code == 200
+    assert response.json()["image_tag"] is None
 
 
 def test_inventory_maintenance_system(client):

@@ -70,7 +70,30 @@ jobs:
         run: |
           OWNER="${{ github.repository_owner }}"
           VERSION_TAG="${{ inputs.version_tag || github.event.inputs.version_tag || '' }}"
-          PUSH_LATEST="${{ inputs.push_latest || github.event.inputs.push_latest || 'true' }}"
+          # inputs.push_latest works for workflow_call; github.event.inputs.push_latest works for
+          # workflow_dispatch. For push-triggered runs neither is set, so default to true.
+          PUSH_LATEST="${{ inputs.push_latest }}"
+          if [ -z "$PUSH_LATEST" ]; then
+            PUSH_LATEST="${{ github.event.inputs.push_latest }}"
+          fi
+          BUILD_VERSION="$VERSION_TAG"
+          # For push-triggered runs where workflow inputs are not wired, apply default
+          if [ -z "$PUSH_LATEST" ]; then
+            PUSH_LATEST="true"
+          fi
+          if [ -z "$BUILD_VERSION" ]; then
+            if [ "${{ github.event_name }}" = "push" ]; then
+              BUILD_VERSION="latest"
+            else
+              BUILD_VERSION="unknown"
+            fi
+          fi
+
+          # Avoid accidentally overwriting :latest from a manual run with no explicit version tag
+          if [ "$PUSH_LATEST" = "false" ] && [ -z "$VERSION_TAG" ]; then
+            echo "version_tag is required when push_latest=false" >&2
+            exit 1
+          fi
 
           backend_tags=""
           frontend_tags=""
@@ -102,6 +125,7 @@ jobs:
             echo "frontend_tags<<EOF"
             echo -e "$frontend_tags"
             echo "EOF"
+            echo "build_version=$BUILD_VERSION"
           } >> "$GITHUB_OUTPUT"
 
       - name: Build and push backend image
@@ -111,6 +135,8 @@ jobs:
           tags: ${{ steps.image_tags.outputs.backend_tags }}
           context: ./backend
           file: ./backend/Dockerfile
+          build-args: |
+            VERSION=${{ steps.image_tags.outputs.build_version }}
 
       - name: Build and push frontend image
         uses: docker/build-push-action@v7
@@ -119,3 +145,5 @@ jobs:
           tags: ${{ steps.image_tags.outputs.frontend_tags }}
           context: ./frontend
           file: ./frontend/Dockerfile
+          build-args: |
+            VERSION=${{ steps.image_tags.outputs.build_version }}

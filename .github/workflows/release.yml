@@ -30,7 +30,7 @@ jobs:
       contents: write
     outputs:
       tag: ${{ steps.semver.outputs.tag }}
-      release_sha: ${{ steps.commit_versions.outputs.sha }}
+      release_sha: ${{ steps.set_release_sha.outputs.sha }}
     steps:
       - uses: actions/checkout@v6
         with:
@@ -59,84 +59,25 @@ jobs:
         run: |
           git fetch --tags
           LATEST=$(git describe --tags --abbrev=0 2>/dev/null || echo "0.0.0")
-          echo "Latest tag: $LATEST"
           IFS='.' read -r MAJ MIN PAT <<<"$LATEST"
           TYPE=${{ steps.rtype.outputs.type }}
           if [ "$TYPE" = "major" ]; then MAJ=$((MAJ+1)); MIN=0; PAT=0; fi
           if [ "$TYPE" = "minor" ]; then MIN=$((MIN+1)); PAT=0; fi
           if [ "$TYPE" = "patch" ]; then PAT=$((PAT+1)); fi
-          NEW_TAG="$MAJ.$MIN.$PAT"
-          echo "New tag: $NEW_TAG"
-          echo "tag=$NEW_TAG" >> $GITHUB_OUTPUT
+          echo "tag=${MAJ}.${MIN}.${PAT}" >> "$GITHUB_OUTPUT"
 
-      - name: Setup Node
-        uses: actions/setup-node@v6
-        with:
-          node-version: 24
-
-      - name: Sync version metadata
-        env:
-          RELEASE_VERSION: ${{ steps.semver.outputs.tag }}
+      - name: Set release SHA output
+        id: set_release_sha
         run: |
-          cd frontend
-          npm version --no-git-tag-version "$RELEASE_VERSION"
-          cd ..
-          python3 - <<'PY'
-          import os
-          import re
-          from pathlib import Path
-
-          release_version = os.environ["RELEASE_VERSION"]
-          pyproject_path = Path("backend/pyproject.toml")
-          pyproject_text = pyproject_path.read_text()
-          updated_text, replacements = re.subn(
-              r'(?m)^version = ".*"$',
-              f'version = "{release_version}"',
-              pyproject_text,
-              count=1,
-          )
-          if replacements != 1:
-              raise SystemExit("Expected to update exactly one backend version field")
-          pyproject_path.write_text(updated_text)
-          PY
-
-      - name: Commit synced versions
-        id: commit_versions
-        env:
-          RELEASE_VERSION: ${{ steps.semver.outputs.tag }}
-        run: |
-          if git diff --quiet -- frontend/package.json frontend/package-lock.json backend/pyproject.toml; then
-            echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add frontend/package.json frontend/package-lock.json backend/pyproject.toml
-          git commit -m "chore: sync app versions to ${RELEASE_VERSION}"
-
-          MAX_RETRIES=3
-          for ((i=1; i<=MAX_RETRIES; i++)); do
-            if git push origin HEAD:main; then
-              break
-            fi
-            if [ "$i" -eq "$MAX_RETRIES" ]; then
-              echo "Push failed after $MAX_RETRIES attempts"
-              exit 1
-            fi
-            echo "Push attempt $i failed; fetching and rebasing before retry"
-            git fetch origin main || { echo "git fetch failed"; exit 1; }
-            git rebase origin/main || { echo "git rebase failed"; exit 1; }
-          done
+          # Use the checked-out HEAD SHA to guarantee alignment with the commit actually built
           echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
       - name: Create or update GitHub release
         run: |
           TAG="${{ steps.semver.outputs.tag }}"
-          RELEASE_SHA="${{ steps.commit_versions.outputs.sha }}"
+          RELEASE_SHA="${{ steps.set_release_sha.outputs.sha }}"
 
-          # Generate changelog from the synced commit so the notes always match
-          # the actual --target, even if a rebase was required during the push.
+          # Generate changelog from RELEASE_SHA so the notes always match the actual --target.
           git fetch --tags
           LATEST=$(git describe --tags --abbrev=0 "${RELEASE_SHA}^" 2>/dev/null || echo "0.0.0")
           if [ "$LATEST" = "0.0.0" ]; then

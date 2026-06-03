@@ -459,6 +459,7 @@ export default {
       description: 'Versionsinformation och uppdateringskontroll.',
       frontendVersion: 'Frontend-version',
       backendVersion: 'Backend-version',
+      imageTag: 'Image-tag',
       valkeyVersion: 'Valkey-version',
       postgresVersion: 'Postgres-version',
       checkForUpdates: 'Sök efter uppdateringar',
