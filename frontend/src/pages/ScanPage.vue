@@ -1174,7 +1174,7 @@ function clearMoveDestination() {
   scanZoneCode.value = ''
   scanCode.value = ''
   scanResultMessage.value = t('scan.destinationClearedStep1')
-  scanResultSuccess.value = true
+  scanResultSuccess.value = !uploadFailed
   focusScanCodeInput()
 }
 
