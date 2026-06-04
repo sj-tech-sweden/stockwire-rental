@@ -877,6 +877,18 @@
                   dense
                 />
               </div>
+              <div class="col-12 col-md-4">
+                <q-input
+                  v-model.number="productForm.replace_cost"
+                  type="number"
+                  step="0.01"
+                  label="Replacement cost"
+                  :suffix="activeCurrencyCode"
+                  :hint="currencyHelperText"
+                  outlined
+                  dense
+                />
+              </div>
               <div class="col-12 col-md-4"><q-input v-model.number="productForm.maintenance_interval_days" type="number" label="Maintenance interval (days)" outlined dense /></div>
               <div class="col-12 col-md-4"><q-input v-model.number="productForm.power_consumption_watts" type="number" step="0.01" label="Power (W)" outlined dense /></div>
             </div>
@@ -1707,6 +1719,9 @@
                   Daily rate: {{ formatMoney(deviceInfoProduct?.daily_rate) }} · Supplier: {{ deviceInfoProduct?.supplier_name || '-' }}
                 </q-item-label>
                 <q-item-label caption>
+                  Replacement cost: {{ formatMoney(deviceInfoProduct?.replace_cost) }} · Supplier: {{ deviceInfoProduct?.supplier_name || '-' }}
+                </q-item-label>
+                <q-item-label caption>
                   Rental source: {{ deviceInfoProduct?.external_source || '-' }} · External ref: {{ deviceInfoProduct?.external_reference || '-' }}
                 </q-item-label>
                 <q-item-label caption>
@@ -1982,7 +1997,18 @@
                   {{ t('inventory.infoDialogs.categoryBrandManufacturer', { category: productInfoTarget?.category || t('inventory.uncategorized'), brand: productInfoTarget?.brand || '-', manufacturer: productInfoTarget?.manufacturer || '-' }) }}
                 </q-item-label>
                 <q-item-label caption>
-                  {{ t('inventory.infoDialogs.dailyRateMaintenanceInterval', { dailyRate: formatMoney(productInfoTarget?.daily_rate), days: productInfoTarget?.maintenance_interval_days ?? '-' }) }}
+                  {{
+                    t('inventory.infoDialogs.dailyRateMaintenanceInterval', {
+                      dailyRate: formatMoney(productInfoTarget?.daily_rate),
+                      days: productInfoTarget?.maintenance_interval_days ?? '-'
+                    })
+                  }}
+                </q-item-label>
+
+                <q-item-label caption>
+                  {{ t('inventory.infoDialogs.replaceCost', {
+                    replaceCost: formatMoney(productInfoTarget?.replace_cost)
+                  }) }}
                 </q-item-label>
                 <q-item-label caption>
                   {{ t('inventory.infoDialogs.weightSize', { weight: productInfoTarget?.weight_kg ?? '-', height: productInfoTarget?.height_cm ?? '-', width: productInfoTarget?.width_cm ?? '-', depth: productInfoTarget?.depth_cm ?? '-' }) }}
@@ -2615,6 +2641,7 @@ const productColumns = [
   { name: 'damaged_devices', label: t('inventory.columnDamaged'), field: 'damaged_devices', sortable: true, align: 'left' },
   { name: 'total_devices', label: t('inventory.columnTotal'), field: 'total_devices', sortable: true, align: 'left' },
   { name: 'daily_rate', label: t('inventory.columnDailyRate'), field: 'daily_rate', sortable: true, align: 'left' },
+  { name: 'replace_cost', label: t('inventory.columnReplaceCost'), field: 'replace_cost', sortable: true, align: 'left' },
   { name: 'actions', label: '', field: 'actions', align: 'right' },
 ]
 
@@ -2873,6 +2900,7 @@ function emptyRentalProductDraft() {
     supplier_name: '',
     rental_price: 0,
     daily_rate: 0,
+    replace_cost: 0,
     external_reference: null,
   }
 }
@@ -2900,6 +2928,7 @@ async function openEditRentalProduct(product) {
     supplier_name: product.supplier_name || '',
     rental_price: Number(product.rental_price || 0),
     daily_rate: Number(product.daily_rate || 0),
+    replace_cost: Number(product.replace_cost || 0),
     external_reference: product.external_reference || null,
   }
   await loadRentalProductFieldRows(product.id)
@@ -2934,6 +2963,7 @@ async function saveRentalProduct() {
       is_rental_product: true,
       external_source: keepSyncedLink ? 'eventory' : null,
       external_reference: keepSyncedLink ? rentalProductDraft.value.external_reference : null,
+      replace_cost: Number(rentalProductDraft.value.replace_cost || 0),
     }
 
     let savedProduct
@@ -3843,7 +3873,7 @@ const emptyProductForm = () => ({
   product_type: 'equipment',
   accessories: [],
   weight_kg: null, height_cm: null, width_cm: null, depth_cm: null,
-  maintenance_interval_days: null, power_consumption_watts: null, daily_rate: 0,
+  maintenance_interval_days: null, power_consumption_watts: null, daily_rate: 0, replace_cost: 0,
 })
 const productForm = ref(emptyProductForm())
 
@@ -3899,6 +3929,7 @@ function openEditProduct(product) {
     maintenance_interval_days: product.maintenance_interval_days ?? null,
     power_consumption_watts: product.power_consumption_watts ?? null,
     daily_rate: product.daily_rate ?? 0,
+    replace_cost: product.replace_cost ?? 0,
   }
   applySkuPrefixForType(productForm.value.product_type)
   productDialogError.value = ''
@@ -4068,6 +4099,7 @@ async function saveProduct() {
       maintenance_interval_days: productForm.value.maintenance_interval_days,
       power_consumption_watts: productForm.value.power_consumption_watts,
       daily_rate: Number(productForm.value.daily_rate || 0),
+      replace_cost: Number(productForm.value.replace_cost || 0),
     }
 
     if (productEditing.value) {
@@ -4815,6 +4847,7 @@ function openBulkEditProducts() {
     manufacturer: '',
     maintenance_interval_days: null,
     daily_rate: null,
+    replace_cost: null,
   }
   bulkProductDialogOpen.value = true
 }
@@ -4830,7 +4863,7 @@ async function saveBulkProducts() {
   if (String(bulkProductForm.value.manufacturer || '').trim()) patch.manufacturer = String(bulkProductForm.value.manufacturer).trim()
   if (bulkProductForm.value.maintenance_interval_days != null) patch.maintenance_interval_days = bulkProductForm.value.maintenance_interval_days
   if (bulkProductForm.value.daily_rate != null) patch.daily_rate = bulkProductForm.value.daily_rate
-
+  if (bulkProductForm.value.replace_cost != null) patch.replace_cost = bulkProductForm.value.replace_cost
   if (!Object.keys(patch).length) {
     bulkProductDialogError.value = 'Choose at least one field to update'
     return
@@ -5423,6 +5456,7 @@ const importFieldConfigs = {
     { targetField: 'product_type', label: 'Product Type', required: false },
     { targetField: 'category_id', label: 'Category (id/name)', required: false },
     { targetField: 'daily_rate', label: 'Daily Rate', required: false },
+    { targetField: 'replace_cost', label: 'Replacement Cost', required: false },
     { targetField: 'weight_kg', label: 'Weight (kg)', required: false },
     { targetField: 'height_cm', label: 'Height (cm)', required: false },
     { targetField: 'width_cm', label: 'Width (cm)', required: false },
@@ -5469,6 +5503,7 @@ const importFieldConfigs = {
     { targetField: 'depth_cm', label: 'Depth (cm)', required: false },
     { targetField: 'maintenance_interval_days', label: 'Maintenance Interval Days', required: false },
     { targetField: 'power_consumption_watts', label: 'Power Consumption Watts', required: false },
+    { targetField: 'replace_cost', label: 'Replacement Cost', required: false },
     { targetField: 'product_id', label: 'Product (id/sku/name)', required: false },
     { targetField: 'asset_tag', label: 'Asset Tag', required: false },
     { targetField: 'serial_number', label: 'Serial Number', required: false },

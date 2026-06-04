@@ -782,6 +782,7 @@ export default {
       idType: 'ID: {id} · Type: {type}',
       categoryBrandManufacturer: 'Category: {category} · Brand: {brand} · Manufacturer: {manufacturer}',
       dailyRateMaintenanceInterval: 'Daily rate: {dailyRate} · Maintenance interval: {days} days',
+      replaceCost: 'Replacement cost: {replaceCost}',
       weightSize: 'Weight: {weight} kg · Size: {height}x{width}x{depth} cm',
       linkedDevices: 'Linked Devices',
       deviceStatusCondition: 'Status: {status} · Condition: {condition}',
