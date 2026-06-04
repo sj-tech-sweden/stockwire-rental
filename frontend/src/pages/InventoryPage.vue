@@ -794,7 +794,7 @@
               <div class="col-12 col-md-4">
                 <q-input v-model="productForm.sku" label="SKU" outlined dense :rules="[v => !!v || 'Required']">
                   <template #append>
-                    <q-btn flat dense no-caps color="primary" icon="autorenew" label="Generate" :loading="generatingProductSku" @click="generateProductSku" />
+                    <q-btn flat dense no-caps color="primary" icon="autorenew" label="Generate" :loading="generatingProductSku" @click="generateProductSku(true)" />
                   </template>
                 </q-input>
               </div>
@@ -3877,26 +3877,41 @@ const emptyProductForm = () => ({
 })
 const productForm = ref(emptyProductForm())
 
-function openCreateProduct() {
+async function openCreateProduct() {
   productEditing.value = null
   productForm.value = emptyProductForm()
+
   applySkuPrefixForType(productForm.value.product_type)
+
   productDialogError.value = ''
   accessoriesExpanded.value = !isPhone.value
   newAccessoryProductId.value = null
   newAccessoryQty.value = 1
   newAccessoryRequired.value = false
+
+  await generateProductSku()
+
   productDialogOpen.value = true
 }
 
-async function generateProductSku() {
+async function generateProductSku(force = false) {
+  if (!force && productForm.value.sku) {
+    return
+  }
+
   generatingProductSku.value = true
+
   try {
-    rememberSkuPrefixForType(productForm.value.product_type, productSkuPrefix.value)
+    rememberSkuPrefixForType(
+      productForm.value.product_type,
+      productSkuPrefix.value
+    )
+
     const sku = await store.generateProductSku(productSkuPrefix.value)
-    if (sku) productForm.value.sku = sku
-  } catch (error) {
-    $q.notify({ type: 'negative', message: error?.response?.data?.detail || 'Failed to generate SKU' })
+
+    if (sku) {
+      productForm.value.sku = sku
+    }
   } finally {
     generatingProductSku.value = false
   }
