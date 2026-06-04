@@ -31,5 +31,18 @@
       "type": "image/png",
       "purpose": "maskable"
     }
+  ],
+  "shortcuts": [
+    {
+      "name": "New job",
+      "short_name": "New job",
+      "description": "Create a new job",
+      "url": "/jobs"
+    },
+    {
+      "name": "Scan",
+      "short_name": "Scan",
+      "url": "/scan"
+    }
   ]
 }

@@ -1593,9 +1593,24 @@ async function focusJobFromQuery() {
   await router.replace({ path: '/jobs', query: nextQuery })
 }
 
+async function openCreateFromQuery() {
+  if (route.query.new === '1') {
+    await openCreate()
+
+    const nextQuery = { ...route.query }
+    delete nextQuery.new
+
+    await router.replace({
+      path: '/jobs',
+      query: nextQuery,
+    })
+  }
+}
+
 onMounted(async () => {
   await loadData()
   await focusJobFromQuery()
+  await openCreateFromQuery()
 })
 
 watch(() => route.query.focusJobId, async () => {
