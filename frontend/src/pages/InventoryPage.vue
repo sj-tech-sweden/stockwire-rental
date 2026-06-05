@@ -1691,18 +1691,64 @@
             <div class="col-12">
               <q-btn flat dense color="positive" icon="build" label="Create maintenance task" @click="openCreateMaintenance('task', deviceInfoTarget?.id)" />
               <q-btn flat dense color="positive" icon="event_repeat" label="Create maintenance schedule" class="q-ml-xs" @click="openCreateMaintenance('schedule', deviceInfoTarget?.id)" />
+              <q-btn
+                color="warning"
+                icon="warning"
+                label="Report defect"
+                @click="openDefectDialog(deviceInfoTarget?.id)"
+              />
             </div>
-            <div class="col-12 col-md-6 text-caption text-grey-8">
-              Purchase: {{ deviceInfoTarget?.purchase_price == null ? '-' : formatMoney(deviceInfoTarget?.purchase_price) }} from {{ deviceInfoTarget?.purchased_from || '-' }}
+            <div class="col-12 col-md-6 text-caption">
+              Serialnumber: {{ deviceInfoTarget?.serial_number || '-' }}
             </div>
-            <div class="col-12 col-md-6 text-caption text-grey-8">
-              Sold: {{ deviceInfoTarget?.sold_price == null ? '-' : formatMoney(deviceInfoTarget?.sold_price) }} · Finance up to: {{ deviceInfoTarget?.finance_upto || '-' }}
+            <div class="col-12 col-md-6 text-caption">
+              Barcode: {{ deviceInfoTarget?.barcode || '-' }}
             </div>
-            <div class="col-12 col-md-6 text-caption text-grey-8">
+            <div class="col-12 col-md-6 text-caption">
+              QR-code: {{ deviceInfoTarget?.qr_code || '-' }}
+            </div>
+            <div class="col-12 col-md-6 text-caption">
+              RFID: {{ deviceInfoTarget?.rfid || '-' }}
+            </div>
+            <div class="col-12 col-md-6 text-caption">
+              Usage hours: {{ deviceInfoTarget?.usage_hours || '-' }}
+            </div>
+            <div class="col-12 col-md-6 text-caption">
+              Location: {{ deviceInfoTarget?.location || '-' }}
+            </div>
+            <div class="col-12 col-md-6 text-caption">
+              Purchase:
+              {{ deviceInfoTarget?.purchase_price == null ? '-' : formatMoney(deviceInfoTarget.purchase_price) }}
+              <template v-if="deviceInfoTarget?.purchased_from">
+                from {{ deviceInfoTarget.purchased_from }}
+              </template>
+              <template v-if="deviceInfoTarget?.purchase_date">
+                at {{ deviceInfoTarget.purchase_date }}
+              </template>
+            </div>
+            <div class="col-12 col-md-6 text-caption">
+              Warranty until: {{ deviceInfoTarget?.warranty_until || '-' }}
+            </div>
+            <div class="col-12 col-md-6 text-caption">
+              Retirement: {{ deviceInfoTarget?.retirement_date || '-' }} · Reason: {{ deviceInfoTarget?.retirement_reason || '-' }}
+            </div>
+            <div class="col-12 col-md-6 text-caption">
+              Sold: {{ deviceInfoTarget?.sold_price == null ? '-' : formatMoney(deviceInfoTarget?.sold_price) }}
+              <template v-if="deviceInfoTarget?.sold_date">
+                at {{ deviceInfoTarget.sold_date }}
+              </template>
+            </div>
+            <div class="col-12 col-md-6 text-caption">
+              Finance up to: {{ deviceInfoTarget?.finance_upto || '-' }}
+            </div>
+            <div class="col-12 col-md-6 text-caption">
               Finance company: {{ deviceInfoTarget?.finance_company || '-' }} · Ref: {{ deviceInfoTarget?.finance_ref || '-' }}
             </div>
-            <div class="col-12 col-md-6 text-caption text-grey-8">
+            <div class="col-12 col-md-6 text-caption">
               Pre-prep: {{ deviceInfoTarget?.pre_prep || '-' }}
+            </div>
+            <div class="col-12 col-md-6 text-caption">
+              Notes: {{ deviceInfoTarget?.notes || '-' }}
             </div>
           </div>
 
@@ -1712,7 +1758,7 @@
               <q-item-section>
                 <q-item-label>{{ deviceInfoProduct?.sku || '-' }} · {{ deviceInfoProduct?.name || '-' }}</q-item-label>
                 <q-item-label caption>
-                  ID: {{ deviceInfoProduct?.id || '-' }} · Type: {{ deviceInfoProduct?.product_type || '-' }} · Category: {{ deviceInfoProduct?.category || 'Uncategorized' }}
+                  Type: {{ deviceInfoProduct?.product_type || '-' }} · Category: {{ deviceInfoProduct?.category || 'Uncategorized' }}
                 </q-item-label>
                 <q-item-label caption>
                   Brand: {{ deviceInfoProduct?.brand || '-' }} · Manufacturer: {{ deviceInfoProduct?.manufacturer || '-' }}
@@ -1723,10 +1769,10 @@
                 <q-item-label caption>
                   Replacement cost: {{ formatMoney(deviceInfoProduct?.replace_cost) }} · Supplier: {{ deviceInfoProduct?.supplier_name || '-' }}
                 </q-item-label>
-                <q-item-label caption>
+                <q-item-label caption v-if="deviceInfoProduct?.is_rental_product">
                   Rental source: {{ deviceInfoProduct?.external_source || '-' }} · External ref: {{ deviceInfoProduct?.external_reference || '-' }}
                 </q-item-label>
-                <q-item-label caption>
+                <q-item-label caption v-if="deviceInfoProduct?.is_rental_product">
                   Eventory available: {{ Number(deviceInfoProduct?.eventory_available_qty || 0) }} · Is rental: {{ deviceInfoProduct?.is_rental_product ? 'yes' : 'no' }}
                 </q-item-label>
                 <q-item-label caption>
@@ -2380,6 +2426,10 @@
         </q-card-actions>
       </q-card>
     </q-dialog>
+    <DefectReportDialog
+      v-model="defectDialogOpen"
+      :device-id="selectedDeviceId"
+    />
   </q-page>
 </template>
 
@@ -2407,6 +2457,7 @@ import {
 } from '../utils/inventory-overview'
 import { slugify } from 'src/utils/slugify'
 import { api } from '../boot/axios'
+import DefectReportDialog from 'components/DefectReportDialog.vue'
 
 const $q = useQuasar()
 const { t } = useI18n()
@@ -2441,6 +2492,14 @@ const showCachedOfflineBanner = computed(() => (
 const PREFIX_MEMORY_STORAGE_KEY = 'inventory.prefix-memory.v1'
 const RETURN_INFO_STORAGE_KEY = 'inventory.return-info.v1'
 const ZONE_CODE_MAX_LENGTH = 50
+
+const defectDialogOpen = ref(false)
+const selectedDeviceId = ref(null)
+
+function openDefectDialog(deviceId) {
+  selectedDeviceId.value = deviceId
+  defectDialogOpen.value = true
+}
 
 function customFieldLabel(label) {
   return translateMaybePrefillCustomFieldLabel(label, t)
