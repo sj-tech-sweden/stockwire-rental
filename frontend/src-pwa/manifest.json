@@ -37,7 +37,7 @@
       "name": "New job",
       "short_name": "New job",
       "description": "Create a new job",
-      "url": "/jobs"
+      "url": "/jobs?new=1"
     },
     {
       "name": "Scan",
