@@ -84,8 +84,10 @@
           flat
           bordered
           :loading="store.loading"
-          :pagination="{ rowsPerPage: 50 }"
-          :rows-per-page-options="[10, 25, 50, 100, 200]"
+          :pagination="{ 
+            rowsPerPage: 200
+            }"
+          :rows-per-page-options="[10, 25, 50, 100, 200, 0]"
           class="ec-card inventory-products-table"
         >
           <template #body-cell-sku="props">
@@ -2526,7 +2528,7 @@ const productCategoryFilter = ref(null)
 const productTypeFilter = ref(null)
 const productBrandFilter = ref(null)
 const productManufacturerFilter = ref(null)
-const productSort = ref('sku_asc')
+const productSort = ref('name_asc')
 const deviceSearch = ref('')
 const maintenanceSearch = ref('')
 const scheduleSearch = ref('')
@@ -2675,10 +2677,10 @@ const rentalProductSortOptions = [
 ]
 
 const productSortOptions = [
-  { label: t('inventory.sortSkuAsc'), value: 'sku_asc' },
-  { label: t('inventory.sortSkuDesc'), value: 'sku_desc' },
   { label: t('inventory.sortNameAsc'), value: 'name_asc' },
   { label: t('inventory.sortNameDesc'), value: 'name_desc' },
+  { label: t('inventory.sortSkuAsc'), value: 'sku_asc' },
+  { label: t('inventory.sortSkuDesc'), value: 'sku_desc' },
   { label: t('inventory.sortAvailabilityDesc'), value: 'available_desc' },
   { label: t('inventory.sortAvailabilityAsc'), value: 'available_asc' },
   { label: t('inventory.sortTotalDesc'), value: 'total_desc' },
