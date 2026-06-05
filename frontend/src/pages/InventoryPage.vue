@@ -1691,6 +1691,12 @@
             <div class="col-12">
               <q-btn flat dense color="positive" icon="build" label="Create maintenance task" @click="openCreateMaintenance('task', deviceInfoTarget?.id)" />
               <q-btn flat dense color="positive" icon="event_repeat" label="Create maintenance schedule" class="q-ml-xs" @click="openCreateMaintenance('schedule', deviceInfoTarget?.id)" />
+              <q-btn
+                color="warning"
+                icon="warning"
+                label="Report defect"
+                @click="openDefectDialog(deviceInfoTarget?.id)"
+              />
             </div>
             <div class="col-12 col-md-6 text-caption">
               Serialnumber: {{ deviceInfoTarget?.serial_number || '-' }}
@@ -2420,6 +2426,10 @@
         </q-card-actions>
       </q-card>
     </q-dialog>
+    <DefectReportDialog
+      v-model="defectDialogOpen"
+      :device-id="selectedDeviceId"
+    />
   </q-page>
 </template>
 
@@ -2447,6 +2457,7 @@ import {
 } from '../utils/inventory-overview'
 import { slugify } from 'src/utils/slugify'
 import { api } from '../boot/axios'
+import DefectReportDialog from 'components/DefectReportDialog.vue'
 
 const $q = useQuasar()
 const { t } = useI18n()
@@ -2481,6 +2492,14 @@ const showCachedOfflineBanner = computed(() => (
 const PREFIX_MEMORY_STORAGE_KEY = 'inventory.prefix-memory.v1'
 const RETURN_INFO_STORAGE_KEY = 'inventory.return-info.v1'
 const ZONE_CODE_MAX_LENGTH = 50
+
+const defectDialogOpen = ref(false)
+const selectedDeviceId = ref(null)
+
+function openDefectDialog(deviceId) {
+  selectedDeviceId.value = deviceId
+  defectDialogOpen.value = true
+}
 
 function customFieldLabel(label) {
   return translateMaybePrefillCustomFieldLabel(label, t)

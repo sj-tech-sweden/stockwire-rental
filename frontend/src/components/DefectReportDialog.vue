@@ -70,6 +70,7 @@
 import { computed, ref } from 'vue'
 import { api } from 'boot/axios'
 import { useI18n } from 'vue-i18n'
+import { Notify } from 'quasar'
 
 const { t } = useI18n()
 
@@ -147,13 +148,22 @@ async function submitDefectReport() {
     }
 
     
-    emit('success', {
-        report,
-        uploadFailed
+    Notify.create({
+    type: uploadFailed ? 'warning' : 'positive',
+    message: uploadFailed
+        ? t('scan.defectPhotoUploadFailed')
+        : t('scan.defectReportCreated')
     })
+    emit('success', { report, uploadFailed })
     defectDialogOpen.value = false
 
   } catch (error) {
+    Notify.create({
+    type: 'negative',
+    message:
+        error?.response?.data?.detail ||
+        t('scan.defectReportFailed')
+    })
     emit('error', error)
   } finally {
     defectSaving.value = false

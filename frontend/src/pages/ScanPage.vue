@@ -503,8 +503,6 @@
       <DefectReportDialog
         v-model="defectDialogOpen"
         :device-id="maintenanceTargetDeviceId"
-        @success="handleDefectCreated"
-        @error="handleDefectError"
       />
     </div>
   </q-page>
@@ -561,14 +559,6 @@ let nfcReader = null
 const showShortcutHelp = ref(false)
 
 const defectDialogOpen = ref(false)
-
-function handleDefectCreated({ uploadFailed }) {
-  scanResultMessage.value = uploadFailed
-    ? t('scan.defectPhotoUploadFailed')
-    : t('scan.defectReportCreated')
-
-  scanResultSuccess.value = !uploadFailed
-}
 
 const supportsCamera = computed(() => {
   return typeof navigator !== 'undefined'
@@ -1263,13 +1253,6 @@ async function scheduleMaintenanceFromLookup() {
   } finally {
     saving.value = false
   }
-}
-
-function handleDefectError(error) {
-  scanResultMessage.value =
-    error?.response?.data?.detail || t('scan.defectReportFailed')
-
-  scanResultSuccess.value = false
 }
 
 async function runScanAction() {
