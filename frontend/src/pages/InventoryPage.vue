@@ -85,8 +85,7 @@
           bordered
           :loading="store.loading"
           :pagination="{ 
-            rowsPerPage: 200,
-            sortBy: name
+            rowsPerPage: 200
             }"
           :rows-per-page-options="[10, 25, 50, 100, 200, 0]"
           class="ec-card inventory-products-table"
