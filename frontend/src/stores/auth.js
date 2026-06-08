@@ -7,6 +7,7 @@ import { cacheSnapshot, isOnline, queueMutation, readSnapshot } from '../service
 export const useAuthStore = defineStore('auth', () => {
   const token = ref(localStorage.getItem('sw_token') || null)
   const me = ref(JSON.parse(localStorage.getItem('sw_user') || 'null'))
+  let _refreshToken = sessionStorage.getItem('sw_refresh_token') || null
 
   const isAuthenticated = computed(() => !!token.value)
   const isAdmin = computed(() => me.value?.role === 'admin')
@@ -20,19 +21,54 @@ export const useAuthStore = defineStore('auth', () => {
     api.defaults.headers.common['Authorization'] = `Bearer ${token.value}`
   }
 
+  function _storeRefreshToken(refreshToken) {
+    _refreshToken = refreshToken
+    if (refreshToken) {
+      sessionStorage.setItem('sw_refresh_token', refreshToken)
+    } else {
+      sessionStorage.removeItem('sw_refresh_token')
+    }
+  }
+
   function _setSession(data) {
     token.value = data.access_token
     me.value = data.user
     localStorage.setItem('sw_token', data.access_token)
     localStorage.setItem('sw_user', JSON.stringify(data.user))
     api.defaults.headers.common['Authorization'] = `Bearer ${data.access_token}`
+    if (data.refresh_token) {
+      _storeRefreshToken(data.refresh_token)
+    }
+  }
+
+  function _setToken(accessToken) {
+    token.value = accessToken
+    localStorage.setItem('sw_token', accessToken)
+    api.defaults.headers.common['Authorization'] = `Bearer ${accessToken}`
+  }
+
+  function _setUser(data) {
+    if (data?.user) {
+      me.value = data.user
+      localStorage.setItem('sw_user', JSON.stringify(data.user))
+    }
+    if (data?.refresh_token) {
+      _storeRefreshToken(data.refresh_token)
+    }
+  }
+
+  function getRefreshToken() {
+    return _refreshToken
   }
 
   function logout() {
+    api.post('/api/v1/auth/logout').catch(() => {})
     token.value = null
     me.value = null
+    _refreshToken = null
     localStorage.removeItem('sw_token')
     localStorage.removeItem('sw_user')
+    sessionStorage.removeItem('sw_refresh_token')
     delete api.defaults.headers.common['Authorization']
   }
 
@@ -214,6 +250,9 @@ export const useAuthStore = defineStore('auth', () => {
     isViewer,
     canManageSettings,
     canEdit,
+    _setToken,
+    _setUser,
+    getRefreshToken,
     login,
     setup,
     logout,

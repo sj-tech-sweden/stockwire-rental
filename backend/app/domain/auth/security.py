@@ -9,6 +9,14 @@ from jose import jwt
 from app.config import settings
 
 
+def generate_refresh_token() -> str:
+    return secrets.token_urlsafe(48)
+
+
+def compute_refresh_token_hash(token: str) -> str:
+    return hashlib.sha256(token.encode("utf-8")).hexdigest()
+
+
 def _get_password_pepper_bytes() -> bytes:
     pepper = os.getenv("PASSWORD_PEPPER")
     if pepper:
@@ -61,7 +69,7 @@ def verify_password(plain: str, hashed: str) -> bool:
 
 
 def create_access_token(user_id: int, email: str, role: str) -> str:
-    expire = datetime.now(timezone.utc) + timedelta(hours=settings.jwt_expire_hours)
+    expire = datetime.now(timezone.utc) + timedelta(minutes=settings.jwt_access_expire_minutes)
     payload = {"sub": str(user_id), "email": email, "role": role, "exp": expire}
     return jwt.encode(payload, settings.jwt_secret_key, algorithm=settings.jwt_algorithm)
 

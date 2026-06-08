@@ -1,9 +1,15 @@
+from __future__ import annotations
+
 from datetime import datetime
+from typing import TYPE_CHECKING
 
 from sqlalchemy import Boolean, DateTime, String, Integer, ForeignKey, JSON
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
+
+if TYPE_CHECKING:
+    from app.domain.jobs.models import Job
 
 
 class User(Base):
@@ -51,7 +57,7 @@ class UserRole(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
 
 
-class Session(Base):
+class UserSession(Base):
     __tablename__ = "sessions"
 
     session_id: Mapped[str] = mapped_column(String(128), primary_key=True)

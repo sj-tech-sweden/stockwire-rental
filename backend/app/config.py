@@ -22,6 +22,8 @@ class Settings(BaseSettings):
     jwt_secret_key: str = "change-me-in-production-use-a-long-random-string"
     jwt_algorithm: str = "HS256"
     jwt_expire_hours: int = 8
+    jwt_access_expire_minutes: int = 15
+    jwt_refresh_expire_days: int = 7
 
     sso_enabled: bool = False
     sso_auto_create_users: bool = True

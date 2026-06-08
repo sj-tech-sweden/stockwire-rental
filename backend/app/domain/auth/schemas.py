@@ -42,6 +42,7 @@ class Token(BaseModel):
     access_token: str
     token_type: str = "bearer"
     user: UserSummary
+    refresh_token: str | None = None
 
 
 class SSOProviderSummary(BaseModel):
