@@ -1,14 +1,15 @@
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, status, Response
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from app.config import settings
 from app.db.session import get_db
 from app.domain.auth.deps import get_current_user, require_admin
-from app.domain.auth.models import User
+from app.domain.auth.models import User, UserSession
 from app.domain.auth.schemas import Token, UserCreate, UserLogin, UserSummary, UserSelfUpdate, OIDCExchangeRequest, SAMLAssertionRequest, SSOProviderSummary
-from app.domain.auth.security import create_access_token, hash_password, verify_password, hash_api_key, hash_api_key_lookup
+from app.domain.auth.security import create_access_token, generate_refresh_token, compute_refresh_token_hash, hash_password, verify_password, hash_api_key, hash_api_key_lookup
 from app.domain.auth.sso import (
     build_oidc_authorize_url,
     claims_to_identity,
@@ -21,16 +22,57 @@ from app.domain.auth.sso import (
     upsert_external_user,
 )
 from pydantic import BaseModel
-from app.domain.auth.models import APIKey, Role
-from sqlalchemy import insert
-from app.domain.auth.models import UserRole
+from app.domain.auth.models import APIKey, Role, UserRole
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
-def _make_token(user: User) -> Token:
-    token = create_access_token(user.id, user.email, user.role)
-    return Token(access_token=token, user=UserSummary.model_validate(user))
+def _set_refresh_cookie(response: Response, refresh_token: str) -> None:
+    max_age = settings.jwt_refresh_expire_days * 24 * 60 * 60
+    response.set_cookie(
+        key="refresh_token",
+        value=refresh_token,
+        httponly=True,
+        samesite="none",
+        secure=True,
+        path="/api/v1/auth",
+        max_age=max_age,
+    )
+
+
+def _clear_refresh_cookie(response: Response) -> None:
+    response.set_cookie(
+        key="refresh_token",
+        value="",
+        httponly=True,
+        samesite="none",
+        secure=True,
+        path="/api/v1/auth",
+        max_age=0,
+    )
+
+
+def _create_refresh_session(db: Session, user: User) -> str:
+    refresh_token = generate_refresh_token()
+    token_hash = compute_refresh_token_hash(refresh_token)
+    expires_at = datetime.now(timezone.utc) + timedelta(days=settings.jwt_refresh_expire_days)
+    session = UserSession(
+        session_id=token_hash,
+        user_id=user.id,
+        expires_at=expires_at,
+    )
+    db.add(session)
+    db.commit()
+    return refresh_token
+
+
+def _make_token_response(user: User, response: Response, db: Session) -> Token:
+    access_token_str = create_access_token(user.id, user.email, user.role)
+    refresh_token = _create_refresh_session(db, user)
+    _set_refresh_cookie(response, refresh_token)
+    token = Token(access_token=access_token_str, user=UserSummary.model_validate(user))
+    token.refresh_token = refresh_token
+    return token
 
 
 @router.get("/sso/providers", response_model=list[SSOProviderSummary])
@@ -53,7 +95,7 @@ def oidc_authorize(provider: str, redirect_uri: str, db: Session = Depends(get_d
 
 
 @router.post("/sso/oidc/exchange", response_model=Token)
-def oidc_exchange(payload: OIDCExchangeRequest, db: Session = Depends(get_db)) -> Token:
+def oidc_exchange(payload: OIDCExchangeRequest, response: Response, db: Session = Depends(get_db)) -> Token:
     runtime = get_runtime_sso_config(db)
     if not runtime.enabled:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="SSO not enabled")
@@ -72,11 +114,11 @@ def oidc_exchange(payload: OIDCExchangeRequest, db: Session = Depends(get_db)) -
         allow_auto_create=oidc.allow_auto_create,
         runtime=runtime,
     )
-    return _make_token(user)
+    return _make_token_response(user, response, db)
 
 
 @router.post("/sso/saml/login", response_model=Token)
-def saml_login(payload: SAMLAssertionRequest, db: Session = Depends(get_db)) -> Token:
+def saml_login(payload: SAMLAssertionRequest, response: Response, db: Session = Depends(get_db)) -> Token:
     runtime = get_runtime_sso_config(db)
     if not runtime.enabled:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="SSO not enabled")
@@ -94,7 +136,7 @@ def saml_login(payload: SAMLAssertionRequest, db: Session = Depends(get_db)) -> 
         allow_auto_create=saml.allow_auto_create,
         runtime=runtime,
     )
-    return _make_token(user)
+    return _make_token_response(user, response, db)
 
 
 @router.get("/bootstrap-status")
@@ -105,7 +147,7 @@ def bootstrap_status(db: Session = Depends(get_db)) -> dict:
 
 
 @router.post("/setup", response_model=Token, status_code=status.HTTP_201_CREATED)
-def setup_admin(payload: UserCreate, db: Session = Depends(get_db)) -> Token:
+def setup_admin(payload: UserCreate, response: Response, db: Session = Depends(get_db)) -> Token:
     """Create the first admin account. Only works when no users exist."""
     count = db.scalar(select(func.count()).select_from(User))
     if count and count > 0:
@@ -122,11 +164,11 @@ def setup_admin(payload: UserCreate, db: Session = Depends(get_db)) -> Token:
     db.add(user)
     db.commit()
     db.refresh(user)
-    return _make_token(user)
+    return _make_token_response(user, response, db)
 
 
 @router.post("/login", response_model=Token)
-def login(payload: UserLogin, db: Session = Depends(get_db)) -> Token:
+def login(payload: UserLogin, response: Response, db: Session = Depends(get_db)) -> Token:
     identifier = str(payload.email or "").strip().lower()
     user = None
 
@@ -160,7 +202,65 @@ def login(payload: UserLogin, db: Session = Depends(get_db)) -> Token:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
     if not user.is_active:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Account disabled")
-    return _make_token(user)
+    return _make_token_response(user, response, db)
+
+
+@router.post("/refresh", response_model=Token)
+def refresh_token(
+    response: Response,
+    request: Request,
+    db: Session = Depends(get_db),
+) -> Token:
+    refresh_token = request.cookies.get("refresh_token") or request.headers.get("X-Refresh-Token")
+    if not refresh_token:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Refresh token missing")
+
+    token_hash = compute_refresh_token_hash(refresh_token)
+    session = db.get(UserSession, token_hash)
+    if session is None:
+        _clear_refresh_cookie(response)
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid refresh token")
+
+    if session.expires_at < datetime.now(timezone.utc):
+        db.delete(session)
+        db.commit()
+        _clear_refresh_cookie(response)
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Refresh token expired")
+
+    user = db.get(User, session.user_id)
+    if user is None or not user.is_active:
+        db.delete(session)
+        db.commit()
+        _clear_refresh_cookie(response)
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found or inactive")
+
+    db.delete(session)
+    db.commit()
+
+    new_token = create_access_token(user.id, user.email, user.role)
+    new_refresh = _create_refresh_session(db, user)
+    _set_refresh_cookie(response, new_refresh)
+
+    result = Token(access_token=new_token, user=UserSummary.model_validate(user))
+    result.refresh_token = new_refresh
+    return result
+
+
+@router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
+def logout(
+    response: Response,
+    request: Request,
+    db: Session = Depends(get_db),
+) -> Response:
+    refresh_token = request.cookies.get("refresh_token")
+    if refresh_token:
+        token_hash = compute_refresh_token_hash(refresh_token)
+        session = db.get(UserSession, token_hash)
+        if session is not None:
+            db.delete(session)
+            db.commit()
+    _clear_refresh_cookie(response)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.get("/me", response_model=UserSummary)
