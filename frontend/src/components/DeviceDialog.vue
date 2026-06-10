@@ -62,6 +62,25 @@
             <div class="col-12 col-md-4"><q-select v-model="deviceForm.condition" :options="conditionOptions" label="Condition" outlined dense emit-value map-options /></div>
             <div class="col-12 col-md-4"><q-select v-model="deviceForm.location_zone_id" :options="locationSelectOptions" label="Location" outlined dense emit-value map-options clearable /></div>
             <div class="col-12 col-md-4"><q-select v-model="deviceForm.case_device_id" :options="caseDeviceOptions" label="Inside case" outlined dense emit-value map-options clearable /></div>
+            <div class="col-12 col-md-4">
+              <q-select
+                v-model="componentDeviceIds"
+                :options="componentDeviceOptions"
+                label="Component devices"
+                outlined dense
+                multiple
+                use-chips
+                emit-value
+                map-options
+                :loading="loadingComponentDevices"
+                :disable="!deviceEditing"
+                :hint="!deviceEditing ? 'Save first, then edit to assign components' : ''"
+              >
+                <template #no-option>
+                  <q-item><q-item-section class="text-grey">No available component devices</q-item-section></q-item>
+                </template>
+              </q-select>
+            </div>
             <div class="col-12 col-md-4"><q-input v-model="deviceForm.purchase_date" type="date" label="Purchase date" outlined dense @update:model-value="onPurchaseDateChanged" /></div>
             <div class="col-12 col-md-4"><q-input v-model.number="deviceForm.purchase_price" type="number" step="0.01" label="Purchase price" outlined dense /></div>
             <div class="col-12 col-md-4"><q-input v-model="deviceForm.purchased_from" label="Purchased from" outlined dense /></div>
@@ -156,6 +175,8 @@ import { useQuasar } from 'quasar'
 import { useI18n } from 'vue-i18n'
 import { DEVICE_STATUSES, useInventoryStore } from '../stores/inventory'
 import { useSettingsStore } from '../stores/settings'
+import { isRentalProduct } from '../utils/inventory-overview'
+import { api } from '../boot/axios'
 import EntityAttachmentsPanel from './EntityAttachmentsPanel.vue'
 
 const props = defineProps({
@@ -179,6 +200,8 @@ const PREFIX_MEMORY_STORAGE_KEY = 'inventory.prefix-memory.v1'
 const deviceEditing = ref(null)
 const deviceDialogError = ref('')
 const deviceFormRef = ref(null)
+const componentDeviceIds = ref([])
+const loadingComponentDevices = ref(false)
 const deviceAssetTagInputRef = ref(null)
 const deviceSerialInputRef = ref(null)
 const deviceBarcodeInputRef = ref(null)
@@ -250,6 +273,27 @@ const caseDeviceOptions = computed(() => {
     .map(device => ({
       label: `${device.asset_tag} (${store.products.find(item => item.id === device.product_id)?.name || 'Case'})`,
       value: device.id,
+    }))
+})
+
+const componentDeviceOptions = computed(() => {
+  const currentProductId = deviceForm.value.product_id
+  if (!currentProductId) return []
+  const currentProduct = store.products.find(p => p.id === currentProductId)
+  if (!currentProduct) return []
+  const componentProductIds = new Set(
+    (currentProduct.components || []).map(c => c.component_product_id)
+  )
+  if (!componentProductIds.size) return []
+  return store.devices
+    .filter(d => {
+      if (d.id === deviceEditing.value?.id) return false
+      if (isRentalProduct(store.products.find(p => p.id === d.product_id))) return false
+      return componentProductIds.has(d.product_id)
+    })
+    .map(d => ({
+      label: `${d.asset_tag} (${store.products.find(p => p.id === d.product_id)?.name || ''})`,
+      value: d.id,
     }))
 })
 
@@ -343,6 +387,25 @@ function openEditDevice(device) {
   applyAssetPrefixForType(getProductTypeForDeviceProductId(device.product_id))
   warrantyManuallyEdited.value = true
   deviceDialogError.value = ''
+  loadComponentDevices(device.id)
+}
+
+function loadComponentDevices(deviceId) {
+  if (!deviceId) {
+    componentDeviceIds.value = []
+    return
+  }
+  loadingComponentDevices.value = true
+  api.get(`/api/v1/inventory/devices/${deviceId}/component-devices`)
+    .then(({ data }) => {
+      componentDeviceIds.value = (Array.isArray(data) ? data : []).map(d => d.id)
+    })
+    .catch(() => {
+      componentDeviceIds.value = []
+    })
+    .finally(() => {
+      loadingComponentDevices.value = false
+    })
 }
 
 function closeDialog() {
@@ -407,12 +470,17 @@ async function saveDevice() {
       notes: deviceForm.value.notes || null,
     }
 
+    let savedDevice
     if (deviceEditing.value) {
-      await store.updateDevice(deviceEditing.value.id, payload)
+      savedDevice = await store.updateDevice(deviceEditing.value.id, payload)
       $q.notify({ type: 'positive', message: 'Device updated' })
     } else {
-      await store.createDevice(payload)
+      savedDevice = await store.createDevice(payload)
       $q.notify({ type: 'positive', message: 'Device created' })
+    }
+    if (savedDevice?.id || deviceEditing.value?.id) {
+      const id = savedDevice?.id || deviceEditing.value?.id
+      await api.put(`/api/v1/inventory/devices/${id}/component-devices`, componentDeviceIds.value)
     }
     emit('update:modelValue', false)
     emit('saved')

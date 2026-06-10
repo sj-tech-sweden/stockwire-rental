@@ -1286,6 +1286,64 @@ def update_device(device_id: int, payload: DeviceUpdate, db: Session = Depends(g
     return _to_device_read(db, device)
 
 
+@router.put("/devices/{device_id}/component-devices", response_model=list[DeviceRead])
+def update_device_component_devices(
+    device_id: int,
+    payload: list[int],
+    db: Session = Depends(get_db),
+    _: User = Depends(require_editor),
+) -> list[DeviceRead]:
+    device = db.get(Device, device_id)
+    if device is None:
+        raise HTTPException(status_code=404, detail="Device not found")
+
+    incoming = set(payload)
+    if device_id in incoming:
+        raise HTTPException(status_code=400, detail="Device cannot be a component of itself")
+
+    existing = list(
+        db.scalars(select(Device).where(Device.parent_component_device_id == device_id)).all()
+    )
+    existing_by_id = {row.id: row for row in existing}
+
+    for comp_id in incoming:
+        if comp_id in existing_by_id:
+            del existing_by_id[comp_id]
+            continue
+        comp_device = db.get(Device, comp_id)
+        if comp_device is None:
+            raise HTTPException(status_code=404, detail=f"Component device not found: {comp_id}")
+        comp_device.parent_component_device_id = device_id
+
+    for stale in existing_by_id.values():
+        stale.parent_component_device_id = None
+
+    db.commit()
+    result = list(
+        db.scalars(
+            select(Device).where(Device.parent_component_device_id == device_id).order_by(Device.id)
+        ).all()
+    )
+    emit_realtime_event("inventory.updated", {"entity": "device_component", "action": "update", "device_id": device_id})
+    return [_to_device_read(db, d) for d in result]
+
+
+@router.get("/devices/{device_id}/component-devices", response_model=list[DeviceRead])
+def list_device_component_devices(
+    device_id: int,
+    db: Session = Depends(get_db),
+) -> list[DeviceRead]:
+    device = db.get(Device, device_id)
+    if device is None:
+        raise HTTPException(status_code=404, detail="Device not found")
+    result = list(
+        db.scalars(
+            select(Device).where(Device.parent_component_device_id == device_id).order_by(Device.id)
+        ).all()
+    )
+    return [_to_device_read(db, d) for d in result]
+
+
 @router.post("/devices/bulk-update", response_model=BulkOperationResult)
 def bulk_update_devices(
     payload: DeviceBulkUpdateRequest,
@@ -2161,6 +2219,34 @@ def process_scan(
             db.commit()
             return response
 
+        if action == "assign_component":
+            if payload.parent_component_device_id is None:
+                raise HTTPException(status_code=400, detail="parent_component_device_id is required for assign_component action")
+
+            parent_device = db.get(Device, payload.parent_component_device_id)
+            if parent_device is None:
+                raise HTTPException(status_code=404, detail="Parent device not found")
+            if parent_device.id == device.id:
+                raise HTTPException(status_code=400, detail="Device cannot be a component of itself")
+
+            device.parent_component_device_id = parent_device.id
+            db.commit()
+            db.refresh(device)
+            response = _scan_response(action, device, product, f"Assigned device as component of {parent_device.asset_tag}")
+            _record_scan_audit(
+                db,
+                action=action,
+                scan_code=scan_code,
+                success=True,
+                message=response.message,
+                user_id=current_user.id,
+                device_id=device.id,
+                product_id=product.id if product else None,
+                details={"payload": payload.model_dump(), "parent_component_device_id": parent_device.id},
+            )
+            db.commit()
+            return response
+
         if action == "maintenance":
             maintenance_type = payload.maintenance_type or "inspection"
             interval_mode = payload.interval_mode or "calendar"
@@ -2691,6 +2777,14 @@ def _validate_device_product_and_location(db: Session, payload: dict) -> None:
         if case_product is None or case_product.product_type != "case":
             raise HTTPException(status_code=400, detail="case_device_id must point to a device whose product_type is case")
 
+    if payload.get("parent_component_device_id") is not None:
+        component_device = db.get(Device, payload["parent_component_device_id"])
+        if component_device is None:
+            raise HTTPException(status_code=404, detail="Component device not found")
+        component_product = db.get(Product, component_device.product_id)
+        if component_product is None:
+            raise HTTPException(status_code=400, detail="Component device has no product")
+
 
 def _validate_zone_parent_assignment(db: Session, zone: Zone, parent_id: int | None) -> None:
     if parent_id == zone.id:
@@ -3120,6 +3214,11 @@ def _to_device_read(db: Session, device: Device) -> DeviceRead:
         case_device = db.get(Device, device.case_device_id)
         case_asset_tag = case_device.asset_tag if case_device else None
 
+    parent_component_asset_tag = None
+    if device.parent_component_device_id:
+        comp_device = db.get(Device, device.parent_component_device_id)
+        parent_component_asset_tag = comp_device.asset_tag if comp_device else None
+
     current_job_id = None
     current_job_code = None
     if str(device.status or "").lower() == "in_use":
@@ -3147,6 +3246,8 @@ def _to_device_read(db: Session, device: Device) -> DeviceRead:
             "location_zone_id": device.location_zone_id,
             "case_device_id": device.case_device_id,
             "case_asset_tag": case_asset_tag,
+            "parent_component_device_id": device.parent_component_device_id,
+            "parent_component_asset_tag": parent_component_asset_tag,
             "status": device.status,
             "condition": device.condition,
             "purchase_date": device.purchase_date,
@@ -3370,6 +3471,13 @@ def _to_product_read(db: Session, product: Product) -> ProductRead:
             .order_by(ProductAccessory.required.desc(), ProductAccessory.id)
         ).all()
     )
+    components = list(
+        db.scalars(
+            select(ProductComponent)
+            .where(ProductComponent.parent_product_id == product.id)
+            .order_by(ProductComponent.id)
+        ).all()
+    )
     eventory_packlists: list[dict[str, object]] = []
     if product.eventory_packlists_json:
         try:
@@ -3410,6 +3518,7 @@ def _to_product_read(db: Session, product: Product) -> ProductRead:
             "damaged_devices": int(damaged_devices),
             "eventory_packlists": eventory_packlists,
             "accessories": [_to_product_accessory_read(db, row) for row in accessories],
+            "components": [_to_product_component_read(db, row) for row in components],
         }
     )
 

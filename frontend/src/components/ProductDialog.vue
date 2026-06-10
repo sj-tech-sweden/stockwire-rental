@@ -501,7 +501,14 @@ const accessoryProductOptions = computed(() => {
     return true
   })
 })
-const componentProductOptions = computed(() => productOptions.value.filter(o => o.value !== productEditing.value?.id))
+const componentProductOptions = computed(() => {
+  return productOptions.value.filter(o => {
+    if (o.value === productEditing.value?.id) return false
+    const product = store.products.find(p => p.id === o.value)
+    if (product && isRentalProduct(product)) return false
+    return true
+  })
+})
 
 const filteredAccessoryProductOptions = ref([])
 const filteredComponentProductOptions = ref([])

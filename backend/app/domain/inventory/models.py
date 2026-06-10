@@ -98,6 +98,7 @@ class Device(Base):
     rfid: Mapped[str] = mapped_column(String(255), nullable=True, index=True)
     location_zone_id: Mapped[int] = mapped_column(ForeignKey("zones.id"), nullable=True, index=True)
     case_device_id: Mapped[int] = mapped_column(ForeignKey("devices.id"), nullable=True, index=True)
+    parent_component_device_id: Mapped[int] = mapped_column(ForeignKey("devices.id"), nullable=True, index=True)
     status: Mapped[str] = mapped_column(String(50), default="available", index=True)
     condition: Mapped[str] = mapped_column(String(50), default="good", index=True)
     purchase_date: Mapped[date] = mapped_column(Date, nullable=True)
@@ -126,6 +127,17 @@ class Device(Base):
         "Device",
         back_populates="case_device",
         foreign_keys="Device.case_device_id",
+    )
+    parent_component_device: Mapped["Device | None"] = relationship(
+        "Device",
+        remote_side="Device.id",
+        back_populates="component_devices",
+        foreign_keys=[parent_component_device_id],
+    )
+    component_devices: Mapped[list["Device"]] = relationship(
+        "Device",
+        back_populates="parent_component_device",
+        foreign_keys="Device.parent_component_device_id",
     )
     maintenance_records: Mapped[list["DeviceMaintenance"]] = relationship(
         "DeviceMaintenance", back_populates="device", cascade="all, delete-orphan"
