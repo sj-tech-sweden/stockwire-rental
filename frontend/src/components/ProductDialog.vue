@@ -36,6 +36,9 @@
                 @filter="filterCategoryOptions"
               />
             </div>
+            <div class="col-12 col-md-4">
+              <q-input v-model="productForm.supplier_name" label="Supplier" outlined dense />
+            </div>
           </div>
 
           <q-separator class="q-my-md" />
@@ -44,7 +47,7 @@
             <div class="col-12 col-md-4">
               <q-select
                 v-model="productForm.brand"
-                :options="brandOptions"
+                :options="brandSelectOptions"
                 label="Brand"
                 outlined
                 dense
@@ -53,6 +56,7 @@
                 input-debounce="0"
                 emit-value
                 map-options
+                @filter="filterBrandOptions"
                 @new-value="onNewBrandValue"
                 @update:model-value="onBrandChanged"
               />
@@ -60,7 +64,7 @@
             <div class="col-12 col-md-4">
               <q-select
                 v-model="productForm.manufacturer"
-                :options="manufacturerOptions"
+                :options="manufacturerSelectOptions"
                 label="Manufacturer"
                 outlined
                 dense
@@ -69,6 +73,7 @@
                 input-debounce="0"
                 emit-value
                 map-options
+                @filter="filterManufacturerOptions"
                 @new-value="onNewManufacturerValue"
                 @update:model-value="onManufacturerChanged"
               />
@@ -472,6 +477,7 @@ const emptyProductForm = () => ({
   sku: '',
   name: '',
   category_id: null,
+  supplier_name: '',
   brand: settingsStore.defaultBrand || '',
   manufacturer: settingsStore.defaultManufacturer || '',
   brand_url: '',
@@ -513,8 +519,14 @@ const componentProductOptions = computed(() => {
 const filteredAccessoryProductOptions = ref([])
 const filteredComponentProductOptions = ref([])
 
-const brandOptions = computed(() => settingsStore.brandOptions.map(value => ({ label: value, value })))
-const manufacturerOptions = computed(() => settingsStore.manufacturerOptions.map(value => ({ label: value, value })))
+const allBrandOptions = computed(() =>
+  [...settingsStore.brandOptions].sort((a, b) => a.localeCompare(b)).map(value => ({ label: value, value }))
+)
+const allManufacturerOptions = computed(() =>
+  [...settingsStore.manufacturerOptions].sort((a, b) => a.localeCompare(b)).map(value => ({ label: value, value }))
+)
+const brandSelectOptions = ref([])
+const manufacturerSelectOptions = ref([])
 const brandManufacturerMap = computed(() => settingsStore.brandManufacturerMap || {})
 const brandLinks = computed(() => settingsStore.brandLinks || {})
 const manufacturerLinks = computed(() => settingsStore.manufacturerLinks || {})
@@ -536,6 +548,14 @@ const categorySelectOptions = ref([])
 
 watch(allCategorySelectOptions, (options) => {
   categorySelectOptions.value = options
+}, { immediate: true })
+
+watch(allBrandOptions, (options) => {
+  brandSelectOptions.value = options
+}, { immediate: true })
+
+watch(allManufacturerOptions, (options) => {
+  manufacturerSelectOptions.value = options
 }, { immediate: true })
 
 function filterCategoryOptions(val, update) {
@@ -580,6 +600,25 @@ function filterComponentProductOptions(val, update) {
     filteredComponentProductOptions.value = componentProductOptions.value.filter(
       option => option.label.toLowerCase().includes(needle)
     )
+function filterBrandOptions(val, update) {
+  update(() => {
+    const needle = val.trim().toLowerCase()
+    if (!needle) {
+      brandSelectOptions.value = allBrandOptions.value
+      return
+    }
+    brandSelectOptions.value = allBrandOptions.value.filter(option => option.label.toLowerCase().includes(needle))
+  })
+}
+
+function filterManufacturerOptions(val, update) {
+  update(() => {
+    const needle = val.trim().toLowerCase()
+    if (!needle) {
+      manufacturerSelectOptions.value = allManufacturerOptions.value
+      return
+    }
+    manufacturerSelectOptions.value = allManufacturerOptions.value.filter(option => option.label.toLowerCase().includes(needle))
   })
 }
 
@@ -871,14 +910,28 @@ function onManufacturerChanged(value) {
   productForm.value.manufacturer_url = manufacturer ? (manufacturerLinks.value[manufacturer] || '') : ''
 }
 
+function addBrandToStore(value) {
+  if (!value || settingsStore.brandOptions.includes(value)) return
+  settingsStore.brandOptions.push(value)
+  settingsStore.brandOptions.sort((a, b) => a.localeCompare(b))
+}
+
+function addManufacturerToStore(value) {
+  if (!value || settingsStore.manufacturerOptions.includes(value)) return
+  settingsStore.manufacturerOptions.push(value)
+  settingsStore.manufacturerOptions.sort((a, b) => a.localeCompare(b))
+}
+
 function onNewBrandValue(value, done) {
   const normalized = String(value || '').trim()
+  addBrandToStore(normalized)
   done(normalized, 'add-unique')
   onBrandChanged(normalized)
 }
 
 function onNewManufacturerValue(value, done) {
   const normalized = String(value || '').trim()
+  addManufacturerToStore(normalized)
   done(normalized, 'add-unique')
   onManufacturerChanged(normalized)
 }
