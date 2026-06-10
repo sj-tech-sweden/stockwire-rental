@@ -9,6 +9,7 @@ export default {
       inventory: 'Inventory',
       labels: 'Labels',
       scan: 'Scan',
+      defects: 'Defects',
       activity: 'Activity',
       jobs: 'Jobs',
       customers: 'Customers',

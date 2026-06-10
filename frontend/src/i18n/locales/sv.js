@@ -9,6 +9,7 @@ export default {
       inventory: 'Lager',
       labels: 'Etiketter',
       scan: 'Skanna',
+      defects: 'Defekter',
       activity: 'Aktivitet',
       jobs: 'Jobb',
       customers: 'Kunder',

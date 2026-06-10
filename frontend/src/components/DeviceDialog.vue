@@ -1,0 +1,692 @@
+<template>
+  <q-dialog :model-value="modelValue" persistent :maximized="isPhone" @update:model-value="emit('update:modelValue', $event)">
+    <q-card :style="isPhone ? 'width: 100vw; max-width: 100vw; height: 100vh' : 'min-width: 820px; max-width: 95vw'" class="ec-card">
+      <q-card-section><div class="text-h6">{{ deviceEditing ? 'Edit device' : 'New device' }}</div></q-card-section>
+      <q-card-section class="q-pt-none" :style="isPhone ? 'max-height: calc(100vh - 140px); overflow: auto;' : ''">
+        <q-form ref="deviceFormRef" @submit.prevent="saveDevice">
+          <div class="row q-col-gutter-sm">
+            <div class="col-12 col-md-6">
+              <q-select v-model="deviceForm.product_id" :options="productOptions" label="Product" outlined dense emit-value map-options :rules="[v => !!v || 'Required']" />
+            </div>
+            <div class="col-12 col-md-3">
+              <q-input ref="deviceAssetTagInputRef" v-model="deviceForm.asset_tag" label="Asset tag" outlined dense :rules="[v => !!v || 'Required']">
+                <template #append>
+                  <q-btn flat dense no-caps color="primary" icon="autorenew" label="Generate" :loading="generatingDeviceAssetTag" @click="generateDeviceAssetTag" />
+                  <q-btn flat dense round color="positive" icon="qr_code_scanner" @click="openDeviceFieldCapture('asset_tag', 'Asset tag')">
+                    <q-tooltip>Open scan options (keyboard/camera/NFC)</q-tooltip>
+                  </q-btn>
+                </template>
+              </q-input>
+            </div>
+            <div class="col-12 col-md-2">
+              <q-input v-model="deviceAssetTagPrefix" label="Tag prefix" outlined dense hint="e.g. LGT" />
+            </div>
+            <div class="col-12 col-md-3">
+              <q-input ref="deviceSerialInputRef" v-model="deviceForm.serial_number" label="Serial number" outlined dense>
+                <template #append>
+                  <q-btn flat dense round color="positive" icon="qr_code_scanner" @click="openDeviceFieldCapture('serial_number', 'Serial number')">
+                    <q-tooltip>Open scan options (keyboard/camera/NFC)</q-tooltip>
+                  </q-btn>
+                </template>
+              </q-input>
+            </div>
+            <div class="col-12 col-md-3">
+              <q-input ref="deviceBarcodeInputRef" v-model="deviceForm.barcode" label="Barcode" outlined dense>
+                <template #append>
+                  <q-btn flat dense round color="positive" icon="qr_code_scanner" @click="openDeviceFieldCapture('barcode', 'Barcode')">
+                    <q-tooltip>Open scan options (keyboard/camera/NFC)</q-tooltip>
+                  </q-btn>
+                </template>
+              </q-input>
+            </div>
+            <div class="col-12 col-md-3">
+              <q-input ref="deviceQrCodeInputRef" v-model="deviceForm.qr_code" label="QR code" outlined dense>
+                <template #append>
+                  <q-btn flat dense round color="positive" icon="qr_code_scanner" @click="openDeviceFieldCapture('qr_code', 'QR code')">
+                    <q-tooltip>Open scan options (keyboard/camera/NFC)</q-tooltip>
+                  </q-btn>
+                </template>
+              </q-input>
+            </div>
+            <div class="col-12 col-md-3">
+              <q-input ref="deviceRfidInputRef" v-model="deviceForm.rfid" label="RFID" outlined dense>
+                <template #append>
+                  <q-btn flat dense round color="positive" icon="qr_code_scanner" @click="openDeviceFieldCapture('rfid', 'RFID')">
+                    <q-tooltip>Open scan options (keyboard/camera/NFC)</q-tooltip>
+                  </q-btn>
+                </template>
+              </q-input>
+            </div>
+            <div class="col-12 col-md-3"><q-input v-model.number="deviceForm.usage_hours" type="number" step="0.01" label="Usage hours" outlined dense /></div>
+            <div class="col-12 col-md-4"><q-select v-model="deviceForm.status" :options="statusOptions" label="Status" outlined dense emit-value map-options /></div>
+            <div class="col-12 col-md-4"><q-select v-model="deviceForm.condition" :options="conditionOptions" label="Condition" outlined dense emit-value map-options /></div>
+            <div class="col-12 col-md-4"><q-select v-model="deviceForm.location_zone_id" :options="locationSelectOptions" label="Location" outlined dense emit-value map-options clearable /></div>
+            <div class="col-12 col-md-4"><q-select v-model="deviceForm.case_device_id" :options="caseDeviceOptions" label="Inside case" outlined dense emit-value map-options clearable /></div>
+            <div class="col-12 col-md-4"><q-input v-model="deviceForm.purchase_date" type="date" label="Purchase date" outlined dense @update:model-value="onPurchaseDateChanged" /></div>
+            <div class="col-12 col-md-4"><q-input v-model.number="deviceForm.purchase_price" type="number" step="0.01" label="Purchase price" outlined dense /></div>
+            <div class="col-12 col-md-4"><q-input v-model="deviceForm.purchased_from" label="Purchased from" outlined dense /></div>
+            <div class="col-12 col-md-4"><q-input v-model.number="deviceForm.sold_price" type="number" step="0.01" label="Sold price" outlined dense /></div>
+            <div class="col-12 col-md-4"><q-input v-model="deviceForm.finance_upto" label="Finance up to" outlined dense /></div>
+            <div class="col-12 col-md-4"><q-input v-model="deviceForm.finance_company" label="Finance company" outlined dense /></div>
+            <div class="col-12 col-md-4"><q-input v-model="deviceForm.finance_ref" label="Finance ref" outlined dense /></div>
+            <div class="col-12 col-md-4"><q-input v-model="deviceForm.pre_prep" label="Pre-prep" outlined dense /></div>
+            <div class="col-12 col-md-4"><q-input v-model="deviceForm.warranty_end_date" type="date" label="Warranty end" outlined dense @update:model-value="onWarrantyEndDateChanged" /></div>
+            <div class="col-12 col-md-4"><q-input v-model="deviceForm.retire_date" type="date" label="Retire date" outlined dense /></div>
+            <div class="col-12"><q-input v-model="deviceForm.notes" type="textarea" autogrow label="Notes" outlined dense /></div>
+          </div>
+          <q-banner v-if="deviceDialogError" class="bg-negative text-white q-mt-sm rounded-borders" dense>{{ deviceDialogError }}</q-banner>
+        </q-form>
+      </q-card-section>
+      <EntityAttachmentsPanel
+        entity-type="device"
+        :entity-id="deviceEditing?.id || null"
+        title="Device Documents"
+        default-category="device-document"
+      />
+      <q-card-actions :align="isPhone ? 'stretch' : 'right'" :class="isPhone ? 'q-pa-md bg-grey-2' : ''">
+        <q-btn flat :class="isPhone ? 'full-width q-mb-sm' : ''" label="Cancel" @click="closeDialog" />
+        <q-btn color="primary" unelevated :class="isPhone ? 'full-width' : ''" :label="deviceEditing ? 'Save' : 'Create'" :loading="saving" @click="saveDevice" />
+      </q-card-actions>
+    </q-card>
+  </q-dialog>
+
+  <q-dialog :model-value="deviceFieldCaptureDialogOpen" persistent @hide="stopDeviceFieldCapture" @update:model-value="deviceFieldCaptureDialogOpen = $event">
+    <q-card style="width: 560px; max-width: 95vw" class="ec-card device-capture-card">
+      <q-card-section class="text-center">
+        <div class="device-capture-icon-wrap q-mb-sm">
+          <q-icon name="qr_code_scanner" size="34px" color="white" />
+        </div>
+        <div class="text-h6 text-white">{{ t('inventory.captureField', { field: deviceFieldCaptureLabel }) }}</div>
+        <div class="text-caption text-grey-4">{{ t('inventory.scanWithKeyboardCameraNfc') }}</div>
+      </q-card-section>
+      <q-card-section class="q-pt-none">
+        <div class="row q-gutter-sm q-mb-md justify-center">
+          <q-btn-toggle
+            v-model="deviceFieldCaptureMode"
+            toggle-color="primary"
+            color="grey-9"
+            text-color="grey-3"
+            unelevated
+            no-caps
+            :options="deviceFieldCaptureModeButtons"
+          />
+        </div>
+
+        <div class="row q-col-gutter-sm">
+          <div class="col-12">
+            <q-input ref="deviceFieldCaptureInputRef" v-model="deviceFieldCaptureValue" :label="t('inventory.scannerKeyboardInput')" outlined dense @keyup.enter="applyDeviceFieldCaptureValue">
+              <template #append>
+                <q-btn flat dense round color="primary" icon="check" @click="applyDeviceFieldCaptureValue" />
+              </template>
+            </q-input>
+          </div>
+          <div class="col-12 text-caption text-grey-5">
+            {{ t('inventory.captureModeHelpText') }}
+          </div>
+          <div class="col-12 row q-gutter-sm" v-if="deviceFieldCaptureMode === 'keyboard'">
+            <q-btn color="secondary" outline icon="keyboard" :label="t('inventory.focusTargetField')" @click="focusDeviceCaptureTargetField" />
+          </div>
+          <div class="col-12" v-if="deviceFieldCaptureCameraActive">
+            <div class="device-capture-camera-wrap">
+              <video ref="deviceCaptureVideoRef" class="device-capture-video" autoplay muted playsinline />
+            </div>
+            <div class="text-caption text-grey-5 q-mt-xs">{{ t('inventory.pointCameraToBarcode') }}</div>
+          </div>
+          <div class="col-12" v-if="deviceFieldCaptureMode === 'nfc'">
+            <div class="device-capture-nfc-wrap text-center">
+              <q-icon name="nfc" size="40px" :color="deviceFieldCaptureNfcActive ? 'primary' : 'grey-5'" />
+              <div class="text-caption q-mt-sm" :class="deviceFieldCaptureNfcActive ? 'text-primary' : 'text-grey-5'">
+                {{ deviceFieldCaptureNfcActive ? t('inventory.nfcReadyHoldTag') : t('inventory.startingNfcReader') }}
+              </div>
+            </div>
+          </div>
+        </div>
+        <q-banner v-if="deviceFieldCaptureError" class="bg-negative text-white q-mt-sm rounded-borders" dense>{{ deviceFieldCaptureError }}</q-banner>
+      </q-card-section>
+      <q-card-actions align="right">
+        <q-btn flat :label="t('app.actions.close')" @click="deviceFieldCaptureDialogOpen = false" />
+      </q-card-actions>
+    </q-card>
+  </q-dialog>
+</template>
+
+<script setup>
+import { computed, nextTick, ref, watch } from 'vue'
+import { useQuasar } from 'quasar'
+import { useI18n } from 'vue-i18n'
+import { DEVICE_STATUSES, useInventoryStore } from '../stores/inventory'
+import { useSettingsStore } from '../stores/settings'
+import EntityAttachmentsPanel from './EntityAttachmentsPanel.vue'
+
+const props = defineProps({
+  modelValue: { type: Boolean, default: false },
+  device: { type: Object, default: null },
+  isPhone: { type: Boolean, default: false },
+})
+const emit = defineEmits(['update:modelValue', 'saved'])
+
+const $q = useQuasar()
+const { t } = useI18n()
+const store = useInventoryStore()
+const settingsStore = useSettingsStore()
+
+const saving = ref(false)
+const generatingDeviceAssetTag = ref(false)
+const deviceAssetTagPrefix = ref('')
+const assetTagPrefixByProductType = ref({})
+const PREFIX_MEMORY_STORAGE_KEY = 'inventory.prefix-memory.v1'
+
+const deviceEditing = ref(null)
+const deviceDialogError = ref('')
+const deviceFormRef = ref(null)
+const deviceAssetTagInputRef = ref(null)
+const deviceSerialInputRef = ref(null)
+const deviceBarcodeInputRef = ref(null)
+const deviceQrCodeInputRef = ref(null)
+const deviceRfidInputRef = ref(null)
+const deviceCaptureVideoRef = ref(null)
+const deviceFieldCaptureInputRef = ref(null)
+const warrantyManuallyEdited = ref(false)
+const deviceFieldCaptureDialogOpen = ref(false)
+const deviceFieldCaptureTarget = ref('')
+const deviceFieldCaptureLabel = ref('')
+const deviceFieldCaptureValue = ref('')
+const deviceFieldCaptureError = ref('')
+const deviceFieldCaptureMode = ref('keyboard')
+const deviceFieldCaptureCameraActive = ref(false)
+const deviceFieldCaptureNfcActive = ref(false)
+const deviceFieldCaptureStream = ref(null)
+const deviceFieldCaptureRaf = ref(null)
+const deviceFieldCaptureNfcController = ref(null)
+const deviceCaptureSupportsCamera = computed(() => {
+  if (typeof window === 'undefined') return false
+  return typeof window.BarcodeDetector === 'function' && !!navigator.mediaDevices?.getUserMedia
+})
+const deviceCaptureSupportsNfc = computed(() => {
+  if (typeof window === 'undefined') return false
+  return !!window.isSecureContext && typeof window.NDEFReader === 'function'
+})
+const deviceFieldCaptureModeButtons = computed(() => {
+  const buttons = [{ label: 'Keyboard', value: 'keyboard', icon: 'keyboard' }]
+  if (deviceCaptureSupportsCamera.value) buttons.push({ label: 'Camera', value: 'camera', icon: 'photo_camera' })
+  if (deviceCaptureSupportsNfc.value) buttons.push({ label: 'NFC', value: 'nfc', icon: 'nfc' })
+  return buttons
+})
+
+const emptyDeviceForm = () => ({
+  product_id: null, asset_tag: '', serial_number: '', barcode: '', qr_code: '', rfid: '',
+  location_zone_id: null, case_device_id: null, status: 'available', condition: 'good',
+  purchase_date: '', purchase_price: null, purchased_from: '', sold_price: null, finance_upto: '', finance_company: '', finance_ref: '', pre_prep: '', warranty_end_date: '', retire_date: '', usage_hours: null, notes: '',
+})
+const deviceForm = ref(emptyDeviceForm())
+
+const statusOptions = DEVICE_STATUSES.map(item => ({ label: item.label, value: item.value }))
+const conditionOptions = [
+  { label: t('inventory.conditionExcellent'), value: 'excellent' },
+  { label: t('inventory.conditionGood'), value: 'good' },
+  { label: t('inventory.conditionFair'), value: 'fair' },
+  { label: t('inventory.conditionDamaged'), value: 'damaged' },
+]
+
+const productOptions = computed(() => store.products.map(p => ({ label: `${p.sku} - ${p.name}`, value: p.id })))
+const locationSelectOptions = computed(() => {
+  const flat = [{ label: 'Unassigned', value: null }]
+  const walk = (nodes, prefix = '') => {
+    for (const node of nodes || []) {
+      const label = prefix ? `${prefix} / ${node.name}` : node.name
+      flat.push({ label, value: node.id })
+      walk(node.children || [], label)
+    }
+  }
+  walk(store.zoneTree)
+  return flat
+})
+const caseDeviceOptions = computed(() => {
+  return store.devices
+    .filter(device => {
+      const product = store.products.find(item => item.id === device.product_id)
+      return product?.product_type === 'case'
+    })
+    .map(device => ({
+      label: `${device.asset_tag} (${store.products.find(item => item.id === device.product_id)?.name || 'Case'})`,
+      value: device.id,
+    }))
+})
+
+function loadPrefixMemory() {
+  if (typeof window === 'undefined') return
+  try {
+    const raw = window.localStorage.getItem(PREFIX_MEMORY_STORAGE_KEY)
+    if (!raw) return
+    const parsed = JSON.parse(raw)
+    if (parsed && typeof parsed === 'object') {
+      assetTagPrefixByProductType.value = parsed.assetByType && typeof parsed.assetByType === 'object' ? { ...parsed.assetByType } : {}
+    }
+  } catch {
+    // Ignore invalid local storage data.
+  }
+}
+
+function persistPrefixMemory() {
+  if (typeof window === 'undefined') return
+  try {
+    window.localStorage.setItem(PREFIX_MEMORY_STORAGE_KEY, JSON.stringify({
+      assetByType: assetTagPrefixByProductType.value,
+    }))
+  } catch {
+    // Ignore storage quota/privacy mode failures.
+  }
+}
+
+function normalizePrefix(value, fallback = '') {
+  const cleaned = String(value || '').trim()
+  return cleaned || fallback
+}
+
+function rememberAssetPrefixForType(type, prefix) {
+  const key = String(type || '').trim()
+  if (!key) return
+  const normalized = normalizePrefix(prefix)
+  if (!normalized) return
+  assetTagPrefixByProductType.value = {
+    ...assetTagPrefixByProductType.value,
+    [key]: normalized,
+  }
+  persistPrefixMemory()
+}
+
+function getProductTypeForDeviceProductId(productId) {
+  const selected = (store.products || []).find(product => product.id === productId)
+  return String(selected?.product_type || '').trim()
+}
+
+function applyAssetPrefixForType(type) {
+  const key = String(type || '').trim()
+  const remembered = key ? assetTagPrefixByProductType.value[key] : null
+  deviceAssetTagPrefix.value = normalizePrefix(remembered, '')
+}
+
+function openCreateDevice() {
+  deviceEditing.value = null
+  deviceForm.value = emptyDeviceForm()
+  applyAssetPrefixForType('')
+  warrantyManuallyEdited.value = false
+  deviceDialogError.value = ''
+}
+
+function openEditDevice(device) {
+  deviceEditing.value = device
+  deviceForm.value = {
+    product_id: device.product_id ?? null,
+    asset_tag: device.asset_tag ?? '',
+    serial_number: device.serial_number ?? '',
+    barcode: device.barcode ?? '',
+    qr_code: device.qr_code ?? '',
+    rfid: device.rfid ?? '',
+    location_zone_id: device.location_zone_id ?? null,
+    case_device_id: device.case_device_id ?? null,
+    status: device.status ?? 'available',
+    condition: device.condition ?? 'good',
+    purchase_date: device.purchase_date || '',
+    purchase_price: device.purchase_price ?? null,
+    purchased_from: device.purchased_from ?? '',
+    sold_price: device.sold_price ?? null,
+    finance_upto: device.finance_upto ?? '',
+    finance_company: device.finance_company ?? '',
+    finance_ref: device.finance_ref ?? '',
+    pre_prep: device.pre_prep ?? '',
+    warranty_end_date: device.warranty_end_date || '',
+    retire_date: device.retire_date || '',
+    usage_hours: device.usage_hours ?? null,
+    notes: device.notes ?? '',
+  }
+  applyAssetPrefixForType(getProductTypeForDeviceProductId(device.product_id))
+  warrantyManuallyEdited.value = true
+  deviceDialogError.value = ''
+}
+
+function closeDialog() {
+  emit('update:modelValue', false)
+}
+
+async function generateDeviceAssetTag() {
+  generatingDeviceAssetTag.value = true
+  try {
+    const productType = getProductTypeForDeviceProductId(deviceForm.value.product_id)
+    if (deviceAssetTagPrefix.value) {
+      rememberAssetPrefixForType(productType, deviceAssetTagPrefix.value)
+    }
+    const assetTag = await store.generateDeviceAssetTag({
+      productId: deviceForm.value.product_id || null,
+      prefix: deviceAssetTagPrefix.value || null,
+    })
+    if (assetTag) {
+      deviceForm.value.asset_tag = assetTag
+      const inferredPrefix = String(assetTag).replace(/-\d+$/, '')
+      rememberAssetPrefixForType(productType, inferredPrefix)
+      if (!deviceAssetTagPrefix.value) {
+        deviceAssetTagPrefix.value = inferredPrefix
+      }
+    }
+  } catch (error) {
+    $q.notify({ type: 'negative', message: error?.response?.data?.detail || 'Failed to generate asset tag' })
+  } finally {
+    generatingDeviceAssetTag.value = false
+  }
+}
+
+async function saveDevice() {
+  const valid = await deviceFormRef.value?.validate()
+  if (!valid) return
+
+  saving.value = true
+  deviceDialogError.value = ''
+  try {
+    const payload = {
+      product_id: deviceForm.value.product_id,
+      asset_tag: deviceForm.value.asset_tag.trim(),
+      serial_number: deviceForm.value.serial_number || null,
+      barcode: deviceForm.value.barcode || null,
+      qr_code: deviceForm.value.qr_code || null,
+      rfid: deviceForm.value.rfid || null,
+      location_zone_id: deviceForm.value.location_zone_id,
+      case_device_id: deviceForm.value.case_device_id,
+      status: deviceForm.value.status,
+      condition: deviceForm.value.condition,
+      purchase_date: normalizeOptionalDate(deviceForm.value.purchase_date),
+      purchase_price: deviceForm.value.purchase_price === '' || deviceForm.value.purchase_price === null || deviceForm.value.purchase_price === undefined ? null : Number(deviceForm.value.purchase_price),
+      purchased_from: deviceForm.value.purchased_from || null,
+      sold_price: deviceForm.value.sold_price === '' || deviceForm.value.sold_price === null || deviceForm.value.sold_price === undefined ? null : Number(deviceForm.value.sold_price),
+      finance_upto: deviceForm.value.finance_upto || null,
+      finance_company: deviceForm.value.finance_company || null,
+      finance_ref: deviceForm.value.finance_ref || null,
+      pre_prep: deviceForm.value.pre_prep || null,
+      warranty_end_date: normalizeOptionalDate(deviceForm.value.warranty_end_date),
+      retire_date: normalizeOptionalDate(deviceForm.value.retire_date),
+      usage_hours: deviceForm.value.usage_hours,
+      notes: deviceForm.value.notes || null,
+    }
+
+    if (deviceEditing.value) {
+      await store.updateDevice(deviceEditing.value.id, payload)
+      $q.notify({ type: 'positive', message: 'Device updated' })
+    } else {
+      await store.createDevice(payload)
+      $q.notify({ type: 'positive', message: 'Device created' })
+    }
+    emit('update:modelValue', false)
+    emit('saved')
+  } catch (error) {
+    deviceDialogError.value = error?.response?.data?.detail || 'Failed to save device'
+  } finally {
+    saving.value = false
+  }
+}
+
+function addYearsToDateString(dateString, yearsToAdd) {
+  if (!dateString) return ''
+  const dateObj = new Date(`${dateString}T00:00:00`)
+  if (Number.isNaN(dateObj.getTime())) return ''
+  dateObj.setFullYear(dateObj.getFullYear() + yearsToAdd)
+  return dateObj.toISOString().slice(0, 10)
+}
+
+function onPurchaseDateChanged(value) {
+  const purchaseDate = String(value || '').trim()
+  if (!purchaseDate) return
+  if (warrantyManuallyEdited.value && deviceForm.value.warranty_end_date) return
+  const prefetchedWarrantyDate = addYearsToDateString(purchaseDate, 3)
+  if (prefetchedWarrantyDate) {
+    deviceForm.value.warranty_end_date = prefetchedWarrantyDate
+  }
+}
+
+function onWarrantyEndDateChanged() {
+  warrantyManuallyEdited.value = true
+}
+
+function normalizeOptionalDate(value) {
+  return value ? value : null
+}
+
+// Field capture functions
+function focusDeviceField(field) {
+  const fieldRefMap = {
+    asset_tag: deviceAssetTagInputRef,
+    serial_number: deviceSerialInputRef,
+    barcode: deviceBarcodeInputRef,
+    qr_code: deviceQrCodeInputRef,
+    rfid: deviceRfidInputRef,
+  }
+  fieldRefMap[field]?.value?.focus?.()
+}
+
+function setCapturedDeviceFieldValue(field, value) {
+  if (!field) return
+  if (!Object.prototype.hasOwnProperty.call(deviceForm.value, field)) return
+  const normalized = String(value || '').trim()
+  if (!normalized) return
+  deviceForm.value[field] = normalized
+  $q.notify({ type: 'positive', message: `${deviceFieldCaptureLabel.value || 'Field'} captured` })
+}
+
+function openDeviceFieldCapture(field, label) {
+  deviceFieldCaptureTarget.value = field
+  deviceFieldCaptureLabel.value = label
+  deviceFieldCaptureValue.value = ''
+  deviceFieldCaptureError.value = ''
+  deviceFieldCaptureMode.value = 'keyboard'
+  deviceFieldCaptureDialogOpen.value = true
+}
+
+function focusCaptureInput() {
+  if (!deviceFieldCaptureDialogOpen.value) return
+  if (deviceFieldCaptureMode.value !== 'keyboard') return
+  nextTick(() => {
+    deviceFieldCaptureInputRef.value?.focus?.()
+  })
+}
+
+function applyDeviceFieldCaptureValue() {
+  setCapturedDeviceFieldValue(deviceFieldCaptureTarget.value, deviceFieldCaptureValue.value)
+  if (!deviceFieldCaptureValue.value) return
+  deviceFieldCaptureDialogOpen.value = false
+}
+
+function focusDeviceCaptureTargetField() {
+  focusDeviceField(deviceFieldCaptureTarget.value)
+  $q.notify({ type: 'info', message: `Target ${deviceFieldCaptureLabel.value} focused for keyboard scanner input` })
+}
+
+function stopDeviceFieldCapture() {
+  if (deviceFieldCaptureRaf.value) {
+    cancelAnimationFrame(deviceFieldCaptureRaf.value)
+    deviceFieldCaptureRaf.value = null
+  }
+  if (deviceFieldCaptureNfcController.value) {
+    deviceFieldCaptureNfcController.value.abort()
+    deviceFieldCaptureNfcController.value = null
+  }
+  if (deviceFieldCaptureStream.value) {
+    for (const track of deviceFieldCaptureStream.value.getTracks()) {
+      track.stop()
+    }
+    deviceFieldCaptureStream.value = null
+  }
+  if (deviceCaptureVideoRef.value) {
+    deviceCaptureVideoRef.value.srcObject = null
+  }
+  deviceFieldCaptureCameraActive.value = false
+  deviceFieldCaptureNfcActive.value = false
+}
+
+async function startDeviceCameraCapture() {
+  deviceFieldCaptureError.value = ''
+  if (!deviceCaptureSupportsCamera.value) {
+    deviceFieldCaptureError.value = 'Camera barcode scanning is not supported by this browser.'
+    return
+  }
+  if (!navigator.mediaDevices?.getUserMedia) {
+    deviceFieldCaptureError.value = 'Camera access is not available in this browser.'
+    return
+  }
+
+  stopDeviceFieldCapture()
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } } })
+    deviceFieldCaptureStream.value = stream
+    deviceFieldCaptureCameraActive.value = true
+    await nextTick()
+
+    const videoEl = deviceCaptureVideoRef.value
+    if (!videoEl) {
+      deviceFieldCaptureError.value = 'Camera preview is unavailable.'
+      return
+    }
+    videoEl.srcObject = stream
+    await videoEl.play()
+
+    const detector = new window.BarcodeDetector({
+      formats: ['qr_code', 'code_128', 'code_39', 'ean_13', 'ean_8', 'upc_a', 'upc_e'],
+    })
+
+    const detectLoop = async () => {
+      if (!deviceFieldCaptureDialogOpen.value || !deviceFieldCaptureCameraActive.value) return
+      try {
+        const codes = await detector.detect(videoEl)
+        const first = Array.isArray(codes) && codes.length ? codes[0] : null
+        const value = String(first?.rawValue || '').trim()
+        if (value) {
+          setCapturedDeviceFieldValue(deviceFieldCaptureTarget.value, value)
+          deviceFieldCaptureDialogOpen.value = false
+          stopDeviceFieldCapture()
+          return
+        }
+      } catch {
+        // Continue scanning until a value is found or the dialog closes.
+      }
+      deviceFieldCaptureRaf.value = requestAnimationFrame(detectLoop)
+    }
+
+    deviceFieldCaptureRaf.value = requestAnimationFrame(detectLoop)
+  } catch (error) {
+    deviceFieldCaptureError.value = error?.message || 'Unable to start camera scanning.'
+    stopDeviceFieldCapture()
+  }
+}
+
+function parseNfcRecordValue(record) {
+  try {
+    if (!record?.data) return ''
+    const decoder = new TextDecoder(record.encoding || 'utf-8')
+    const decoded = decoder.decode(record.data).trim()
+    return decoded
+  } catch {
+    return ''
+  }
+}
+
+async function startDeviceNfcCapture() {
+  deviceFieldCaptureError.value = ''
+  if (!deviceCaptureSupportsNfc.value) {
+    deviceFieldCaptureError.value = 'Web NFC is not supported by this browser/device.'
+    return
+  }
+
+  stopDeviceFieldCapture()
+  try {
+    const ndef = new window.NDEFReader()
+    const controller = new AbortController()
+    deviceFieldCaptureNfcController.value = controller
+    await ndef.scan({ signal: controller.signal })
+    deviceFieldCaptureNfcActive.value = true
+    $q.notify({ type: 'info', message: 'NFC scan started. Hold a tag near your device.' })
+
+    ndef.onreadingerror = () => {
+      deviceFieldCaptureError.value = 'NFC tag detected but data could not be read.'
+    }
+
+    ndef.onreading = (event) => {
+      const records = event?.message?.records || []
+      for (const record of records) {
+        const value = parseNfcRecordValue(record)
+        if (value) {
+          setCapturedDeviceFieldValue(deviceFieldCaptureTarget.value, value)
+          deviceFieldCaptureDialogOpen.value = false
+          stopDeviceFieldCapture()
+          return
+        }
+      }
+      deviceFieldCaptureError.value = 'NFC tag read but no usable text payload was found.'
+    }
+  } catch (error) {
+    deviceFieldCaptureError.value = error?.message || 'Unable to start NFC scanning.'
+    stopDeviceFieldCapture()
+  }
+}
+
+watch(deviceFieldCaptureMode, (mode) => {
+  if (!deviceFieldCaptureDialogOpen.value) return
+  if (mode === 'keyboard') {
+    stopDeviceFieldCapture()
+    focusCaptureInput()
+    return
+  }
+  if (mode === 'camera') {
+    void startDeviceCameraCapture()
+    return
+  }
+  if (mode === 'nfc') {
+    void startDeviceNfcCapture()
+  }
+})
+
+watch(deviceFieldCaptureDialogOpen, (open) => {
+  if (open) {
+    focusCaptureInput()
+    return
+  }
+  stopDeviceFieldCapture()
+})
+
+watch(() => deviceForm.value.product_id, (nextProductId) => {
+  if (!props.modelValue) return
+  applyAssetPrefixForType(getProductTypeForDeviceProductId(nextProductId))
+})
+
+watch(() => props.modelValue, (open) => {
+  if (open) {
+    loadPrefixMemory()
+    if (props.device) {
+      openEditDevice(props.device)
+    } else {
+      openCreateDevice()
+    }
+  }
+})
+</script>
+
+<style lang="scss" scoped>
+.device-capture-card {
+  background: var(--q-dark-page, #1d1d1d) !important;
+}
+.device-capture-icon-wrap {
+  width: 60px;
+  height: 60px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--q-primary, #1976d2);
+}
+.device-capture-camera-wrap {
+  border-radius: 8px;
+  overflow: hidden;
+  background: #000;
+  max-width: 100%;
+}
+.device-capture-video {
+  width: 100%;
+  display: block;
+}
+</style>
