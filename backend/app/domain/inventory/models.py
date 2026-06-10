@@ -71,6 +71,18 @@ class Product(Base):
         back_populates="accessory_product",
         cascade="all, delete-orphan",
     )
+    components_as_parent: Mapped[list["ProductComponent"]] = relationship(
+        "ProductComponent",
+        foreign_keys="ProductComponent.parent_product_id",
+        back_populates="parent_product",
+        cascade="all, delete-orphan",
+    )
+    components_as_child: Mapped[list["ProductComponent"]] = relationship(
+        "ProductComponent",
+        foreign_keys="ProductComponent.component_product_id",
+        back_populates="component_product",
+        cascade="all, delete-orphan",
+    )
 
 
 class Device(Base):
@@ -142,6 +154,27 @@ class ProductAccessory(Base):
         "Product",
         foreign_keys=[accessory_product_id],
         back_populates="accessories_as_child",
+    )
+
+
+class ProductComponent(Base):
+    __tablename__ = "product_components"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    parent_product_id: Mapped[int] = mapped_column(ForeignKey("products.id", ondelete="CASCADE"), index=True)
+    component_product_id: Mapped[int] = mapped_column(ForeignKey("products.id", ondelete="CASCADE"), index=True)
+    quantity: Mapped[int] = mapped_column(Integer, default=1)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
+
+    parent_product: Mapped[Product] = relationship(
+        "Product",
+        foreign_keys=[parent_product_id],
+        back_populates="components_as_parent",
+    )
+    component_product: Mapped[Product] = relationship(
+        "Product",
+        foreign_keys=[component_product_id],
+        back_populates="components_as_child",
     )
 
 

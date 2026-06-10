@@ -28,6 +28,7 @@ from app.domain.inventory.models import (
     MaintenanceComment,
     Product,
     ProductAccessory,
+    ProductComponent,
     Zone,
 )
 from app.domain.jobs.models import Job, JobRequirement
@@ -70,6 +71,8 @@ from app.domain.inventory.schemas import (
     InventoryCheckedOutDeviceRead,
     ProductAccessoryRead,
     ProductAccessoryUpsertRequest,
+    ProductComponentRead,
+    ProductComponentUpsertRequest,
     InventoryAuditRead,
     ProductCreate,
     ProductDevicesBulkCreate,
@@ -1011,6 +1014,77 @@ def upsert_product_accessories(
     )
     emit_realtime_event("inventory.updated", {"entity": "product_accessory", "action": "upsert", "product_id": product_id})
     return [_to_product_accessory_read(db, link) for link in links]
+
+
+@router.get("/products/{product_id}/components", response_model=list[ProductComponentRead])
+def list_product_components(product_id: int, db: Session = Depends(get_db)) -> list[ProductComponentRead]:
+    product = db.get(Product, product_id)
+    if product is None:
+        raise HTTPException(status_code=404, detail="Product not found")
+
+    links = list(
+        db.scalars(
+            select(ProductComponent)
+            .where(ProductComponent.parent_product_id == product_id)
+            .order_by(ProductComponent.id)
+        ).all()
+    )
+    return [_to_product_component_read(db, link) for link in links]
+
+
+@router.put("/products/{product_id}/components", response_model=list[ProductComponentRead])
+def upsert_product_components(
+    product_id: int,
+    payload: ProductComponentUpsertRequest,
+    db: Session = Depends(get_db),
+    _: User = Depends(require_editor),
+) -> list[ProductComponentRead]:
+    product = db.get(Product, product_id)
+    if product is None:
+        raise HTTPException(status_code=404, detail="Product not found")
+
+    incoming_by_component: dict[int, int] = {}
+    for item in payload.items:
+        component_id = int(item.component_product_id)
+        if component_id == product_id:
+            raise HTTPException(status_code=400, detail="Product cannot reference itself as component")
+        component = db.get(Product, component_id)
+        if component is None:
+            raise HTTPException(status_code=404, detail=f"Component product not found: {component_id}")
+        incoming_by_component[component_id] = max(int(item.quantity or 1), 1)
+
+    existing = list(
+        db.scalars(select(ProductComponent).where(ProductComponent.parent_product_id == product_id)).all()
+    )
+    existing_by_component = {row.component_product_id: row for row in existing}
+
+    for component_id, quantity in incoming_by_component.items():
+        current = existing_by_component.get(component_id)
+        if current is None:
+            db.add(
+                ProductComponent(
+                    parent_product_id=product_id,
+                    component_product_id=component_id,
+                    quantity=quantity,
+                )
+            )
+            continue
+        current.quantity = quantity
+
+    for row in existing:
+        if row.component_product_id not in incoming_by_component:
+            db.delete(row)
+
+    db.commit()
+    links = list(
+        db.scalars(
+            select(ProductComponent)
+            .where(ProductComponent.parent_product_id == product_id)
+            .order_by(ProductComponent.id)
+        ).all()
+    )
+    emit_realtime_event("inventory.updated", {"entity": "product_component", "action": "upsert", "product_id": product_id})
+    return [_to_product_component_read(db, link) for link in links]
 
 
 @router.post("/products/{product_id}/devices", response_model=list[DeviceRead])
@@ -2593,9 +2667,9 @@ def _normalize_sibling_sort_orders(db: Session, parent_id: int | None) -> None:
 def _validate_product_type(product_type: str | None) -> None:
     if product_type is None:
         return
-    allowed = {"equipment", "accessory", "consumable", "case", "rental"}
+    allowed = {"equipment", "accessory", "consumable", "case", "rental", "bundle"}
     if product_type not in allowed:
-        raise HTTPException(status_code=400, detail="product_type must be one of: equipment, accessory, consumable, case, rental")
+        raise HTTPException(status_code=400, detail="product_type must be one of: equipment, accessory, consumable, case, rental, bundle")
 
 
 def _validate_device_product_and_location(db: Session, payload: dict) -> None:
@@ -3013,6 +3087,18 @@ def _collect_case_devices(db: Session, case_device: Device) -> list[Device]:
     )
     rows.extend(direct_children)
     return rows
+
+
+def _to_product_component_read(db: Session, row: ProductComponent) -> ProductComponentRead:
+    component = db.get(Product, row.component_product_id)
+    return ProductComponentRead(
+        id=row.id,
+        parent_product_id=row.parent_product_id,
+        component_product_id=row.component_product_id,
+        component_sku=component.sku if component else None,
+        component_name=component.name if component else None,
+        quantity=int(row.quantity or 1),
+    )
 
 
 def _to_product_accessory_read(db: Session, row: ProductAccessory) -> ProductAccessoryRead:

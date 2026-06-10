@@ -893,6 +893,7 @@ export default {
     productTypeAccessory: 'Accessory',
     productTypeConsumable: 'Consumable',
     productTypeCase: 'Case',
+    productTypeBundle: 'Bundle',
     conditionExcellent: 'Excellent',
     conditionGood: 'Good',
     conditionFair: 'Fair',

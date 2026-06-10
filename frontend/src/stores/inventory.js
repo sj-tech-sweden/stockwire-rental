@@ -217,6 +217,29 @@ export const useInventoryStore = defineStore('inventory', () => {
     return Array.isArray(data) ? data : []
   }
 
+  async function fetchProductComponents(productId) {
+    const { data } = await api.get(`/api/v1/inventory/products/${productId}/components`)
+    return Array.isArray(data) ? data : []
+  }
+
+  async function updateProductComponents(productId, items) {
+    if (!isOnline()) {
+      products.value = products.value.map(product => (
+        product.id === productId
+          ? { ...product, components: Array.isArray(items) ? items : [], _offline_queued: true }
+          : product
+      ))
+      if (Number(productId) > 0) {
+        await queueMutation({ method: 'put', url: `/api/v1/inventory/products/${productId}/components`, data: { items } })
+      }
+      await persistFetchAllSnapshot()
+      return Array.isArray(items) ? items : []
+    }
+    const { data } = await api.put(`/api/v1/inventory/products/${productId}/components`, { items })
+    await fetchAll()
+    return Array.isArray(data) ? data : []
+  }
+
   async function updateProductAccessories(productId, items) {
     if (!isOnline()) {
       products.value = products.value.map(product => (
@@ -636,6 +659,8 @@ export const useInventoryStore = defineStore('inventory', () => {
     bulkDeleteProducts,
     fetchProductAccessories,
     updateProductAccessories,
+    fetchProductComponents,
+    updateProductComponents,
     createDevicesForProduct,
     createDevice,
     updateDevice,

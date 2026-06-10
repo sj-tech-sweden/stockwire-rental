@@ -893,6 +893,7 @@ export default {
     productTypeAccessory: 'Tillbehor',
     productTypeConsumable: 'Forbrukningsvara',
     productTypeCase: 'Lada',
+    productTypeBundle: 'Paket',
     conditionExcellent: 'Utmarkt',
     conditionGood: 'Bra',
     conditionFair: 'Okej',

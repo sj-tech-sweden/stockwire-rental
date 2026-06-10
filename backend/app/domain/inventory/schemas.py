@@ -245,6 +245,24 @@ class ProductAccessoryUpsertRequest(BaseModel):
     items: list[ProductAccessoryUpsertItem] = Field(default_factory=list)
 
 
+class ProductComponentRead(BaseModel):
+    id: int
+    parent_product_id: int
+    component_product_id: int
+    component_sku: str | None = None
+    component_name: str | None = None
+    quantity: int = 1
+
+
+class ProductComponentUpsertItem(BaseModel):
+    component_product_id: int
+    quantity: int = 1
+
+
+class ProductComponentUpsertRequest(BaseModel):
+    items: list[ProductComponentUpsertItem] = Field(default_factory=list)
+
+
 MAINTENANCE_STATUSES = ["scheduled", "in_progress", "completed", "canceled"]
 MAINTENANCE_INTERVAL_MODES = ["calendar", "runtime"]
 MAINTENANCE_TYPES = ["inspection", "cleaning", "repair", "calibration", "pat_test", "scheduled"]
