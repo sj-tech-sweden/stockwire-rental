@@ -124,6 +124,26 @@
           </q-item>
         </q-list>
 
+        <div v-if="product?.accessories?.length" class="text-subtitle2 q-mb-sm">Accessories</div>
+        <q-list v-if="product?.accessories?.length" bordered separator class="rounded-borders q-mb-md">
+          <q-item v-for="row in product.accessories" :key="`acc-${row.accessory_product_id}`">
+            <q-item-section>
+              <q-item-label>{{ productNameById(row.accessory_product_id) }}</q-item-label>
+              <q-item-label caption>{{ row.required ? 'Required' : 'Optional' }} · Qty {{ row.quantity }}</q-item-label>
+            </q-item-section>
+          </q-item>
+        </q-list>
+
+        <div v-if="product?.components?.length" class="text-subtitle2 q-mb-sm">Components</div>
+        <q-list v-if="product?.components?.length" bordered separator class="rounded-borders q-mb-md">
+          <q-item v-for="row in product.components" :key="`cmp-${row.component_product_id}`">
+            <q-item-section>
+              <q-item-label>{{ productNameById(row.component_product_id) }}</q-item-label>
+              <q-item-label caption>Qty {{ row.quantity }}</q-item-label>
+            </q-item-section>
+          </q-item>
+        </q-list>
+
         <div v-if="infoCustomFieldValues.length" class="text-subtitle2 q-mb-sm">Custom Fields</div>
         <q-list v-if="infoCustomFieldValues.length" bordered separator class="rounded-borders q-mb-md">
           <q-item v-for="field in infoCustomFieldValues" :key="field.field_definition_id">
@@ -286,4 +306,10 @@ function linkedJobsForProductId(productId) {
 }
 
 const linkedJobs = computed(() => linkedJobsForProductId(props.product?.id))
+
+function productNameById(productId) {
+  const item = store.products.find(row => row.id === productId)
+  if (!item) return `Product #${productId}`
+  return `${item.sku} - ${item.name}`
+}
 </script>

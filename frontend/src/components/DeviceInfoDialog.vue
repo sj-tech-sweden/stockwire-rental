@@ -141,6 +141,26 @@
           </q-item>
         </q-list>
 
+        <div v-if="deviceInfoProduct?.accessories?.length" class="text-subtitle2 q-mb-sm">Product Accessories</div>
+        <q-list v-if="deviceInfoProduct?.accessories?.length" bordered separator class="rounded-borders q-mb-md">
+          <q-item v-for="row in deviceInfoProduct.accessories" :key="`acc-${row.accessory_product_id}`">
+            <q-item-section>
+              <q-item-label>{{ productNameById(row.accessory_product_id) }}</q-item-label>
+              <q-item-label caption>{{ row.required ? 'Required' : 'Optional' }} · Qty {{ row.quantity }}</q-item-label>
+            </q-item-section>
+          </q-item>
+        </q-list>
+
+        <div v-if="deviceInfoProduct?.components?.length" class="text-subtitle2 q-mb-sm">Product Components</div>
+        <q-list v-if="deviceInfoProduct?.components?.length" bordered separator class="rounded-borders q-mb-md">
+          <q-item v-for="row in deviceInfoProduct.components" :key="`cmp-${row.component_product_id}`">
+            <q-item-section>
+              <q-item-label>{{ productNameById(row.component_product_id) }}</q-item-label>
+              <q-item-label caption>Qty {{ row.quantity }}</q-item-label>
+            </q-item-section>
+          </q-item>
+        </q-list>
+
         <div class="text-subtitle2 q-mb-sm">Devices At Same Location</div>
         <q-list bordered separator class="rounded-borders q-mb-md">
           <q-item v-for="row in deviceInfoLocationDevices" :key="row.id">
