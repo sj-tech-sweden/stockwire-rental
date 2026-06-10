@@ -4,8 +4,8 @@ function normalizedPart(value) {
 }
 
 export function locationQueryFromParts(parts = {}) {
-  const { name, address, city } = parts
-  return [name, address, city].map(normalizedPart).filter(Boolean).join(', ')
+  const { name, address, city, postal_code, country } = parts
+  return [name, address, city, postal_code, country].map(normalizedPart).filter(Boolean).join(', ')
 }
 
 export function googleMapsSearchUrl(locationQuery) {

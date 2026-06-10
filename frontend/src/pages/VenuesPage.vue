@@ -83,6 +83,10 @@
                 </a>
                 <span v-else>{{ props.row.address || '-' }}</span>
               </div>
+              <div class="text-caption" v-if="props.row.phone">{{ t('venues.phone') }}: {{ props.row.phone }}</div>
+              <div class="text-caption" v-if="props.row.email">{{ t('venues.email') }}: {{ props.row.email }}</div>
+              <div class="text-caption" v-if="props.row.contact_person">{{ t('venues.contactPerson') }}: {{ props.row.contact_person }}</div>
+              <div class="text-caption" v-if="props.row.country">{{ t('venues.country') }}: {{ props.row.country }}</div>
               <div class="text-caption">{{ t('venues.created') }}: {{ props.row.created_at ? new Date(props.row.created_at).toLocaleDateString() : '—' }}</div>
               <div class="text-caption">{{ props.row.notes || t('venues.noNotes') }}</div>
             </q-card-section>
@@ -115,6 +119,10 @@
                 />
                 <q-input v-model="form.address" :label="t('venues.address')" outlined dense class="q-mb-sm" />
                 <q-input v-model="form.city" :label="t('venues.city')" outlined dense class="q-mb-sm" />
+                <q-input v-model="form.phone" :label="t('venues.phone')" outlined dense class="q-mb-sm" />
+                <q-input v-model="form.email" :label="t('venues.email')" type="email" outlined dense class="q-mb-sm" />
+                <q-input v-model="form.contact_person" :label="t('venues.contactPerson')" outlined dense class="q-mb-sm" />
+                <q-select v-model="form.country" :options="COUNTRIES" :label="t('venues.country')" outlined dense clearable emit-value map-options class="q-mb-sm" />
                 <div v-if="venueFormMapEmbedUrl" class="q-mb-sm">
                   <q-responsive :ratio="16 / 9" class="rounded-borders" style="overflow: hidden; border: 1px solid #d6dbe2;">
                     <iframe
@@ -233,6 +241,8 @@ import { useI18n } from 'vue-i18n'
 import { useVenuesStore } from '../stores/venues'
 import { useCustomFieldsStore } from '../stores/customFields'
 import { useAuthStore } from '../stores/auth'
+import { useSettingsStore } from '../stores/settings'
+import { COUNTRIES } from '../constants/countries'
 import { useCompactGrid } from '../composables/useCompactGrid'
 import { translateMaybePrefillCustomFieldLabel, translateMaybePrefillCustomFieldOption } from '../i18n/prefillContent'
 import { googleMapsEmbedUrl, googleMapsSearchUrl, locationQueryFromParts } from '../utils/maps'
@@ -261,6 +271,10 @@ const columns = [
   { name: 'name', label: t('venues.name'), field: 'name', sortable: true, align: 'left' },
   { name: 'address', label: t('venues.address'), field: 'address', sortable: true, align: 'left' },
   { name: 'city', label: t('venues.city'), field: 'city', sortable: true, align: 'left' },
+  { name: 'phone', label: t('venues.phone'), field: 'phone', sortable: true, align: 'left' },
+  { name: 'email', label: t('venues.email'), field: 'email', sortable: true, align: 'left' },
+  { name: 'contact_person', label: t('venues.contactPerson'), field: 'contact_person', sortable: true, align: 'left' },
+  { name: 'country', label: t('venues.country'), field: 'country', sortable: true, align: 'left' },
   { name: 'notes', label: t('venues.notes'), field: 'notes', sortable: false, align: 'left' },
   {
     name: 'created_at',
@@ -277,7 +291,7 @@ const filteredVenues = computed(() => {
   const term = search.value.trim().toLowerCase()
   if (!term) return store.venues
   return store.venues.filter((venue) =>
-    [venue.name, venue.address, venue.city, venue.notes]
+    [venue.name, venue.address, venue.city, venue.phone, venue.email, venue.contact_person, venue.country, venue.notes]
       .filter(Boolean)
       .some(value => String(value).toLowerCase().includes(term))
   )
@@ -322,6 +336,10 @@ const emptyForm = () => ({
   name: '',
   address: '',
   city: '',
+  phone: '',
+  email: '',
+  contact_person: '',
+  country: '',
   notes: '',
 })
 
@@ -362,6 +380,10 @@ async function loadVenueFieldRows(entityId) {
 async function openCreate() {
   editing.value = null
   form.value = emptyForm()
+  const settingsStore = useSettingsStore()
+  if (settingsStore.companyProfile?.default_country) {
+    form.value.country = settingsStore.companyProfile.default_country
+  }
   await loadVenueFieldRows(null)
   venueGeneralExpanded.value = true
   venueCustomFieldsExpanded.value = !isPhone.value
@@ -375,6 +397,10 @@ async function openEdit(venue) {
     name: venue.name ?? '',
     address: venue.address ?? '',
     city: venue.city ?? '',
+    phone: venue.phone ?? '',
+    email: venue.email ?? '',
+    contact_person: venue.contact_person ?? '',
+    country: venue.country ?? '',
     notes: venue.notes ?? '',
   }
   await loadVenueFieldRows(venue.id)
@@ -396,6 +422,10 @@ async function saveVenue() {
       name: form.value.name.trim(),
       address: form.value.address?.trim() || null,
       city: form.value.city?.trim() || null,
+      phone: form.value.phone?.trim() || null,
+      email: form.value.email?.trim() || null,
+      contact_person: form.value.contact_person?.trim() || null,
+      country: form.value.country?.trim() || null,
       notes: form.value.notes?.trim() || null,
     }
 

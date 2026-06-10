@@ -7,6 +7,10 @@ class VenueBase(BaseModel):
     name: str
     address: str | None = None
     city: str | None = None
+    phone: str | None = None
+    email: str | None = None
+    contact_person: str | None = None
+    country: str | None = None
     notes: str | None = None
 
 
@@ -18,6 +22,10 @@ class VenueUpdate(BaseModel):
     name: str | None = None
     address: str | None = None
     city: str | None = None
+    phone: str | None = None
+    email: str | None = None
+    contact_person: str | None = None
+    country: str | None = None
     notes: str | None = None
 
 
