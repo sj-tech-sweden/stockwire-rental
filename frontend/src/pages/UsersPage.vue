@@ -21,7 +21,11 @@
       <h3>{{ t('users.apiKeys') }}</h3>
       <form @submit.prevent="createKey">
         <input v-model="keyForm.name" :placeholder="t('users.keyName')" required />
-        <input v-model="keyForm.raw" :placeholder="t('users.rawKey')" required />
+        <div style="display:flex;gap:4px;align-items:center">
+          <input v-model="keyForm.raw" :placeholder="t('users.rawKey')" required style="flex:1" />
+          <button type="button" @click="generateApiKey">Generate</button>
+          <button type="button" @click="copyApiKey">Copy</button>
+        </div>
         <label><input type="checkbox" v-model="keyForm.is_admin" /> {{ t('users.admin') }}</label>
         <button type="submit">{{ t('users.createApiKey') }}</button>
       </form>
@@ -146,6 +150,25 @@ async function create() {
   form.email = form.full_name = form.password = ''
   form.role = 'viewer'
   await reload()
+}
+
+function generateApiKey() {
+  const array = new Uint8Array(32)
+  crypto.getRandomValues(array)
+  keyForm.raw = 'sw_' + btoa(String.fromCharCode(...array))
+    .replace(/[+/=]/g, '')
+    .slice(0, 40)
+}
+
+async function copyApiKey() {
+  const key = keyForm.raw
+  if (!key) return
+  try {
+    await navigator.clipboard.writeText(key)
+    alert('API key copied to clipboard')
+  } catch {
+    alert('Failed to copy')
+  }
 }
 
 async function loadKeys() {

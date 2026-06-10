@@ -227,7 +227,7 @@ export default {
       apiKeyScoped: 'Scoped',
       createApiKeyTitle: 'Create API Key',
       rawKey: 'Raw key',
-      rawKeyHint: 'This value is hashed on save',
+      rawKeyHint: 'Auto-generated. Copy it now — it will be hashed and cannot be retrieved later.',
       adminKey: 'Admin key',
       userUpdated: 'User updated',
       userCreated: 'User created',
@@ -237,6 +237,8 @@ export default {
       apiKeyCreated: 'API key created',
       failedCreateApiKey: 'Failed to create API key',
       apiKeyDisabled: 'API key disabled',
+      apiKeyCopied: 'API key copied to clipboard',
+      apiKeyCopyFailed: 'Failed to copy API key',
     },
     company: {
       title: 'Company-wide Settings',

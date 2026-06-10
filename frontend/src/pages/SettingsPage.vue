@@ -1139,8 +1139,14 @@
           <div class="text-h6">{{ t('settings.auth.createApiKeyTitle') }}</div>
         </q-card-section>
         <q-card-section class="q-pt-none">
-          <q-input v-model="apiKeyForm.name" label="Name" outlined dense class="q-mb-sm" />
-          <q-input v-model="apiKeyForm.raw_key" :label="t('settings.auth.rawKey')" outlined dense class="q-mb-sm" :hint="t('settings.auth.rawKeyHint')" />
+          <q-input v-model="apiKeyForm.name" :label="t('users.keyName')" outlined dense class="q-mb-sm" />
+          <div class="row items-start q-col-gutter-sm q-mb-sm">
+            <div class="col">
+              <q-input v-model="apiKeyForm.raw_key" :label="t('settings.auth.rawKey')" outlined dense :hint="t('settings.auth.rawKeyHint')" />
+            </div>
+            <q-btn dense flat icon="autorenew" color="primary" @click="generateApiKey" class="q-mt-md" />
+            <q-btn dense flat icon="content_copy" color="primary" @click="copyApiKey" class="q-mt-md" />
+          </div>
           <q-toggle v-model="apiKeyForm.is_admin" :label="t('settings.auth.adminKey')" color="primary" />
         </q-card-section>
         <q-card-actions align="right">
@@ -1353,8 +1359,28 @@ async function doDeleteUser() {
   }
 }
 
+function generateApiKey() {
+  const array = new Uint8Array(32)
+  crypto.getRandomValues(array)
+  apiKeyForm.value.raw_key = 'sw_' + btoa(String.fromCharCode(...array))
+    .replace(/[+/=]/g, '')
+    .slice(0, 40)
+}
+
+async function copyApiKey() {
+  const key = apiKeyForm.value.raw_key
+  if (!key) return
+  try {
+    await navigator.clipboard.writeText(key)
+    $q.notify({ type: 'positive', message: t('settings.auth.apiKeyCopied') })
+  } catch {
+    $q.notify({ type: 'negative', message: t('settings.auth.apiKeyCopyFailed') })
+  }
+}
+
 function openCreateApiKey() {
   apiKeyForm.value = { name: '', raw_key: '', is_admin: false }
+  generateApiKey()
   apiKeyDialogOpen.value = true
 }
 
