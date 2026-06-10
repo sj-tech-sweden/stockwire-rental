@@ -136,7 +136,7 @@
                   <div class="col-12 col-md-7">
                     <q-select
                       v-model="newAccessoryProductId"
-                      :options="accessoryProductOptions"
+                      :options="filteredAccessoryProductOptions"
                       label="Accessory product"
                       outlined
                       dense
@@ -144,6 +144,8 @@
                       map-options
                       use-input
                       fill-input
+                      input-debounce="0"
+                      @filter="filterAccessoryProductOptions"
                     />
                   </div>
                   <div class="col-6 col-md-2">
@@ -170,6 +172,59 @@
                   <q-item v-if="!productForm.accessories.length">
                     <q-item-section>
                       <q-item-label caption>No accessories configured.</q-item-label>
+                    </q-item-section>
+                  </q-item>
+                </q-list>
+              </q-expansion-item>
+            </div>
+
+            <div class="col-12 q-mt-sm">
+              <q-separator class="q-my-md" />
+              <q-expansion-item
+                v-model="componentsExpanded"
+                icon="widgets"
+                label="Components"
+                dense
+                header-class="rounded-borders"
+              >
+                <div class="text-caption text-grey-7 q-mb-sm">Define component products that make up this bundle.</div>
+                <div class="row q-col-gutter-sm items-end q-mb-sm">
+                  <div class="col-12 col-md-9">
+                    <q-select
+                      v-model="newComponentProductId"
+                      :options="filteredComponentProductOptions"
+                      label="Component product"
+                      outlined
+                      dense
+                      emit-value
+                      map-options
+                      use-input
+                      fill-input
+                      input-debounce="0"
+                      @filter="filterComponentProductOptions"
+                    />
+                  </div>
+                  <div class="col-6 col-md-2">
+                    <q-input v-model.number="newComponentQty" type="number" min="1" label="Qty" outlined dense />
+                  </div>
+                  <div class="col-12 col-md-1">
+                    <q-btn color="primary" unelevated icon="add" @click="addComponentRow" />
+                  </div>
+                </div>
+
+                <q-list bordered separator class="rounded-borders">
+                  <q-item v-for="row in productForm.components" :key="`cmp-${row.component_product_id}`">
+                    <q-item-section>
+                      <q-item-label>{{ productNameById(row.component_product_id) }}</q-item-label>
+                      <q-item-label caption>Qty {{ row.quantity }}</q-item-label>
+                    </q-item-section>
+                    <q-item-section side>
+                      <q-btn flat dense icon="delete" color="negative" @click="removeComponentRow(row.component_product_id)" />
+                    </q-item-section>
+                  </q-item>
+                  <q-item v-if="!productForm.components.length">
+                    <q-item-section>
+                      <q-item-label caption>No components configured.</q-item-label>
                     </q-item-section>
                   </q-item>
                 </q-list>
@@ -253,6 +308,60 @@
               </q-list>
             </div>
           </div>
+          <q-separator class="q-my-md" />
+          <q-expansion-item v-model="customFieldsExpanded" icon="tune" label="Custom Fields" dense header-class="rounded-borders">
+            <div class="q-pt-sm">
+              <div v-if="productFieldRows.length">
+                <div v-for="field in productFieldRows" :key="field.field_definition_id" class="q-mb-sm">
+                  <q-input
+                    v-if="field.value_type === 'text'"
+                    v-model="field.value"
+                    :label="customFieldLabel(field.label)"
+                    outlined
+                    dense
+                  />
+                  <q-input
+                    v-else-if="field.value_type === 'number'"
+                    v-model="field.value"
+                    :label="customFieldLabel(field.label)"
+                    type="number"
+                    outlined
+                    dense
+                  />
+                  <q-select
+                    v-else-if="field.value_type === 'boolean'"
+                    v-model="field.value"
+                    :options="booleanValueOptions"
+                    :label="customFieldLabel(field.label)"
+                    outlined
+                    dense
+                    emit-value
+                    map-options
+                  />
+                  <q-input
+                    v-else-if="field.value_type === 'date'"
+                    v-model="field.value"
+                    :label="customFieldLabel(field.label)"
+                    type="date"
+                    outlined
+                    dense
+                  />
+                  <q-select
+                    v-else-if="field.value_type === 'select'"
+                    v-model="field.value"
+                    :options="(field.options || []).map(o => ({ label: customFieldOption(o), value: o }))"
+                    :label="customFieldLabel(field.label)"
+                    outlined
+                    dense
+                    clearable
+                    emit-value
+                    map-options
+                  />
+                </div>
+              </div>
+              <div v-else class="text-caption text-grey-7">No product custom fields defined.</div>
+            </div>
+          </q-expansion-item>
           <q-banner v-if="productDialogError" class="bg-negative text-white q-mt-sm rounded-borders" dense>{{ productDialogError }}</q-banner>
         </q-form>
       </q-card-section>
@@ -276,7 +385,10 @@ import { useQuasar } from 'quasar'
 import { useI18n } from 'vue-i18n'
 import { useInventoryStore } from '../stores/inventory'
 import { useSettingsStore } from '../stores/settings'
+import { useCustomFieldsStore } from '../stores/customFields'
+import { translateMaybePrefillCustomFieldLabel, translateMaybePrefillCustomFieldOption } from '../i18n/prefillContent'
 import { normalizeCurrencyCode } from '../constants/currencies'
+import { isRentalProduct } from '../utils/inventory-overview'
 import EntityAttachmentsPanel from './EntityAttachmentsPanel.vue'
 
 const props = defineProps({
@@ -296,6 +408,15 @@ const $q = useQuasar()
 const { t } = useI18n()
 const store = useInventoryStore()
 const settingsStore = useSettingsStore()
+const customFieldsStore = useCustomFieldsStore()
+
+function customFieldLabel(label) {
+  return translateMaybePrefillCustomFieldLabel(label, t)
+}
+
+function customFieldOption(option) {
+  return translateMaybePrefillCustomFieldOption(option, t)
+}
 
 const isPhone = computed(() => $q.screen.lt.md)
 const productActionColor = computed(() => ($q.dark.isActive ? 'green-4' : 'secondary'))
@@ -316,6 +437,41 @@ const accessoriesExpanded = ref(true)
 const newAccessoryProductId = ref(null)
 const newAccessoryQty = ref(1)
 const newAccessoryRequired = ref(false)
+const componentsExpanded = ref(true)
+const newComponentProductId = ref(null)
+const newComponentQty = ref(1)
+
+const customFieldsExpanded = ref(true)
+const productFieldRows = ref([])
+
+const booleanValueOptions = [
+  { label: t('common.true'), value: 'true' },
+  { label: t('common.false'), value: 'false' },
+]
+
+function createEmptyProductFieldRows() {
+  const defs = (customFieldsStore.definitions || []).filter(def => def.entity_type === 'product' && def.is_active !== false)
+  productFieldRows.value = defs.map(def => ({
+    field_definition_id: def.id,
+    label: def.label,
+    value_type: def.value_type,
+    options: def.options || [],
+    value: null,
+  }))
+}
+
+async function loadProductFieldRows(entityId) {
+  if (!entityId) {
+    createEmptyProductFieldRows()
+    return
+  }
+  try {
+    const data = await customFieldsStore.fetchEntityValues('product', entityId)
+    productFieldRows.value = Array.isArray(data?.values) ? data.values.map(v => ({ ...v })) : createEmptyProductFieldRows()
+  } catch {
+    createEmptyProductFieldRows()
+  }
+}
 
 const emptyProductForm = () => ({
   sku: '',
@@ -328,6 +484,7 @@ const emptyProductForm = () => ({
   manufacturer_url: '',
   product_type: 'equipment',
   accessories: [],
+  components: [],
   weight_kg: null, height_cm: null, width_cm: null, depth_cm: null,
   maintenance_interval_days: null, power_consumption_watts: null, daily_rate: 0, replace_cost: 0,
 })
@@ -338,10 +495,29 @@ const productTypeOptions = [
   { label: t('inventory.productTypeAccessory'), value: 'accessory' },
   { label: t('inventory.productTypeConsumable'), value: 'consumable' },
   { label: t('inventory.productTypeCase'), value: 'case' },
+  { label: t('inventory.productTypeBundle'), value: 'bundle' },
 ]
 
 const productOptions = computed(() => store.products.map(p => ({ label: `${p.sku} - ${p.name}`, value: p.id })))
-const accessoryProductOptions = computed(() => productOptions.value.filter(o => o.value !== productEditing.value?.id))
+const accessoryProductOptions = computed(() => {
+  return productOptions.value.filter(o => {
+    if (o.value === productEditing.value?.id) return false
+    const product = store.products.find(p => p.id === o.value)
+    if (product && isRentalProduct(product)) return false
+    return true
+  })
+})
+const componentProductOptions = computed(() => {
+  return productOptions.value.filter(o => {
+    if (o.value === productEditing.value?.id) return false
+    const product = store.products.find(p => p.id === o.value)
+    if (product && isRentalProduct(product)) return false
+    return true
+  })
+})
+
+const filteredAccessoryProductOptions = ref([])
+const filteredComponentProductOptions = ref([])
 
 const allBrandOptions = computed(() =>
   [...settingsStore.brandOptions].sort((a, b) => a.localeCompare(b)).map(value => ({ label: value, value }))
@@ -393,6 +569,37 @@ function filterCategoryOptions(val, update) {
   })
 }
 
+watch(accessoryProductOptions, (options) => {
+  filteredAccessoryProductOptions.value = options
+}, { immediate: true })
+
+watch(componentProductOptions, (options) => {
+  filteredComponentProductOptions.value = options
+}, { immediate: true })
+
+function filterAccessoryProductOptions(val, update) {
+  update(() => {
+    const needle = val.trim().toLowerCase()
+    if (!needle) {
+      filteredAccessoryProductOptions.value = accessoryProductOptions.value
+      return
+    }
+    filteredAccessoryProductOptions.value = accessoryProductOptions.value.filter(
+      option => option.label.toLowerCase().includes(needle)
+    )
+  })
+}
+
+function filterComponentProductOptions(val, update) {
+  update(() => {
+    const needle = val.trim().toLowerCase()
+    if (!needle) {
+      filteredComponentProductOptions.value = componentProductOptions.value
+      return
+    }
+    filteredComponentProductOptions.value = componentProductOptions.value.filter(
+      option => option.label.toLowerCase().includes(needle)
+    )
 function filterBrandOptions(val, update) {
   update(() => {
     const needle = val.trim().toLowerCase()
@@ -483,6 +690,34 @@ function removeAccessoryRow(accessoryProductId) {
   )
 }
 
+function addComponentRow() {
+  const componentId = Number(newComponentProductId.value || 0)
+  if (!componentId) return
+
+  const quantity = Math.max(Number(newComponentQty.value || 1), 1)
+  const existing = (productForm.value.components || []).find(item => item.component_product_id === componentId)
+  if (existing) {
+    existing.quantity = quantity
+  } else {
+    productForm.value.components = [
+      ...(productForm.value.components || []),
+      {
+        component_product_id: componentId,
+        quantity,
+      },
+    ]
+  }
+
+  newComponentProductId.value = null
+  newComponentQty.value = 1
+}
+
+function removeComponentRow(componentProductId) {
+  productForm.value.components = (productForm.value.components || []).filter(
+    item => item.component_product_id !== componentProductId
+  )
+}
+
 function loadPrefixMemory() {
   if (typeof window === 'undefined') return
   try {
@@ -539,9 +774,14 @@ function openCreateProduct() {
   applySkuPrefixForType(productForm.value.product_type)
   productDialogError.value = ''
   accessoriesExpanded.value = !isPhone.value
+  customFieldsExpanded.value = !isPhone.value
   newAccessoryProductId.value = null
   newAccessoryQty.value = 1
   newAccessoryRequired.value = false
+  componentsExpanded.value = !isPhone.value
+  newComponentProductId.value = null
+  newComponentQty.value = 1
+  createEmptyProductFieldRows()
   generateProductSku()
 }
 
@@ -585,6 +825,12 @@ function openEditProduct(product) {
           required: !!item.required,
         }))
       : [],
+    components: Array.isArray(product.components)
+      ? product.components.map(item => ({
+          component_product_id: item.component_product_id,
+          quantity: Number(item.quantity || 1),
+        }))
+      : [],
     weight_kg: product.weight_kg ?? null,
     height_cm: product.height_cm ?? null,
     width_cm: product.width_cm ?? null,
@@ -597,9 +843,14 @@ function openEditProduct(product) {
   applySkuPrefixForType(productForm.value.product_type)
   productDialogError.value = ''
   accessoriesExpanded.value = !isPhone.value
+  customFieldsExpanded.value = !isPhone.value
   newAccessoryProductId.value = null
   newAccessoryQty.value = 1
   newAccessoryRequired.value = false
+  componentsExpanded.value = !isPhone.value
+  newComponentProductId.value = null
+  newComponentQty.value = 1
+  loadProductFieldRows(product.id)
 }
 
 function normalizeOptionalUrl(value) {
@@ -722,15 +973,26 @@ async function saveProduct() {
       replace_cost: Number(productForm.value.replace_cost || 0),
     }
 
+    let savedProduct
     if (productEditing.value) {
-      await store.updateProduct(productEditing.value.id, payload)
+      savedProduct = await store.updateProduct(productEditing.value.id, payload)
       await store.updateProductAccessories(productEditing.value.id, productForm.value.accessories || [])
+      await store.updateProductComponents(productEditing.value.id, productForm.value.components || [])
       $q.notify({ type: 'positive', message: 'Product updated' })
     } else {
-      const created = await store.createProduct(payload)
-      await store.updateProductAccessories(created.id, productForm.value.accessories || [])
+      savedProduct = await store.createProduct(payload)
+      await store.updateProductAccessories(savedProduct.id, productForm.value.accessories || [])
+      await store.updateProductComponents(savedProduct.id, productForm.value.components || [])
       $q.notify({ type: 'positive', message: 'Product created' })
     }
+
+    if (savedProduct?.id) {
+      await customFieldsStore.saveEntityValues('product', savedProduct.id, productFieldRows.value.map(row => ({
+        field_definition_id: row.field_definition_id,
+        value: row.value,
+      })))
+    }
+
     emit('update:modelValue', false)
     emit('saved')
   } catch (error) {
@@ -744,10 +1006,13 @@ function closeProductDialog() {
   emit('update:modelValue', false)
 }
 
-watch(() => props.modelValue, (open) => {
+watch(() => props.modelValue, async (open) => {
   if (open) {
+    if (!customFieldsStore.definitions.length) {
+      await customFieldsStore.fetchDefinitions('product')
+    }
     if (props.product) {
-      openEditProduct(props.product)
+      await openEditProduct(props.product)
     } else {
       openCreateProduct()
     }

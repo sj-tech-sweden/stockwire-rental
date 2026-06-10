@@ -141,6 +141,26 @@
           </q-item>
         </q-list>
 
+        <div v-if="deviceInfoProduct?.accessories?.length" class="text-subtitle2 q-mb-sm">Product Accessories</div>
+        <q-list v-if="deviceInfoProduct?.accessories?.length" bordered separator class="rounded-borders q-mb-md">
+          <q-item v-for="row in deviceInfoProduct.accessories" :key="`acc-${row.accessory_product_id}`">
+            <q-item-section>
+              <q-item-label>{{ productNameById(row.accessory_product_id) }}</q-item-label>
+              <q-item-label caption>{{ row.required ? 'Required' : 'Optional' }} · Qty {{ row.quantity }}</q-item-label>
+            </q-item-section>
+          </q-item>
+        </q-list>
+
+        <div v-if="deviceInfoProduct?.components?.length" class="text-subtitle2 q-mb-sm">Product Components</div>
+        <q-list v-if="deviceInfoProduct?.components?.length" bordered separator class="rounded-borders q-mb-md">
+          <q-item v-for="row in deviceInfoProduct.components" :key="`cmp-${row.component_product_id}`">
+            <q-item-section>
+              <q-item-label>{{ productNameById(row.component_product_id) }}</q-item-label>
+              <q-item-label caption>Qty {{ row.quantity }}</q-item-label>
+            </q-item-section>
+          </q-item>
+        </q-list>
+
         <div class="text-subtitle2 q-mb-sm">Devices At Same Location</div>
         <q-list bordered separator class="rounded-borders q-mb-md">
           <q-item v-for="row in deviceInfoLocationDevices" :key="row.id">
@@ -243,6 +263,26 @@
           <q-item v-if="!deviceInfoContainedDevices.length">
             <q-item-section>
               <q-item-label caption>No devices are currently assigned to this case.</q-item-label>
+            </q-item-section>
+          </q-item>
+        </q-list>
+
+        <div v-if="deviceInfoComponentDevices.length" class="text-subtitle2 q-mb-sm">Component Devices</div>
+        <q-list v-if="deviceInfoComponentDevices.length" bordered separator class="rounded-borders q-mb-md">
+          <q-item v-for="row in deviceInfoComponentDevices" :key="row.id">
+            <q-item-section>
+              <q-item-label>{{ row.asset_tag }} · {{ productNameById(row.product_id) }}</q-item-label>
+              <q-item-label caption>
+                {{ t('inventory.infoDialogs.deviceStatusCondition', { status: row.status, condition: row.condition || t('inventory.infoDialogs.notAvailable') }) }}
+                <span v-if="row.current_job_code"> · Job {{ row.current_job_code }}</span>
+              </q-item-label>
+            </q-item-section>
+            <q-item-section side top>
+              <div class="row no-wrap items-center q-gutter-xs">
+                <q-btn flat dense :round="effectiveIsPhone" :color="productActionColor" class="inventory-action-contrast" icon="inventory_2" :label="effectiveIsPhone ? void 0 : 'Product'" :aria-label="effectiveIsPhone ? 'Open product' : void 0" @click="emit('edit-product', row.product_id)" />
+                <q-btn flat dense :round="effectiveIsPhone" :color="infoActionColor" icon="info" :label="effectiveIsPhone ? void 0 : 'Info'" :aria-label="effectiveIsPhone ? 'Open device info' : void 0" @click="emit('view-device', row.id)" />
+                <q-btn flat dense :round="effectiveIsPhone" color="primary" icon="edit" :label="effectiveIsPhone ? void 0 : 'Edit'" :aria-label="effectiveIsPhone ? 'Edit device' : void 0" @click="emit('edit-device', row.id)" />
+              </div>
             </q-item-section>
           </q-item>
         </q-list>
@@ -510,6 +550,12 @@ const deviceInfoContainedDevices = computed(() => {
   if (!props.device?.id) return []
   const caseId = props.device.id
   return store.devices.filter(item => item.case_device_id === caseId)
+})
+
+const deviceInfoComponentDevices = computed(() => {
+  if (!props.device?.id) return []
+  const parentId = props.device.id
+  return store.devices.filter(item => item.parent_component_device_id === parentId)
 })
 
 const deviceInfoMaintenance = computed(() => {

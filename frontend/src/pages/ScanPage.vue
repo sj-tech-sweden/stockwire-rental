@@ -67,6 +67,30 @@
           </div>
         </div>
 
+        <div v-if="scanAction === 'assign_component'" class="q-mb-md">
+          <div class="step-row">
+            <div class="step-item" :class="componentDestinationReady ? 'step-done' : 'step-active'">
+              <span class="step-dot">1</span>
+              <span>{{ t('scan.selectParentDevice') }}</span>
+            </div>
+            <div class="step-line" />
+            <div class="step-item" :class="componentDestinationReady ? 'step-active' : 'step-pending'">
+              <span class="step-dot">2</span>
+              <span>{{ t('scan.scanDevices') }}</span>
+            </div>
+          </div>
+        </div>
+
+        <q-banner v-if="scanAction === 'assign_component' && componentDestinationReady" class="bg-teal-8 text-white q-mb-md rounded-borders">
+          {{ t('scan.componentDestinationReady', { device: componentDestinationLabel }) }}
+          <q-btn flat dense no-caps class="q-ml-sm" :label="t('scan.changeDestination')" @click="clearComponentDestination" />
+          <div class="text-caption q-mt-xs">{{ t('scan.step2ComponentHelp') }}</div>
+        </q-banner>
+
+        <q-banner v-if="scanAction === 'assign_component' && !componentDestinationReady" class="bg-amber-8 text-black q-mb-md rounded-borders" dense>
+          {{ t('scan.step1RequiredComponent') }}
+        </q-banner>
+
         <div v-if="scanAction === 'move'" class="q-mb-md">
           <div class="step-row">
             <div class="step-item" :class="moveDestinationReady ? 'step-done' : 'step-active'">
@@ -129,6 +153,18 @@
           </div>
           <div class="col-12 col-md-4" v-if="scanAction === 'move'">
             <q-input v-model="scanZoneCode" :label="t('scan.orScanLocationCaseIdentifier')" :placeholder="t('scan.locationCasePlaceholder')" outlined dense />
+          </div>
+          <div class="col-12 col-md-4" v-if="scanAction === 'assign_component'">
+            <q-select
+              v-model="scanComponentDeviceId"
+              :options="componentParentSelectOptions"
+              :label="t('scan.orSelectParentDevice')"
+              outlined
+              dense
+              clearable
+              emit-value
+              map-options
+            />
           </div>
           <div class="col-12 col-md-4" v-if="scanAction === 'move' && moveDestinationReady">
             <q-btn color="grey-8" text-color="white" icon="restart_alt" :label="t('scan.changeDestination')" no-caps unelevated @click="clearMoveDestination" />
@@ -341,6 +377,35 @@
             </q-item>
           </q-list>
         </q-card>
+
+        <q-card v-if="scanAction === 'assign_component'" flat bordered class="q-mt-md recent-moves-card">
+          <q-card-section class="q-pb-sm">
+            <div class="row items-center">
+              <div class="text-subtitle2 col">{{ t('scan.recentlyMovedLastFive') }}</div>
+              <q-btn v-if="recentMovedDevices.length" flat dense no-caps icon="clear_all" :label="t('scan.clear')" @click="recentMovedDevices = []" />
+            </div>
+            <div class="text-caption recent-moves-help">{{ t('scan.recentMovesHelp') }}</div>
+          </q-card-section>
+          <q-list dense separator>
+            <q-item v-for="item in recentMovedDevices" :key="item.id">
+              <q-item-section>
+                <q-item-label>
+                  <span class="text-weight-medium">{{ item.asset_tag }}</span>
+                  <span v-if="item.product_name"> · {{ item.product_name }}</span>
+                </q-item-label>
+                <q-item-label caption>
+                  {{ item.destination }} · {{ formatScanTime(item.moved_at) }}
+                </q-item-label>
+                <q-item-label caption>{{ item.message }}</q-item-label>
+              </q-item-section>
+            </q-item>
+            <q-item v-if="!recentMovedDevices.length">
+              <q-item-section>
+                <q-item-label caption>{{ t('scan.noMovesYet') }}</q-item-label>
+              </q-item-section>
+            </q-item>
+          </q-list>
+        </q-card>
       </q-card>
 
       <q-card class="ec-card q-pa-md" v-if="activeWorkflowJob">
@@ -530,6 +595,7 @@ const scanAction = ref('lookup')
 const scanCode = ref('')
 const scanZoneId = ref(null)
 const scanCaseDeviceId = ref(null)
+const scanComponentDeviceId = ref(null)
 const scanZoneCode = ref('')
 const scanJobCode = ref('')
 const scanJobId = ref(null)
@@ -578,6 +644,7 @@ const RENTAL_SCAN_ACTIONS = ['rental_receive', 'rental_job_out', 'rental_job_in'
 const scanActionGroupButtons = computed(() => [
   { label: t('scan.lookup'), value: 'lookup', icon: 'search' },
   { label: t('scan.move'), value: 'move', icon: 'swap_horiz' },
+  { label: t('scan.assignComponent'), value: 'assign_component', icon: 'widgets' },
   { label: t('scan.maintenance'), value: 'maintenance', icon: 'build_circle' },
   { label: t('scan.outtake'), value: 'outtake', icon: 'shopping_cart_checkout' },
   { label: t('scan.intake'), value: 'intake', icon: 'assignment_return' },
@@ -742,6 +809,9 @@ const scanSubmitLabel = computed(() => {
   if (scanAction.value === 'move') {
     return moveDestinationReady.value ? t('scan.moveDevice') : t('scan.setDestination')
   }
+  if (scanAction.value === 'assign_component') {
+    return componentDestinationReady.value ? t('scan.assignAsComponent') : t('scan.selectParentDevice')
+  }
   if (scanAction.value === 'job_out' || scanAction.value === 'rental_job_out') {
     return activeJobCode.value ? (scanAction.value === 'rental_job_out' ? t('scan.scanRental') : t('scan.scanDevice')) : t('scan.selectJob')
   }
@@ -757,6 +827,11 @@ const scanSubmitLabel = computed(() => {
 const scanCodePlaceholder = computed(() => {
   if (scanAction.value === 'move') {
     return moveDestinationReady.value
+      ? t('scan.scanDeviceCodePlaceholder')
+      : t('scan.scanDestinationFirstPlaceholder')
+  }
+  if (scanAction.value === 'assign_component') {
+    return componentDestinationReady.value
       ? t('scan.scanDeviceCodePlaceholder')
       : t('scan.scanDestinationFirstPlaceholder')
   }
@@ -808,6 +883,14 @@ const moveDestinationLabel = computed(() => {
   return zone.code ? `${zone.name} (${zone.code})` : zone.name
 })
 
+const componentDestinationReady = computed(() => scanAction.value === 'assign_component' && !!scanComponentDeviceId.value)
+
+const componentDestinationLabel = computed(() => {
+  if (!componentDestinationReady.value) return t('scan.none')
+  const parent = (store.devices || []).find(item => item.id === scanComponentDeviceId.value)
+  return parent?.asset_tag ? `${t('scan.selectParentDevice')}: ${parent.asset_tag}` : `${t('scan.selectParentDevice')} #${scanComponentDeviceId.value}`
+})
+
 const maintenanceTargetDeviceId = computed(() => {
   if (scanAction.value === 'lookup') {
     return Number(lastLookupResult.value?.device_id || 0)
@@ -856,6 +939,22 @@ const caseMoveSelectOptions = computed(() => {
       const product = productById.value.get(device.product_id)
       return {
         label: `${device.asset_tag || `${t('scan.case')} #${device.id}`} · ${product?.name || t('scan.case')}`,
+        value: device.id,
+      }
+    })
+})
+
+const componentParentSelectOptions = computed(() => {
+  return (store.devices || [])
+    .filter((device) => {
+      const product = productById.value.get(device.product_id)
+      return product && Array.isArray(product.components) && product.components.length > 0
+    })
+    .sort((a, b) => String(a.asset_tag || '').localeCompare(String(b.asset_tag || '')))
+    .map((device) => {
+      const product = productById.value.get(device.product_id)
+      return {
+        label: `${device.asset_tag || `#${device.id}`} · ${product?.name || ''}`,
         value: device.id,
       }
     })
@@ -920,6 +1019,20 @@ const caseDeviceByCode = computed(() => {
   for (const device of store.devices || []) {
     const product = productById.value.get(device.product_id)
     if (!product || product.product_type !== 'case') continue
+    for (const raw of [device.asset_tag, device.barcode, device.qr_code, device.rfid, device.serial_number]) {
+      const code = String(raw || '').trim().toUpperCase()
+      if (!code) continue
+      map.set(code, device)
+    }
+  }
+  return map
+})
+
+const componentParentByCode = computed(() => {
+  const map = new Map()
+  for (const device of store.devices || []) {
+    const product = productById.value.get(device.product_id)
+    if (!product || !Array.isArray(product.components) || !product.components.length) continue
     for (const raw of [device.asset_tag, device.barcode, device.qr_code, device.rfid, device.serial_number]) {
       const code = String(raw || '').trim().toUpperCase()
       if (!code) continue
@@ -1120,6 +1233,14 @@ function clearMoveDestination() {
   focusScanCodeInput()
 }
 
+function clearComponentDestination() {
+  scanComponentDeviceId.value = null
+  scanCode.value = ''
+  scanResultMessage.value = t('scan.componentDestinationCleared')
+  scanResultSuccess.value = true
+  focusScanCodeInput()
+}
+
 function focusScanCodeInput() {
   nextTick(() => {
     const input = scanCodeInputRef.value
@@ -1161,6 +1282,7 @@ function onActionChanged() {
   globalCheckin.value = false
   scanZoneId.value = null
   scanCaseDeviceId.value = null
+  scanComponentDeviceId.value = null
   scanZoneCode.value = ''
   if (scanAction.value !== 'lookup') {
     lastLookupResult.value = null
@@ -1171,7 +1293,7 @@ function onActionChanged() {
   if (scanAction.value !== 'job_out' && scanAction.value !== 'rental_job_out') {
     clearActiveJob()
   }
-  if (scanAction.value !== 'move') {
+  if (scanAction.value !== 'move' && scanAction.value !== 'assign_component') {
     recentMovedDevices.value = []
   }
   focusScanCodeInput()
@@ -1193,6 +1315,12 @@ function resolveCaseDeviceIdFromCode(value) {
   const normalized = String(value || '').trim().toUpperCase()
   if (!normalized) return null
   return caseDeviceByCode.value.get(normalized)?.id ?? null
+}
+
+function resolveComponentParentIdFromCode(value) {
+  const normalized = String(value || '').trim().toUpperCase()
+  if (!normalized) return null
+  return componentParentByCode.value.get(normalized)?.id ?? null
 }
 
 function selectedOrTypedJob() {
@@ -1290,6 +1418,23 @@ async function runScanAction() {
     return
   }
 
+  if (scanAction.value === 'assign_component' && !componentDestinationReady.value) {
+    const parentId = resolveComponentParentIdFromCode(code)
+    if (parentId) {
+      scanComponentDeviceId.value = parentId
+      scanCode.value = ''
+      const parent = (store.devices || []).find(item => item.id === parentId)
+      scanResultMessage.value = t('scan.componentDestinationSet', { device: parent?.asset_tag || `#${parentId}` })
+      scanResultSuccess.value = true
+      focusScanCodeInput()
+      return
+    }
+    scanResultMessage.value = t('scan.step1RequiredComponent')
+    scanResultSuccess.value = false
+    focusScanCodeInput()
+    return
+  }
+
   if ((scanAction.value === 'job_out' || scanAction.value === 'rental_job_out') && !activeJobCode.value) {
     let job = selectedOrTypedJob()
     if (!job && code) {
@@ -1357,6 +1502,7 @@ async function runScanAction() {
       action: scanAction.value,
       zone_id: scanAction.value === 'move' ? scanZoneId.value : null,
       case_device_id: scanAction.value === 'move' ? scanCaseDeviceId.value : null,
+      parent_component_device_id: scanAction.value === 'assign_component' ? scanComponentDeviceId.value : null,
       job_code: (scanAction.value === 'job_out' || scanAction.value === 'rental_job_out')
         ? activeJobCode.value
         : (scanAction.value === 'job_in'
@@ -1377,7 +1523,7 @@ async function runScanAction() {
     await refreshCheckedOutForIntake()
     scanResultMessage.value = response.message || t('scan.scanProcessed')
     scanResultSuccess.value = !!response.success
-    if (scanAction.value === 'move' && response.success) {
+    if ((scanAction.value === 'move' || scanAction.value === 'assign_component') && response.success) {
       trackRecentMove(response, code)
     }
     scanCode.value = ''

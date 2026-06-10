@@ -1,1 +1,0 @@
-import{c as e,o as t,s as n}from"./index-Dy4ulRLN.js";var r=({app:r})=>{r.use(t),e(n(null))};export{r as default};

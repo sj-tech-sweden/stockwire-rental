@@ -16,7 +16,7 @@
         <q-list bordered separator class="rounded-borders q-mb-md">
           <q-item>
             <q-item-section>
-              <q-item-label>{{ t('inventory.infoDialogs.idType', { id: product?.id || '-', type: product?.product_type || '-' }) }}</q-item-label>
+              <q-item-label>Type: {{ product?.product_type || '-' }}</q-item-label>
               <q-item-label caption>
                 {{ t('inventory.infoDialogs.categoryBrandManufacturer', { category: product?.category || t('inventory.uncategorized'), brand: product?.brand || '-', manufacturer: product?.manufacturer || '-' }) }}
               </q-item-label>
@@ -124,6 +124,36 @@
           </q-item>
         </q-list>
 
+        <div v-if="product?.accessories?.length" class="text-subtitle2 q-mb-sm">Accessories</div>
+        <q-list v-if="product?.accessories?.length" bordered separator class="rounded-borders q-mb-md">
+          <q-item v-for="row in product.accessories" :key="`acc-${row.accessory_product_id}`">
+            <q-item-section>
+              <q-item-label>{{ productNameById(row.accessory_product_id) }}</q-item-label>
+              <q-item-label caption>{{ row.required ? 'Required' : 'Optional' }} · Qty {{ row.quantity }}</q-item-label>
+            </q-item-section>
+          </q-item>
+        </q-list>
+
+        <div v-if="product?.components?.length" class="text-subtitle2 q-mb-sm">Components</div>
+        <q-list v-if="product?.components?.length" bordered separator class="rounded-borders q-mb-md">
+          <q-item v-for="row in product.components" :key="`cmp-${row.component_product_id}`">
+            <q-item-section>
+              <q-item-label>{{ productNameById(row.component_product_id) }}</q-item-label>
+              <q-item-label caption>Qty {{ row.quantity }}</q-item-label>
+            </q-item-section>
+          </q-item>
+        </q-list>
+
+        <div v-if="infoCustomFieldValues.length" class="text-subtitle2 q-mb-sm">Custom Fields</div>
+        <q-list v-if="infoCustomFieldValues.length" bordered separator class="rounded-borders q-mb-md">
+          <q-item v-for="field in infoCustomFieldValues" :key="field.field_definition_id">
+            <q-item-section>
+              <q-item-label>{{ field.label }}</q-item-label>
+              <q-item-label caption>{{ field.value ?? '-' }}</q-item-label>
+            </q-item-section>
+          </q-item>
+        </q-list>
+
         <EntityAttachmentsPanel
           entity-type="product"
           :entity-id="product?.id || null"
@@ -142,12 +172,13 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useQuasar } from 'quasar'
 import { useI18n } from 'vue-i18n'
 import { useInventoryStore } from '../stores/inventory'
 import { useJobsStore } from '../stores/jobs'
 import { useSettingsStore } from '../stores/settings'
+import { useCustomFieldsStore } from '../stores/customFields'
 import { normalizeCurrencyCode } from '../constants/currencies'
 import EntityAttachmentsPanel from './EntityAttachmentsPanel.vue'
 
@@ -169,6 +200,23 @@ const { t } = useI18n()
 const store = useInventoryStore()
 const jobsStore = useJobsStore()
 const settingsStore = useSettingsStore()
+const customFieldsStore = useCustomFieldsStore()
+
+const infoCustomFieldValues = ref([])
+
+watch(() => props.modelValue, async (open) => {
+  if (open && props.product?.id) {
+    if (!customFieldsStore.definitions.length) {
+      await customFieldsStore.fetchDefinitions('product')
+    }
+    try {
+      const data = await customFieldsStore.fetchEntityValues('product', props.product.id)
+      infoCustomFieldValues.value = Array.isArray(data?.values) ? data.values : []
+    } catch {
+      infoCustomFieldValues.value = []
+    }
+  }
+})
 
 const isPhone = computed(() => $q.screen.lt.md)
 const infoActionColor = computed(() => ($q.dark.isActive ? 'teal-4' : 'secondary'))
@@ -258,4 +306,10 @@ function linkedJobsForProductId(productId) {
 }
 
 const linkedJobs = computed(() => linkedJobsForProductId(props.product?.id))
+
+function productNameById(productId) {
+  const item = store.products.find(row => row.id === productId)
+  if (!item) return `Product #${productId}`
+  return `${item.sku} - ${item.name}`
+}
 </script>

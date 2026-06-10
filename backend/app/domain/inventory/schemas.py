@@ -135,6 +135,7 @@ class ProductRead(ProductBase):
     damaged_devices: int = 0
     eventory_packlists: list[dict[str, object]] = Field(default_factory=list)
     accessories: list["ProductAccessoryRead"] = Field(default_factory=list)
+    components: list["ProductComponentRead"] = Field(default_factory=list)
 
     model_config = {"from_attributes": True}
 
@@ -148,6 +149,7 @@ class DeviceBase(BaseModel):
     rfid: str | None = None
     location_zone_id: int | None = None
     case_device_id: int | None = None
+    parent_component_device_id: int | None = None
     status: str = "available"
     condition: str = "good"
     purchase_date: date | None = None
@@ -188,6 +190,7 @@ class DeviceUpdate(BaseModel):
     rfid: str | None = None
     location_zone_id: int | None = None
     case_device_id: int | None = None
+    parent_component_device_id: int | None = None
     status: str | None = None
     condition: str | None = None
     purchase_date: date | None = None
@@ -219,6 +222,7 @@ class DeviceRead(DeviceBase):
     id: int
     created_at: datetime
     case_asset_tag: str | None = None
+    parent_component_asset_tag: str | None = None
     current_job_id: int | None = None
     current_job_code: str | None = None
 
@@ -243,6 +247,24 @@ class ProductAccessoryUpsertItem(BaseModel):
 
 class ProductAccessoryUpsertRequest(BaseModel):
     items: list[ProductAccessoryUpsertItem] = Field(default_factory=list)
+
+
+class ProductComponentRead(BaseModel):
+    id: int
+    parent_product_id: int
+    component_product_id: int
+    component_sku: str | None = None
+    component_name: str | None = None
+    quantity: int = 1
+
+
+class ProductComponentUpsertItem(BaseModel):
+    component_product_id: int
+    quantity: int = 1
+
+
+class ProductComponentUpsertRequest(BaseModel):
+    items: list[ProductComponentUpsertItem] = Field(default_factory=list)
 
 
 MAINTENANCE_STATUSES = ["scheduled", "in_progress", "completed", "canceled"]
@@ -454,6 +476,7 @@ class InventoryScanRequest(BaseModel):
     action: str = "lookup"
     zone_id: int | None = None
     case_device_id: int | None = None
+    parent_component_device_id: int | None = None
     job_code: str | None = None
     maintenance_type: str | None = None
     interval_mode: str | None = None
