@@ -57,115 +57,16 @@
       </template>
     </q-table>
 
-    <q-dialog v-model="dialogOpen" persistent>
-      <q-card style="width: 520px; max-width: 95vw" class="ec-card">
-        <q-card-section>
-          <div class="text-h6">{{ editing ? t('customers.editCustomer') : t('customers.newCustomer') }}</div>
-        </q-card-section>
-
-        <q-card-section class="q-pt-none">
-          <q-form ref="formRef" @submit.prevent="saveCustomer">
-            <q-input
-              v-model="form.name"
-              :label="t('customers.name')"
-              outlined
-              dense
-              class="q-mb-sm"
-              :rules="[v => !!v || t('login.required')]"
-            />
-            <q-input v-model="form.email" :label="t('profile.email')" type="email" outlined dense class="q-mb-sm" />
-            <q-input v-model="form.phone" :label="t('customers.phone')" outlined dense class="q-mb-sm" />
-            <q-input v-model="form.address" :label="t('customers.address')" outlined dense class="q-mb-sm" />
-            <div class="row q-col-gutter-sm">
-              <div class="col-12 col-md-6">
-                <q-input v-model="form.city" :label="t('customers.city')" outlined dense class="q-mb-sm" />
-              </div>
-              <div class="col-12 col-md-3">
-                <q-input v-model="form.postal_code" :label="t('customers.postalCode')" outlined dense class="q-mb-sm" />
-              </div>
-              <div class="col-12 col-md-3">
-                <q-select v-model="form.country" :options="COUNTRIES" :label="t('customers.country')" outlined dense clearable emit-value map-options class="q-mb-sm" />
-              </div>
-            </div>
-            <q-input v-model="form.notes" :label="t('customers.notes')" type="textarea" autogrow outlined dense />
-
-            <q-separator class="q-my-md" />
-            <div class="text-subtitle2 q-mb-sm">{{ t('customers.customFieldValues') }}</div>
-            <div v-if="customerFieldRows.length">
-              <div v-for="field in customerFieldRows" :key="field.field_definition_id" class="q-mb-sm">
-                <q-input
-                  v-if="field.value_type === 'text'"
-                  v-model="field.value"
-                  :label="customFieldLabel(field.label)"
-                  outlined
-                  dense
-                />
-                <q-input
-                  v-else-if="field.value_type === 'number'"
-                  v-model="field.value"
-                  :label="customFieldLabel(field.label)"
-                  type="number"
-                  outlined
-                  dense
-                />
-                <q-select
-                  v-else-if="field.value_type === 'boolean'"
-                  v-model="field.value"
-                  :options="booleanValueOptions"
-                  :label="customFieldLabel(field.label)"
-                  outlined
-                  dense
-                  emit-value
-                  map-options
-                />
-                <q-input
-                  v-else-if="field.value_type === 'date'"
-                  v-model="field.value"
-                  :label="customFieldLabel(field.label)"
-                  type="date"
-                  outlined
-                  dense
-                />
-                <q-select
-                  v-else-if="field.value_type === 'select'"
-                  v-model="field.value"
-                  :options="(field.options || []).map(option => ({ label: customFieldOption(option), value: option }))"
-                  :label="customFieldLabel(field.label)"
-                  outlined
-                  dense
-                  clearable
-                  emit-value
-                  map-options
-                />
-              </div>
-            </div>
-            <div v-else class="text-caption text-grey-7">{{ t('customers.noCustomFields') }}</div>
-
-            <q-banner v-if="dialogError" class="bg-negative text-white q-mt-sm rounded-borders" dense>
-              {{ dialogError }}
-            </q-banner>
-          </q-form>
-        </q-card-section>
-
-        <q-card-actions align="right">
-          <q-btn flat :label="t('app.actions.cancel')" @click="dialogOpen = false" />
-          <q-btn v-if="authStore.canEdit" color="primary" unelevated :label="editing ? t('app.actions.save') : t('customers.create')" :loading="saving" @click="saveCustomer" />
-        </q-card-actions>
-      </q-card>
-    </q-dialog>
-
-    <q-dialog v-model="deleteDialogOpen" persistent>
-      <q-card class="ec-card">
-        <q-card-section class="row items-center">
-          <q-icon name="warning" color="negative" size="md" class="q-mr-md" />
-          <span>{{ t('customers.deletePrompt', { name: deleteTarget?.name || '' }) }}</span>
-        </q-card-section>
-        <q-card-actions align="right">
-          <q-btn flat :label="t('app.actions.cancel')" @click="deleteDialogOpen = false" />
-          <q-btn v-if="authStore.canEdit" color="negative" unelevated :label="t('customers.delete')" :loading="saving" @click="doDelete" />
-        </q-card-actions>
-      </q-card>
-    </q-dialog>
+    <CustomerDialog
+      v-model="dialogOpen"
+      :customer="editing"
+      @saved="onCustomerSaved"
+    />
+    <CustomerDeleteDialog
+      v-model="deleteDialogOpen"
+      :customer="deleteTarget"
+      @deleted="onCustomerDeleted"
+    />
   </q-page>
 </template>
 
@@ -178,10 +79,9 @@ import { useI18n } from 'vue-i18n'
 import { useCustomersStore } from '../stores/customers'
 import { useCustomFieldsStore } from '../stores/customFields'
 import { useAuthStore } from '../stores/auth'
-import { useSettingsStore } from '../stores/settings'
-import { COUNTRIES } from '../constants/countries'
 import { useCompactGrid } from '../composables/useCompactGrid'
-import { translateMaybePrefillCustomFieldLabel, translateMaybePrefillCustomFieldOption } from '../i18n/prefillContent'
+import CustomerDialog from '../components/CustomerDialog.vue'
+import CustomerDeleteDialog from '../components/CustomerDeleteDialog.vue'
 
 const $q = useQuasar()
 const compactGrid = useCompactGrid(1024)
@@ -193,12 +93,6 @@ const authStore = useAuthStore()
 const { t } = useI18n()
 
 const search = ref('')
-const customerFieldRows = ref([])
-
-const booleanValueOptions = [
-  { label: t('common.true'), value: 'true' },
-  { label: t('common.false'), value: 'false' },
-]
 
 const columns = [
   { name: 'name', label: t('customers.name'), field: 'name', sortable: true, align: 'left' },
@@ -227,14 +121,6 @@ const filteredCustomers = computed(() => {
   )
 })
 
-function customFieldLabel(label) {
-  return translateMaybePrefillCustomFieldLabel(label, t)
-}
-
-function customFieldOption(option) {
-  return translateMaybePrefillCustomFieldOption(option, t)
-}
-
 async function focusCustomerFromQuery() {
   const focusId = Number(route.query.focusCustomerId || 0)
   if (!focusId) return
@@ -258,135 +144,31 @@ onMounted(async () => {
 
 const dialogOpen = ref(false)
 const editing = ref(null)
-const saving = ref(false)
-const dialogError = ref('')
-const formRef = ref(null)
-
-const emptyForm = () => ({
-  name: '',
-  email: '',
-  phone: '',
-  address: '',
-  city: '',
-  postal_code: '',
-  country: '',
-  notes: '',
-})
-
-const form = ref(emptyForm())
-
-function createEmptyCustomerFieldRows() {
-  const defs = (customFieldsStore.definitions || []).filter(def => def.entity_type === 'customer' && def.is_active !== false)
-  return defs.map(def => ({
-    field_definition_id: def.id,
-    label: def.label,
-    value_type: def.value_type,
-    options: def.options || [],
-    value: null,
-  }))
-}
-
-async function loadCustomerFieldRows(entityId) {
-  if (!entityId) {
-    customerFieldRows.value = createEmptyCustomerFieldRows()
-    return
-  }
-  try {
-    const data = await customFieldsStore.fetchEntityValues('customer', entityId)
-    customerFieldRows.value = Array.isArray(data?.values) ? data.values.map(value => ({ ...value })) : createEmptyCustomerFieldRows()
-  } catch {
-    customerFieldRows.value = createEmptyCustomerFieldRows()
-  }
-}
-
-async function openCreate() {
-  editing.value = null
-  form.value = emptyForm()
-  const settingsStore = useSettingsStore()
-  if (settingsStore.companyProfile?.default_country) {
-    form.value.country = settingsStore.companyProfile.default_country
-  }
-  await loadCustomerFieldRows(null)
-  dialogError.value = ''
-  dialogOpen.value = true
-}
-
-async function openEdit(customer) {
-  editing.value = customer
-  form.value = {
-    name: customer.name ?? '',
-    email: customer.email ?? '',
-    phone: customer.phone ?? '',
-    address: customer.address ?? '',
-    city: customer.city ?? '',
-    postal_code: customer.postal_code ?? '',
-    country: customer.country ?? '',
-    notes: customer.notes ?? '',
-  }
-  await loadCustomerFieldRows(customer.id)
-  dialogError.value = ''
-  dialogOpen.value = true
-}
-
-async function saveCustomer() {
-  const valid = await formRef.value?.validate()
-  if (!valid) return
-
-  saving.value = true
-  dialogError.value = ''
-  try {
-    const payload = {
-      ...form.value,
-      name: form.value.name.trim(),
-      email: form.value.email?.trim() || null,
-      phone: form.value.phone?.trim() || null,
-      address: form.value.address?.trim() || null,
-      city: form.value.city?.trim() || null,
-      postal_code: form.value.postal_code?.trim() || null,
-      country: form.value.country?.trim() || null,
-      notes: form.value.notes?.trim() || null,
-    }
-
-    let savedCustomer
-    if (editing.value) {
-      savedCustomer = await store.updateCustomer(editing.value.id, payload)
-    } else {
-      savedCustomer = await store.createCustomer(payload)
-    }
-
-    await customFieldsStore.saveEntityValues('customer', savedCustomer.id, customerFieldRows.value.map(row => ({
-      field_definition_id: row.field_definition_id,
-      value: row.value,
-    })))
-
-    dialogOpen.value = false
-    $q.notify({ type: 'positive', message: editing.value ? t('customers.updated') : t('customers.createdNotice') })
-  } catch (error) {
-    dialogError.value = error?.response?.data?.detail || t('common.errorOccurred')
-  } finally {
-    saving.value = false
-  }
-}
-
 const deleteDialogOpen = ref(false)
 const deleteTarget = ref(null)
+
+function openCreate() {
+  editing.value = null
+  dialogOpen.value = true
+}
+
+function openEdit(customer) {
+  editing.value = customer
+  dialogOpen.value = true
+}
 
 function confirmDelete(customer) {
   deleteTarget.value = customer
   deleteDialogOpen.value = true
 }
 
-async function doDelete() {
-  if (!deleteTarget.value) return
-  saving.value = true
-  try {
-    await store.deleteCustomer(deleteTarget.value.id)
-    deleteDialogOpen.value = false
-    $q.notify({ type: 'positive', message: t('customers.deleted') })
-  } catch (error) {
-    $q.notify({ type: 'negative', message: error?.response?.data?.detail || t('common.deleteFailed') })
-  } finally {
-    saving.value = false
-  }
+function onCustomerSaved() {
+  dialogOpen.value = false
+  editing.value = null
+}
+
+function onCustomerDeleted() {
+  deleteDialogOpen.value = false
+  deleteTarget.value = null
 }
 </script>

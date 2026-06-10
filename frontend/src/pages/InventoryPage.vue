@@ -647,144 +647,17 @@
       </q-tab-panel>
     </q-tab-panels>
 
-    <q-dialog v-model="rentalProductDialogOpen" persistent :maximized="isPhone">
-      <q-card :style="isPhone ? 'width: 100vw; max-width: 100vw; height: 100vh' : 'min-width: 760px; max-width: 95vw'" class="ec-card">
-        <q-card-section><div class="text-h6">{{ rentalProductDraft.id ? t('inventory.editRentalProduct') : t('inventory.newRentalProduct') }}</div></q-card-section>
-        <q-card-section class="q-pt-none" :style="isPhone ? 'max-height: calc(100vh - 140px); overflow: auto;' : ''">
-          <q-form ref="rentalProductFormRef" @submit.prevent="saveRentalProduct">
-            <q-expansion-item v-model="rentalGeneralExpanded" icon="sell" :label="t('inventory.general')" dense header-class="rounded-borders">
-              <div class="q-pt-sm row q-col-gutter-sm">
-                <div class="col-12 col-md-4"><q-input v-model="rentalProductDraft.sku" :label="t('inventory.columnSku')" outlined dense :rules="[v => !!v || t('login.required')]" /></div>
-                <div class="col-12 col-md-8"><q-input v-model="rentalProductDraft.name" :label="t('inventory.columnName')" outlined dense :rules="[v => !!v || t('login.required')]" /></div>
-                <div class="col-12 col-md-4"><q-input v-model="rentalProductDraft.category" :label="t('inventory.columnCategory')" outlined dense /></div>
-                <div class="col-12 col-md-4"><q-input v-model="rentalProductDraft.supplier_name" :label="t('inventory.columnSupplier')" outlined dense /></div>
-              </div>
-            </q-expansion-item>
+    <RentalProductDialog
+      v-model="rentalProductDialogOpen"
+      :product="rentalProductEditing"
+      @saved="onRentalProductDialogSaved"
+    />
 
-            <q-expansion-item v-model="rentalPricingExpanded" icon="payments" :label="t('inventory.pricingAndSync')" dense header-class="rounded-borders" class="q-mt-sm">
-              <div class="q-pt-sm row q-col-gutter-sm">
-                <div class="col-12 col-md-4">
-                  <q-input
-                    v-model.number="rentalProductDraft.rental_price"
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    :label="t('inventory.columnSupplierPrice')"
-                    :suffix="activeCurrencyCode"
-                    :hint="currencyHelperText"
-                    outlined
-                    dense
-                    @update:model-value="onRentalSupplierPriceChanged"
-                  />
-                </div>
-                <div class="col-12 col-md-4">
-                  <q-input
-                    v-model.number="rentalProductDraft.daily_rate"
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    :label="t('inventory.columnClientPrice')"
-                    :suffix="activeCurrencyCode"
-                    :hint="currencyHelperText"
-                    outlined
-                    dense
-                  />
-                </div>
-                <div class="col-12">
-                  <q-banner v-if="isCurrentRentalDraftSynced" dense class="bg-info text-white rounded-borders">
-                    {{ t('inventory.linkedEventoryInstance', { instance: eventoryInstanceLabelById(rentalProductDraft.external_reference) }) }}
-                  </q-banner>
-                  <div v-else class="text-caption text-grey-7">{{ t('inventory.manualRentalProductHint') }}</div>
-                </div>
-              </div>
-            </q-expansion-item>
-
-            <q-expansion-item v-model="rentalCustomFieldsExpanded" icon="tune" :label="t('inventory.customFields')" dense header-class="rounded-borders" class="q-mt-sm">
-              <div class="q-pt-sm">
-                <div v-if="rentalProductFieldRows.length">
-                  <div v-for="field in rentalProductFieldRows" :key="field.field_definition_id" class="q-mb-sm">
-                    <q-input
-                      v-if="field.value_type === 'text'"
-                      v-model="field.value"
-                      :label="customFieldLabel(field.label)"
-                      outlined
-                      dense
-                    />
-                    <q-input
-                      v-else-if="field.value_type === 'number'"
-                      v-model="field.value"
-                      :label="customFieldLabel(field.label)"
-                      type="number"
-                      outlined
-                      dense
-                    />
-                    <q-select
-                      v-else-if="field.value_type === 'boolean'"
-                      v-model="field.value"
-                      :options="booleanValueOptions"
-                      :label="customFieldLabel(field.label)"
-                      outlined
-                      dense
-                      emit-value
-                      map-options
-                    />
-                    <q-input
-                      v-else-if="field.value_type === 'date'"
-                      v-model="field.value"
-                      :label="customFieldLabel(field.label)"
-                      type="date"
-                      outlined
-                      dense
-                    />
-                    <q-select
-                      v-else-if="field.value_type === 'select'"
-                      v-model="field.value"
-                      :options="(field.options || []).map(option => ({ label: customFieldOption(option), value: option }))"
-                      :label="customFieldLabel(field.label)"
-                      outlined
-                      dense
-                      clearable
-                      emit-value
-                      map-options
-                    />
-                  </div>
-                </div>
-                <div v-else class="text-caption text-grey-7">{{ t('inventory.noProductCustomFields') }}</div>
-              </div>
-            </q-expansion-item>
-
-            <q-banner v-if="rentalProductDialogError" class="bg-negative text-white q-mt-sm rounded-borders" dense>
-              {{ rentalProductDialogError }}
-            </q-banner>
-          </q-form>
-        </q-card-section>
-        <q-card-actions :align="isPhone ? 'stretch' : 'right'" :class="isPhone ? 'q-pa-md bg-grey-2' : ''">
-          <q-btn flat :class="isPhone ? 'full-width q-mb-sm' : ''" :label="t('app.actions.cancel')" @click="rentalProductDialogOpen = false" />
-          <q-btn
-            color="primary"
-            unelevated
-            :class="isPhone ? 'full-width' : ''"
-            :label="rentalProductDraft.id ? t('app.actions.save') : t('users.create')"
-            :loading="rentalProductSaving"
-            @click="saveRentalProduct"
-          />
-        </q-card-actions>
-      </q-card>
-    </q-dialog>
-
-    <q-dialog v-model="bulkDeleteDialogOpen" persistent>
-      <q-card class="ec-card">
-        <q-card-section>
-          <div class="text-h6">{{ t('inventory.bulkDelete') }}</div>
-          <div class="text-caption text-grey-7">{{ t('inventory.bulkDeleteConfirm', { count: selectedLocationIds.length }) }}</div>
-          <q-banner v-if="bulkDeleteError" class="bg-negative text-white q-mt-sm rounded-borders" dense>{{ bulkDeleteError }}</q-banner>
-        </q-card-section>
-        <q-card-actions align="right">
-          <q-btn flat :label="t('app.actions.cancel')" @click="bulkDeleteDialogOpen = false" />
-          <q-btn color="negative" unelevated :label="t('inventory.bulkDelete')" :loading="bulkDeleteSaving" @click="doBulkDeleteLocations" />
-        </q-card-actions>
-      </q-card>
-    </q-dialog>
+    <BulkDeleteDialog
+      v-model="bulkDeleteDialogOpen"
+      :delete-target="{ ids: selectedLocationIds, count: selectedLocationIds.length }"
+      @deleted="onBulkDeleteLocationsDone"
+    />
 
     <ProductDialog
       v-model="productDialogOpen"
@@ -802,444 +675,31 @@
       @saved="onDeviceDialogSaved"
     />
 
-    <q-dialog v-model="categoryDialogOpen" persistent>
-      <q-card style="width: 520px; max-width: 95vw" class="ec-card">
-        <q-card-section><div class="text-h6">{{ categoryEditing ? t('inventory.editCategory') : t('inventory.newCategory') }}</div></q-card-section>
-        <q-card-section class="q-pt-none">
-          <q-form ref="categoryFormRef" @submit.prevent="saveCategory">
-            <q-input v-model="categoryForm.name" :label="t('users.name')" outlined dense class="q-mb-sm" :rules="[v => !!v || t('login.required')]" />
-            <q-select v-model="categoryForm.parent_id" :options="parentCategoryOptions" :label="t('inventory.parentCategory')" outlined dense clearable emit-value map-options class="q-mb-sm" />
-            <q-input v-model.number="categoryForm.sort_order" type="number" :label="t('inventory.sortOrder')" outlined dense class="q-mb-sm" />
-            <q-toggle v-model="categoryForm.is_active" :label="t('settings.auth.active')" color="primary" />
-            <q-banner v-if="categoryDialogError" class="bg-negative text-white q-mt-sm rounded-borders" dense>{{ categoryDialogError }}</q-banner>
-          </q-form>
-        </q-card-section>
-        <q-card-actions align="right">
-          <q-btn flat :label="t('app.actions.cancel')" @click="categoryDialogOpen = false" />
-          <q-btn color="primary" unelevated :label="categoryEditing ? 'Save' : 'Create'" :loading="saving" @click="saveCategory" />
-        </q-card-actions>
-      </q-card>
-    </q-dialog>
+    <CategoryDialog v-model="categoryDialogOpen" :category="categoryEditing" @saved="categoryDialogOpen = false" />
 
-    <q-dialog v-model="locationDialogOpen" persistent>
-      <q-card style="width: 560px; max-width: 95vw" class="ec-card">
-        <q-card-section><div class="text-h6">{{ locationEditing ? t('inventory.editLocation') : t('inventory.newLocation') }}</div></q-card-section>
-        <q-card-section class="q-pt-none">
-          <q-form ref="locationFormRef" @submit.prevent="saveLocation">
-            <q-input v-model="locationForm.name" :label="t('users.name')" outlined dense class="q-mb-sm" :rules="[v => !!v || t('login.required')]" />
-            <q-input v-model="locationForm.code" :label="t('inventory.code')" outlined dense class="q-mb-sm" :rules="[v => !!v || t('login.required')]" @update:model-value="() => { locationCodeEdited = true }" />
-            <div class="row items-center q-mb-sm">
-              <div class="col">
-                <div v-if="locationForm.name" class="text-caption text-grey-7">
-                  {{ t('inventory.generatedCodePreview', { slug: slugify(locationForm.name) }) }}
-                </div>
-              </div>
-              <div class="col-auto">
-                <q-btn dense flat size="sm" :label="t('app.actions.reset')" color="primary" v-if="locationForm.name" @click="() => { locationForm.code = slugify(locationForm.name); locationCodeEdited = false }" />
-              </div>
-            </div>
-            <div class="row q-col-gutter-sm q-mb-sm">
-              <div class="col-12 col-md-6">
-                <q-toggle v-model="locationAutoGenerateCode" :label="t('inventory.autoGenerateCode')" color="primary" />
-              </div>
-            </div>
-            <div class="row q-col-gutter-sm q-mb-sm">
-              <div class="col-12 col-md-4">
-                <q-input v-model="locationForm.barcode" label="Barcode" outlined dense />
-              </div>
-              <div class="col-12 col-md-4">
-                <q-input v-model="locationForm.qr_code" label="QR code" outlined dense />
-              </div>
-              <div class="col-12 col-md-4">
-                <q-input v-model="locationForm.rfid" label="RFID" outlined dense />
-              </div>
-            </div>
-            <q-select
-              v-model="locationForm.zone_type"
-              :options="locationTypeOptions"
-              :label="t('inventory.type')"
-              outlined
-              dense
-              emit-value
-              map-options
-              class="q-mb-sm"
-            />
-            <q-select v-model="locationForm.parent_id" :options="parentLocationOptions" :label="t('inventory.parentLocation')" outlined dense clearable emit-value map-options class="q-mb-sm" />
-            <q-input v-model.number="locationForm.sort_order" type="number" :label="t('inventory.sortOrder')" outlined dense class="q-mb-sm" />
-            <q-toggle v-model="locationForm.is_active" :label="t('settings.auth.active')" color="primary" />
-            <q-banner v-if="locationDialogError" class="bg-negative text-white q-mt-sm rounded-borders" dense>{{ locationDialogError }}</q-banner>
-          </q-form>
-        </q-card-section>
-        <q-card-actions align="right">
-          <q-btn flat :label="t('app.actions.cancel')" @click="locationDialogOpen = false" />
-          <q-btn color="primary" unelevated :label="locationEditing ? 'Save' : 'Create'" :loading="saving" @click="saveLocation" />
-        </q-card-actions>
-      </q-card>
-    </q-dialog>
+    <LocationDialog v-model="locationDialogOpen" :zone="locationEditing" @saved="locationDialogOpen = false" />
 
-    <q-dialog v-model="bulkCreateDialogOpen" persistent>
-      <q-card style="width: 520px; max-width: 95vw" class="ec-card">
-        <q-card-section>
-          <div class="text-h6">{{ tr('inventory.bulkCreateSubzones.title', 'Create multiple subzones') }}</div>
-          <div class="text-caption text-grey-7">{{ tr('inventory.bulkCreateSubzones.hint', 'Enter one subzone name per line. These will be created as children of the chosen location.') }}</div>
-        </q-card-section>
-        <q-card-section class="q-pt-none">
-          <div class="q-mb-sm">
-            <q-input type="textarea" autogrow v-model="bulkCreateText" :label="tr('inventory.bulkCreateSubzones.names', 'Subzone names (one per line)')" outlined dense />
-          </div>
-          <div class="row q-col-gutter-sm q-mb-sm">
-            <div class="col-12 col-md-6">
-              <q-select v-model="bulkCreateZoneType" :options="locationTypeOptions" :label="t('inventory.type')" outlined dense emit-value map-options />
-            </div>
-            <div class="col-12 col-md-6">
-              <q-toggle v-model="bulkCreateIsActive" :label="t('settings.auth.active')" color="primary" />
-            </div>
-          </div>
-          <div class="row q-col-gutter-sm q-mb-sm">
-            <div class="col-12 col-md-6">
-              <q-toggle v-model="bulkCreateInterpretRanges" :label="tr('inventory.bulkCreateSubzones.interpretRanges', 'Interpret ranges (A-D, 01-05)')" color="primary" />
-            </div>
-            <div class="col-12 col-md-6">
-              <q-toggle v-model="bulkCreateAutoGenerateCode" :label="tr('inventory.bulkCreateSubzones.autoGenerateCode', 'Auto-generate codes from names')" color="primary" />
-            </div>
-          </div>
-          <q-banner v-if="bulkCreateError" class="bg-negative text-white q-mt-sm rounded-borders" dense>{{ bulkCreateError }}</q-banner>
-        </q-card-section>
-          <q-card-actions align="right">
-          <q-btn flat :label="t('app.actions.cancel')" @click="bulkCreateDialogOpen = false" />
-          <q-btn color="primary" unelevated :label="tr('inventory.create', 'Create')" :loading="saving" @click="saveBulkCreateSubzones" />
-        </q-card-actions>
-      </q-card>
-    </q-dialog>
+    <BulkCreateDialog v-model="bulkCreateDialogOpen" :parent-zone="bulkCreateParent" @saved="bulkCreateDialogOpen = false" />
 
-    <q-dialog v-model="deleteCategoryDialogOpen" persistent>
-      <q-card class="ec-card">
-        <q-card-section class="row items-center">
-          <q-icon name="warning" color="negative" size="md" class="q-mr-md" />
-          <span>{{ t('inventory.deleteCategoryPrompt', { name: deleteCategoryTarget?.name }) }}</span>
-        </q-card-section>
-        <q-card-actions align="right">
-          <q-btn flat :label="t('app.actions.cancel')" @click="deleteCategoryDialogOpen = false" />
-          <q-btn color="negative" unelevated :label="t('users.delete')" :loading="saving" @click="doDeleteCategory" />
-        </q-card-actions>
-      </q-card>
-    </q-dialog>
+    <DeleteCategoryDialog v-model="deleteCategoryDialogOpen" :category="deleteCategoryTarget" @deleted="deleteCategoryDialogOpen = false" />
 
-    <q-dialog v-model="quickCreateDialogOpen" persistent>
-      <q-card style="width: 560px; max-width: 95vw" class="ec-card">
-        <q-card-section>
-          <div class="text-h6">{{ t('inventory.createDevices') }}</div>
-          <div class="text-caption text-grey-7">{{ quickCreateTargetProduct?.sku }} - {{ quickCreateTargetProduct?.name }}</div>
-        </q-card-section>
-        <q-card-section class="q-pt-none">
-          <div class="row q-col-gutter-sm">
-            <div class="col-12 col-md-4">
-              <q-input v-model.number="quickCreateForm.quantity" type="number" min="1" :label="t('inventory.quantity')" outlined dense />
-            </div>
-            <div class="col-12 col-md-8">
-              <q-toggle v-model="quickCreateForm.auto_generate" :label="t('inventory.autoGenerateAssetTags')" color="primary" />
-            </div>
-            <div class="col-12 col-md-6" v-if="quickCreateForm.auto_generate">
-              <q-input v-model="quickCreateForm.asset_tag_prefix" :label="t('inventory.assetTagPrefixOptional')" outlined dense />
-            </div>
-            <div class="col-12 col-md-6" v-else>
-              <q-input v-model="quickCreateForm.asset_tag" :label="t('scan.assetTag')" outlined dense :rules="[v => !!v || t('inventory.requiredWhenAutoGenerateOff')]" />
-            </div>
-            <div class="col-12 col-md-4">
-              <q-select v-model="quickCreateForm.status" :options="statusOptions" label="Status" outlined dense emit-value map-options />
-            </div>
-            <div class="col-12 col-md-4">
-              <q-select v-model="quickCreateForm.condition" :options="conditionOptions" label="Condition" outlined dense emit-value map-options />
-            </div>
-            <div class="col-12 col-md-4">
-              <q-select v-model="quickCreateForm.location_zone_id" :options="locationSelectOptions" label="Location" outlined dense emit-value map-options clearable />
-            </div>
-          </div>
-          <q-banner v-if="quickCreateError" class="bg-negative text-white q-mt-sm rounded-borders" dense>{{ quickCreateError }}</q-banner>
-        </q-card-section>
-        <q-card-actions align="right">
-          <q-btn flat :label="t('app.actions.cancel')" @click="quickCreateDialogOpen = false" />
-          <q-btn color="primary" unelevated :label="t('users.create')" :loading="saving" @click="runQuickCreateDevices" />
-        </q-card-actions>
-      </q-card>
-    </q-dialog>
+    <QuickCreateDialog
+      v-model="quickCreateDialogOpen"
+      :product="quickCreateTargetProduct"
+      @saved="onQuickCreateDone"
+    />
 
-    <q-dialog v-model="maintenanceDialogOpen" persistent>
-      <q-card style="width: 720px; max-width: 95vw" class="ec-card">
-        <q-card-section><div class="text-h6">{{ maintenanceDialogTitle }}</div></q-card-section>
-        <q-card-section class="q-pt-none">
-          <q-form ref="maintenanceFormRef" @submit.prevent="saveMaintenance">
-            <div class="row q-col-gutter-sm">
-              <div class="col-12" v-if="!maintenanceEditing && maintenanceDialogMode === 'schedule'">
-                <q-expansion-item v-model="maintenanceTargetsExpanded" icon="tune" :label="t('inventory.targetsProductsDevices')" dense>
-                  <div class="q-pt-sm">
-                    <q-banner dense class="bg-info text-white rounded-borders q-mb-sm">
-                      {{ t('inventory.productSchedulesBanner') }}
-                    </q-banner>
-                    <div class="row q-col-gutter-sm">
-                      <div class="col-12 col-md-6">
-                        <q-select
-                          v-model="maintenanceForm.product_ids"
-                          :options="productOptions"
-                          :label="t('inventory.products')"
-                          outlined
-                          dense
-                          multiple
-                          use-chips
-                          emit-value
-                          map-options
-                        />
-                      </div>
-                      <div class="col-12 col-md-6">
-                        <q-select
-                          v-model="maintenanceForm.device_ids"
-                          :options="deviceSelectOptions"
-                          :label="t('inventory.additionalSpecificDevicesOptional')"
-                          outlined
-                          dense
-                          multiple
-                          use-chips
-                          emit-value
-                          map-options
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </q-expansion-item>
-              </div>
-              <div class="col-12" v-if="!maintenanceEditing && maintenanceDialogMode === 'task'">
-                <q-banner dense class="bg-info text-white rounded-borders q-mb-sm">
-                  {{ t('inventory.directMaintenanceTaskBanner') }}
-                </q-banner>
-                <q-select
-                  v-model="maintenanceForm.device_ids"
-                  :options="deviceSelectOptions"
-                  :label="t('inventory.device')"
-                  outlined
-                  dense
-                  multiple
-                  use-chips
-                  emit-value
-                  map-options
-                />
-              </div>
-              <div class="col-12 col-md-6" v-if="maintenanceEditing">
-                <q-select
-                  v-model="maintenanceForm.device_ids"
-                  :options="deviceSelectOptions"
-                  :label="t('inventory.device')"
-                  outlined
-                  dense
-                  multiple
-                  use-chips
-                  emit-value
-                  map-options
-                />
-              </div>
-              <div class="col-12 col-md-6"><q-select v-model="maintenanceForm.maintenance_type" :options="maintenanceTypeOptions" :label="t('inventory.type')" outlined dense emit-value map-options /></div>
-              <div class="col-12 col-md-4" v-if="maintenanceEditing || maintenanceDialogMode === 'task'"><q-select v-model="maintenanceForm.status" :options="maintenanceStatusOptions" :label="t('inventory.status')" outlined dense emit-value map-options /></div>
-              <div class="col-12 col-md-4" v-if="maintenanceEditing || maintenanceDialogMode === 'schedule'"><q-select v-model="maintenanceForm.interval_mode" :options="maintenanceIntervalModeOptions" :label="t('inventory.intervalMode')" outlined dense emit-value map-options /></div>
-              <div class="col-12 col-md-4" v-if="maintenanceEditing || maintenanceDialogMode === 'schedule'"><q-input v-model.number="maintenanceForm.interval_value" type="number" min="1" :label="maintenanceForm.interval_mode === 'runtime' ? t('inventory.hoursInterval') : t('inventory.daysInterval')" outlined dense /></div>
-              <div class="col-12 col-md-4"><q-input v-model="maintenanceForm.scheduled_date" type="date" :label="t('inventory.scheduledDate')" outlined dense /></div>
-              <div class="col-12 col-md-4" v-if="maintenanceEditing || maintenanceDialogMode === 'task'"><q-input v-model="maintenanceForm.completed_date" type="date" :label="t('inventory.completedDate')" outlined dense /></div>
-              <div class="col-12"><q-input v-model="maintenanceForm.notes" type="textarea" autogrow :label="t('inventory.notes')" outlined dense /></div>
-            </div>
-            <q-banner v-if="maintenanceDialogError" class="bg-negative text-white q-mt-sm rounded-borders" dense>{{ maintenanceDialogError }}</q-banner>
-          </q-form>
-        </q-card-section>
-        <EntityAttachmentsPanel
-          entity-type="maintenance"
-          :entity-id="maintenanceEditing?.id || null"
-          :title="t('inventory.maintenanceDocuments')"
-          default-category="maintenance-document"
-        />
-        <q-card-actions align="right">
-          <q-btn flat :label="t('app.actions.cancel')" @click="maintenanceDialogOpen = false" />
-          <q-btn color="primary" unelevated :label="maintenanceEditing ? t('app.actions.save') : t('users.create')" :loading="saving" @click="saveMaintenance" />
-        </q-card-actions>
-      </q-card>
-    </q-dialog>
+    <MaintenanceDialog v-model="maintenanceDialogOpen" :task="maintenanceEditing" :mode="maintenanceDialogMode" @saved="onMaintenanceSaved" />
+    <MaintenanceScheduleDialog v-model="maintenanceScheduleDialogOpen" :schedule="maintenanceScheduleEditing" @saved="onMaintenanceScheduleSaved" />
+    <MaintenanceCompleteDialog v-model="maintenanceCompleteDialogOpen" :task="maintenanceCompleteTarget" @saved="onMaintenanceCompleteSaved" />
 
-    <q-dialog v-model="maintenanceScheduleDialogOpen" persistent>
-      <q-card style="width: 560px; max-width: 95vw" class="ec-card">
-        <q-card-section><div class="text-h6">{{ t('inventory.editMaintenanceSchedule') }}</div></q-card-section>
-        <q-card-section class="q-pt-none">
-          <q-form ref="maintenanceScheduleFormRef" @submit.prevent="saveMaintenanceSchedule">
-            <div class="row q-col-gutter-sm">
-              <div class="col-12 col-md-6"><q-select v-model="maintenanceScheduleForm.maintenance_type" :options="maintenanceTypeOptions" :label="t('inventory.type')" outlined dense emit-value map-options /></div>
-              <div class="col-12 col-md-6"><q-select v-model="maintenanceScheduleForm.interval_mode" :options="maintenanceIntervalModeOptions" :label="t('inventory.intervalMode')" outlined dense emit-value map-options /></div>
-              <div class="col-12 col-md-6"><q-input v-model.number="maintenanceScheduleForm.interval_value" type="number" min="1" :label="maintenanceScheduleForm.interval_mode === 'runtime' ? t('inventory.hoursInterval') : t('inventory.daysInterval')" outlined dense /></div>
-              <div class="col-12 col-md-6"><q-input v-model="maintenanceScheduleForm.scheduled_date" type="date" :label="t('inventory.scheduledDate')" outlined dense /></div>
-              <div class="col-12"><q-input v-model="maintenanceScheduleForm.notes" type="textarea" autogrow :label="t('inventory.notes')" outlined dense /></div>
-            </div>
-            <q-banner v-if="maintenanceScheduleDialogError" class="bg-negative text-white q-mt-sm rounded-borders" dense>{{ maintenanceScheduleDialogError }}</q-banner>
-          </q-form>
-        </q-card-section>
-        <q-card-actions align="right">
-          <q-btn flat :label="t('app.actions.cancel')" @click="maintenanceScheduleDialogOpen = false" />
-          <q-btn color="primary" unelevated :label="t('inventory.saveSchedule')" :loading="saving" @click="saveMaintenanceSchedule" />
-        </q-card-actions>
-      </q-card>
-    </q-dialog>
+    <BulkProductDialog v-model="bulkProductDialogOpen" :selected-products="selectedProducts" @saved="onBulkProductsSaved" />
 
-    <q-dialog v-model="maintenanceCompleteDialogOpen" persistent>
-      <q-card style="width: 520px; max-width: 95vw" class="ec-card">
-        <q-card-section>
-          <div class="text-h6">{{ t('inventory.completeMaintenanceTask') }}</div>
-          <div class="text-caption text-grey-7" v-if="maintenanceCompleteTarget">
-            {{ maintenanceCompleteTarget.asset_tag || t('inventory.noAssetTag') }} · {{ maintenanceCompleteTarget.maintenance_type || t('inventory.maintenance') }}
-          </div>
-        </q-card-section>
-        <q-card-section class="q-pt-none">
-          <div class="row q-col-gutter-sm">
-            <div class="col-12 col-md-6"><q-input v-model="maintenanceCompleteForm.completed_date" type="date" :label="t('inventory.completedDate')" outlined dense /></div>
-            <div class="col-12"><q-input v-model="maintenanceCompleteForm.notes" type="textarea" autogrow :label="t('inventory.completionNotes')" outlined dense /></div>
-          </div>
-          <q-banner v-if="maintenanceCompleteDialogError" class="bg-negative text-white q-mt-sm rounded-borders" dense>{{ maintenanceCompleteDialogError }}</q-banner>
-        </q-card-section>
-        <q-card-actions align="right">
-          <q-btn flat :label="t('app.actions.cancel')" @click="maintenanceCompleteDialogOpen = false" />
-          <q-btn color="positive" unelevated :label="t('inventory.complete')" :loading="saving" @click="confirmCompleteMaintenance" />
-        </q-card-actions>
-      </q-card>
-    </q-dialog>
+    <BulkDeviceDialog v-model="bulkDeviceDialogOpen" :selected-devices="selectedDevices" @saved="onBulkDevicesSaved" />
 
+    <BulkMaintenanceDialog v-model="bulkMaintenanceDialogOpen" :selected-tasks="selectedMaintenance" @saved="onBulkMaintenanceSaved" />
 
-
-    <q-dialog v-model="bulkProductDialogOpen" persistent>
-      <q-card style="width: 560px; max-width: 95vw" class="ec-card">
-        <q-card-section><div class="text-h6">{{ t('inventory.bulkEditProducts') }}</div></q-card-section>
-        <q-card-section class="q-pt-none">
-          <div class="text-caption text-grey-7 q-mb-sm">{{ t('inventory.updatingProductsCount', { count: selectedProducts.length }) }}</div>
-          <div class="row q-col-gutter-sm">
-            <div class="col-12 col-md-6"><q-select v-model="bulkProductForm.category_id" :options="allCategorySelectOptions" label="Category" outlined dense clearable emit-value map-options /></div>
-            <div class="col-12 col-md-6"><q-select v-model="bulkProductForm.product_type" :options="productTypeOptions" label="Type" outlined dense clearable emit-value map-options /></div>
-            <div class="col-12 col-md-6">
-              <q-select
-                v-model="bulkProductForm.brand"
-                :options="brandOptions"
-                label="Brand"
-                outlined
-                dense
-                clearable
-                use-input
-                fill-input
-                input-debounce="0"
-                emit-value
-                map-options
-                @new-value="onNewBulkBrandValue"
-                @update:model-value="onBulkBrandChanged"
-              >
-                <template #prepend>
-                  <q-icon name="storefront" color="grey-6" />
-                </template>
-              </q-select>
-            </div>
-            <div class="col-12 col-md-6">
-              <q-select
-                v-model="bulkProductForm.manufacturer"
-                :options="manufacturerOptions"
-                label="Manufacturer"
-                outlined
-                dense
-                clearable
-                use-input
-                fill-input
-                input-debounce="0"
-                emit-value
-                map-options
-                @new-value="onNewBulkManufacturerValue"
-                @update:model-value="onBulkManufacturerChanged"
-              >
-                <template #prepend>
-                  <q-icon name="factory" color="grey-6" />
-                </template>
-              </q-select>
-            </div>
-            <div class="col-12 col-md-6"><q-input v-model.number="bulkProductForm.maintenance_interval_days" type="number" min="1" label="Maintenance interval (days)" outlined dense clearable /></div>
-            <div class="col-12 col-md-6">
-              <q-input
-                v-model.number="bulkProductForm.daily_rate"
-                type="number"
-                min="0"
-                step="0.01"
-                label="Daily rate"
-                :suffix="activeCurrencyCode"
-                :hint="currencyHelperText"
-                outlined
-                dense
-                clearable
-              />
-            </div>
-          </div>
-          <q-banner v-if="bulkProductDialogError" class="bg-negative text-white q-mt-sm rounded-borders" dense>{{ bulkProductDialogError }}</q-banner>
-        </q-card-section>
-        <q-card-actions align="right">
-          <q-btn flat label="Cancel" @click="bulkProductDialogOpen = false" />
-          <q-btn color="primary" unelevated :label="t('inventory.apply')" :loading="saving" @click="saveBulkProducts" />
-        </q-card-actions>
-      </q-card>
-    </q-dialog>
-
-    <q-dialog v-model="bulkDeviceDialogOpen" persistent>
-      <q-card style="width: 520px; max-width: 95vw" class="ec-card">
-        <q-card-section><div class="text-h6">{{ t('inventory.bulkEditDevices') }}</div></q-card-section>
-        <q-card-section class="q-pt-none">
-          <div class="text-caption text-grey-7 q-mb-sm">{{ t('inventory.updatingDevicesCount', { count: selectedDevices.length }) }}</div>
-          <div class="row q-col-gutter-sm">
-            <div class="col-12 col-md-4"><q-select v-model="bulkDeviceForm.status" :options="statusOptions" :label="t('inventory.status')" outlined dense clearable emit-value map-options /></div>
-            <div class="col-12 col-md-4"><q-select v-model="bulkDeviceForm.condition" :options="conditionOptions" :label="t('inventory.condition')" outlined dense clearable emit-value map-options /></div>
-            <div class="col-12 col-md-4"><q-select v-model="bulkDeviceForm.location_zone_id" :options="locationSelectOptions" :label="t('inventory.location')" outlined dense clearable emit-value map-options /></div>
-          </div>
-          <q-banner v-if="bulkDeviceDialogError" class="bg-negative text-white q-mt-sm rounded-borders" dense>{{ bulkDeviceDialogError }}</q-banner>
-        </q-card-section>
-        <q-card-actions align="right">
-          <q-btn flat :label="t('app.actions.cancel')" @click="bulkDeviceDialogOpen = false" />
-          <q-btn color="primary" unelevated :label="t('inventory.apply')" :loading="saving" @click="saveBulkDevices" />
-        </q-card-actions>
-      </q-card>
-    </q-dialog>
-
-    <q-dialog v-model="bulkMaintenanceDialogOpen" persistent>
-      <q-card style="width: 520px; max-width: 95vw" class="ec-card">
-        <q-card-section><div class="text-h6">{{ t('inventory.bulkEditMaintenanceTasks') }}</div></q-card-section>
-        <q-card-section class="q-pt-none">
-          <div class="text-caption text-grey-7 q-mb-sm">{{ t('inventory.updatingTasksCount', { count: selectedMaintenance.length }) }}</div>
-          <div class="row q-col-gutter-sm">
-            <div class="col-12 col-md-6"><q-select v-model="bulkMaintenanceForm.status" :options="maintenanceStatusOptions" :label="t('inventory.status')" outlined dense clearable emit-value map-options /></div>
-            <div class="col-12 col-md-6"><q-select v-model="bulkMaintenanceForm.maintenance_type" :options="maintenanceTypeOptions" :label="t('inventory.type')" outlined dense clearable emit-value map-options /></div>
-            <div class="col-12 col-md-6"><q-input v-model="bulkMaintenanceForm.scheduled_date" type="date" :label="t('inventory.scheduledDate')" outlined dense clearable /></div>
-            <div class="col-12 col-md-6"><q-input v-model="bulkMaintenanceForm.completed_date" type="date" :label="t('inventory.completedDate')" outlined dense clearable /></div>
-          </div>
-          <q-banner v-if="bulkMaintenanceDialogError" class="bg-negative text-white q-mt-sm rounded-borders" dense>{{ bulkMaintenanceDialogError }}</q-banner>
-        </q-card-section>
-        <q-card-actions align="right">
-          <q-btn flat :label="t('app.actions.cancel')" @click="bulkMaintenanceDialogOpen = false" />
-          <q-btn color="primary" unelevated :label="t('inventory.apply')" :loading="saving" @click="saveBulkMaintenance" />
-        </q-card-actions>
-      </q-card>
-    </q-dialog>
-
-    <q-dialog v-model="bulkScheduleDialogOpen" persistent>
-      <q-card style="width: 520px; max-width: 95vw" class="ec-card">
-        <q-card-section><div class="text-h6">{{ t('inventory.bulkEditSchedules') }}</div></q-card-section>
-        <q-card-section class="q-pt-none">
-          <div class="text-caption text-grey-7 q-mb-sm">{{ t('inventory.updatingSchedulesCount', { count: selectedSchedules.length }) }}</div>
-          <div class="row q-col-gutter-sm">
-            <div class="col-12 col-md-6"><q-select v-model="bulkScheduleForm.maintenance_type" :options="maintenanceTypeOptions" :label="t('inventory.type')" outlined dense clearable emit-value map-options /></div>
-            <div class="col-12 col-md-6"><q-select v-model="bulkScheduleForm.interval_mode" :options="maintenanceIntervalModeOptions" :label="t('inventory.intervalMode')" outlined dense clearable emit-value map-options /></div>
-            <div class="col-12 col-md-6"><q-input v-model.number="bulkScheduleForm.interval_value" type="number" min="1" :label="bulkScheduleForm.interval_mode === 'runtime' ? t('inventory.hoursInterval') : t('inventory.daysInterval')" outlined dense clearable /></div>
-            <div class="col-12 col-md-6"><q-input v-model="bulkScheduleForm.scheduled_date" type="date" :label="t('inventory.scheduledDate')" outlined dense clearable /></div>
-            <div class="col-12"><q-input v-model="bulkScheduleForm.notes" type="textarea" autogrow :label="t('inventory.notes')" outlined dense clearable /></div>
-          </div>
-          <q-banner v-if="bulkScheduleDialogError" class="bg-negative text-white q-mt-sm rounded-borders" dense>{{ bulkScheduleDialogError }}</q-banner>
-        </q-card-section>
-        <q-card-actions align="right">
-          <q-btn flat :label="t('app.actions.cancel')" @click="bulkScheduleDialogOpen = false" />
-          <q-btn color="primary" unelevated :label="t('inventory.apply')" :loading="saving" @click="saveBulkSchedules" />
-        </q-card-actions>
-      </q-card>
-    </q-dialog>
+    <BulkScheduleDialog v-model="bulkScheduleDialogOpen" :selected-schedules="selectedSchedules" @saved="onBulkSchedulesSaved" />
 
     <DeviceInfoDialog
       v-model="deviceInfoDialogOpen"
@@ -1264,267 +724,22 @@
       @open-job="openJobFromLink"
     />
 
-    <q-dialog v-model="rentalProductInfoDialogOpen" :maximized="isPhone">
-      <q-card :style="isPhone ? 'width: 100vw; max-width: 100vw; height: 100vh' : 'min-width: 860px; max-width: 96vw'" class="ec-card">
-        <q-card-section>
-          <div class="text-h6">Rental Info · {{ rentalProductInfoTarget?.sku || '-' }}</div>
-          <div class="text-caption text-grey-7">{{ rentalProductInfoTarget?.name || '-' }}</div>
-        </q-card-section>
+    <RentalProductInfoDialog
+      v-model="rentalProductInfoDialogOpen"
+      :product="rentalProductInfoTarget"
+      @edit-product="openEditRentalProductFromInfo"
+      @open-job="openJobFromLink"
+    />
 
-        <q-card-section class="q-pt-none" :style="isPhone ? 'max-height: calc(100vh - 140px); overflow: auto;' : ''">
-          <q-list bordered separator class="rounded-borders q-mb-md">
-            <q-item>
-              <q-item-section>
-                <q-item-label>ID: {{ rentalProductInfoTarget?.id || '-' }} · Supplier: {{ rentalProductInfoTarget?.supplier_name || '-' }}</q-item-label>
-                <q-item-label caption>
-                  Category: {{ rentalProductInfoTarget?.category || '-' }} · Supplier price: {{ formatMoney(rentalProductInfoTarget?.rental_price) }} · Client price: {{ formatMoney(rentalProductInfoTarget?.daily_rate) }}
-                </q-item-label>
-                <q-item-label caption>
-                  Eventory source: {{ rentalProductInfoTarget?.external_source || '-' }} · Link: {{ eventoryInstanceLabelById(rentalProductInfoTarget?.external_reference) }}
-                </q-item-label>
-                <q-item-label caption>
-                  Eventory available qty: {{ Number(rentalProductInfoTarget?.eventory_available_qty || 0) }}
-                </q-item-label>
-              </q-item-section>
-              <q-item-section side>
-                <q-btn
-                  flat
-                  dense
-                  :round="isPhone"
-                  color="primary"
-                  icon="edit"
-                  :label="isPhone ? void 0 : 'Edit'"
-                  :aria-label="isPhone ? 'Edit rental product' : void 0"
-                  @click="openEditRentalProductFromInfo()"
-                />
-              </q-item-section>
-            </q-item>
-          </q-list>
+    <ProductAvailabilityDialog
+      v-model="productAvailabilityDialogOpen"
+      :product="productAvailabilityTarget"
+    />
 
-          <div class="text-subtitle2 q-mb-sm">Linked Jobs</div>
-          <q-list bordered separator class="rounded-borders q-mb-md">
-            <q-item v-for="row in rentalProductInfoJobs" :key="`rental-job-${row.job_id}`">
-              <q-item-section>
-                <q-item-label>{{ row.job_code || `Job #${row.job_id}` }}</q-item-label>
-                <q-item-label caption>
-                  Required: {{ row.quantity_required_total }} · Picked: {{ row.quantity_picked_total }}
-                </q-item-label>
-              </q-item-section>
-              <q-item-section side>
-                <q-btn
-                  flat
-                  dense
-                  :round="isPhone"
-                  color="primary"
-                  icon="edit"
-                  :label="isPhone ? void 0 : 'Edit'"
-                  :aria-label="isPhone ? 'Edit linked job' : void 0"
-                  @click="openJobFromLink(row.job_id)"
-                />
-              </q-item-section>
-            </q-item>
-            <q-item v-if="!rentalProductInfoJobs.length">
-              <q-item-section><q-item-label caption>No linked jobs found for this rental product.</q-item-label></q-item-section>
-            </q-item>
-          </q-list>
-
-          <EntityAttachmentsPanel
-            entity-type="product"
-            :entity-id="rentalProductInfoTarget?.id || null"
-            title="Rental Documents"
-            default-category="rental-document"
-            :read-only="true"
-          />
-        </q-card-section>
-
-        <q-card-actions :align="isPhone ? 'stretch' : 'right'" :class="isPhone ? 'q-pa-md bg-grey-2' : ''">
-          <q-space />
-          <q-btn flat :class="isPhone ? 'full-width' : ''" label="Close" @click="rentalProductInfoDialogOpen = false" />
-        </q-card-actions>
-      </q-card>
-    </q-dialog>
-
-    <q-dialog v-model="productAvailabilityDialogOpen" :maximized="isPhone">
-      <q-card :style="isPhone ? 'width: 100vw; max-width: 100vw; height: 100vh' : 'min-width: 860px; max-width: 96vw'" class="ec-card">
-        <q-card-section>
-          <div class="text-h6">Availability Calendar · {{ productAvailabilityTarget?.sku || '-' }}</div>
-          <div class="text-caption text-grey-7">{{ productAvailabilityTarget?.name || '-' }}</div>
-        </q-card-section>
-
-        <q-card-section class="q-pt-none" :style="isPhone ? 'max-height: calc(100vh - 140px); overflow: auto;' : ''">
-          <div class="row items-center q-col-gutter-sm q-mb-sm">
-            <div class="col-auto">
-              <q-toggle v-model="productAvailabilityIncludeDrafts" color="primary" label="Include drafts" />
-            </div>
-            <div class="col-auto">
-              <q-select
-                v-model="productAvailabilityDays"
-                :options="productAvailabilityDaysOptions"
-                label="Range"
-                outlined
-                dense
-                emit-value
-                map-options
-              />
-            </div>
-          </div>
-
-          <div class="row items-center q-col-gutter-xs q-mb-sm text-caption text-grey-7">
-            <div class="col-auto">Heatmap:</div>
-            <div class="col-auto"><q-badge color="negative" text-color="white" label="Low / shortage" /></div>
-            <div class="col-auto"><q-badge color="warning" text-color="black" label="Tight" /></div>
-            <div class="col-auto"><q-badge color="positive" text-color="white" label="Healthy" /></div>
-          </div>
-
-          <q-table
-            :rows="productAvailabilityCalendarRows"
-            :columns="productAvailabilityCalendarColumns"
-            row-key="date"
-            flat
-            bordered
-            dense
-            :pagination="{ rowsPerPage: 0 }"
-            :rows-per-page-options="[0]"
-          >
-            <template #body-cell-reserved="props">
-              <q-td :props="props">
-                <div class="text-weight-medium">{{ props.row.reserved }}</div>
-              </q-td>
-            </template>
-            <template #body-cell-available="props">
-              <q-td :props="props">
-                <div
-                  class="availability-heat-cell"
-                  :style="productAvailabilityHeatStyle(props.row)"
-                  :title="productAvailabilityHeatLabel(props.row)"
-                >
-                  <span class="availability-heat-value">{{ props.row.available }}</span>
-                  <span class="availability-heat-ratio">{{ productAvailabilityPercent(props.row) }}%</span>
-                </div>
-              </q-td>
-            </template>
-          </q-table>
-        </q-card-section>
-
-        <q-card-actions :align="isPhone ? 'stretch' : 'right'" :class="isPhone ? 'q-pa-md bg-grey-2' : ''">
-          <q-space />
-          <q-btn flat :class="isPhone ? 'full-width' : ''" label="Close" @click="productAvailabilityDialogOpen = false" />
-        </q-card-actions>
-      </q-card>
-    </q-dialog>
-
-    <q-dialog v-model="importDialogOpen" persistent>
-      <q-card style="width: 840px; max-width: 98vw" class="ec-card">
-        <q-card-section>
-          <div class="text-h6">Import Data</div>
-        </q-card-section>
-        <q-card-section class="q-pt-none">
-          <div class="row q-col-gutter-sm q-mb-sm">
-            <div class="col-12 col-md-4">
-              <q-select
-                v-model="importEntityType"
-                :options="importEntityOptions"
-                label="Import to"
-                outlined
-                dense
-                emit-value
-                map-options
-                @update:model-value="onImportEntityChanged"
-              />
-            </div>
-            <div class="col-12 col-md-8">
-              <q-file
-                v-model="importFile"
-                label="JSON or CSV file"
-                outlined
-                dense
-                accept=".json,.csv,application/json,text/csv"
-                @update:model-value="parseImportFile"
-              />
-            </div>
-          </div>
-
-          <q-banner v-if="importDialogError" class="bg-negative text-white q-mb-sm rounded-borders" dense>
-            {{ importDialogError }}
-          </q-banner>
-
-          <div v-if="importRows.length" class="q-mb-sm text-caption text-grey-7">
-            Parsed {{ importRows.length }} records. Map Stockwire fields to source fields below.
-          </div>
-
-          <q-table
-            :rows="mappingRows"
-            :columns="mappingColumns"
-            row-key="targetField"
-            flat
-            bordered
-            dense
-            class="q-mb-sm"
-          >
-            <template #body-cell-sourceKey="props">
-              <q-td :props="props">
-                <q-select
-                  v-model="importMapping[props.row.targetField]"
-                  :options="importSourceKeyOptions"
-                  outlined
-                  dense
-                  clearable
-                  emit-value
-                  map-options
-                />
-              </q-td>
-            </template>
-            <template #body-cell-required="props">
-              <q-td :props="props">
-                <q-badge :label="props.row.required ? 'Required' : 'Optional'" :color="props.row.required ? 'negative' : 'grey'" />
-              </q-td>
-            </template>
-          </q-table>
-
-          <div class="q-mb-sm row items-center q-gutter-sm">
-            <div class="col-auto">
-              <q-btn size="sm" flat label="Load HireHop preset" @click="loadHirehopPreset" />
-            </div>
-            <div class="col-auto">
-              <q-toggle dense v-model="importUseServer" label="Use server import" />
-            </div>
-            <div class="col-auto">
-              <q-toggle dense v-model="updateExistingDevices" label="Update existing devices" />
-            </div>
-          </div>
-
-          <div class="text-caption text-grey-7 q-mb-md">
-            HireHop imports require server import for serial numbers, barcodes, quantity expansion, and device metadata. This is enabled automatically when a HireHop file or preset is detected.
-          </div>
-
-          <div v-if="importPreviewRows.length" class="q-mt-md">
-            <div class="text-subtitle2 q-mb-xs">Preview (first 10 transformed rows)</div>
-            <q-table
-              :rows="importPreviewRows"
-              :columns="importPreviewColumns"
-              row-key="_preview_id"
-              flat
-              bordered
-              dense
-            >
-              <template #body-cell-_status="props">
-                <q-td :props="props">
-                  <q-badge
-                    :label="props.row._error ? 'Invalid' : 'Valid'"
-                    :color="props.row._error ? 'negative' : 'positive'"
-                  />
-                  <div v-if="props.row._error" class="text-caption text-negative q-mt-xs">{{ props.row._error }}</div>
-                </q-td>
-              </template>
-            </q-table>
-          </div>
-        </q-card-section>
-        <q-card-actions align="right">
-          <q-btn flat label="Cancel" @click="importDialogOpen = false" />
-          <q-btn color="primary" unelevated label="Run Import" :loading="importing" @click="runJsonImport" />
-        </q-card-actions>
-      </q-card>
-    </q-dialog>
+    <ImportDialog
+      v-model="importDialogOpen"
+      @saved="onImportDone"
+    />
     <DefectReportDialog
       v-model="defectDialogOpen"
       :device-id="selectedDeviceId"
@@ -1548,9 +763,8 @@ import ProductDialog from '../components/ProductDialog.vue'
 import ProductInfoDialog from '../components/ProductInfoDialog.vue'
 import DeviceDialog from '../components/DeviceDialog.vue'
 import DeviceInfoDialog from '../components/DeviceInfoDialog.vue'
-import { translateMaybePrefillCustomFieldLabel, translateMaybePrefillCustomFieldOption } from '../i18n/prefillContent'
 import { normalizeCurrencyCode } from '../constants/currencies'
-import { collectImportSourceKeys, convertDimensionValueToCm, getImportValueBySourceKey, parseImportRows, resolveImportEntityType } from '../utils/import-data'
+
 import {
   countCategoryOverview,
   countPendingMaintenance,
@@ -1558,9 +772,25 @@ import {
   findMostUsedProductByUsageDays,
   isRentalProduct
 } from '../utils/inventory-overview'
-import { slugify } from 'src/utils/slugify'
 import { api } from '../boot/axios'
 import DefectReportDialog from 'components/DefectReportDialog.vue'
+import RentalProductDialog from '../components/RentalProductDialog.vue'
+import RentalProductInfoDialog from '../components/RentalProductInfoDialog.vue'
+import ProductAvailabilityDialog from '../components/ProductAvailabilityDialog.vue'
+import MaintenanceDialog from '../components/MaintenanceDialog.vue'
+import MaintenanceScheduleDialog from '../components/MaintenanceScheduleDialog.vue'
+import MaintenanceCompleteDialog from '../components/MaintenanceCompleteDialog.vue'
+import BulkProductDialog from '../components/BulkProductDialog.vue'
+import BulkDeviceDialog from '../components/BulkDeviceDialog.vue'
+import BulkMaintenanceDialog from '../components/BulkMaintenanceDialog.vue'
+import BulkScheduleDialog from '../components/BulkScheduleDialog.vue'
+import CategoryDialog from '../components/CategoryDialog.vue'
+import DeleteCategoryDialog from '../components/DeleteCategoryDialog.vue'
+import LocationDialog from '../components/LocationDialog.vue'
+import BulkCreateDialog from '../components/BulkCreateDialog.vue'
+import QuickCreateDialog from '../components/QuickCreateDialog.vue'
+import ImportDialog from '../components/ImportDialog.vue'
+import BulkDeleteDialog from '../components/BulkDeleteDialog.vue'
 
 const $q = useQuasar()
 const { t } = useI18n()
@@ -1587,22 +817,12 @@ const showCachedOfflineBanner = computed(() => (
 ))
 
 const RETURN_INFO_STORAGE_KEY = 'inventory.return-info.v1'
-const ZONE_CODE_MAX_LENGTH = 50
-
 const defectDialogOpen = ref(false)
 const selectedDeviceId = ref(null)
 
 function openDefectDialog(deviceId) {
   selectedDeviceId.value = deviceId
   defectDialogOpen.value = true
-}
-
-function customFieldLabel(label) {
-  return translateMaybePrefillCustomFieldLabel(label, t)
-}
-
-function customFieldOption(option) {
-  return translateMaybePrefillCustomFieldOption(option, t)
 }
 
 const productSearch = ref('')
@@ -1623,58 +843,13 @@ const rentalProductSearch = ref('')
 const rentalProductSupplierFilter = ref(null)
 const rentalProductSyncFilter = ref('all')
 const rentalProductSort = ref('name_asc')
-const rentalProductSaving = ref(false)
-const rentalProductDraft = ref(emptyRentalProductDraft())
 const rentalProductDialogOpen = ref(false)
-const rentalProductDialogError = ref('')
-const rentalProductFormRef = ref(null)
-const rentalGeneralExpanded = ref(true)
-const rentalPricingExpanded = ref(true)
-const rentalCustomFieldsExpanded = ref(false)
-const rentalProductFieldRows = ref([])
+const rentalProductEditing = ref(null)
 
 const bulkProductDialogOpen = ref(false)
-const bulkProductDialogError = ref('')
-const bulkProductForm = ref({
-  category_id: null,
-  product_type: null,
-  brand: '',
-  manufacturer: '',
-  maintenance_interval_days: null,
-  daily_rate: null,
-})
-
 const bulkDeviceDialogOpen = ref(false)
-const bulkDeviceDialogError = ref('')
-const bulkDeviceForm = ref({
-  status: null,
-  condition: null,
-  location_zone_id: null,
-})
-
 const bulkMaintenanceDialogOpen = ref(false)
-const bulkMaintenanceDialogError = ref('')
-const bulkMaintenanceForm = ref({
-  status: null,
-  maintenance_type: null,
-  scheduled_date: '',
-  completed_date: '',
-})
-
 const bulkScheduleDialogOpen = ref(false)
-const bulkScheduleDialogError = ref('')
-const bulkScheduleForm = ref({
-  maintenance_type: null,
-  interval_mode: null,
-  interval_value: null,
-  scheduled_date: '',
-  notes: '',
-})
-
-const booleanValueOptions = [
-  { label: t('common.true'), value: 'true' },
-  { label: t('common.false'), value: 'false' },
-]
 
 const productTypeOptions = [
   { label: t('inventory.productTypeEquipment'), value: 'equipment' },
@@ -1766,19 +941,6 @@ const productSortOptions = [
   { label: t('inventory.sortAvailabilityDesc'), value: 'available_desc' },
   { label: t('inventory.sortAvailabilityAsc'), value: 'available_asc' },
   { label: t('inventory.sortTotalDesc'), value: 'total_desc' },
-]
-
-const productAvailabilityDaysOptions = [
-  { label: t('inventory.daysCount', { count: 30 }), value: 30 },
-  { label: t('inventory.daysCount', { count: 60 }), value: 60 },
-  { label: t('inventory.daysCount', { count: 90 }), value: 90 },
-]
-
-const productAvailabilityCalendarColumns = [
-  { name: 'date', label: t('inventory.columnDate'), field: 'date', align: 'left' },
-  { name: 'weekday', label: t('inventory.columnDay'), field: 'weekday', align: 'left' },
-  { name: 'reserved', label: t('inventory.columnReserved'), field: 'reserved', align: 'left' },
-  { name: 'available', label: t('inventory.columnAvailable'), field: 'available', align: 'left' },
 ]
 
 const deviceColumns = [
@@ -1909,12 +1071,6 @@ const filteredRentalProducts = computed(() => {
   })
 })
 
-const isCurrentRentalDraftSynced = computed(() => isSyncedEventoryProduct(rentalProductDraft.value))
-
-function roundMoney(value) {
-  return Math.round(Number(value || 0) * 100) / 100
-}
-
 function findEventoryInstanceById(instanceId) {
   const key = String(instanceId || '').trim()
   if (!key) return null
@@ -1933,144 +1089,14 @@ function isSyncedEventoryProduct(product) {
   return hasExternalReference && (!source || source === 'eventory')
 }
 
-function applyRentalClientPriceFromMargin() {
-  const linkedInstance = findEventoryInstanceById(rentalProductDraft.value.external_reference)
-  if (!linkedInstance) return
-
-  const supplierPrice = Math.max(0, Number(rentalProductDraft.value.rental_price || 0))
-  const marginPercent = Math.max(0, Number(linkedInstance.price_margin_percent || 0))
-  const clientPrice = supplierPrice * (1 + (marginPercent / 100))
-  rentalProductDraft.value.daily_rate = roundMoney(clientPrice)
-
-  if (!String(rentalProductDraft.value.supplier_name || '').trim() && String(linkedInstance.supplier_name || '').trim()) {
-    rentalProductDraft.value.supplier_name = String(linkedInstance.supplier_name).trim()
-  }
-}
-
-function onRentalSupplierPriceChanged() {
-  applyRentalClientPriceFromMargin()
-}
-
-function createEmptyRentalProductFieldRows() {
-  const defs = (customFieldsStore.definitions || []).filter(def => def.entity_type === 'product' && def.is_active !== false)
-  return defs.map(def => ({
-    field_definition_id: def.id,
-    label: def.label,
-    value_type: def.value_type,
-    options: def.options || [],
-    value: null,
-  }))
-}
-
-async function loadRentalProductFieldRows(entityId) {
-  if (!entityId) {
-    rentalProductFieldRows.value = createEmptyRentalProductFieldRows()
-    return
-  }
-  try {
-    const data = await customFieldsStore.fetchEntityValues('product', entityId)
-    rentalProductFieldRows.value = Array.isArray(data?.values) ? data.values.map(value => ({ ...value })) : createEmptyRentalProductFieldRows()
-  } catch {
-    rentalProductFieldRows.value = createEmptyRentalProductFieldRows()
-  }
-}
-
-function emptyRentalProductDraft() {
-  return {
-    id: null,
-    sku: '',
-    name: '',
-    category: '',
-    supplier_name: '',
-    rental_price: 0,
-    daily_rate: 0,
-    replace_cost: 0,
-    external_reference: null,
-  }
-}
-
-function resetRentalProductDraft() {
-  rentalProductDraft.value = emptyRentalProductDraft()
-}
-
-async function openCreateRentalProduct() {
-  resetRentalProductDraft()
-  await loadRentalProductFieldRows(null)
-  rentalProductDialogError.value = ''
-  rentalGeneralExpanded.value = true
-  rentalPricingExpanded.value = true
-  rentalCustomFieldsExpanded.value = !isPhone.value
+function openCreateRentalProduct() {
+  rentalProductEditing.value = null
   rentalProductDialogOpen.value = true
 }
 
-async function openEditRentalProduct(product) {
-  rentalProductDraft.value = {
-    id: product.id,
-    sku: product.sku || '',
-    name: product.name || '',
-    category: product.category || '',
-    supplier_name: product.supplier_name || '',
-    rental_price: Number(product.rental_price || 0),
-    daily_rate: Number(product.daily_rate || 0),
-    replace_cost: Number(product.replace_cost || 0),
-    external_reference: product.external_reference || null,
-  }
-  await loadRentalProductFieldRows(product.id)
-  rentalProductDialogError.value = ''
-  rentalGeneralExpanded.value = true
-  rentalPricingExpanded.value = true
-  rentalCustomFieldsExpanded.value = !isPhone.value
+function openEditRentalProduct(product) {
+  rentalProductEditing.value = product
   rentalProductDialogOpen.value = true
-}
-
-async function saveRentalProduct() {
-  const valid = await rentalProductFormRef.value?.validate()
-  if (!valid) return
-
-  if (!rentalProductDraft.value.sku.trim() || !rentalProductDraft.value.name.trim()) {
-    rentalProductDialogError.value = 'SKU and name are required'
-    return
-  }
-
-  rentalProductSaving.value = true
-  rentalProductDialogError.value = ''
-  try {
-    const keepSyncedLink = isSyncedEventoryProduct(rentalProductDraft.value)
-    const payload = {
-      sku: rentalProductDraft.value.sku.trim(),
-      name: rentalProductDraft.value.name.trim(),
-      category: rentalProductDraft.value.category || null,
-      supplier_name: rentalProductDraft.value.supplier_name || null,
-      rental_price: Number(rentalProductDraft.value.rental_price || 0),
-      daily_rate: Number(rentalProductDraft.value.daily_rate || 0),
-      product_type: 'rental',
-      is_rental_product: true,
-      external_source: keepSyncedLink ? 'eventory' : null,
-      external_reference: keepSyncedLink ? rentalProductDraft.value.external_reference : null,
-      replace_cost: Number(rentalProductDraft.value.replace_cost || 0),
-    }
-
-    let savedProduct
-    if (rentalProductDraft.value.id) {
-      savedProduct = await store.updateProduct(rentalProductDraft.value.id, payload)
-      $q.notify({ type: 'positive', message: t('inventory.rentalProductUpdated') })
-    } else {
-      savedProduct = await store.createProduct(payload)
-      $q.notify({ type: 'positive', message: t('inventory.rentalProductCreated') })
-    }
-
-    await customFieldsStore.saveEntityValues('product', savedProduct.id, rentalProductFieldRows.value.map(row => ({
-      field_definition_id: row.field_definition_id,
-      value: row.value,
-    })))
-
-    resetRentalProductDraft()
-    rentalProductDialogOpen.value = false
-  } catch (error) {
-    rentalProductDialogError.value = error?.response?.data?.detail || t('inventory.failedSaveRentalProduct')
-  } finally {
-    rentalProductSaving.value = false
-  }
 }
 
 const productCategoryOptions = computed(() => {
@@ -2123,145 +1149,6 @@ function productAvailableNow(productId) {
 
 const productAvailabilityDialogOpen = ref(false)
 const productAvailabilityTarget = ref(null)
-const productAvailabilityIncludeDrafts = ref(false)
-const productAvailabilityDays = ref(60)
-
-const productAvailabilityCalendarRows = computed(() => {
-  if (!productAvailabilityTarget.value) return []
-
-  const today = new Date()
-  const isRental = String(productAvailabilityTarget.value?.product_type || '').toLowerCase() === 'rental'
-    || productAvailabilityTarget.value?.is_rental_product
-  const baseOperational = isRental
-    ? Math.max(0, Number(productAvailabilityTarget.value?.eventory_available_qty || 0))
-    : (store.devices || []).filter(device => {
-      if (device.product_id !== productAvailabilityTarget.value.id) return false
-      const condition = String(device.condition || '').toLowerCase()
-      const status = String(device.status || '').toLowerCase()
-      const retired = device.retire_date ? new Date(device.retire_date) <= today : false
-      if (retired) return false
-      if (condition === 'damaged') return false
-      if (status === 'maintenance') return false
-      return true
-    }).length
-
-  const reservingStatuses = productAvailabilityIncludeDrafts.value
-    ? new Set(['draft', 'confirmed', 'in_progress'])
-    : new Set(['confirmed', 'in_progress'])
-
-  const jobsById = new Map((jobsStore.jobs || []).map(job => [job.id, job]))
-  const requirements = (jobsStore.requirements || []).filter(req => req.product_id === productAvailabilityTarget.value.id)
-  const rows = []
-
-  for (let i = 0; i < Number(productAvailabilityDays.value || 60); i += 1) {
-    const date = new Date(today)
-    date.setDate(today.getDate() + i)
-    const dateYmd = toYmd(date)
-
-    let reserved = 0
-    let externalReserved = 0
-    for (const req of requirements) {
-      const job = jobsById.get(req.job_id)
-      if (!job) continue
-      if (!reservingStatuses.has(String(job.status || '').toLowerCase())) continue
-      const start = normalizeYmd(job.start_date)
-      const end = normalizeYmd(job.end_date)
-      if (!start || !end) continue
-      if (dateYmd < start || dateYmd > end) continue
-      reserved += Math.max(Number(req.quantity_required || 0), Number(req.quantity_picked || 0))
-    }
-
-    if (isRental) {
-      for (const packlist of eventoryPacklistsForDate(productAvailabilityTarget.value, dateYmd)) {
-        externalReserved += Math.max(Number(packlist?.quantity || 0), Number(packlist?.out || 0), 0)
-      }
-    }
-
-    const totalReserved = reserved + externalReserved
-
-    rows.push({
-      date: dateYmd,
-      weekday: date.toLocaleDateString(undefined, { weekday: 'short' }),
-      reserved: totalReserved,
-      available: Math.max(baseOperational - totalReserved, 0),
-      total_operational: baseOperational,
-    })
-  }
-
-  return rows
-})
-
-function eventoryPacklistsForDate(product, dateYmd) {
-  if (!Array.isArray(product?.eventory_packlists)) return []
-  return product.eventory_packlists.filter(packlist => {
-    if (!packlist || typeof packlist !== 'object') return false
-    const status = String(packlist?.job_status || '').toLowerCase()
-    if (status && ['cancelled', 'canceled', 'completed', 'returned'].includes(status)) return false
-    const start = normalizeYmd(packlist?.start_date)
-    const end = normalizeYmd(packlist?.end_date)
-    if (!start || !end) return false
-    return !(dateYmd < start || dateYmd > end)
-  })
-}
-
-function normalizeYmd(value) {
-  if (!value) return ''
-  return String(value).slice(0, 10)
-}
-
-function toYmd(date) {
-  const year = date.getFullYear()
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
-  return `${year}-${month}-${day}`
-}
-
-function clamp(value, min, max) {
-  return Math.min(Math.max(value, min), max)
-}
-
-function productAvailabilityPercent(row) {
-  const total = Math.max(Number(row?.total_operational || 0), 0)
-  const available = Math.max(Number(row?.available || 0), 0)
-  if (!total) return available > 0 ? 100 : 0
-  return Math.round((available / total) * 100)
-}
-
-function productAvailabilityHeat(row) {
-  const total = Math.max(Number(row?.total_operational || 0), 0)
-  const available = Math.max(Number(row?.available || 0), 0)
-  const reserved = Math.max(Number(row?.reserved || 0), 0)
-
-  if (total <= 0) {
-    if (reserved > 0) return { rgb: '220, 53, 69', alpha: 0.34, level: 'Low / shortage' }
-    return { rgb: '245, 124, 0', alpha: 0.2, level: 'Tight' }
-  }
-
-  const availabilityRatio = available / total
-  const utilization = clamp(reserved / total, 0, 1.6)
-
-  if (availabilityRatio <= 0.25) {
-    return { rgb: '220, 53, 69', alpha: 0.18 + (utilization * 0.18), level: 'Low / shortage' }
-  }
-  if (availabilityRatio <= 0.55) {
-    return { rgb: '245, 124, 0', alpha: 0.14 + (utilization * 0.14), level: 'Tight' }
-  }
-  return { rgb: '46, 125, 50', alpha: 0.12 + ((1 - availabilityRatio) * 0.16), level: 'Healthy' }
-}
-
-function productAvailabilityHeatStyle(row) {
-  const heat = productAvailabilityHeat(row)
-  return {
-    backgroundColor: `rgba(${heat.rgb}, ${clamp(heat.alpha, 0.1, 0.42).toFixed(3)})`,
-    border: `1px solid rgba(${heat.rgb}, 0.35)`,
-  }
-}
-
-function productAvailabilityHeatLabel(row) {
-  const heat = productAvailabilityHeat(row)
-  const pct = productAvailabilityPercent(row)
-  return `${heat.level} • ${pct}% available (${row.available}/${row.total_operational})`
-}
 
 function openProductAvailabilityCalendar(product) {
   productAvailabilityTarget.value = product
@@ -2288,8 +1175,6 @@ const productInfoTarget = ref(null)
 const rentalProductInfoDialogOpen = ref(false)
 const rentalProductInfoTarget = ref(null)
 
-const rentalProductInfoJobs = computed(() => linkedJobsForProductId(rentalProductInfoTarget.value?.id))
-
 function formatDateTime(value) {
   if (!value) return ''
   const date = new Date(value)
@@ -2314,40 +1199,6 @@ function formatMoney(value) {
       maximumFractionDigits: 2,
     }).format(amount)
   }
-}
-
-function linkedJobsForProductId(productId) {
-  const targetId = Number(productId || 0)
-  if (!targetId) return []
-
-  const jobsById = new Map((jobsStore.jobs || []).map(job => [job.id, job]))
-  const bucket = new Map()
-
-  for (const requirement of jobsStore.requirements || []) {
-    if (Number(requirement?.product_id || 0) !== targetId) continue
-    const jobId = Number(requirement?.job_id || 0)
-    if (!jobId) continue
-
-    const existing = bucket.get(jobId) || {
-      job_id: jobId,
-      job_code: jobsById.get(jobId)?.job_code || null,
-      quantity_required_total: 0,
-      quantity_picked_total: 0,
-      start_date: jobsById.get(jobId)?.start_date || null,
-      end_date: jobsById.get(jobId)?.end_date || null,
-      status: jobsById.get(jobId)?.status || null,
-    }
-
-    existing.quantity_required_total += Math.max(Number(requirement?.quantity_required || 0), 0)
-    existing.quantity_picked_total += Math.max(Number(requirement?.quantity_picked || 0), 0)
-    bucket.set(jobId, existing)
-  }
-
-  return [...bucket.values()].sort((a, b) => {
-    const startA = String(a.start_date || '')
-    const startB = String(b.start_date || '')
-    return startB.localeCompare(startA)
-  })
 }
 
 function openProductInfo(product) {
@@ -2594,8 +1445,7 @@ const locationSelectOptions = computed(() => {
   return flat
 })
 
-const parentCategoryOptions = computed(() => [{ label: 'Root', value: null }, ...allCategorySelectOptions.value])
-const parentLocationOptions = computed(() => locationSelectOptions.value)
+
 const productOptions = computed(() => store.products.map(p => ({ label: `${p.sku} - ${p.name}`, value: p.id })))
 const deviceSelectOptions = computed(() => store.devices.map(d => ({ label: `${d.asset_tag} (${zoneNameById(d.location_zone_id) || 'Unassigned'})`, value: d.id })))
 const brandOptions = computed(() => settingsStore.brandOptions.map(value => ({ label: value, value })))
@@ -2802,6 +1652,10 @@ function onProductDialogSaved() {
   restorePendingInfoDialog()
 }
 
+function onRentalProductDialogSaved() {
+  restorePendingInfoDialog()
+}
+
 watch(productDialogOpen, (open) => {
   if (!open) {
     restorePendingInfoDialog()
@@ -2859,202 +1713,53 @@ function maintenanceSourceColor(row) {
 const maintenanceDialogOpen = ref(false)
 const maintenanceEditing = ref(null)
 const maintenanceDialogMode = ref('schedule')
-const maintenanceDialogError = ref('')
-const maintenanceFormRef = ref(null)
-const maintenanceTargetsExpanded = ref(true)
-const maintenanceDialogTitle = computed(() => {
-  if (maintenanceEditing.value) return 'Edit maintenance'
-  return maintenanceDialogMode.value === 'task' ? 'Create maintenance task' : 'Create maintenance schedule'
-})
 const maintenanceScheduleDialogOpen = ref(false)
-const maintenanceScheduleDialogError = ref('')
-const maintenanceScheduleFormRef = ref(null)
-const maintenanceScheduleEditingId = ref(null)
+const maintenanceScheduleEditing = ref(null)
 const maintenanceCompleteDialogOpen = ref(false)
-const maintenanceCompleteDialogError = ref('')
 const maintenanceCompleteTarget = ref(null)
-const emptyMaintenanceCompleteForm = () => ({
-  completed_date: new Date().toISOString().slice(0, 10),
-  notes: '',
-})
-const maintenanceCompleteForm = ref(emptyMaintenanceCompleteForm())
-const emptyMaintenanceScheduleForm = () => ({
-  maintenance_type: 'inspection',
-  interval_mode: 'calendar',
-  interval_value: null,
-  scheduled_date: new Date().toISOString().slice(0, 10),
-  notes: '',
-})
-const maintenanceScheduleForm = ref(emptyMaintenanceScheduleForm())
-const emptyMaintenanceForm = () => ({
-  product_ids: [],
-  device_ids: [],
-  maintenance_type: 'inspection',
-  status: 'scheduled',
-  interval_mode: 'calendar',
-  interval_value: null,
-  scheduled_date: new Date().toISOString().slice(0, 10),
-  completed_date: '',
-  notes: '',
-})
-const maintenanceForm = ref(emptyMaintenanceForm())
 
 function openCreateMaintenance(mode = 'schedule', preferredDeviceId = null) {
   maintenanceDialogMode.value = mode === 'task' ? 'task' : 'schedule'
   maintenanceEditing.value = null
-  maintenanceDialogError.value = ''
-  maintenanceTargetsExpanded.value = maintenanceDialogMode.value === 'schedule' && !isPhone.value
-  maintenanceForm.value = emptyMaintenanceForm()
-  if (preferredDeviceId) {
-    maintenanceForm.value.device_ids = [Number(preferredDeviceId)]
-  }
   maintenanceDialogOpen.value = true
 }
 
 function openEditMaintenance(item) {
   maintenanceEditing.value = item
-  maintenanceDialogError.value = ''
-  maintenanceTargetsExpanded.value = true
-  maintenanceForm.value = {
-    product_ids: item.product_id ? [item.product_id] : [],
-    device_ids: item.device_id ? [item.device_id] : [],
-    maintenance_type: item.maintenance_type || 'inspection',
-    status: item.status || 'scheduled',
-    interval_mode: item.interval_mode || 'calendar',
-    interval_value: item.interval_value ?? null,
-    scheduled_date: item.scheduled_date || '',
-    completed_date: item.completed_date || '',
-    notes: item.notes || '',
-  }
   maintenanceDialogOpen.value = true
-}
-
-async function saveMaintenance() {
-  const valid = await maintenanceFormRef.value?.validate()
-  if (!valid) return
-
-  if (!maintenanceEditing.value && maintenanceDialogMode.value === 'schedule' && maintenanceForm.value.product_ids.length === 0 && maintenanceForm.value.device_ids.length === 0) {
-    maintenanceDialogError.value = 'Select at least one product or device'
-    return
-  }
-
-  if (!maintenanceEditing.value && maintenanceDialogMode.value === 'task' && maintenanceForm.value.device_ids.length === 0) {
-    maintenanceDialogError.value = 'Select one device for the task'
-    return
-  }
-
-  if (maintenanceEditing.value && maintenanceForm.value.device_ids.length === 0) {
-    maintenanceDialogError.value = 'Device is required when editing'
-    return
-  }
-
-  saving.value = true
-  maintenanceDialogError.value = ''
-  try {
-    const payload = {
-      device_id: maintenanceForm.value.device_ids[0],
-      maintenance_type: maintenanceForm.value.maintenance_type || 'inspection',
-      status: (maintenanceEditing.value || maintenanceDialogMode.value === 'task')
-        ? (maintenanceForm.value.status || 'scheduled')
-        : 'scheduled',
-      scheduled_date: normalizeOptionalDate(maintenanceForm.value.scheduled_date),
-      completed_date: normalizeOptionalDate(maintenanceForm.value.completed_date),
-      notes: maintenanceForm.value.notes || null,
-    }
-
-    if (maintenanceEditing.value || maintenanceDialogMode.value === 'schedule') {
-      payload.interval_mode = maintenanceForm.value.interval_mode || 'calendar'
-      payload.interval_value = maintenanceForm.value.interval_value
-    }
-
-    if (maintenanceEditing.value) {
-      await store.updateMaintenance(maintenanceEditing.value.id, payload)
-      $q.notify({ type: 'positive', message: 'Maintenance updated' })
-    } else if (maintenanceDialogMode.value === 'task') {
-      await store.createMaintenance(payload)
-      $q.notify({ type: 'positive', message: 'Maintenance task created' })
-    } else {
-      const records = await store.bulkScheduleMaintenance({
-        device_ids: maintenanceForm.value.device_ids,
-        product_ids: maintenanceForm.value.product_ids,
-        maintenance_type: payload.maintenance_type,
-        interval_mode: payload.interval_mode,
-        interval_value: payload.interval_value,
-        scheduled_date: payload.scheduled_date,
-        notes: payload.notes,
-      })
-      $q.notify({ type: 'positive', message: `${records.length} maintenance items scheduled` })
-    }
-    maintenanceDialogOpen.value = false
-  } catch (error) {
-    maintenanceDialogError.value = error?.response?.data?.detail || 'Failed to save maintenance'
-  } finally {
-    saving.value = false
-  }
 }
 
 async function openEditMaintenanceSchedule(item) {
   const scheduleId = Number(item?.schedule_id || item?.id || 0)
   if (!scheduleId) return
-
-  maintenanceScheduleDialogError.value = ''
   try {
     const schedule = await store.fetchMaintenanceSchedule(scheduleId)
-    maintenanceScheduleEditingId.value = scheduleId
-    maintenanceScheduleForm.value = {
-      maintenance_type: schedule?.maintenance_type || 'inspection',
-      interval_mode: schedule?.interval_mode || 'calendar',
-      interval_value: schedule?.interval_value ?? null,
-      scheduled_date: schedule?.scheduled_date || '',
-      notes: schedule?.notes || '',
-    }
+    maintenanceScheduleEditing.value = schedule
     maintenanceScheduleDialogOpen.value = true
   } catch (error) {
     $q.notify({ type: 'negative', message: error?.response?.data?.detail || 'Failed to load maintenance schedule' })
   }
 }
 
-async function saveMaintenanceSchedule() {
-  const valid = await maintenanceScheduleFormRef.value?.validate()
-  if (!valid) return
-  if (!maintenanceScheduleEditingId.value) return
-
-  saving.value = true
-  maintenanceScheduleDialogError.value = ''
-  try {
-    const payload = {
-      maintenance_type: maintenanceScheduleForm.value.maintenance_type || 'inspection',
-      interval_mode: maintenanceScheduleForm.value.interval_mode || 'calendar',
-      interval_value: maintenanceScheduleForm.value.interval_value,
-      scheduled_date: normalizeOptionalDate(maintenanceScheduleForm.value.scheduled_date),
-      notes: maintenanceScheduleForm.value.notes || null,
-    }
-    await store.updateMaintenanceSchedule(maintenanceScheduleEditingId.value, payload)
-    maintenanceScheduleDialogOpen.value = false
-    $q.notify({ type: 'positive', message: 'Schedule and pending tasks updated' })
-  } catch (error) {
-    maintenanceScheduleDialogError.value = error?.response?.data?.detail || 'Failed to update maintenance schedule'
-  } finally {
-    saving.value = false
-  }
-}
-
 async function completeMaintenanceRow(item) {
   maintenanceCompleteTarget.value = item || null
-  maintenanceCompleteDialogError.value = ''
-  maintenanceCompleteForm.value = {
-    completed_date: item?.completed_date || new Date().toISOString().slice(0, 10),
-    notes: item?.notes || '',
-  }
   maintenanceCompleteDialogOpen.value = true
 }
 
-async function confirmCompleteMaintenance() {
-  const item = maintenanceCompleteTarget.value
-  if (!item?.id) return
+function onMaintenanceSaved() {
+  maintenanceDialogOpen.value = false
+  maintenanceEditing.value = null
+}
 
-  saving.value = true
-  maintenanceCompleteDialogError.value = ''
+function onMaintenanceScheduleSaved() {
+  maintenanceScheduleDialogOpen.value = false
+  maintenanceScheduleEditing.value = null
+}
+
+function onMaintenanceCompleteSaved() {
+  maintenanceCompleteDialogOpen.value = false
+  maintenanceCompleteTarget.value = null
+}
   try {
     const completedDate = normalizeOptionalDate(maintenanceCompleteForm.value.completed_date) || new Date().toISOString().slice(0, 10)
     const notes = String(maintenanceCompleteForm.value.notes || '').trim() || null
@@ -3101,48 +1806,11 @@ async function openBulkPrintLabels(entity, rowsOrIds) {
 }
 
 function openBulkEditProducts() {
-  bulkProductDialogError.value = ''
-  bulkProductForm.value = {
-    category_id: null,
-    product_type: null,
-    brand: '',
-    manufacturer: '',
-    maintenance_interval_days: null,
-    daily_rate: null,
-    replace_cost: null,
-  }
   bulkProductDialogOpen.value = true
 }
 
-async function saveBulkProducts() {
-  const ids = selectedRowIds(selectedProducts.value)
-  if (!ids.length) return
-
-  const patch = {}
-  if (bulkProductForm.value.category_id != null) patch.category_id = bulkProductForm.value.category_id
-  if (bulkProductForm.value.product_type) patch.product_type = bulkProductForm.value.product_type
-  if (String(bulkProductForm.value.brand || '').trim()) patch.brand = String(bulkProductForm.value.brand).trim()
-  if (String(bulkProductForm.value.manufacturer || '').trim()) patch.manufacturer = String(bulkProductForm.value.manufacturer).trim()
-  if (bulkProductForm.value.maintenance_interval_days != null) patch.maintenance_interval_days = bulkProductForm.value.maintenance_interval_days
-  if (bulkProductForm.value.daily_rate != null) patch.daily_rate = bulkProductForm.value.daily_rate
-  if (bulkProductForm.value.replace_cost != null) patch.replace_cost = bulkProductForm.value.replace_cost
-  if (!Object.keys(patch).length) {
-    bulkProductDialogError.value = 'Choose at least one field to update'
-    return
-  }
-
-  saving.value = true
-  bulkProductDialogError.value = ''
-  try {
-    const result = await store.bulkUpdateProducts(ids, patch)
-    selectedProducts.value = []
-    bulkProductDialogOpen.value = false
-    $q.notify({ type: 'positive', message: `Products updated: ${result?.updated || 0}` })
-  } catch (error) {
-    bulkProductDialogError.value = error?.response?.data?.detail || 'Bulk product update failed'
-  } finally {
-    saving.value = false
-  }
+function onBulkProductsSaved() {
+  selectedProducts.value = []
 }
 
 async function runBulkDeleteProducts() {
@@ -3163,37 +1831,11 @@ async function runBulkDeleteProducts() {
 }
 
 function openBulkEditDevices() {
-  bulkDeviceDialogError.value = ''
-  bulkDeviceForm.value = { status: null, condition: null, location_zone_id: null }
   bulkDeviceDialogOpen.value = true
 }
 
-async function saveBulkDevices() {
-  const ids = selectedRowIds(selectedDevices.value)
-  if (!ids.length) return
-
-  const patch = {}
-  if (bulkDeviceForm.value.status) patch.status = bulkDeviceForm.value.status
-  if (bulkDeviceForm.value.condition) patch.condition = bulkDeviceForm.value.condition
-  if (bulkDeviceForm.value.location_zone_id != null) patch.location_zone_id = bulkDeviceForm.value.location_zone_id
-
-  if (!Object.keys(patch).length) {
-    bulkDeviceDialogError.value = 'Choose at least one field to update'
-    return
-  }
-
-  saving.value = true
-  bulkDeviceDialogError.value = ''
-  try {
-    const result = await store.bulkUpdateDevices(ids, patch)
-    selectedDevices.value = []
-    bulkDeviceDialogOpen.value = false
-    $q.notify({ type: 'positive', message: `Devices updated: ${result?.updated || 0}` })
-  } catch (error) {
-    bulkDeviceDialogError.value = error?.response?.data?.detail || 'Bulk device update failed'
-  } finally {
-    saving.value = false
-  }
+function onBulkDevicesSaved() {
+  selectedDevices.value = []
 }
 
 async function runBulkDeleteDevices() {
@@ -3214,43 +1856,11 @@ async function runBulkDeleteDevices() {
 }
 
 function openBulkEditMaintenance() {
-  bulkMaintenanceDialogError.value = ''
-  bulkMaintenanceForm.value = {
-    status: null,
-    maintenance_type: null,
-    scheduled_date: '',
-    completed_date: '',
-  }
   bulkMaintenanceDialogOpen.value = true
 }
 
-async function saveBulkMaintenance() {
-  const ids = selectedRowIds(selectedMaintenance.value)
-  if (!ids.length) return
-
-  const patch = {}
-  if (bulkMaintenanceForm.value.status) patch.status = bulkMaintenanceForm.value.status
-  if (bulkMaintenanceForm.value.maintenance_type) patch.maintenance_type = bulkMaintenanceForm.value.maintenance_type
-  if (bulkMaintenanceForm.value.scheduled_date) patch.scheduled_date = normalizeOptionalDate(bulkMaintenanceForm.value.scheduled_date)
-  if (bulkMaintenanceForm.value.completed_date) patch.completed_date = normalizeOptionalDate(bulkMaintenanceForm.value.completed_date)
-
-  if (!Object.keys(patch).length) {
-    bulkMaintenanceDialogError.value = 'Choose at least one field to update'
-    return
-  }
-
-  saving.value = true
-  bulkMaintenanceDialogError.value = ''
-  try {
-    const result = await store.bulkUpdateMaintenance(ids, patch)
-    selectedMaintenance.value = []
-    bulkMaintenanceDialogOpen.value = false
-    $q.notify({ type: 'positive', message: `Maintenance tasks updated: ${result?.updated || 0}` })
-  } catch (error) {
-    bulkMaintenanceDialogError.value = error?.response?.data?.detail || 'Bulk maintenance update failed'
-  } finally {
-    saving.value = false
-  }
+function onBulkMaintenanceSaved() {
+  selectedMaintenance.value = []
 }
 
 async function runBulkDeleteMaintenance() {
@@ -3271,45 +1881,11 @@ async function runBulkDeleteMaintenance() {
 }
 
 function openBulkEditSchedules() {
-  bulkScheduleDialogError.value = ''
-  bulkScheduleForm.value = {
-    maintenance_type: null,
-    interval_mode: null,
-    interval_value: null,
-    scheduled_date: '',
-    notes: '',
-  }
   bulkScheduleDialogOpen.value = true
 }
 
-async function saveBulkSchedules() {
-  const ids = selectedRowIds(selectedSchedules.value)
-  if (!ids.length) return
-
-  const patch = {}
-  if (bulkScheduleForm.value.maintenance_type) patch.maintenance_type = bulkScheduleForm.value.maintenance_type
-  if (bulkScheduleForm.value.interval_mode) patch.interval_mode = bulkScheduleForm.value.interval_mode
-  if (bulkScheduleForm.value.interval_value != null) patch.interval_value = Number(bulkScheduleForm.value.interval_value)
-  if (bulkScheduleForm.value.scheduled_date) patch.scheduled_date = normalizeOptionalDate(bulkScheduleForm.value.scheduled_date)
-  if (String(bulkScheduleForm.value.notes || '').trim()) patch.notes = String(bulkScheduleForm.value.notes).trim()
-
-  if (!Object.keys(patch).length) {
-    bulkScheduleDialogError.value = 'Choose at least one field to update'
-    return
-  }
-
-  saving.value = true
-  bulkScheduleDialogError.value = ''
-  try {
-    const result = await store.bulkUpdateMaintenanceSchedules(ids, patch)
-    selectedSchedules.value = []
-    bulkScheduleDialogOpen.value = false
-    $q.notify({ type: 'positive', message: `Schedules updated: ${result?.updated || 0}` })
-  } catch (error) {
-    bulkScheduleDialogError.value = error?.response?.data?.detail || 'Bulk schedule update failed'
-  } finally {
-    saving.value = false
-  }
+function onBulkSchedulesSaved() {
+  selectedSchedules.value = []
 }
 
 async function runBulkDeleteSchedules() {
@@ -3331,160 +1907,32 @@ async function runBulkDeleteSchedules() {
 
 const categoryDialogOpen = ref(false)
 const categoryEditing = ref(null)
-const categoryDialogError = ref('')
-const categoryFormRef = ref(null)
-const emptyCategoryForm = () => ({ name: '', parent_id: null, sort_order: 0, is_active: true })
-const categoryForm = ref(emptyCategoryForm())
 
 function openCreateCategory() {
   categoryEditing.value = null
-  categoryForm.value = emptyCategoryForm()
-  categoryDialogError.value = ''
   categoryDialogOpen.value = true
 }
 
 function openEditCategory(category) {
   categoryEditing.value = category
-  categoryForm.value = {
-    name: category.name ?? '',
-    parent_id: category.parent_id ?? null,
-    sort_order: Number(category.sort_order ?? 0),
-    is_active: !!category.is_active,
-  }
-  categoryDialogError.value = ''
   categoryDialogOpen.value = true
-}
-
-async function saveCategory() {
-  const valid = await categoryFormRef.value?.validate()
-  if (!valid) return
-
-  saving.value = true
-  categoryDialogError.value = ''
-  try {
-    const payload = {
-      name: categoryForm.value.name.trim(),
-      parent_id: categoryForm.value.parent_id,
-      sort_order: Number(categoryForm.value.sort_order || 0),
-      is_active: !!categoryForm.value.is_active,
-    }
-
-    if (categoryEditing.value) {
-      await store.updateCategory(categoryEditing.value.id, payload)
-      $q.notify({ type: 'positive', message: 'Category updated' })
-    } else {
-      await store.createCategory(payload)
-      $q.notify({ type: 'positive', message: 'Category created' })
-    }
-
-    categoryDialogOpen.value = false
-  } catch (error) {
-    categoryDialogError.value = error?.response?.data?.detail || 'Failed to save category'
-  } finally {
-    saving.value = false
-  }
 }
 
 const locationDialogOpen = ref(false)
 const locationEditing = ref(null)
-const locationDialogError = ref('')
-const locationFormRef = ref(null)
-const emptyLocationForm = () => ({
-  code: '',
-  name: '',
-  zone_type: 'rack',
-  barcode: '',
-  qr_code: '',
-  rfid: '',
-  parent_id: null,
-  sort_order: 0,
-  is_active: true,
-})
-const locationForm = ref(emptyLocationForm())
-// Single-location auto-generate toggle and edit-tracking
-const locationAutoGenerateCode = ref(true)
-const locationCodeEdited = ref(false)
-
-// Auto-generate `code` from `name` for location dialog when enabled
-watch(() => locationForm.value.name, (newName) => {
-  if (!locationAutoGenerateCode.value) return
-  if (locationCodeEdited.value) return
-  locationForm.value.code = slugify(newName || '')
-})
 
 function openCreateLocation() {
   locationEditing.value = null
-  const firstType = locationTypeOptions.value[0]?.value || 'rack'
-  locationForm.value = { ...emptyLocationForm(), zone_type: firstType }
-  locationDialogError.value = ''
-  locationCodeEdited.value = false
-  locationAutoGenerateCode.value = true
   locationDialogOpen.value = true
 }
 
 function openEditLocation(zone) {
   locationEditing.value = zone
-  locationForm.value = {
-    code: zone.code ?? '',
-    name: zone.name ?? '',
-    zone_type: zone.zone_type ?? 'rack',
-    barcode: zone.barcode ?? '',
-    qr_code: zone.qr_code ?? '',
-    rfid: zone.rfid ?? '',
-    parent_id: zone.parent_id ?? null,
-    sort_order: Number(zone.sort_order ?? 0),
-    is_active: !!zone.is_active,
-  }
-  locationDialogError.value = ''
-  // When editing an existing zone, treat the code as manually set by default
-  locationCodeEdited.value = true
-  locationAutoGenerateCode.value = false
   locationDialogOpen.value = true
-}
-
-async function saveLocation() {
-  const valid = await locationFormRef.value?.validate()
-  if (!valid) return
-
-  saving.value = true
-  locationDialogError.value = ''
-  try {
-    const payload = {
-      code: locationForm.value.code.trim(),
-      name: locationForm.value.name.trim(),
-      zone_type: locationForm.value.zone_type.trim() || 'rack',
-      barcode: locationForm.value.barcode || null,
-      qr_code: locationForm.value.qr_code || null,
-      rfid: locationForm.value.rfid || null,
-      parent_id: locationForm.value.parent_id,
-      sort_order: Number(locationForm.value.sort_order || 0),
-      is_active: !!locationForm.value.is_active,
-    }
-
-    if (locationEditing.value) {
-      await store.updateZone(locationEditing.value.id, payload)
-      $q.notify({ type: 'positive', message: 'Location updated' })
-    } else {
-      await store.createZone(payload)
-      $q.notify({ type: 'positive', message: 'Location created' })
-    }
-
-    locationDialogOpen.value = false
-  } catch (error) {
-    locationDialogError.value = error?.response?.data?.detail || 'Failed to save location'
-  } finally {
-    saving.value = false
-  }
 }
 
 const bulkCreateDialogOpen = ref(false)
 const bulkCreateParent = ref(null)
-const bulkCreateText = ref('')
-const bulkCreateZoneType = ref(locationTypeOptions.value[0]?.value || 'rack')
-const bulkCreateIsActive = ref(true)
-const bulkCreateInterpretRanges = ref(true)
-const bulkCreateAutoGenerateCode = ref(true)
-const bulkCreateError = ref('')
 
 function tr(key, fallback) {
   try {
@@ -3498,103 +1946,7 @@ function tr(key, fallback) {
 
 function openBulkCreateSubzones(node) {
   bulkCreateParent.value = node
-  bulkCreateText.value = ''
-  bulkCreateZoneType.value = locationTypeOptions.value[0]?.value || 'rack'
-  bulkCreateIsActive.value = true
-  bulkCreateError.value = ''
   bulkCreateDialogOpen.value = true
-}
-
-async function saveBulkCreateSubzones() {
-  const rawLines = String(bulkCreateText.value || '').split(/\r?\n/).map(s => s.trim()).filter(Boolean)
-  const lines = []
-  // expand ranges like a-f or 1-5
-  for (const line of rawLines) {
-    if (bulkCreateInterpretRanges.value) {
-      const mAlpha = line.match(/^([A-Za-z])\s*-\s*([A-Za-z])$/)
-      const mNum = line.match(/^(\d+)\s*-\s*(\d+)$/)
-      if (mAlpha) {
-        let a = mAlpha[1]
-        let b = mAlpha[2]
-        const start = a.toLowerCase().charCodeAt(0)
-        const end = b.toLowerCase().charCodeAt(0)
-        const step = start <= end ? 1 : -1
-        const preserveUpper = (a[0] >= 'A' && a[0] <= 'Z')
-        for (let c = start; step === 1 ? c <= end : c >= end; c += step) {
-          const ch = String.fromCharCode(c)
-          lines.push(preserveUpper ? ch.toUpperCase() : ch)
-        }
-        continue
-      } else if (mNum) {
-        const start = Number(mNum[1])
-        const end = Number(mNum[2])
-        const step = start <= end ? 1 : -1
-        const width = Math.max(String(start).length, String(end).length)
-        for (let n = start; step === 1 ? n <= end : n >= end; n += step) {
-          lines.push(String(n).padStart(width, '0'))
-        }
-        continue
-      }
-    }
-    lines.push(line)
-  }
-  if (!lines.length) {
-    bulkCreateError.value = t('inventory.bulkCreateSubzones.emptyNames')
-    return
-  }
-
-  // prepare codes: sanitize and avoid collisions when auto-generate enabled
-  const existingCodes = new Set((store.zones || []).map(z => String(z.code || '').toLowerCase()).filter(Boolean))
-  const items = []
-  for (const name of lines) {
-    let baseCode = bulkCreateAutoGenerateCode.value ? slugify(name) : String(name).trim()
-    if (!baseCode) baseCode = `zone-${items.length + 1}`
-    baseCode = String(baseCode).slice(0, ZONE_CODE_MAX_LENGTH)
-    if (!baseCode) {
-      bulkCreateError.value = t('inventory.bulkCreateSubzones.invalidCode')
-      return
-    }
-
-    let code = baseCode
-    let suffix = 1
-    while (existingCodes.has(String(code || '').toLowerCase())) {
-      const suffixLabel = `-${suffix++}`
-      const maxBaseLength = Math.max(ZONE_CODE_MAX_LENGTH - suffixLabel.length, 1)
-      code = `${baseCode.slice(0, maxBaseLength)}${suffixLabel}`
-    }
-    existingCodes.add(String(code || '').toLowerCase())
-    items.push({
-      code: String(code || '').trim(),
-      name,
-      zone_type: bulkCreateZoneType.value || 'rack',
-      barcode: null,
-      qr_code: null,
-      rfid: null,
-      sort_order: 0,
-      is_active: !!bulkCreateIsActive.value,
-    })
-  }
-
-  saving.value = true
-  bulkCreateError.value = ''
-  try {
-    await store.createZonesBulk(bulkCreateParent.value.id, items)
-    $q.notify({ type: 'positive', message: t('inventory.bulkCreateSubzones.created') })
-    bulkCreateDialogOpen.value = false
-  } catch (error) {
-    const serverDetail = error?.response?.data?.detail
-    if (error?.response?.status === 409 && serverDetail && typeof serverDetail === 'object') {
-      const conflicts = serverDetail.conflicts || []
-      const msg = t('inventory.bulkCreateSubzones.conflictMessage')
-      bulkCreateError.value = conflicts.length ? `${msg}: ${conflicts.join(', ')}` : msg
-    } else if (typeof serverDetail === 'string' && serverDetail.trim()) {
-      bulkCreateError.value = serverDetail.trim()
-    } else {
-      bulkCreateError.value = t('inventory.bulkCreateSubzones.failed')
-    }
-  } finally {
-    saving.value = false
-  }
 }
 
 const deleteCategoryDialogOpen = ref(false)
@@ -3604,76 +1956,19 @@ const draggingLocationId = ref(null)
 
 const quickCreateDialogOpen = ref(false)
 const quickCreateTargetProduct = ref(null)
-const quickCreateError = ref('')
-const quickCreateForm = ref({
-  quantity: 1,
-  auto_generate: true,
-  asset_tag_prefix: '',
-  asset_tag: '',
-  status: 'available',
-  condition: 'good',
-  location_zone_id: null,
-})
 
 function openQuickCreateDevices(product) {
   quickCreateTargetProduct.value = product
-  quickCreateError.value = ''
-  quickCreateForm.value = {
-    quantity: 1,
-    auto_generate: true,
-    asset_tag_prefix: product?.sku || '',
-    asset_tag: '',
-    status: 'available',
-    condition: 'good',
-    location_zone_id: null,
-  }
   quickCreateDialogOpen.value = true
 }
 
-async function runQuickCreateDevices() {
-  if (!quickCreateTargetProduct.value) return
-  if (!quickCreateForm.value.auto_generate && !quickCreateForm.value.asset_tag) {
-    quickCreateError.value = 'Asset tag is required when auto-generate is disabled'
-    return
-  }
-
-  saving.value = true
-  quickCreateError.value = ''
-  try {
-    const payload = {
-      quantity: Number(quickCreateForm.value.quantity || 1),
-      auto_generate: !!quickCreateForm.value.auto_generate,
-      asset_tag_prefix: quickCreateForm.value.asset_tag_prefix || null,
-      asset_tag: quickCreateForm.value.asset_tag || null,
-      status: quickCreateForm.value.status || 'available',
-      condition: quickCreateForm.value.condition || 'good',
-      location_zone_id: quickCreateForm.value.location_zone_id,
-    }
-    const devices = await store.createDevicesForProduct(quickCreateTargetProduct.value.id, payload)
-    quickCreateDialogOpen.value = false
-    $q.notify({ type: 'positive', message: `${devices.length} device(s) created` })
-  } catch (error) {
-    quickCreateError.value = error?.response?.data?.detail || 'Failed to create devices'
-  } finally {
-    saving.value = false
-  }
+function onQuickCreateDone() {
+  quickCreateTargetProduct.value = null
 }
 
 const importDialogOpen = ref(false)
-const importing = ref(false)
-const importDialogError = ref('')
-const importEntityType = ref('product')
-const importFile = ref(null)
-const importRows = ref([])
-const importSourceKeys = ref([])
-const importMapping = ref({})
-const importUseServer = ref(false)
-const updateExistingDevices = ref(false)
 
-// bulk-delete dialog
 const bulkDeleteDialogOpen = ref(false)
-const bulkDeleteSaving = ref(false)
-const bulkDeleteError = ref('')
 
 function selectNodeAndChildren(node) {
   const ids = []
@@ -3682,521 +1977,24 @@ function selectNodeAndChildren(node) {
     for (const c of n.children || []) walk(c)
   }
   walk(node)
-  // replace selection with subtree
   selectedLocationIds.value = ids
 }
 
-async function doBulkDeleteLocations() {
-  if (!selectedLocationIds.value.length) return
-  bulkDeleteSaving.value = true
-  bulkDeleteError.value = ''
-  try {
-    const res = await store.deleteZonesBulk(selectedLocationIds.value)
-    $q.notify({ type: 'positive', message: `${res.deleted} location(s) deleted` })
-    selectedLocationIds.value = []
-    bulkDeleteDialogOpen.value = false
-  } catch (error) {
-    bulkDeleteError.value = error?.response?.data?.detail || error?.message || 'Failed to delete locations'
-  } finally {
-    bulkDeleteSaving.value = false
-  }
-}
-
-const importEntityOptions = [
-  { label: 'Products', value: 'product' },
-  { label: 'Devices', value: 'device' },
-  { label: 'Products + Devices', value: 'mixed' },
-  { label: 'Locations', value: 'location' },
-]
-
-const importFieldConfigs = {
-  product: [
-    { targetField: 'sku', label: 'SKU', required: true },
-    { targetField: 'name', label: 'Name', required: true },
-    { targetField: 'brand', label: 'Brand', required: false },
-    { targetField: 'manufacturer', label: 'Manufacturer', required: false },
-    { targetField: 'product_type', label: 'Product Type', required: false },
-    { targetField: 'category_id', label: 'Category (id/name)', required: false },
-    { targetField: 'daily_rate', label: 'Daily Rate', required: false },
-    { targetField: 'replace_cost', label: 'Replacement Cost', required: false },
-    { targetField: 'weight_kg', label: 'Weight (kg)', required: false },
-    { targetField: 'height_cm', label: 'Height (cm)', required: false },
-    { targetField: 'width_cm', label: 'Width (cm)', required: false },
-    { targetField: 'depth_cm', label: 'Depth (cm)', required: false },
-    { targetField: 'maintenance_interval_days', label: 'Maintenance Interval Days', required: false },
-    { targetField: 'power_consumption_watts', label: 'Power Consumption Watts', required: false },
-  ],
-  device: [
-    { targetField: 'product_id', label: 'Product (id/sku/name)', required: true },
-    { targetField: 'asset_tag', label: 'Asset Tag', required: true },
-    { targetField: 'serial_number', label: 'Serial Number', required: false },
-    { targetField: 'barcode', label: 'Barcode', required: false },
-    { targetField: 'qr_code', label: 'QR Code', required: false },
-    { targetField: 'rfid', label: 'RFID', required: false },
-    { targetField: 'location_zone_id', label: 'Location (id/code/name)', required: false },
-    { targetField: 'status', label: 'Status', required: false },
-    { targetField: 'condition', label: 'Condition', required: false },
-    { targetField: 'purchase_date', label: 'Purchase Date', required: false },
-    { targetField: 'purchase_price', label: 'Purchase Price', required: false },
-    { targetField: 'purchased_from', label: 'Purchased From', required: false },
-    { targetField: 'sold_price', label: 'Sold Price', required: false },
-    { targetField: 'finance_upto', label: 'Finance Up To', required: false },
-    { targetField: 'finance_company', label: 'Finance Company', required: false },
-    { targetField: 'finance_ref', label: 'Finance Reference', required: false },
-    { targetField: 'pre_prep', label: 'Pre-prep', required: false },
-    { targetField: 'warranty_end_date', label: 'Warranty End Date', required: false },
-    { targetField: 'retire_date', label: 'Retire Date', required: false },
-    { targetField: 'usage_hours', label: 'Usage Hours', required: false },
-    { targetField: 'notes', label: 'Notes', required: false },
-  ],
-  mixed: [
-    { targetField: 'entity_type', label: 'Entity Type (product/device)', required: false },
-    { targetField: 'sku', label: 'SKU', required: false },
-    { targetField: 'name', label: 'Name', required: false },
-    { targetField: 'brand', label: 'Brand', required: false },
-    { targetField: 'manufacturer', label: 'Manufacturer', required: false },
-    { targetField: 'supplier_name', label: 'Supplier', required: false },
-    { targetField: 'daily_rate', label: 'Daily Rate', required: false },
-    { targetField: 'product_type', label: 'Product Type', required: false },
-    { targetField: 'category_id', label: 'Category (id/name)', required: false },
-    { targetField: 'weight_kg', label: 'Weight (kg)', required: false },
-    { targetField: 'height_cm', label: 'Height (cm)', required: false },
-    { targetField: 'width_cm', label: 'Width (cm)', required: false },
-    { targetField: 'depth_cm', label: 'Depth (cm)', required: false },
-    { targetField: 'maintenance_interval_days', label: 'Maintenance Interval Days', required: false },
-    { targetField: 'power_consumption_watts', label: 'Power Consumption Watts', required: false },
-    { targetField: 'replace_cost', label: 'Replacement Cost', required: false },
-    { targetField: 'product_id', label: 'Product (id/sku/name)', required: false },
-    { targetField: 'asset_tag', label: 'Asset Tag', required: false },
-    { targetField: 'serial_number', label: 'Serial Number', required: false },
-    { targetField: 'barcode', label: 'Barcode', required: false },
-    { targetField: 'qr_code', label: 'QR Code', required: false },
-    { targetField: 'rfid', label: 'RFID', required: false },
-    { targetField: 'location_zone_id', label: 'Location (id/code/name)', required: false },
-    { targetField: 'status', label: 'Status', required: false },
-    { targetField: 'condition', label: 'Condition', required: false },
-    { targetField: 'purchase_date', label: 'Purchase Date', required: false },
-    { targetField: 'purchase_price', label: 'Purchase Price', required: false },
-    { targetField: 'purchased_from', label: 'Purchased From', required: false },
-    { targetField: 'sold_price', label: 'Sold Price', required: false },
-    { targetField: 'finance_upto', label: 'Finance Up To', required: false },
-    { targetField: 'finance_company', label: 'Finance Company', required: false },
-    { targetField: 'finance_ref', label: 'Finance Reference', required: false },
-    { targetField: 'pre_prep', label: 'Pre-prep', required: false },
-    { targetField: 'warranty_end_date', label: 'Warranty End Date', required: false },
-    { targetField: 'retire_date', label: 'Retire Date', required: false },
-    { targetField: 'usage_hours', label: 'Usage Hours', required: false },
-    { targetField: 'notes', label: 'Notes', required: false },
-  ],
-  location: [
-    { targetField: 'code', label: 'Code', required: true },
-    { targetField: 'name', label: 'Name', required: true },
-    { targetField: 'zone_type', label: 'Location Type', required: false },
-    { targetField: 'parent_id', label: 'Parent (id/code/name)', required: false },
-    { targetField: 'sort_order', label: 'Sort Order', required: false },
-    { targetField: 'is_active', label: 'Is Active', required: false },
-  ],
-}
-
-const mappingColumns = [
-  { name: 'label', label: 'Stockwire Field', field: 'label', align: 'left' },
-  { name: 'sourceKey', label: 'Source Field', field: 'sourceKey', align: 'left' },
-  { name: 'required', label: 'Required', field: 'required', align: 'left' },
-]
-
-const mappingRows = computed(() => importFieldConfigs[importEntityType.value] || [])
-const importSourceKeyOptions = computed(() => importSourceKeys.value.map(key => ({ label: key, value: key })))
-
-const importPreviewRows = computed(() => {
-  return (importRows.value || []).slice(0, 10).map((rawRow, idx) => {
-    const rowEntityType = resolveRowEntityType(rawRow)
-    const payload = normalizeImportPayload(rawRow, rowEntityType)
-    const error = validateImportPayload(payload, rowEntityType)
-    return {
-      _preview_id: idx + 1,
-      _index: idx + 1,
-      _entity_type: rowEntityType,
-      _status: error ? 'invalid' : 'valid',
-      _error: error,
-      ...payload,
-    }
-  })
-})
-
-const importPreviewColumns = computed(() => {
-  const cols = [
-    { name: '_index', label: '#', field: '_index', align: 'left' },
-    { name: '_status', label: 'Status', field: '_status', align: 'left' },
-  ]
-  if (importEntityType.value === 'mixed') {
-    cols.push({
-      name: '_entity_type',
-      label: 'Entity Type',
-      field: row => formatPreviewValue(row._entity_type),
-      align: 'left',
-    })
-  }
-  for (const field of mappingRows.value) {
-    if (field.targetField === 'entity_type') continue
-    cols.push({
-      name: field.targetField,
-      label: field.label,
-      field: row => formatPreviewValue(row[field.targetField]),
-      align: 'left',
-    })
-  }
-  return cols
-})
-
 function openImportDialog() {
   importDialogOpen.value = true
-  importDialogError.value = ''
-  importRows.value = []
-  importSourceKeys.value = []
-  importFile.value = null
-  importEntityType.value = 'product'
-  resetImportMapping()
 }
 
-function onImportEntityChanged() {
-  resetImportMapping()
+function onImportDone() {
+  loadAll()
 }
 
-function resetImportMapping() {
-  const map = {}
-  for (const field of importFieldConfigs[importEntityType.value] || []) {
-    map[field.targetField] = field.targetField
-  }
-  importMapping.value = map
-}
-
-function isLikelyHirehopRows(rows) {
-  if (!Array.isArray(rows)) return false
-  return rows.some(row =>
-    Array.isArray(row?.serialnumbers) ||
-    (row?.ID !== undefined && (row?.TITLE !== undefined || row?.REPLACE_COST !== undefined || row?.serialnumbers !== undefined))
-  )
-}
-
-async function loadHirehopPreset() {
-  const fallbackProductPreset = {
-    sku: 'ID',
-    name: 'TITLE',
-    title: 'TITLE',
-    description: 'DESCRIPTION',
-    brand: 'fields.tillverkare.value',
-    manufacturer: 'fields.tillverkare.value',
-    replace_cost: 'REPLACE_COST',
-    weight: 'WEIGHT',
-    category_id: 'CATEGORY_ID',
-    barcode: 'BARCODE',
-    height_cm: 'HEIGHT',
-    width_cm: 'WIDTH',
-    depth_cm: 'LENGTH',
-  }
-
-  let preset = {}
-  try {
-    const res = await api.get('/api/v1/inventory/import/presets/hirehop')
-    preset = res.data || {}
-  } catch (err) {
-    // Keep import usable even when preset endpoint is unavailable.
-    preset = {}
-  }
-
-  // Use product-only mode for frontend preview; server handles device/serialnumber expansion
-  importEntityType.value = 'product'
-  importUseServer.value = true
-  resetImportMapping()
-
-  // Merge server preset over fallback so required keys are always present.
-  const p = { ...fallbackProductPreset, ...(preset.product || {}) }
-  const map = { ...importMapping.value }
-
-  // Directly assign: map[stockwireField] = hirehopSourceKey
-  map['sku'] = p.sku || p.external_id || 'ID'
-  map['name'] = p.name || p.title || 'TITLE'
-  map['brand'] = p.brand || 'fields.tillverkare.value'
-  map['manufacturer'] = p.manufacturer || 'fields.tillverkare.value'
-  map['description'] = p.description || 'DESCRIPTION'
-  map['weight_kg'] = p.weight || 'WEIGHT'
-  map['category_id'] = p.category_id || 'CATEGORY_ID'
-  map['replace_cost'] = p.replace_cost || 'REPLACE_COST'
-  map['daily_rate'] = p.daily_rate || 'PRICE1'
-  map['rental_price'] = p.rental_price || 'PRICE2'
-  map['barcode'] = p.barcode || 'BARCODE'
-  map['height_cm'] = p.height_cm || 'HEIGHT'
-  map['width_cm'] = p.width_cm || 'WIDTH'
-  map['depth_cm'] = p.depth_cm || 'LENGTH'
-
-  importMapping.value = map
-  // importSourceKeys will be refreshed when user picks a file; seed with known HireHop keys
-  importSourceKeys.value = [
-    'ID', 'TITLE', 'DESCRIPTION', 'BARCODE', 'REPLACE_COST', 'WEIGHT', 'CATEGORY_ID',
-    'fields.tillverkare.value',
-    'HEIGHT', 'WIDTH', 'LENGTH',
-    'PRICE1', 'PRICE2', 'STATUS', 'LOCATION', 'MEMO', 'PART_NUMBER',
-  ]
-
-  if (preset.product) {
-    $q.notify({ type: 'positive', message: 'HireHop preset loaded' })
-  } else {
-    $q.notify({ type: 'warning', message: 'HireHop preset endpoint unavailable; loaded built-in preset' })
-  }
-}
-
-async function parseImportFile(file) {
-  importDialogError.value = ''
-  importRows.value = []
-  importSourceKeys.value = []
-  if (!file) return
-
-  try {
-    const text = await file.text()
-    const rows = parseImportRows(text, file?.name || '')
-    if (isLikelyHirehopRows(rows)) {
-      importUseServer.value = true
-    }
-    const detectedTypes = Array.from(new Set(rows.slice(0, 100).map(row => resolveImportEntityType(row)).filter(Boolean)))
-    if (detectedTypes.length > 1 && detectedTypes.includes('product') && detectedTypes.includes('device')) {
-      importEntityType.value = 'mixed'
-      // Only reset mapping if the current mapping is still the default (key==value),
-      // so a loaded preset isn't overwritten when the user selects a file.
-      const isDefaultMap = Object.keys(importMapping.value || {}).length > 0 && Object.entries(importMapping.value).every(([k, v]) => v === k)
-      if (isDefaultMap) resetImportMapping()
-    }
-    importRows.value = rows
-    importSourceKeys.value = collectImportSourceKeys(rows)
-    const map = { ...importMapping.value }
-    for (const field of importFieldConfigs[importEntityType.value] || []) {
-      // Only auto-fill fields that are still pointing at themselves (not set by a preset)
-      const currentVal = map[field.targetField]
-      if (!currentVal || currentVal === field.targetField) {
-        map[field.targetField] = importSourceKeys.value.includes(field.targetField) ? field.targetField : null
-      }
-    }
-    importMapping.value = map
-  } catch (error) {
-    importDialogError.value = error?.message || 'Invalid import file'
-  }
-}
-
-function toBoolean(value) {
-  if (typeof value === 'boolean') return value
-  const normalized = String(value || '').trim().toLowerCase()
-  return ['1', 'true', 'yes', 'y'].includes(normalized)
-}
-
-function resolveCategoryId(value) {
-  if (value === null || value === undefined || value === '') return null
-  if (typeof value === 'number') return value
-  const asNumber = Number(value)
-  if (!Number.isNaN(asNumber)) return asNumber
-  const needle = String(value).trim().toLowerCase()
-  const byName = store.categories.find(item => String(item.name || '').toLowerCase() === needle)
-  return byName?.id ?? null
-}
-
-function resolveProductId(value) {
-  if (value === null || value === undefined || value === '') return null
-  if (typeof value === 'number') return value
-  const asNumber = Number(value)
-  if (!Number.isNaN(asNumber)) return asNumber
-  const needle = String(value).trim().toLowerCase()
-  const bySku = store.products.find(item => String(item.sku || '').toLowerCase() === needle)
-  if (bySku) return bySku.id
-  const byName = store.products.find(item => String(item.name || '').toLowerCase() === needle)
-  return byName?.id ?? null
-}
-
-function resolveZoneId(value) {
-  if (value === null || value === undefined || value === '') return null
-  if (typeof value === 'number') return value
-  const asNumber = Number(value)
-  if (!Number.isNaN(asNumber)) return asNumber
-  const needle = String(value).trim().toLowerCase()
-  const byCode = store.zones.find(item => String(item.code || '').toLowerCase() === needle)
-  if (byCode) return byCode.id
-  const byName = store.zones.find(item => String(item.name || '').toLowerCase() === needle)
-  return byName?.id ?? null
-}
-
-function resolveRowEntityType(rawRow) {
-  if (importEntityType.value !== 'mixed') return importEntityType.value
-  // If the JSON row looks like a HireHop product (has serialnumbers array), prefer product
-  if (rawRow && (Array.isArray(rawRow.serialnumbers) || Array.isArray(getImportValueBySourceKey(rawRow, 'serialnumbers')))) return 'product'
-
-  const entityTypeSourceKey = importMapping.value.entity_type
-  const mappedEntityValue = entityTypeSourceKey ? getImportValueBySourceKey(rawRow, entityTypeSourceKey) : undefined
-  const resolved = resolveImportEntityType({ ...rawRow, entity_type: mappedEntityValue }, null)
-  if (['product', 'device'].includes(resolved)) return resolved
-  return null
-}
-
-function normalizeImportPayload(rawRow, rowEntityType = resolveRowEntityType(rawRow)) {
-  const payload = {}
-  const fields = importFieldConfigs[rowEntityType] || []
-  for (const field of fields) {
-    const sourceKey = importMapping.value[field.targetField]
-    if (!sourceKey) continue
-    const rawValue = getImportValueBySourceKey(rawRow, sourceKey)
-    if (['height_cm', 'width_cm', 'depth_cm'].includes(field.targetField)) {
-      payload[field.targetField] = convertDimensionValueToCm(rawValue, sourceKey)
-    } else {
-      payload[field.targetField] = rawValue
-    }
-  }
-
-  if (rowEntityType === 'product') {
-    payload.category_id = resolveCategoryId(payload.category_id)
-    if (!payload.product_type) payload.product_type = 'equipment'
-  }
-  if (rowEntityType === 'device') {
-    payload.product_id = resolveProductId(payload.product_id)
-    payload.location_zone_id = resolveZoneId(payload.location_zone_id)
-    if (!payload.status) payload.status = 'available'
-    if (!payload.condition) payload.condition = 'good'
-  }
-  if (rowEntityType === 'location') {
-    payload.parent_id = resolveZoneId(payload.parent_id)
-    if (!payload.zone_type) payload.zone_type = locationTypeOptions.value[0]?.value || 'rack'
-    if (payload.sort_order === '' || payload.sort_order === undefined || payload.sort_order === null) payload.sort_order = 0
-    payload.is_active = payload.is_active === undefined ? true : toBoolean(payload.is_active)
-  }
-
-  return payload
-}
-
-function validateImportPayload(payload, rowEntityType) {
-  if (!rowEntityType) {
-    if (importEntityType.value === 'mixed') return 'Entity Type must be product or device'
-    return 'Entity type is invalid'
-  }
-  const required = (importFieldConfigs[rowEntityType] || []).filter(field => field.required)
-  for (const field of required) {
-    const value = payload[field.targetField]
-    if (value === undefined || value === null || value === '') {
-      return `${field.label} is required`
-    }
-  }
-  return null
-}
-
-function formatPreviewValue(value) {
-  if (value === null || value === undefined || value === '') return '—'
-  if (typeof value === 'object') return JSON.stringify(value)
-  return String(value)
-}
-
-async function runJsonImport() {
-  if (!importRows.value.length) {
-    importDialogError.value = 'Load a JSON or CSV file first'
-    return
-  }
-
-  importing.value = true
-  importDialogError.value = ''
-  // Server-side import: upload file and let backend process (supports update_existing)
-  if (importUseServer.value) {
-    if (!importFile.value) {
-      importDialogError.value = 'No file selected for server import'
-      importing.value = false
-      return
-    }
-    if (!isLikelyHirehopRows(importRows.value)) {
-      importDialogError.value = 'Server import is only supported for HireHop JSON files. Disable "Use server import" to import other file types.'
-      importing.value = false
-      return
-    }
-    try {
-      const fd = new FormData()
-      fd.append('file', importFile.value)
-      const res = await api.post('/api/v1/inventory/import', fd, { params: { preset: 'hirehop', dry_run: false, update_existing: updateExistingDevices.value } })
-      await loadAll()
-      importDialogOpen.value = false
-      importing.value = false
-      const createdProducts = res.data.created_products || 0
-      const createdDevices = res.data.created_devices || 0
-      const updatedDevices = res.data.updated_devices || 0
-      $q.notify({ type: 'positive', message: `Import completed. Created products: ${createdProducts}, created devices: ${createdDevices}, updated devices: ${updatedDevices}` })
-      return
-    } catch (err) {
-      importDialogError.value = err?.response?.data?.detail || err?.message || 'Server import failed'
-      importing.value = false
-      return
-    }
-  }
-  let created = 0
-  let skipped = 0
-  let unknownEntityTypeCount = 0
-  let validationFailureCount = 0
-  let apiFailureCount = 0
-
-  try {
-    const allowedEntityTypes = importEntityType.value === 'mixed'
-      ? ['product', 'device']
-      : ['product', 'device', 'location']
-    for (const row of importRows.value) {
-      const rowEntityType = resolveRowEntityType(row)
-      if (!allowedEntityTypes.includes(rowEntityType)) {
-        skipped += 1
-        unknownEntityTypeCount += 1
-        continue
-      }
-
-      const payload = normalizeImportPayload(row, rowEntityType)
-      const validationError = validateImportPayload(payload, rowEntityType)
-      if (validationError) {
-        skipped += 1
-        validationFailureCount += 1
-        continue
-      }
-
-      try {
-        if (rowEntityType === 'product') {
-          await store.createProduct(payload)
-        } else if (rowEntityType === 'device') {
-          await store.createDevice(payload)
-        } else {
-          await store.createZone(payload)
-        }
-        created += 1
-      } catch {
-        skipped += 1
-        apiFailureCount += 1
-      }
-    }
-
-    await loadAll()
-    importDialogOpen.value = false
-    const skipDetails = []
-    if (unknownEntityTypeCount > 0) skipDetails.push(`${unknownEntityTypeCount} unsupported entity type`)
-    if (validationFailureCount > 0) skipDetails.push(`${validationFailureCount} validation error`)
-    if (apiFailureCount > 0) skipDetails.push(`${apiFailureCount} API error`)
-    const skipSuffix = skipDetails.length ? ` (${skipDetails.join(', ')})` : ''
-    $q.notify({ type: created > 0 ? 'positive' : 'warning', message: `Import completed. Created: ${created}, skipped: ${skipped}${skipSuffix}` })
-  } finally {
-    importing.value = false
-  }
+function onBulkDeleteLocationsDone() {
+  selectedLocationIds.value = []
 }
 
 function confirmDeleteCategory(category) {
   deleteCategoryTarget.value = category
   deleteCategoryDialogOpen.value = true
-}
-
-async function doDeleteCategory() {
-  if (!deleteCategoryTarget.value) return
-  saving.value = true
-  try {
-    await store.deleteCategory(deleteCategoryTarget.value.id)
-    deleteCategoryDialogOpen.value = false
-    $q.notify({ type: 'positive', message: 'Category deleted' })
-  } catch (error) {
-    $q.notify({ type: 'negative', message: error?.response?.data?.detail || 'Delete failed' })
-  } finally {
-    saving.value = false
-  }
 }
 
 function onCategoryDragStart(category) {
