@@ -45,7 +45,7 @@
       flat
       bordered
       :loading="pageLoading || jobsStore.loading"
-      :pagination="{ rowsPerPage: 50 }"
+      :pagination="{ rowsPerPage: 50, sortBy: 'start_date', descending: false }"
       :rows-per-page-options="[25, 50, 100, 0]"
       class="ec-card"
     >

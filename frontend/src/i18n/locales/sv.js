@@ -227,7 +227,7 @@ export default {
       apiKeyScoped: 'Begränsad',
       createApiKeyTitle: 'Skapa API-nyckel',
       rawKey: 'Rå nyckel',
-      rawKeyHint: 'Detta värde hashas vid sparning',
+      rawKeyHint: 'Auto-genererad. Kopiera den nu — den hashas och kan inte hämtas senare.',
       adminKey: 'Admin-nyckel',
       userUpdated: 'Användare uppdaterad',
       userCreated: 'Användare skapad',
@@ -237,6 +237,8 @@ export default {
       apiKeyCreated: 'API-nyckel skapad',
       failedCreateApiKey: 'Kunde inte skapa API-nyckel',
       apiKeyDisabled: 'API-nyckel inaktiverad',
+      apiKeyCopied: 'API-nyckel kopierad till urklipp',
+      apiKeyCopyFailed: 'Kunde inte kopiera API-nyckel',
     },
     company: {
       title: 'Företagsövergripande inställningar',
