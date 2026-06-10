@@ -227,6 +227,7 @@ const baseMenuList = [
   { icon: 'inventory_2', key: 'app.nav.inventory', to: '/inventory', separator: false },
   { icon: 'print', key: 'app.nav.labels', to: '/labels', separator: false },
   { icon: 'qr_code_scanner', key: 'app.nav.scan', to: '/scan', separator: false },
+  { icon: 'report_problem', key: 'app.nav.defects', to: '/defects', separator: false },
   { icon: 'history', key: 'app.nav.activity', to: '/activity', separator: false },
   { icon: 'work', key: 'app.nav.jobs', to: '/jobs', separator: false },
   { icon: 'business', key: 'app.nav.customers', to: '/customers', separator: false },

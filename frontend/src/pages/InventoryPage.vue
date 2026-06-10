@@ -346,7 +346,7 @@
             <q-td :props="props"><q-badge :label="props.value" :color="deviceStatusColor(props.value)" /></q-td>
           </template>
           <template #body-cell-condition="props">
-            <q-td :props="props"><q-badge :label="props.value || 'n/a'" color="grey-7" /></q-td>
+            <q-td :props="props"><q-badge :label="props.value || 'n/a'" :color="conditionColor(props.value)" /></q-td>
           </template>
           <template #body-cell-current_job_code="props">
             <q-td :props="props">
@@ -359,7 +359,7 @@
           </template>
           <template #body-cell-actions="props">
             <q-td :props="props" auto-width>
-              <q-btn flat dense round icon="info" :color="infoActionColor" class="q-mr-xs inventory-action-contrast" @click="openDeviceInfo(props.row)" />
+              <q-btn flat dense round icon="info" :color="infoActionColor" class="q-mr-xs inventory-action-contrast" @click="deviceInfoTarget = props.row; deviceInfoDialogOpen = true" />
               <q-btn flat dense round icon="edit" color="primary" @click="openEditDevice(props.row)" />
             </q-td>
           </template>
@@ -380,7 +380,7 @@
                   </div>
                 </q-card-section>
                 <q-card-actions align="right">
-                  <q-btn flat dense icon="info" :color="infoActionColor" class="inventory-action-contrast" @click="openDeviceInfo(props.row)" />
+                  <q-btn flat dense icon="info" :color="infoActionColor" class="inventory-action-contrast" @click="deviceInfoTarget = props.row; deviceInfoDialogOpen = true" />
                   <q-btn flat dense icon="edit" color="primary" @click="openEditDevice(props.row)" />
                 </q-card-actions>
               </q-card>
@@ -786,361 +786,21 @@
       </q-card>
     </q-dialog>
 
-    <q-dialog v-model="productDialogOpen" persistent :maximized="isPhone">
-      <q-card :style="isPhone ? 'width: 100vw; max-width: 100vw; height: 100vh' : 'min-width: 760px; max-width: 95vw'" class="ec-card">
-        <q-card-section><div class="text-h6">{{ productEditing ? 'Edit product' : 'New product' }}</div></q-card-section>
-        <q-card-section class="q-pt-none" :style="isPhone ? 'max-height: calc(100vh - 140px); overflow: auto;' : ''">
-          <q-form ref="productFormRef" @submit.prevent="saveProduct">
-            <div class="text-subtitle2 q-mb-sm">Identity</div>
-            <div class="row q-col-gutter-sm">
-              <div class="col-12 col-md-4">
-                <q-input v-model="productForm.sku" label="SKU" outlined dense :rules="[v => !!v || 'Required']">
-                  <template #append>
-                    <q-btn flat dense no-caps color="primary" icon="autorenew" label="Generate" :loading="generatingProductSku" @click="generateProductSku(true)" />
-                  </template>
-                </q-input>
-              </div>
-              <div class="col-12 col-md-2">
-                <q-input v-model="productSkuPrefix" label="SKU prefix" outlined dense hint="e.g. SPK-" />
-              </div>
-              <div class="col-12 col-md-8"><q-input v-model="productForm.name" label="Name" outlined dense :rules="[v => !!v || 'Required']" /></div>
-              <div class="col-12 col-md-4">
-                <q-select v-model="productForm.product_type" :options="productTypeOptions" label="Product type" outlined dense emit-value map-options />
-              </div>
-              <div class="col-12 col-md-8">
-                <q-select
-                  v-model="productForm.category_id"
-                  :options="categorySelectOptions"
-                  label="Category"
-                  outlined
-                  dense
-                  clearable
-                  use-input
-                  fill-input
-                  input-debounce="0"
-                  emit-value
-                  map-options
-                  @filter="filterCategoryOptions"
-                />
-              </div>
-            </div>
+    <ProductDialog
+      v-model="productDialogOpen"
+      :product="productEditing"
+      @saved="onProductDialogSaved"
+      @edit-device="openDeviceEditorFromLink"
+      @view-device="openDeviceInfoFromLink"
+      @edit-product="openProductEditorFromLink"
+    />
 
-            <q-separator class="q-my-md" />
-            <div class="text-subtitle2 q-mb-sm">Brand and Manufacturer</div>
-            <div class="row q-col-gutter-sm">
-              <div class="col-12 col-md-4">
-                <q-select
-                  v-model="productForm.brand"
-                  :options="brandOptions"
-                  label="Brand"
-                  outlined
-                  dense
-                  use-input
-                  fill-input
-                  input-debounce="0"
-                  emit-value
-                  map-options
-                  @new-value="onNewBrandValue"
-                  @update:model-value="onBrandChanged"
-                />
-              </div>
-              <div class="col-12 col-md-4">
-                <q-select
-                  v-model="productForm.manufacturer"
-                  :options="manufacturerOptions"
-                  label="Manufacturer"
-                  outlined
-                  dense
-                  use-input
-                  fill-input
-                  input-debounce="0"
-                  emit-value
-                  map-options
-                  @new-value="onNewManufacturerValue"
-                  @update:model-value="onManufacturerChanged"
-                />
-              </div>
-              <div class="col-12 col-md-4"><q-input v-model="productForm.brand_url" type="url" label="Brand link (optional)" outlined dense /></div>
-              <div class="col-12 col-md-4"><q-input v-model="productForm.manufacturer_url" type="url" label="Manufacturer link (optional)" outlined dense /></div>
-            </div>
-
-            <q-separator class="q-my-md" />
-            <div class="text-subtitle2 q-mb-sm">Commercial and Maintenance</div>
-            <div class="row q-col-gutter-sm">
-              <div class="col-12 col-md-4">
-                <q-input
-                  v-model.number="productForm.daily_rate"
-                  type="number"
-                  step="0.01"
-                  label="Daily rate"
-                  :suffix="activeCurrencyCode"
-                  :hint="currencyHelperText"
-                  outlined
-                  dense
-                />
-              </div>
-              <div class="col-12 col-md-4">
-                <q-input
-                  v-model.number="productForm.replace_cost"
-                  type="number"
-                  step="0.01"
-                  label="Replacement cost"
-                  :suffix="activeCurrencyCode"
-                  :hint="currencyHelperText"
-                  outlined
-                  dense
-                />
-              </div>
-              <div class="col-12 col-md-4"><q-input v-model.number="productForm.maintenance_interval_days" type="number" label="Maintenance interval (days)" outlined dense /></div>
-              <div class="col-12 col-md-4"><q-input v-model.number="productForm.power_consumption_watts" type="number" step="0.01" label="Power (W)" outlined dense /></div>
-            </div>
-
-            <q-separator class="q-my-md" />
-            <div class="text-subtitle2 q-mb-sm">Physical Specs</div>
-            <div class="row q-col-gutter-sm">
-              <div class="col-12 col-md-4"><q-input v-model.number="productForm.weight_kg" type="number" step="0.001" label="Weight (kg)" outlined dense /></div>
-              <div class="col-12 col-md-3"><q-input v-model.number="productForm.height_cm" type="number" step="0.01" label="Height (cm)" outlined dense /></div>
-              <div class="col-12 col-md-3"><q-input v-model.number="productForm.width_cm" type="number" step="0.01" label="Width (cm)" outlined dense /></div>
-              <div class="col-12 col-md-3"><q-input v-model.number="productForm.depth_cm" type="number" step="0.01" label="Depth (cm)" outlined dense /></div>
-              <div class="col-12 col-md-3" />
-
-              <div class="col-12 q-mt-sm">
-                <q-separator class="q-my-md" />
-                <q-expansion-item
-                  v-model="accessoriesExpanded"
-                  icon="extension"
-                  label="Accessories"
-                  dense
-                  header-class="rounded-borders"
-                >
-                  <div class="text-caption text-grey-7 q-mb-sm">Define accessory products for this product. Mark each as required or optional.</div>
-                  <div class="row q-col-gutter-sm items-end q-mb-sm">
-                    <div class="col-12 col-md-7">
-                      <q-select
-                        v-model="newAccessoryProductId"
-                        :options="productOptions.filter(o => o.value !== productEditing?.id)"
-                        label="Accessory product"
-                        outlined
-                        dense
-                        emit-value
-                        map-options
-                        use-input
-                        fill-input
-                      />
-                    </div>
-                    <div class="col-6 col-md-2">
-                      <q-input v-model.number="newAccessoryQty" type="number" min="1" label="Qty" outlined dense />
-                    </div>
-                    <div class="col-6 col-md-2">
-                      <q-toggle v-model="newAccessoryRequired" label="Required" color="primary" />
-                    </div>
-                    <div class="col-12 col-md-1">
-                      <q-btn color="primary" unelevated icon="add" @click="addAccessoryRow" />
-                    </div>
-                  </div>
-
-                  <q-list bordered separator class="rounded-borders">
-                    <q-item v-for="row in productForm.accessories" :key="`acc-${row.accessory_product_id}`">
-                      <q-item-section>
-                        <q-item-label>{{ productNameById(row.accessory_product_id) }}</q-item-label>
-                        <q-item-label caption>{{ row.required ? 'Required' : 'Optional' }} · Qty {{ row.quantity }}</q-item-label>
-                      </q-item-section>
-                      <q-item-section side>
-                        <q-btn flat dense icon="delete" color="negative" @click="removeAccessoryRow(row.accessory_product_id)" />
-                      </q-item-section>
-                    </q-item>
-                    <q-item v-if="!productForm.accessories.length">
-                      <q-item-section>
-                        <q-item-label caption>No accessories configured.</q-item-label>
-                      </q-item-section>
-                    </q-item>
-                  </q-list>
-                </q-expansion-item>
-              </div>
-
-              <div class="col-12 q-mt-sm">
-                <q-separator class="q-my-md" />
-                <div class="text-subtitle2 q-mb-sm">Linked Devices</div>
-                <div class="text-caption text-grey-7 q-mb-sm">
-                  {{ productEditing ? `All devices linked to ${productEditing.sku}` : 'Save product to link devices.' }}
-                </div>
-                <div class="row q-col-gutter-sm q-mb-sm" v-if="productEditing">
-                  <div class="col-auto">
-                    <q-badge color="primary" text-color="white" :label="`Total: ${productLinkedDevices.length}`" />
-                  </div>
-                  <div class="col-auto">
-                    <q-badge color="positive" text-color="white" :label="`Available: ${productLinkedAvailability.available}`" />
-                  </div>
-                  <div class="col-auto">
-                    <q-badge color="warning" text-color="black" :label="`Reserved: ${productLinkedAvailability.reserved}`" />
-                  </div>
-                  <div class="col-auto">
-                    <q-badge color="info" text-color="white" :label="`In Use: ${productLinkedAvailability.in_use}`" />
-                  </div>
-                  <div class="col-auto">
-                    <q-badge color="negative" text-color="white" :label="`Maintenance: ${productLinkedAvailability.maintenance}`" />
-                  </div>
-                </div>
-
-                <q-list v-if="productEditing" bordered separator class="rounded-borders q-mb-md">
-                  <q-item v-for="row in productLinkedDevices" :key="row.id">
-                    <q-item-section>
-                      <q-item-label>{{ row.asset_tag }}</q-item-label>
-                      <q-item-label caption>
-                        Status: {{ row.status }} · Condition: {{ row.condition || 'n/a' }} · Location: {{ row.case_asset_tag ? `Case: ${row.case_asset_tag}` : (zoneNameById(row.location_zone_id) || 'Unassigned') }}
-                      </q-item-label>
-                      <q-item-label caption v-if="row.current_job_code">Current job: {{ row.current_job_code }}</q-item-label>
-                    </q-item-section>
-                    <q-item-section side top>
-                      <div class="row no-wrap items-center q-gutter-xs">
-                        <q-btn
-                          flat
-                          dense
-                          :round="isPhone"
-                          :color="productActionColor"
-                          class="inventory-action-contrast"
-                          icon="inventory_2"
-                          :label="isPhone ? void 0 : 'Product'"
-                          :aria-label="isPhone ? 'Open product' : void 0"
-                          @click="openProductEditorFromLink(row.product_id)"
-                        />
-                        <q-btn
-                          flat
-                          dense
-                          :round="isPhone"
-                          :color="infoActionColor"
-                          icon="info"
-                          :label="isPhone ? void 0 : 'Info'"
-                          :aria-label="isPhone ? 'Open device info' : void 0"
-                          @click="openDeviceInfoFromLink(row.id)"
-                        />
-                        <q-btn
-                          flat
-                          dense
-                          :round="isPhone"
-                          color="primary"
-                          icon="edit"
-                          :label="isPhone ? void 0 : 'Edit'"
-                          :aria-label="isPhone ? 'Edit device' : void 0"
-                          @click="openDeviceEditorFromLink(row.id)"
-                        />
-                      </div>
-                    </q-item-section>
-                  </q-item>
-                  <q-item v-if="!productLinkedDevices.length">
-                    <q-item-section>
-                      <q-item-label caption>No devices linked to this product yet.</q-item-label>
-                    </q-item-section>
-                  </q-item>
-                </q-list>
-              </div>
-            </div>
-            <q-banner v-if="productDialogError" class="bg-negative text-white q-mt-sm rounded-borders" dense>{{ productDialogError }}</q-banner>
-          </q-form>
-        </q-card-section>
-        <EntityAttachmentsPanel
-          entity-type="product"
-          :entity-id="productEditing?.id || null"
-          title="Product Documents"
-          default-category="product-document"
-        />
-        <q-card-actions :align="isPhone ? 'stretch' : 'right'" :class="isPhone ? 'q-pa-md bg-grey-2' : ''">
-          <q-btn flat :class="isPhone ? 'full-width q-mb-sm' : ''" label="Cancel" @click="closeProductDialog" />
-          <q-btn color="primary" unelevated :class="isPhone ? 'full-width' : ''" :label="productEditing ? 'Save' : 'Create'" :loading="saving" @click="saveProduct" />
-        </q-card-actions>
-      </q-card>
-    </q-dialog>
-
-    <q-dialog v-model="deviceDialogOpen" persistent :maximized="isPhone">
-      <q-card :style="isPhone ? 'width: 100vw; max-width: 100vw; height: 100vh' : 'min-width: 820px; max-width: 95vw'" class="ec-card">
-        <q-card-section><div class="text-h6">{{ deviceEditing ? 'Edit device' : 'New device' }}</div></q-card-section>
-        <q-card-section class="q-pt-none" :style="isPhone ? 'max-height: calc(100vh - 140px); overflow: auto;' : ''">
-          <q-form ref="deviceFormRef" @submit.prevent="saveDevice">
-            <div class="row q-col-gutter-sm">
-              <div class="col-12 col-md-6">
-                <q-select v-model="deviceForm.product_id" :options="productOptions" label="Product" outlined dense emit-value map-options :rules="[v => !!v || 'Required']" />
-              </div>
-              <div class="col-12 col-md-3">
-                <q-input ref="deviceAssetTagInputRef" v-model="deviceForm.asset_tag" label="Asset tag" outlined dense :rules="[v => !!v || 'Required']">
-                  <template #append>
-                    <q-btn flat dense no-caps color="primary" icon="autorenew" label="Generate" :loading="generatingDeviceAssetTag" @click="generateDeviceAssetTag" />
-                    <q-btn flat dense round color="positive" icon="qr_code_scanner" @click="openDeviceFieldCapture('asset_tag', 'Asset tag')">
-                      <q-tooltip>Open scan options (keyboard/camera/NFC)</q-tooltip>
-                    </q-btn>
-                  </template>
-                </q-input>
-              </div>
-              <div class="col-12 col-md-2">
-                <q-input v-model="deviceAssetTagPrefix" label="Tag prefix" outlined dense hint="e.g. LGT" />
-              </div>
-              <div class="col-12 col-md-3">
-                <q-input ref="deviceSerialInputRef" v-model="deviceForm.serial_number" label="Serial number" outlined dense>
-                  <template #append>
-                    <q-btn flat dense round color="positive" icon="qr_code_scanner" @click="openDeviceFieldCapture('serial_number', 'Serial number')">
-                      <q-tooltip>Open scan options (keyboard/camera/NFC)</q-tooltip>
-                    </q-btn>
-                  </template>
-                </q-input>
-              </div>
-              <div class="col-12 col-md-3">
-                <q-input ref="deviceBarcodeInputRef" v-model="deviceForm.barcode" label="Barcode" outlined dense>
-                  <template #append>
-                    <q-btn flat dense round color="positive" icon="qr_code_scanner" @click="openDeviceFieldCapture('barcode', 'Barcode')">
-                      <q-tooltip>Open scan options (keyboard/camera/NFC)</q-tooltip>
-                    </q-btn>
-                  </template>
-                </q-input>
-              </div>
-              <div class="col-12 col-md-3">
-                <q-input ref="deviceQrCodeInputRef" v-model="deviceForm.qr_code" label="QR code" outlined dense>
-                  <template #append>
-                    <q-btn flat dense round color="positive" icon="qr_code_scanner" @click="openDeviceFieldCapture('qr_code', 'QR code')">
-                      <q-tooltip>Open scan options (keyboard/camera/NFC)</q-tooltip>
-                    </q-btn>
-                  </template>
-                </q-input>
-              </div>
-              <div class="col-12 col-md-3">
-                <q-input ref="deviceRfidInputRef" v-model="deviceForm.rfid" label="RFID" outlined dense>
-                  <template #append>
-                    <q-btn flat dense round color="positive" icon="qr_code_scanner" @click="openDeviceFieldCapture('rfid', 'RFID')">
-                      <q-tooltip>Open scan options (keyboard/camera/NFC)</q-tooltip>
-                    </q-btn>
-                  </template>
-                </q-input>
-              </div>
-              <div class="col-12 col-md-3"><q-input v-model.number="deviceForm.usage_hours" type="number" step="0.01" label="Usage hours" outlined dense /></div>
-              <div class="col-12 col-md-4"><q-select v-model="deviceForm.status" :options="statusOptions" label="Status" outlined dense emit-value map-options /></div>
-              <div class="col-12 col-md-4"><q-select v-model="deviceForm.condition" :options="conditionOptions" label="Condition" outlined dense emit-value map-options /></div>
-              <div class="col-12 col-md-4"><q-select v-model="deviceForm.location_zone_id" :options="locationSelectOptions" label="Location" outlined dense emit-value map-options clearable /></div>
-              <div class="col-12 col-md-4"><q-select v-model="deviceForm.case_device_id" :options="caseDeviceOptions" label="Inside case" outlined dense emit-value map-options clearable /></div>
-              <div class="col-12 col-md-4"><q-input v-model="deviceForm.purchase_date" type="date" label="Purchase date" outlined dense @update:model-value="onPurchaseDateChanged" /></div>
-              <div class="col-12 col-md-4"><q-input v-model.number="deviceForm.purchase_price" type="number" step="0.01" label="Purchase price" outlined dense /></div>
-              <div class="col-12 col-md-4"><q-input v-model="deviceForm.purchased_from" label="Purchased from" outlined dense /></div>
-              <div class="col-12 col-md-4"><q-input v-model.number="deviceForm.sold_price" type="number" step="0.01" label="Sold price" outlined dense /></div>
-              <div class="col-12 col-md-4"><q-input v-model="deviceForm.finance_upto" label="Finance up to" outlined dense /></div>
-              <div class="col-12 col-md-4"><q-input v-model="deviceForm.finance_company" label="Finance company" outlined dense /></div>
-              <div class="col-12 col-md-4"><q-input v-model="deviceForm.finance_ref" label="Finance ref" outlined dense /></div>
-              <div class="col-12 col-md-4"><q-input v-model="deviceForm.pre_prep" label="Pre-prep" outlined dense /></div>
-              <div class="col-12 col-md-4"><q-input v-model="deviceForm.warranty_end_date" type="date" label="Warranty end" outlined dense @update:model-value="onWarrantyEndDateChanged" /></div>
-              <div class="col-12 col-md-4"><q-input v-model="deviceForm.retire_date" type="date" label="Retire date" outlined dense /></div>
-              <div class="col-12"><q-input v-model="deviceForm.notes" type="textarea" autogrow label="Notes" outlined dense /></div>
-            </div>
-            <q-banner v-if="deviceDialogError" class="bg-negative text-white q-mt-sm rounded-borders" dense>{{ deviceDialogError }}</q-banner>
-          </q-form>
-        </q-card-section>
-        <EntityAttachmentsPanel
-          entity-type="device"
-          :entity-id="deviceEditing?.id || null"
-          title="Device Documents"
-          default-category="device-document"
-        />
-        <q-card-actions :align="isPhone ? 'stretch' : 'right'" :class="isPhone ? 'q-pa-md bg-grey-2' : ''">
-          <q-btn flat :class="isPhone ? 'full-width q-mb-sm' : ''" label="Cancel" @click="closeDeviceDialog" />
-          <q-btn color="primary" unelevated :class="isPhone ? 'full-width' : ''" :label="deviceEditing ? 'Save' : 'Create'" :loading="saving" @click="saveDevice" />
-        </q-card-actions>
-      </q-card>
-    </q-dialog>
+    <DeviceDialog
+      v-model="deviceDialogOpen"
+      :device="deviceEditing"
+      :is-phone="isPhone"
+      @saved="onDeviceDialogSaved"
+    />
 
     <q-dialog v-model="categoryDialogOpen" persistent>
       <q-card style="width: 520px; max-width: 95vw" class="ec-card">
@@ -1185,31 +845,13 @@
             </div>
             <div class="row q-col-gutter-sm q-mb-sm">
               <div class="col-12 col-md-4">
-                <q-input ref="locationBarcodeInputRef" v-model="locationForm.barcode" label="Barcode" outlined dense>
-                  <template #append>
-                    <q-btn flat dense round color="positive" icon="qr_code_scanner" @click="openLocationFieldCapture('barcode', 'Location barcode')">
-                      <q-tooltip>Open scan options (keyboard/camera/NFC)</q-tooltip>
-                    </q-btn>
-                  </template>
-                </q-input>
+                <q-input v-model="locationForm.barcode" label="Barcode" outlined dense />
               </div>
               <div class="col-12 col-md-4">
-                <q-input ref="locationQrCodeInputRef" v-model="locationForm.qr_code" label="QR code" outlined dense>
-                  <template #append>
-                    <q-btn flat dense round color="positive" icon="qr_code_scanner" @click="openLocationFieldCapture('qr_code', 'Location QR code')">
-                      <q-tooltip>Open scan options (keyboard/camera/NFC)</q-tooltip>
-                    </q-btn>
-                  </template>
-                </q-input>
+                <q-input v-model="locationForm.qr_code" label="QR code" outlined dense />
               </div>
               <div class="col-12 col-md-4">
-                <q-input ref="locationRfidInputRef" v-model="locationForm.rfid" label="RFID" outlined dense>
-                  <template #append>
-                    <q-btn flat dense round color="positive" icon="qr_code_scanner" @click="openLocationFieldCapture('rfid', 'Location RFID')">
-                      <q-tooltip>Open scan options (keyboard/camera/NFC)</q-tooltip>
-                    </q-btn>
-                  </template>
-                </q-input>
+                <q-input v-model="locationForm.rfid" label="RFID" outlined dense />
               </div>
             </div>
             <q-select
@@ -1462,64 +1104,7 @@
       </q-card>
     </q-dialog>
 
-    <q-dialog v-model="deviceFieldCaptureDialogOpen" persistent @hide="stopDeviceFieldCapture">
-      <q-card style="width: 560px; max-width: 95vw" class="ec-card device-capture-card">
-        <q-card-section class="text-center">
-          <div class="device-capture-icon-wrap q-mb-sm">
-            <q-icon name="qr_code_scanner" size="34px" color="white" />
-          </div>
-          <div class="text-h6 text-white">{{ t('inventory.captureField', { field: deviceFieldCaptureLabel }) }}</div>
-          <div class="text-caption text-grey-4">{{ t('inventory.scanWithKeyboardCameraNfc') }}</div>
-        </q-card-section>
-        <q-card-section class="q-pt-none">
-          <div class="row q-gutter-sm q-mb-md justify-center">
-            <q-btn-toggle
-              v-model="deviceFieldCaptureMode"
-              toggle-color="primary"
-              color="grey-9"
-              text-color="grey-3"
-              unelevated
-              no-caps
-              :options="deviceFieldCaptureModeButtons"
-            />
-          </div>
 
-          <div class="row q-col-gutter-sm">
-            <div class="col-12">
-              <q-input ref="deviceFieldCaptureInputRef" v-model="deviceFieldCaptureValue" :label="t('inventory.scannerKeyboardInput')" outlined dense @keyup.enter="applyDeviceFieldCaptureValue">
-                <template #append>
-                  <q-btn flat dense round color="primary" icon="check" @click="applyDeviceFieldCaptureValue" />
-                </template>
-              </q-input>
-            </div>
-            <div class="col-12 text-caption text-grey-5">
-              {{ t('inventory.captureModeHelpText') }}
-            </div>
-            <div class="col-12 row q-gutter-sm" v-if="deviceFieldCaptureMode === 'keyboard'">
-              <q-btn color="secondary" outline icon="keyboard" :label="t('inventory.focusTargetField')" @click="focusDeviceCaptureTargetField" />
-            </div>
-            <div class="col-12" v-if="deviceFieldCaptureCameraActive">
-              <div class="device-capture-camera-wrap">
-                <video ref="deviceCaptureVideoRef" class="device-capture-video" autoplay muted playsinline />
-              </div>
-              <div class="text-caption text-grey-5 q-mt-xs">{{ t('inventory.pointCameraToBarcode') }}</div>
-            </div>
-            <div class="col-12" v-if="deviceFieldCaptureMode === 'nfc'">
-              <div class="device-capture-nfc-wrap text-center">
-                <q-icon name="nfc" size="40px" :color="deviceFieldCaptureNfcActive ? 'primary' : 'grey-5'" />
-                <div class="text-caption q-mt-sm" :class="deviceFieldCaptureNfcActive ? 'text-primary' : 'text-grey-5'">
-                  {{ deviceFieldCaptureNfcActive ? t('inventory.nfcReadyHoldTag') : t('inventory.startingNfcReader') }}
-                </div>
-              </div>
-            </div>
-          </div>
-          <q-banner v-if="deviceFieldCaptureError" class="bg-negative text-white q-mt-sm rounded-borders" dense>{{ deviceFieldCaptureError }}</q-banner>
-        </q-card-section>
-        <q-card-actions align="right">
-          <q-btn flat :label="t('app.actions.close')" @click="deviceFieldCaptureDialogOpen = false" />
-        </q-card-actions>
-      </q-card>
-    </q-dialog>
 
     <q-dialog v-model="bulkProductDialogOpen" persistent>
       <q-card style="width: 560px; max-width: 95vw" class="ec-card">
@@ -1656,514 +1241,28 @@
       </q-card>
     </q-dialog>
 
-    <q-dialog v-model="deviceInfoDialogOpen" :maximized="isPhone">
-      <q-card :style="isPhone ? 'width: 100vw; max-width: 100vw; height: 100vh' : 'min-width: 820px; max-width: 96vw'" class="ec-card">
-        <q-card-section>
-          <div class="text-h6">{{ t('inventory.infoDialogs.deviceTitle', { assetTag: deviceInfoTarget?.asset_tag || '-' }) }}</div>
-          <div class="text-caption text-grey-7">
-            {{ deviceInfoTarget ? (store.products.find(item => item.id === deviceInfoTarget.product_id)?.name || `Product #${deviceInfoTarget.product_id}`) : '-' }}
-          </div>
-        </q-card-section>
+    <DeviceInfoDialog
+      v-model="deviceInfoDialogOpen"
+      :device="deviceInfoTarget"
+      :is-phone="isPhone"
+      @edit-device="openDeviceEditorFromLink"
+      @edit-product="openProductEditorFromLink"
+      @view-device="openDeviceInfoFromLink"
+      @open-job="openJobFromLink"
+      @report-defect="(id) => openDefectDialog(id)"
+      @create-maintenance="(id) => openCreateMaintenance('task', id)"
+      @edit-maintenance="openEditMaintenance"
+      @complete-maintenance="completeMaintenanceRow"
+    />
 
-        <q-card-section class="q-pt-none" :style="isPhone ? 'max-height: calc(100vh - 140px); overflow: auto;' : ''">
-          <div class="row q-col-gutter-sm q-mb-md">
-            <div class="col-12 col-md-4"><q-badge color="grey-8" text-color="white" :label="`Status: ${deviceInfoTarget?.status || '-'}`" /></div>
-            <div class="col-12 col-md-4"><q-badge color="grey-7" text-color="white" :label="`Condition: ${deviceInfoTarget?.condition || '-'}`" /></div>
-            <div class="col-12 col-md-4">
-              <q-badge
-                :color="deviceInfoTarget?.current_job_code ? 'info' : 'grey'"
-                text-color="white"
-                :label="deviceInfoTarget?.current_job_code ? `Current job: ${deviceInfoTarget.current_job_code}` : 'Current job: none'"
-              />
-              <q-btn
-                v-if="deviceInfoTarget?.current_job_id"
-                flat
-                dense
-                :round="isPhone"
-                color="primary"
-                icon="edit"
-                class="q-ml-xs"
-                :label="isPhone ? void 0 : 'Edit'"
-                :aria-label="isPhone ? 'Edit job' : void 0"
-                @click="openJobFromLink(deviceInfoTarget.current_job_id)"
-              />
-            </div>
-            <div class="col-12">
-              <q-btn flat dense color="positive" icon="build" label="Create maintenance task" @click="openCreateMaintenance('task', deviceInfoTarget?.id)" />
-              <q-btn flat dense color="positive" icon="event_repeat" label="Create maintenance schedule" class="q-ml-xs" @click="openCreateMaintenance('schedule', deviceInfoTarget?.id)" />
-              <q-btn
-                color="warning"
-                icon="warning"
-                label="Report defect"
-                @click="openDefectDialog(deviceInfoTarget?.id)"
-              />
-            </div>
-            <div class="col-12 col-md-6 text-caption">
-              Serialnumber: {{ deviceInfoTarget?.serial_number || '-' }}
-            </div>
-            <div class="col-12 col-md-6 text-caption">
-              Barcode: {{ deviceInfoTarget?.barcode || '-' }}
-            </div>
-            <div class="col-12 col-md-6 text-caption">
-              QR-code: {{ deviceInfoTarget?.qr_code || '-' }}
-            </div>
-            <div class="col-12 col-md-6 text-caption">
-              RFID: {{ deviceInfoTarget?.rfid || '-' }}
-            </div>
-            <div class="col-12 col-md-6 text-caption">
-              Usage hours: {{ deviceInfoTarget?.usage_hours || '-' }}
-            </div>
-            <div class="col-12 col-md-6 text-caption">
-              Location: {{ deviceInfoTarget?.location || '-' }}
-            </div>
-            <div class="col-12 col-md-6 text-caption">
-              Purchase:
-              {{ deviceInfoTarget?.purchase_price == null ? '-' : formatMoney(deviceInfoTarget.purchase_price) }}
-              <template v-if="deviceInfoTarget?.purchased_from">
-                from {{ deviceInfoTarget.purchased_from }}
-              </template>
-              <template v-if="deviceInfoTarget?.purchase_date">
-                at {{ deviceInfoTarget.purchase_date }}
-              </template>
-            </div>
-            <div class="col-12 col-md-6 text-caption">
-              Warranty until: {{ deviceInfoTarget?.warranty_until || '-' }}
-            </div>
-            <div class="col-12 col-md-6 text-caption">
-              Retirement: {{ deviceInfoTarget?.retirement_date || '-' }} · Reason: {{ deviceInfoTarget?.retirement_reason || '-' }}
-            </div>
-            <div class="col-12 col-md-6 text-caption">
-              Sold: {{ deviceInfoTarget?.sold_price == null ? '-' : formatMoney(deviceInfoTarget?.sold_price) }}
-              <template v-if="deviceInfoTarget?.sold_date">
-                at {{ deviceInfoTarget.sold_date }}
-              </template>
-            </div>
-            <div class="col-12 col-md-6 text-caption">
-              Finance up to: {{ deviceInfoTarget?.finance_upto || '-' }}
-            </div>
-            <div class="col-12 col-md-6 text-caption">
-              Finance company: {{ deviceInfoTarget?.finance_company || '-' }} · Ref: {{ deviceInfoTarget?.finance_ref || '-' }}
-            </div>
-            <div class="col-12 col-md-6 text-caption">
-              Pre-prep: {{ deviceInfoTarget?.pre_prep || '-' }}
-            </div>
-            <div class="col-12 col-md-6 text-caption">
-              Notes: {{ deviceInfoTarget?.notes || '-' }}
-            </div>
-          </div>
-
-          <div class="text-subtitle2 q-mb-sm">Parent Product</div>
-          <q-list bordered separator class="rounded-borders q-mb-md">
-            <q-item>
-              <q-item-section>
-                <q-item-label>{{ deviceInfoProduct?.sku || '-' }} · {{ deviceInfoProduct?.name || '-' }}</q-item-label>
-                <q-item-label caption>
-                  Type: {{ deviceInfoProduct?.product_type || '-' }} · Category: {{ deviceInfoProduct?.category || 'Uncategorized' }}
-                </q-item-label>
-                <q-item-label caption>
-                  Brand: {{ deviceInfoProduct?.brand || '-' }} · Manufacturer: {{ deviceInfoProduct?.manufacturer || '-' }}
-                </q-item-label>
-                <q-item-label caption>
-                  Daily rate: {{ formatMoney(deviceInfoProduct?.daily_rate) }} · Supplier: {{ deviceInfoProduct?.supplier_name || '-' }}
-                </q-item-label>
-                <q-item-label caption>
-                  Replacement cost: {{ formatMoney(deviceInfoProduct?.replace_cost) }} · Supplier: {{ deviceInfoProduct?.supplier_name || '-' }}
-                </q-item-label>
-                <q-item-label caption v-if="deviceInfoProduct?.is_rental_product">
-                  Rental source: {{ deviceInfoProduct?.external_source || '-' }} · External ref: {{ deviceInfoProduct?.external_reference || '-' }}
-                </q-item-label>
-                <q-item-label caption v-if="deviceInfoProduct?.is_rental_product">
-                  Eventory available: {{ Number(deviceInfoProduct?.eventory_available_qty || 0) }} · Is rental: {{ deviceInfoProduct?.is_rental_product ? 'yes' : 'no' }}
-                </q-item-label>
-                <q-item-label caption>
-                  Weight: {{ deviceInfoProduct?.weight_kg ?? '-' }} kg · Size: {{ deviceInfoProduct?.height_cm ?? '-' }}x{{ deviceInfoProduct?.width_cm ?? '-' }}x{{ deviceInfoProduct?.depth_cm ?? '-' }} cm
-                </q-item-label>
-                <q-item-label caption>
-                  Power: {{ deviceInfoProduct?.power_consumption_watts ?? '-' }} W · Maintenance interval: {{ deviceInfoProduct?.maintenance_interval_days ?? '-' }} days
-                </q-item-label>
-                <q-item-label caption>
-                  Devices total: {{ Number(deviceInfoProduct?.total_devices || 0) }} · In store: {{ Number(deviceInfoProduct?.in_store_devices || 0) }} · On site: {{ Number(deviceInfoProduct?.on_site_devices || 0) }} · Damaged: {{ Number(deviceInfoProduct?.damaged_devices || 0) }}
-                </q-item-label>
-              </q-item-section>
-              <q-item-section side>
-                <q-btn
-                  flat
-                  dense
-                  color="primary"
-                  icon="edit"
-                  label="Edit product"
-                  @click="openProductEditorFromLink(deviceInfoProduct?.id)"
-                />
-              </q-item-section>
-            </q-item>
-          </q-list>
-
-          <div class="text-subtitle2 q-mb-sm">Devices At Same Location</div>
-          <q-list bordered separator class="rounded-borders q-mb-md">
-            <q-item v-for="row in deviceInfoLocationDevices" :key="row.id">
-              <q-item-section>
-                <q-item-label>{{ row.asset_tag }} · {{ productNameById(row.product_id) }}</q-item-label>
-                <q-item-label caption>
-                  {{ t('inventory.infoDialogs.deviceStatusCondition', { status: row.status, condition: row.condition || t('inventory.infoDialogs.notAvailable') }) }}
-                  <span v-if="row.current_job_code"> · Job {{ row.current_job_code }}</span>
-                </q-item-label>
-              </q-item-section>
-              <q-item-section side top>
-                <div class="row no-wrap items-center q-gutter-xs">
-                  <q-btn
-                    flat
-                    dense
-                    :round="isPhone"
-                    :color="productActionColor"
-                    class="inventory-action-contrast"
-                    icon="inventory_2"
-                    :label="isPhone ? void 0 : 'Product'"
-                    :aria-label="isPhone ? 'Open product' : void 0"
-                    @click="openProductEditorFromLink(row.product_id)"
-                  />
-                  <q-btn
-                    flat
-                    dense
-                    :round="isPhone"
-                    :color="infoActionColor"
-                    icon="info"
-                    :label="isPhone ? void 0 : 'Info'"
-                    :aria-label="isPhone ? 'Open device info' : void 0"
-                    @click="openDeviceInfoFromLink(row.id)"
-                  />
-                  <q-btn
-                    flat
-                    dense
-                    :round="isPhone"
-                    color="primary"
-                    icon="edit"
-                    :label="isPhone ? void 0 : 'Edit'"
-                    :aria-label="isPhone ? 'Edit device' : void 0"
-                    @click="openDeviceEditorFromLink(row.id)"
-                  />
-                </div>
-              </q-item-section>
-            </q-item>
-            <q-item v-if="!deviceInfoLocationDevices.length">
-              <q-item-section>
-                <q-item-label caption>No other devices in this location.</q-item-label>
-              </q-item-section>
-            </q-item>
-          </q-list>
-
-          <div v-if="deviceInfoIsCase" class="text-subtitle2 q-mb-sm">Devices Inside This Case</div>
-          <q-list v-if="deviceInfoIsCase" bordered separator class="rounded-borders q-mb-md">
-            <q-item v-for="row in deviceInfoContainedDevices" :key="row.id">
-              <q-item-section>
-                <q-item-label>{{ row.asset_tag }} · {{ productNameById(row.product_id) }}</q-item-label>
-                <q-item-label caption>
-                  {{ t('inventory.infoDialogs.deviceStatusCondition', { status: row.status, condition: row.condition || t('inventory.infoDialogs.notAvailable') }) }}
-                  <span v-if="row.current_job_code"> · Job {{ row.current_job_code }}</span>
-                </q-item-label>
-              </q-item-section>
-              <q-item-section side top>
-                <div class="row no-wrap items-center q-gutter-xs">
-                  <q-btn
-                    flat
-                    dense
-                    :round="isPhone"
-                    :color="productActionColor"
-                    class="inventory-action-contrast"
-                    icon="inventory_2"
-                    :label="isPhone ? void 0 : 'Product'"
-                    :aria-label="isPhone ? 'Open product' : void 0"
-                    @click="openProductEditorFromLink(row.product_id)"
-                  />
-                  <q-btn
-                    flat
-                    dense
-                    :round="isPhone"
-                    :color="infoActionColor"
-                    icon="info"
-                    :label="isPhone ? void 0 : 'Info'"
-                    :aria-label="isPhone ? 'Open device info' : void 0"
-                    @click="openDeviceInfoFromLink(row.id)"
-                  />
-                  <q-btn
-                    flat
-                    dense
-                    :round="isPhone"
-                    color="primary"
-                    icon="edit"
-                    :label="isPhone ? void 0 : 'Edit'"
-                    :aria-label="isPhone ? 'Edit device' : void 0"
-                    @click="openDeviceEditorFromLink(row.id)"
-                  />
-                </div>
-              </q-item-section>
-            </q-item>
-            <q-item v-if="!deviceInfoContainedDevices.length">
-              <q-item-section>
-                <q-item-label caption>No devices are currently assigned to this case.</q-item-label>
-              </q-item-section>
-            </q-item>
-          </q-list>
-
-          <div class="text-subtitle2 q-mb-sm">Maintenance Overview</div>
-          <q-list bordered separator class="rounded-borders q-mb-md">
-            <q-item v-if="deviceInfoNextMaintenance">
-              <q-item-section>
-                <q-item-label>Next scheduled task · {{ deviceInfoNextMaintenance.maintenance_type || '-' }}</q-item-label>
-                <q-item-label caption>
-                  Status: {{ deviceInfoNextMaintenance.status || '-' }} · {{ maintenanceTimingLabel(deviceInfoNextMaintenance) }}
-                </q-item-label>
-                <q-item-label caption v-if="deviceInfoNextMaintenance.notes">{{ deviceInfoNextMaintenance.notes }}</q-item-label>
-              </q-item-section>
-              <q-item-section side top>
-                <div class="row no-wrap items-center q-gutter-xs">
-                  <q-btn
-                    v-if="deviceInfoNextMaintenance.status !== 'completed'"
-                    flat
-                    dense
-                    color="positive"
-                    icon="task_alt"
-                    @click="completeMaintenanceRow(deviceInfoNextMaintenance)"
-                  />
-                  <q-btn flat dense color="primary" icon="edit" @click="openEditMaintenance(deviceInfoNextMaintenance)" />
-                </div>
-              </q-item-section>
-            </q-item>
-            <q-item v-else>
-              <q-item-section>
-                <q-item-label caption>No upcoming maintenance task found.</q-item-label>
-              </q-item-section>
-            </q-item>
-          </q-list>
-
-          <div class="text-subtitle2 q-mb-sm">Previous Maintenance Tasks</div>
-          <q-list bordered separator class="rounded-borders q-mb-md">
-            <q-item v-for="row in deviceInfoPreviousMaintenance" :key="`maint-prev-${row.id}`">
-              <q-item-section>
-                <q-item-label>{{ row.maintenance_type || '-' }}</q-item-label>
-                <q-item-label caption>
-                  Status: {{ row.status || '-' }} · {{ maintenanceTimingLabel(row) }}
-                </q-item-label>
-                <q-item-label caption v-if="row.notes">{{ row.notes }}</q-item-label>
-              </q-item-section>
-              <q-item-section side>
-                <q-badge :color="maintenanceStatusColor(row.status)" :label="row.status || '-'" />
-              </q-item-section>
-            </q-item>
-            <q-item v-if="!deviceInfoPreviousMaintenance.length">
-              <q-item-section>
-                <q-item-label caption>No previous maintenance tasks found.</q-item-label>
-              </q-item-section>
-            </q-item>
-          </q-list>
-
-          <div class="text-subtitle2 q-mb-sm">Jobs History</div>
-          <q-list bordered separator class="rounded-borders q-mb-md">
-            <q-item v-for="row in deviceJobHistory" :key="`${row.job_id}-${row.last_event_at}`">
-              <q-item-section>
-                <q-item-label>{{ row.job_code || `Job #${row.job_id}` }}</q-item-label>
-                <q-item-label caption>
-                  First out: {{ formatDateTime(row.first_out_at) || '-' }} · Last in: {{ formatDateTime(row.last_in_at) || '-' }} · Last event: {{ formatDateTime(row.last_event_at) || '-' }}
-                </q-item-label>
-              </q-item-section>
-              <q-item-section side>
-                <q-btn
-                  flat
-                  dense
-                  :round="isPhone"
-                  color="primary"
-                  icon="edit"
-                  :label="isPhone ? void 0 : 'Edit'"
-                  :aria-label="isPhone ? 'Edit job' : void 0"
-                  @click="openJobFromLink(row.job_id)"
-                />
-              </q-item-section>
-            </q-item>
-            <q-item v-if="!deviceJobHistory.length">
-              <q-item-section>
-                <q-item-label caption>No job history found for this device.</q-item-label>
-              </q-item-section>
-            </q-item>
-          </q-list>
-
-          <div class="text-subtitle2 q-mb-sm">Audit Timeline</div>
-          <q-list bordered separator class="rounded-borders">
-            <q-item v-for="row in deviceInfoAudits" :key="row.id">
-              <q-item-section>
-                <q-item-label>{{ row.action }} · {{ row.message }}</q-item-label>
-                <q-item-label caption>
-                  {{ formatDateTime(row.created_at) || '-' }}
-                  <span v-if="row.job_code"> · Job {{ row.job_code }}</span>
-                  <span v-if="row.scan_code"> · Scan {{ row.scan_code }}</span>
-                </q-item-label>
-              </q-item-section>
-              <q-item-section side>
-                <q-badge :color="row.success ? 'positive' : 'negative'" :label="row.success ? 'ok' : 'failed'" />
-              </q-item-section>
-            </q-item>
-            <q-item v-if="!deviceInfoAudits.length">
-              <q-item-section>
-                <q-item-label caption>No audit entries found for this device.</q-item-label>
-              </q-item-section>
-            </q-item>
-          </q-list>
-
-          <EntityAttachmentsPanel
-            entity-type="device"
-            :entity-id="deviceInfoTarget?.id || null"
-            :title="t('inventory.infoDialogs.deviceDocuments')"
-            default-category="device-document"
-            :read-only="true"
-          />
-        </q-card-section>
-
-        <q-card-actions :align="isPhone ? 'stretch' : 'right'" :class="isPhone ? 'q-pa-md bg-grey-2' : ''">
-          <q-space />
-          <q-btn flat :class="isPhone ? 'full-width' : ''" :label="t('app.actions.close')" @click="deviceInfoDialogOpen = false" />
-        </q-card-actions>
-      </q-card>
-    </q-dialog>
-
-    <q-dialog v-model="productInfoDialogOpen" :maximized="isPhone">
-      <q-card :style="isPhone ? 'width: 100vw; max-width: 100vw; height: 100vh' : 'min-width: 860px; max-width: 96vw'" class="ec-card">
-        <q-card-section>
-          <div class="text-h6">{{ t('inventory.infoDialogs.productTitle', { sku: productInfoTarget?.sku || '-' }) }}</div>
-          <div class="text-caption text-grey-7">{{ productInfoTarget?.name || '-' }}</div>
-        </q-card-section>
-
-        <q-card-section class="q-pt-none" :style="isPhone ? 'max-height: calc(100vh - 140px); overflow: auto;' : ''">
-          <div class="row q-col-gutter-sm q-mb-md">
-            <div class="col-12 col-md-4"><q-badge color="positive" text-color="white" :label="t('inventory.infoDialogs.available', { count: productInfoAvailability.available })" /></div>
-            <div class="col-12 col-md-4"><q-badge color="warning" text-color="black" :label="t('inventory.infoDialogs.reserved', { count: productInfoAvailability.reserved })" /></div>
-            <div class="col-12 col-md-4"><q-badge color="info" text-color="white" :label="t('inventory.infoDialogs.inUse', { count: productInfoAvailability.in_use })" /></div>
-          </div>
-
-          <q-list bordered separator class="rounded-borders q-mb-md">
-            <q-item>
-              <q-item-section>
-                <q-item-label>{{ t('inventory.infoDialogs.idType', { id: productInfoTarget?.id || '-', type: productInfoTarget?.product_type || '-' }) }}</q-item-label>
-                <q-item-label caption>
-                  {{ t('inventory.infoDialogs.categoryBrandManufacturer', { category: productInfoTarget?.category || t('inventory.uncategorized'), brand: productInfoTarget?.brand || '-', manufacturer: productInfoTarget?.manufacturer || '-' }) }}
-                </q-item-label>
-                <q-item-label caption>
-                  {{
-                    t('inventory.infoDialogs.dailyRateMaintenanceInterval', {
-                      dailyRate: formatMoney(productInfoTarget?.daily_rate),
-                      days: productInfoTarget?.maintenance_interval_days ?? '-'
-                    })
-                  }}
-                </q-item-label>
-
-                <q-item-label caption>
-                  {{ t('inventory.infoDialogs.replaceCost', {
-                    replaceCost: formatMoney(productInfoTarget?.replace_cost)
-                  }) }}
-                </q-item-label>
-                <q-item-label caption>
-                  {{ t('inventory.infoDialogs.weightSize', { weight: productInfoTarget?.weight_kg ?? '-', height: productInfoTarget?.height_cm ?? '-', width: productInfoTarget?.width_cm ?? '-', depth: productInfoTarget?.depth_cm ?? '-' }) }}
-                </q-item-label>
-              </q-item-section>
-              <q-item-section side>
-                <q-btn
-                  flat
-                  dense
-                  :round="isPhone"
-                  color="primary"
-                  icon="edit"
-                  :label="isPhone ? void 0 : 'Edit'"
-                  :aria-label="isPhone ? 'Edit product' : void 0"
-                  @click="openEditProductFromInfo()"
-                />
-              </q-item-section>
-            </q-item>
-          </q-list>
-
-          <div class="text-subtitle2 q-mb-sm">{{ t('inventory.infoDialogs.linkedDevices') }}</div>
-          <q-list bordered separator class="rounded-borders q-mb-md">
-            <q-item v-for="row in productInfoDevices" :key="row.id">
-              <q-item-section>
-                <q-item-label>{{ row.asset_tag }}</q-item-label>
-                <q-item-label caption>
-                  {{ t('inventory.infoDialogs.deviceStatusConditionLocation', {
-                    status: row.status,
-                    condition: row.condition || t('inventory.infoDialogs.notAvailable'),
-                    location: row.case_asset_tag
-                      ? t('inventory.infoDialogs.caseLocation', { assetTag: row.case_asset_tag })
-                      : (zoneNameById(row.location_zone_id) || t('inventory.infoDialogs.unassigned')),
-                  }) }}
-                </q-item-label>
-              </q-item-section>
-              <q-item-section side top>
-                <div class="row no-wrap items-center q-gutter-xs">
-                  <q-btn
-                    flat
-                    dense
-                    :round="isPhone"
-                    :color="infoActionColor"
-                    icon="info"
-                    :label="isPhone ? void 0 : 'Info'"
-                    :aria-label="isPhone ? 'Open device info' : void 0"
-                    @click="openDeviceInfoFromLink(row.id)"
-                  />
-                  <q-btn
-                    flat
-                    dense
-                    :round="isPhone"
-                    color="primary"
-                    icon="edit"
-                    :label="isPhone ? void 0 : 'Edit'"
-                    :aria-label="isPhone ? 'Edit device' : void 0"
-                    @click="openDeviceEditorFromLink(row.id)"
-                  />
-                </div>
-              </q-item-section>
-            </q-item>
-            <q-item v-if="!productInfoDevices.length">
-              <q-item-section><q-item-label caption>{{ t('inventory.infoDialogs.noDevicesLinkedToProduct') }}</q-item-label></q-item-section>
-            </q-item>
-          </q-list>
-
-          <div class="text-subtitle2 q-mb-sm">{{ t('inventory.infoDialogs.linkedJobs') }}</div>
-          <q-list bordered separator class="rounded-borders q-mb-md">
-            <q-item v-for="row in productInfoJobs" :key="`product-job-${row.job_id}`">
-              <q-item-section>
-                <q-item-label>{{ row.job_code || `Job #${row.job_id}` }}</q-item-label>
-                <q-item-label caption>
-                  {{ t('inventory.infoDialogs.requiredPicked', { required: row.quantity_required_total, picked: row.quantity_picked_total }) }}
-                </q-item-label>
-              </q-item-section>
-              <q-item-section side>
-                <q-btn
-                  flat
-                  dense
-                  :round="isPhone"
-                  color="primary"
-                  icon="edit"
-                  :label="isPhone ? void 0 : 'Edit'"
-                  :aria-label="isPhone ? 'Edit linked job' : void 0"
-                  @click="openJobFromLink(row.job_id)"
-                />
-              </q-item-section>
-            </q-item>
-            <q-item v-if="!productInfoJobs.length">
-              <q-item-section><q-item-label caption>{{ t('inventory.infoDialogs.noLinkedJobsForProduct') }}</q-item-label></q-item-section>
-            </q-item>
-          </q-list>
-
-          <EntityAttachmentsPanel
-            entity-type="product"
-            :entity-id="productInfoTarget?.id || null"
-            :title="t('inventory.infoDialogs.productDocuments')"
-            default-category="product-document"
-            :read-only="true"
-          />
-        </q-card-section>
-
-        <q-card-actions :align="isPhone ? 'stretch' : 'right'" :class="isPhone ? 'q-pa-md bg-grey-2' : ''">
-          <q-space />
-          <q-btn flat :class="isPhone ? 'full-width' : ''" :label="t('app.actions.close')" @click="productInfoDialogOpen = false" />
-        </q-card-actions>
-      </q-card>
-    </q-dialog>
+    <ProductInfoDialog
+      v-model="productInfoDialogOpen"
+      :product="productInfoTarget"
+      @edit-product="openEditProductFromInfo"
+      @view-device="openDeviceInfoFromLink"
+      @edit-device="openDeviceEditorFromLink"
+      @open-job="openJobFromLink"
+    />
 
     <q-dialog v-model="rentalProductInfoDialogOpen" :maximized="isPhone">
       <q-card :style="isPhone ? 'width: 100vw; max-width: 100vw; height: 100vh' : 'min-width: 860px; max-width: 96vw'" class="ec-card">
@@ -2445,6 +1544,10 @@ import { useJobsStore } from '../stores/jobs'
 import { useSettingsStore } from '../stores/settings'
 import { useCompactGrid } from '../composables/useCompactGrid'
 import EntityAttachmentsPanel from '../components/EntityAttachmentsPanel.vue'
+import ProductDialog from '../components/ProductDialog.vue'
+import ProductInfoDialog from '../components/ProductInfoDialog.vue'
+import DeviceDialog from '../components/DeviceDialog.vue'
+import DeviceInfoDialog from '../components/DeviceInfoDialog.vue'
 import { translateMaybePrefillCustomFieldLabel, translateMaybePrefillCustomFieldOption } from '../i18n/prefillContent'
 import { normalizeCurrencyCode } from '../constants/currencies'
 import { collectImportSourceKeys, convertDimensionValueToCm, getImportValueBySourceKey, parseImportRows, resolveImportEntityType } from '../utils/import-data'
@@ -2479,17 +1582,10 @@ const currencyHelperText = computed(() => `${t('settings.company.currencyIso')}:
 
 const tab = ref('products')
 const saving = ref(false)
-const generatingProductSku = ref(false)
-const generatingDeviceAssetTag = ref(false)
-const productSkuPrefix = ref('PRD-')
-const deviceAssetTagPrefix = ref('')
-const skuPrefixByProductType = ref({})
-const assetTagPrefixByProductType = ref({})
 const showCachedOfflineBanner = computed(() => (
   store.fetchSource === 'snapshot' || jobsStore.fetchSource === 'snapshot'
 ))
 
-const PREFIX_MEMORY_STORAGE_KEY = 'inventory.prefix-memory.v1'
 const RETURN_INFO_STORAGE_KEY = 'inventory.return-info.v1'
 const ZONE_CODE_MAX_LENGTH = 50
 
@@ -2507,79 +1603,6 @@ function customFieldLabel(label) {
 
 function customFieldOption(option) {
   return translateMaybePrefillCustomFieldOption(option, t)
-}
-
-function loadPrefixMemory() {
-  if (typeof window === 'undefined') return
-  try {
-    const raw = window.localStorage.getItem(PREFIX_MEMORY_STORAGE_KEY)
-    if (!raw) return
-    const parsed = JSON.parse(raw)
-    if (parsed && typeof parsed === 'object') {
-      skuPrefixByProductType.value = parsed.skuByType && typeof parsed.skuByType === 'object' ? { ...parsed.skuByType } : {}
-      assetTagPrefixByProductType.value = parsed.assetByType && typeof parsed.assetByType === 'object' ? { ...parsed.assetByType } : {}
-    }
-  } catch {
-    // Ignore invalid local storage data.
-  }
-}
-
-function persistPrefixMemory() {
-  if (typeof window === 'undefined') return
-  try {
-    window.localStorage.setItem(PREFIX_MEMORY_STORAGE_KEY, JSON.stringify({
-      skuByType: skuPrefixByProductType.value,
-      assetByType: assetTagPrefixByProductType.value,
-    }))
-  } catch {
-    // Ignore storage quota/privacy mode failures.
-  }
-}
-
-function normalizePrefix(value, fallback = '') {
-  const cleaned = String(value || '').trim()
-  return cleaned || fallback
-}
-
-function rememberSkuPrefixForType(type, prefix) {
-  const key = String(type || '').trim()
-  if (!key) return
-  const normalized = normalizePrefix(prefix)
-  if (!normalized) return
-  skuPrefixByProductType.value = {
-    ...skuPrefixByProductType.value,
-    [key]: normalized,
-  }
-  persistPrefixMemory()
-}
-
-function rememberAssetPrefixForType(type, prefix) {
-  const key = String(type || '').trim()
-  if (!key) return
-  const normalized = normalizePrefix(prefix)
-  if (!normalized) return
-  assetTagPrefixByProductType.value = {
-    ...assetTagPrefixByProductType.value,
-    [key]: normalized,
-  }
-  persistPrefixMemory()
-}
-
-function getProductTypeForDeviceProductId(productId) {
-  const selected = (store.products || []).find(product => product.id === productId)
-  return String(selected?.product_type || '').trim()
-}
-
-function applySkuPrefixForType(type) {
-  const key = String(type || '').trim()
-  const remembered = key ? skuPrefixByProductType.value[key] : null
-  productSkuPrefix.value = normalizePrefix(remembered, 'PRD-')
-}
-
-function applyAssetPrefixForType(type) {
-  const key = String(type || '').trim()
-  const remembered = key ? assetTagPrefixByProductType.value[key] : null
-  deviceAssetTagPrefix.value = normalizePrefix(remembered, '')
 }
 
 const productSearch = ref('')
@@ -3257,7 +2280,6 @@ const filteredDevices = computed(() => {
 
 const deviceInfoDialogOpen = ref(false)
 const deviceInfoTarget = ref(null)
-const deviceInfoAudits = ref([])
 const pendingInfoReturn = ref(null)
 
 const productInfoDialogOpen = ref(false)
@@ -3266,106 +2288,7 @@ const productInfoTarget = ref(null)
 const rentalProductInfoDialogOpen = ref(false)
 const rentalProductInfoTarget = ref(null)
 
-const deviceInfoProduct = computed(() => {
-  if (!deviceInfoTarget.value) return null
-  return store.products.find(item => item.id === deviceInfoTarget.value.product_id) || null
-})
-
-const deviceInfoIsCase = computed(() => deviceInfoProduct.value?.product_type === 'case')
-
-const deviceInfoLocationDevices = computed(() => {
-  if (!deviceInfoTarget.value?.location_zone_id) return []
-  const sourceId = deviceInfoTarget.value.id
-  return store.devices.filter(item => item.location_zone_id === deviceInfoTarget.value.location_zone_id && item.id !== sourceId)
-})
-
-const deviceInfoContainedDevices = computed(() => {
-  if (!deviceInfoTarget.value?.id) return []
-  const caseId = deviceInfoTarget.value.id
-  return store.devices.filter(item => item.case_device_id === caseId)
-})
-
-const deviceInfoMaintenance = computed(() => {
-  if (!deviceInfoTarget.value?.id) return []
-  const targetId = Number(deviceInfoTarget.value.id)
-  return (store.maintenances || [])
-    .filter(item => Number(item.device_id) === targetId)
-    .slice()
-    .sort((a, b) => maintenanceSortTimestamp(a) - maintenanceSortTimestamp(b))
-})
-
-const deviceInfoNextMaintenance = computed(() => {
-  const currentUsageHours = Number(deviceInfoTarget.value?.usage_hours)
-  const hasUsageHours = Number.isFinite(currentUsageHours)
-  const rows = deviceInfoMaintenance.value
-    .filter(item => ['scheduled', 'in_progress'].includes(String(item.status || '').toLowerCase()))
-    .slice()
-    .sort((a, b) => compareUpcomingMaintenance(a, b, hasUsageHours ? currentUsageHours : null))
-  return rows.length ? rows[0] : null
-})
-
-const deviceInfoPreviousMaintenance = computed(() => {
-  const nextId = deviceInfoNextMaintenance.value?.id
-  return deviceInfoMaintenance.value
-    .filter(item => item.id !== nextId)
-    .slice()
-    .sort((a, b) => maintenanceSortTimestamp(b) - maintenanceSortTimestamp(a))
-    .slice(0, 12)
-})
-
-const productInfoDevices = computed(() => {
-  if (!productInfoTarget.value?.id) return []
-  return (store.devices || [])
-    .filter(item => item.product_id === productInfoTarget.value.id)
-    .slice()
-    .sort((a, b) => String(a.asset_tag || '').localeCompare(String(b.asset_tag || '')))
-})
-
-const productInfoAvailability = computed(() => {
-  const bucket = { available: 0, reserved: 0, in_use: 0, maintenance: 0 }
-  for (const row of productInfoDevices.value) {
-    const status = String(row.status || '').toLowerCase()
-    if (status === 'available') bucket.available += 1
-    else if (status === 'reserved') bucket.reserved += 1
-    else if (status === 'in_use') bucket.in_use += 1
-    else if (status === 'maintenance') bucket.maintenance += 1
-  }
-  return bucket
-})
-
-const productInfoJobs = computed(() => linkedJobsForProductId(productInfoTarget.value?.id))
 const rentalProductInfoJobs = computed(() => linkedJobsForProductId(rentalProductInfoTarget.value?.id))
-
-const deviceJobHistory = computed(() => {
-  const byJob = new Map()
-  for (const row of deviceInfoAudits.value || []) {
-    if (!row?.job_id) continue
-    const existing = byJob.get(row.job_id) || {
-      job_id: row.job_id,
-      job_code: row.job_code || null,
-      first_out_at: null,
-      last_in_at: null,
-      last_event_at: row.created_at,
-    }
-
-    if (!existing.job_code && row.job_code) existing.job_code = row.job_code
-    if (!existing.last_event_at || String(row.created_at) > String(existing.last_event_at)) {
-      existing.last_event_at = row.created_at
-    }
-    if (row.action === 'job_out') {
-      if (!existing.first_out_at || String(row.created_at) < String(existing.first_out_at)) {
-        existing.first_out_at = row.created_at
-      }
-    }
-    if (row.action === 'job_in') {
-      if (!existing.last_in_at || String(row.created_at) > String(existing.last_in_at)) {
-        existing.last_in_at = row.created_at
-      }
-    }
-    byJob.set(row.job_id, existing)
-  }
-  return [...byJob.values()].sort((a, b) => String(b.last_event_at || '').localeCompare(String(a.last_event_at || '')))
-})
 
 function formatDateTime(value) {
   if (!value) return ''
@@ -3391,65 +2314,6 @@ function formatMoney(value) {
       maximumFractionDigits: 2,
     }).format(amount)
   }
-}
-
-function maintenanceSortTimestamp(row) {
-  if (!row) return 0
-  const scheduledTs = row.scheduled_date ? new Date(`${row.scheduled_date}T00:00:00`).getTime() : Number.NaN
-  const completedTs = row.completed_date ? new Date(`${row.completed_date}T00:00:00`).getTime() : Number.NaN
-  const createdTs = row.created_at ? new Date(row.created_at).getTime() : 0
-  if (Number.isFinite(scheduledTs)) return scheduledTs
-  if (Number.isFinite(completedTs)) return completedTs
-  return Number.isFinite(createdTs) ? createdTs : 0
-}
-
-function maintenanceUpcomingPriority(row, currentUsageHours = null) {
-  const status = String(row?.status || '').toLowerCase()
-  const statusRank = status === 'in_progress' ? 0 : 1
-
-  const dueUsageHours = Number(row?.due_usage_hours)
-  if (row?.interval_mode === 'runtime' && Number.isFinite(dueUsageHours) && Number.isFinite(currentUsageHours)) {
-    const remainingHours = dueUsageHours - currentUsageHours
-    const dueRank = remainingHours <= 0 ? 0 : 1
-    return [statusRank, 0, dueRank, remainingHours]
-  }
-
-  const scheduledTs = row?.scheduled_date ? new Date(`${row.scheduled_date}T00:00:00`).getTime() : Number.NaN
-  if (Number.isFinite(scheduledTs)) {
-    const todayTs = new Date(new Date().toDateString()).getTime()
-    const dayDelta = Math.floor((scheduledTs - todayTs) / 86400000)
-    const dueRank = dayDelta <= 0 ? 0 : 1
-    return [statusRank, 1, dueRank, dayDelta]
-  }
-
-  return [statusRank, 2, 1, maintenanceSortTimestamp(row)]
-}
-
-function compareUpcomingMaintenance(a, b, currentUsageHours = null) {
-  const pa = maintenanceUpcomingPriority(a, currentUsageHours)
-  const pb = maintenanceUpcomingPriority(b, currentUsageHours)
-  for (let i = 0; i < pa.length; i += 1) {
-    if (pa[i] === pb[i]) continue
-    return pa[i] < pb[i] ? -1 : 1
-  }
-  return maintenanceSortTimestamp(a) - maintenanceSortTimestamp(b)
-}
-
-function maintenanceTimingLabel(row) {
-  if (!row) return 'No date set'
-  if (row.interval_mode === 'runtime' && row.due_usage_hours != null) {
-    const dueUsageHours = Number(row.due_usage_hours)
-    const currentUsageHours = Number(deviceInfoTarget.value?.usage_hours)
-    if (Number.isFinite(dueUsageHours) && Number.isFinite(currentUsageHours)) {
-      const remaining = Number((dueUsageHours - currentUsageHours).toFixed(1))
-      if (remaining <= 0) return `Runtime due now (${Math.abs(remaining)}h overdue)`
-      return `Runtime due in ${remaining}h (at ${dueUsageHours}h)`
-    }
-    return `Due at ${row.due_usage_hours} usage hours`
-  }
-  if (row.scheduled_date) return `Scheduled: ${row.scheduled_date}`
-  if (row.completed_date) return `Completed: ${row.completed_date}`
-  return 'No date set'
 }
 
 function linkedJobsForProductId(productId) {
@@ -3546,6 +2410,26 @@ function consumeReturnInfoContext() {
   }
 }
 
+async function openDeviceInfoFromLink(deviceId) {
+  const targetId = Number(deviceId || 0)
+  if (!targetId) return
+  const device = store.devices.find(item => item.id === targetId)
+  if (!device) {
+    try {
+      const { data } = await api.get(`/api/v1/inventory/devices/${targetId}`)
+      if (data) {
+        deviceInfoTarget.value = data
+        deviceInfoDialogOpen.value = true
+      }
+    } catch {
+      // ignore
+    }
+    return
+  }
+  deviceInfoTarget.value = device
+  deviceInfoDialogOpen.value = true
+}
+
 async function openJobFromLink(jobId) {
   const targetId = Number(jobId || 0)
   if (!targetId) return
@@ -3563,7 +2447,10 @@ async function restorePendingInfoDialog() {
 
   if (pending.type === 'device') {
     const device = store.devices.find(item => item.id === pending.id)
-    if (device) await openDeviceInfo(device)
+    if (device) {
+      deviceInfoTarget.value = device
+      deviceInfoDialogOpen.value = true
+    }
     return
   }
   if (pending.type === 'product') {
@@ -3612,25 +2499,6 @@ function openDeviceEditorFromLink(deviceId) {
   productInfoDialogOpen.value = false
   rentalProductInfoDialogOpen.value = false
   openEditDevice(device)
-}
-
-async function openDeviceInfoFromLink(deviceId) {
-  const targetId = Number(deviceId || 0)
-  if (!targetId) return
-  const device = store.devices.find(item => item.id === targetId)
-  if (!device) return
-  await openDeviceInfo(device)
-}
-
-async function openDeviceInfo(device) {
-  deviceInfoTarget.value = device
-  deviceInfoAudits.value = []
-  deviceInfoDialogOpen.value = true
-  try {
-    deviceInfoAudits.value = await store.fetchDeviceAuditLogs(device.id, 300)
-  } catch (error) {
-    $q.notify({ type: 'negative', message: error?.response?.data?.detail || 'Failed to load device history' })
-  }
 }
 
 const filteredMaintenance = computed(() => {
@@ -3700,8 +2568,6 @@ function treeToNodes(nodes, prefix = '') {
 const categoryTreeNodes = computed(() => treeToNodes(store.categoryTree))
 const locationTreeNodes = computed(() => treeToNodes(store.zoneTree))
 
-const categorySelectOptions = ref([])
-
 const allCategorySelectOptions = computed(() => {
   const flat = []
   const walk = (nodes, prefix = '') => {
@@ -3727,33 +2593,6 @@ const locationSelectOptions = computed(() => {
   walk(store.zoneTree)
   return flat
 })
-
-const caseDeviceOptions = computed(() => {
-  return store.devices
-    .filter(device => {
-      const product = store.products.find(item => item.id === device.product_id)
-      return product?.product_type === 'case'
-    })
-    .map(device => ({
-      label: `${device.asset_tag} (${store.products.find(item => item.id === device.product_id)?.name || 'Case'})`,
-      value: device.id,
-    }))
-})
-
-watch(allCategorySelectOptions, (options) => {
-  categorySelectOptions.value = options
-}, { immediate: true })
-
-function filterCategoryOptions(val, update) {
-  update(() => {
-    const needle = val.trim().toLowerCase()
-    if (!needle) {
-      categorySelectOptions.value = allCategorySelectOptions.value
-      return
-    }
-    categorySelectOptions.value = allCategorySelectOptions.value.filter(option => option.label.toLowerCase().includes(needle))
-  })
-}
 
 const parentCategoryOptions = computed(() => [{ label: 'Root', value: null }, ...allCategorySelectOptions.value])
 const parentLocationOptions = computed(() => locationSelectOptions.value)
@@ -3783,12 +2622,33 @@ async function applyFocusFromQuery() {
 
   if (focusProductId > 0) {
     tab.value = 'products'
-    const product = store.products.find(item => item.id === focusProductId)
-    if (product) openEditProduct(product)
+    let product = store.products.find(item => item.id === focusProductId)
+    if (!product) {
+      try {
+        const { data } = await api.get(`/api/v1/inventory/products/${focusProductId}`)
+        product = data
+      } catch {
+        product = null
+      }
+    }
+    if (product) openProductInfo(product)
   } else if (focusDeviceId > 0) {
     tab.value = 'devices'
     const device = store.devices.find(item => item.id === focusDeviceId)
-    if (device) openEditDevice(device)
+    if (device) {
+      deviceInfoTarget.value = device
+      deviceInfoDialogOpen.value = true
+    } else {
+      try {
+        const { data } = await api.get(`/api/v1/inventory/devices/${focusDeviceId}`)
+        if (data) {
+          deviceInfoTarget.value = data
+          deviceInfoDialogOpen.value = true
+        }
+      } catch {
+        // ignore
+      }
+    }
   } else if (focusLocationId > 0) {
     tab.value = 'locations'
     const zone = store.zones.find(item => item.id === focusLocationId)
@@ -3814,7 +2674,8 @@ async function applyReturnInfoFromQuery() {
     const device = store.devices.find(item => item.id === returnId)
     if (device) {
       tab.value = 'devices'
-      await openDeviceInfo(device)
+      deviceInfoTarget.value = device
+      deviceInfoDialogOpen.value = true
     }
   } else if (returnType === 'product') {
     const product = store.products.find(item => item.id === returnId)
@@ -3844,7 +2705,8 @@ async function applyReturnInfoFromStorage() {
     const device = store.devices.find(item => item.id === pending.id)
     if (device) {
       tab.value = 'devices'
-      await openDeviceInfo(device)
+      deviceInfoTarget.value = device
+      deviceInfoDialogOpen.value = true
     }
     return
   }
@@ -3868,9 +2730,7 @@ async function applyReturnInfoFromStorage() {
 }
 
 onMounted(async () => {
-  loadPrefixMemory()
   await loadAll()
-  applySkuPrefixForType('equipment')
   await applyFocusFromQuery()
   await applyReturnInfoFromQuery()
   await applyReturnInfoFromStorage()
@@ -3915,164 +2775,6 @@ async function prefillCategories() {
   }
 }
 
-const productDialogOpen = ref(false)
-const productEditing = ref(null)
-const productDialogError = ref('')
-const productFormRef = ref(null)
-const accessoriesExpanded = ref(true)
-const newAccessoryProductId = ref(null)
-const newAccessoryQty = ref(1)
-const newAccessoryRequired = ref(false)
-const emptyProductForm = () => ({
-  sku: '',
-  name: '',
-  category_id: null,
-  brand: settingsStore.defaultBrand || '',
-  manufacturer: settingsStore.defaultManufacturer || '',
-  brand_url: '',
-  manufacturer_url: '',
-  product_type: 'equipment',
-  accessories: [],
-  weight_kg: null, height_cm: null, width_cm: null, depth_cm: null,
-  maintenance_interval_days: null, power_consumption_watts: null, daily_rate: 0, replace_cost: 0,
-})
-const productForm = ref(emptyProductForm())
-
-async function openCreateProduct() {
-  productEditing.value = null
-  productForm.value = emptyProductForm()
-
-  applySkuPrefixForType(productForm.value.product_type)
-
-  productDialogError.value = ''
-  accessoriesExpanded.value = !isPhone.value
-  newAccessoryProductId.value = null
-  newAccessoryQty.value = 1
-  newAccessoryRequired.value = false
-
-  await generateProductSku()
-
-  productDialogOpen.value = true
-}
-
-async function generateProductSku(force = false) {
-  if (!force && productForm.value.sku) {
-    return
-  }
-
-  generatingProductSku.value = true
-
-  try {
-    rememberSkuPrefixForType(
-      productForm.value.product_type,
-      productSkuPrefix.value
-    )
-
-    const sku = await store.generateProductSku(productSkuPrefix.value)
-
-    if (sku) {
-      productForm.value.sku = sku
-    }
-  } finally {
-    generatingProductSku.value = false
-  }
-}
-
-function openEditProduct(product) {
-  const brand = product.brand ?? ''
-  const manufacturer = product.manufacturer ?? ''
-  productEditing.value = product
-  productForm.value = {
-    sku: product.sku ?? '',
-    name: product.name ?? '',
-    category_id: product.category_id ?? null,
-    brand,
-    manufacturer,
-    brand_url: brand ? (brandLinks.value[brand] || '') : '',
-    manufacturer_url: manufacturer ? (manufacturerLinks.value[manufacturer] || '') : '',
-    product_type: product.product_type ?? 'equipment',
-    accessories: Array.isArray(product.accessories)
-      ? product.accessories.map(item => ({
-          accessory_product_id: item.accessory_product_id,
-          quantity: Number(item.quantity || 1),
-          required: !!item.required,
-        }))
-      : [],
-    weight_kg: product.weight_kg ?? null,
-    height_cm: product.height_cm ?? null,
-    width_cm: product.width_cm ?? null,
-    depth_cm: product.depth_cm ?? null,
-    maintenance_interval_days: product.maintenance_interval_days ?? null,
-    power_consumption_watts: product.power_consumption_watts ?? null,
-    daily_rate: product.daily_rate ?? 0,
-    replace_cost: product.replace_cost ?? 0,
-  }
-  applySkuPrefixForType(productForm.value.product_type)
-  productDialogError.value = ''
-  accessoriesExpanded.value = !isPhone.value
-  newAccessoryProductId.value = null
-  newAccessoryQty.value = 1
-  newAccessoryRequired.value = false
-  productDialogOpen.value = true
-}
-
-function productNameById(productId) {
-  const item = store.products.find(row => row.id === productId)
-  if (!item) return `Product #${productId}`
-  return `${item.sku} - ${item.name}`
-}
-
-const productLinkedDevices = computed(() => {
-  if (!productEditing.value?.id) return []
-  return (store.devices || [])
-    .filter(row => row.product_id === productEditing.value.id)
-    .slice()
-    .sort((a, b) => String(a.asset_tag || '').localeCompare(String(b.asset_tag || '')))
-})
-
-const productLinkedAvailability = computed(() => {
-  const bucket = { available: 0, reserved: 0, in_use: 0, maintenance: 0 }
-  for (const row of productLinkedDevices.value) {
-    const status = String(row.status || '').toLowerCase()
-    if (status === 'available') bucket.available += 1
-    else if (status === 'reserved') bucket.reserved += 1
-    else if (status === 'in_use') bucket.in_use += 1
-    else if (status === 'maintenance') bucket.maintenance += 1
-  }
-  return bucket
-})
-
-function addAccessoryRow() {
-  const accessoryId = Number(newAccessoryProductId.value || 0)
-  if (!accessoryId) return
-
-  const quantity = Math.max(Number(newAccessoryQty.value || 1), 1)
-  const existing = (productForm.value.accessories || []).find(item => item.accessory_product_id === accessoryId)
-  if (existing) {
-    existing.quantity = quantity
-    existing.required = !!newAccessoryRequired.value
-  } else {
-    productForm.value.accessories = [
-      ...(productForm.value.accessories || []),
-      {
-        accessory_product_id: accessoryId,
-        quantity,
-        required: !!newAccessoryRequired.value,
-      },
-    ]
-  }
-
-  newAccessoryProductId.value = null
-  newAccessoryQty.value = 1
-  newAccessoryRequired.value = false
-}
-
-function removeAccessoryRow(accessoryProductId) {
-  productForm.value.accessories = (productForm.value.accessories || []).filter(
-    item => item.accessory_product_id !== accessoryProductId
-  )
-}
-
 function getBrandLink(brand) {
   if (!brand) return ''
   return brandLinks.value[brand] || ''
@@ -4083,575 +2785,59 @@ function getManufacturerLink(manufacturer) {
   return manufacturerLinks.value[manufacturer] || ''
 }
 
-function onNewBrandValue(value, done) {
-  const normalized = String(value || '').trim()
-  done(normalized, 'add-unique')
-  onBrandChanged(normalized)
+const productDialogOpen = ref(false)
+const productEditing = ref(null)
+
+function openCreateProduct() {
+  productEditing.value = null
+  productDialogOpen.value = true
 }
 
-function onNewManufacturerValue(value, done) {
-  const normalized = String(value || '').trim()
-  done(normalized, 'add-unique')
-  onManufacturerChanged(normalized)
+function openEditProduct(product) {
+  productEditing.value = product
+  productDialogOpen.value = true
 }
 
-function onBrandChanged(value) {
-  const brand = String(value || '').trim()
-  productForm.value.brand = brand
-  productForm.value.brand_url = brand ? (brandLinks.value[brand] || '') : ''
-  if (brand && brandManufacturerMap.value[brand]) {
-    productForm.value.manufacturer = brandManufacturerMap.value[brand]
-    onManufacturerChanged(brandManufacturerMap.value[brand])
+function onProductDialogSaved() {
+  restorePendingInfoDialog()
+}
+
+watch(productDialogOpen, (open) => {
+  if (!open) {
+    restorePendingInfoDialog()
   }
-}
-
-function onManufacturerChanged(value) {
-  const manufacturer = String(value || '').trim()
-  productForm.value.manufacturer = manufacturer
-  productForm.value.manufacturer_url = manufacturer ? (manufacturerLinks.value[manufacturer] || '') : ''
-}
-
-function normalizeOptionalUrl(value) {
-  const url = String(value || '').trim()
-  return url || null
-}
-
-async function persistInlineProductDefaults() {
-  const nextBrandOptions = [...settingsStore.brandOptions]
-  const nextManufacturerOptions = [...settingsStore.manufacturerOptions]
-  const nextBrandMap = { ...(settingsStore.brandManufacturerMap || {}) }
-  const nextBrandLinks = { ...(settingsStore.brandLinks || {}) }
-  const nextManufacturerLinks = { ...(settingsStore.manufacturerLinks || {}) }
-
-  const brand = String(productForm.value.brand || '').trim()
-  const manufacturer = String(productForm.value.manufacturer || '').trim()
-  const brandUrl = normalizeOptionalUrl(productForm.value.brand_url)
-  const manufacturerUrl = normalizeOptionalUrl(productForm.value.manufacturer_url)
-
-  if (brand && !nextBrandOptions.includes(brand)) nextBrandOptions.push(brand)
-  if (manufacturer && !nextManufacturerOptions.includes(manufacturer)) nextManufacturerOptions.push(manufacturer)
-
-  if (brand && manufacturer) {
-    nextBrandMap[brand] = manufacturer
-  }
-
-  if (brand && brandUrl) nextBrandLinks[brand] = brandUrl
-  if (brand && !brandUrl && nextBrandLinks[brand]) delete nextBrandLinks[brand]
-
-  if (manufacturer && manufacturerUrl) nextManufacturerLinks[manufacturer] = manufacturerUrl
-  if (manufacturer && !manufacturerUrl && nextManufacturerLinks[manufacturer]) delete nextManufacturerLinks[manufacturer]
-
-  await settingsStore.updateProductDefaults({
-    brand_options: nextBrandOptions,
-    manufacturer_options: nextManufacturerOptions,
-    default_brand: settingsStore.defaultBrand,
-    default_manufacturer: settingsStore.defaultManufacturer,
-    brand_manufacturer_map: nextBrandMap,
-    brand_links: nextBrandLinks,
-    manufacturer_links: nextManufacturerLinks,
-  })
-}
-
-async function saveProduct() {
-  const valid = await productFormRef.value?.validate()
-  if (!valid) return
-
-  saving.value = true
-  productDialogError.value = ''
-  try {
-    await persistInlineProductDefaults()
-
-    const payload = {
-      sku: productForm.value.sku.trim(),
-      name: productForm.value.name.trim(),
-      category_id: productForm.value.category_id,
-      brand: productForm.value.brand || null,
-      manufacturer: productForm.value.manufacturer || null,
-      product_type: productForm.value.product_type,
-      weight_kg: productForm.value.weight_kg,
-      height_cm: productForm.value.height_cm,
-      width_cm: productForm.value.width_cm,
-      depth_cm: productForm.value.depth_cm,
-      maintenance_interval_days: productForm.value.maintenance_interval_days,
-      power_consumption_watts: productForm.value.power_consumption_watts,
-      daily_rate: Number(productForm.value.daily_rate || 0),
-      replace_cost: Number(productForm.value.replace_cost || 0),
-    }
-
-    if (productEditing.value) {
-      await store.updateProduct(productEditing.value.id, payload)
-      await store.updateProductAccessories(productEditing.value.id, productForm.value.accessories || [])
-      $q.notify({ type: 'positive', message: 'Product updated' })
-    } else {
-      const created = await store.createProduct(payload)
-      await store.updateProductAccessories(created.id, productForm.value.accessories || [])
-      $q.notify({ type: 'positive', message: 'Product created' })
-    }
-    productDialogOpen.value = false
-    await restorePendingInfoDialog()
-  } catch (error) {
-    productDialogError.value = error?.response?.data?.detail || 'Failed to save product'
-  } finally {
-    saving.value = false
-  }
-}
-
-async function closeProductDialog() {
-  productDialogOpen.value = false
-  await restorePendingInfoDialog()
-}
+})
 
 const deviceDialogOpen = ref(false)
 const deviceEditing = ref(null)
-const deviceDialogError = ref('')
-const deviceFormRef = ref(null)
-const deviceAssetTagInputRef = ref(null)
-const deviceSerialInputRef = ref(null)
-const deviceBarcodeInputRef = ref(null)
-const deviceQrCodeInputRef = ref(null)
-const deviceRfidInputRef = ref(null)
-const locationBarcodeInputRef = ref(null)
-const locationQrCodeInputRef = ref(null)
-const locationRfidInputRef = ref(null)
-const deviceCaptureVideoRef = ref(null)
-const deviceFieldCaptureInputRef = ref(null)
-const warrantyManuallyEdited = ref(false)
-const deviceFieldCaptureDialogOpen = ref(false)
-const deviceFieldCaptureEntity = ref('device')
-const deviceFieldCaptureTarget = ref('')
-const deviceFieldCaptureLabel = ref('')
-const deviceFieldCaptureValue = ref('')
-const deviceFieldCaptureError = ref('')
-const deviceFieldCaptureMode = ref('keyboard')
-const deviceFieldCaptureCameraActive = ref(false)
-const deviceFieldCaptureNfcActive = ref(false)
-const deviceFieldCaptureStream = ref(null)
-const deviceFieldCaptureRaf = ref(null)
-const deviceFieldCaptureNfcController = ref(null)
-const deviceCaptureSupportsCamera = computed(() => {
-  if (typeof window === 'undefined') return false
-  return typeof window.BarcodeDetector === 'function' && !!navigator.mediaDevices?.getUserMedia
-})
-const deviceCaptureSupportsNfc = computed(() => {
-  if (typeof window === 'undefined') return false
-  return !!window.isSecureContext && typeof window.NDEFReader === 'function'
-})
-const deviceFieldCaptureModeButtons = computed(() => {
-  const buttons = [{ label: 'Keyboard', value: 'keyboard', icon: 'keyboard' }]
-  if (deviceCaptureSupportsCamera.value) buttons.push({ label: 'Camera', value: 'camera', icon: 'photo_camera' })
-  if (deviceCaptureSupportsNfc.value) buttons.push({ label: 'NFC', value: 'nfc', icon: 'nfc' })
-  return buttons
-})
-const emptyDeviceForm = () => ({
-  product_id: null, asset_tag: '', serial_number: '', barcode: '', qr_code: '', rfid: '',
-  location_zone_id: null, case_device_id: null, status: 'available', condition: 'good',
-  purchase_date: '', purchase_price: null, purchased_from: '', sold_price: null, finance_upto: '', finance_company: '', finance_ref: '', pre_prep: '', warranty_end_date: '', retire_date: '', usage_hours: null, notes: '',
-})
-const deviceForm = ref(emptyDeviceForm())
+
+function onDeviceDialogSaved() {
+  restorePendingInfoDialog()
+}
 
 function openCreateDevice() {
   deviceEditing.value = null
-  deviceForm.value = emptyDeviceForm()
-  applyAssetPrefixForType('')
-  warrantyManuallyEdited.value = false
-  deviceDialogError.value = ''
-  pendingInfoReturn.value = null
   deviceDialogOpen.value = true
-}
-
-async function closeDeviceDialog() {
-  deviceDialogOpen.value = false
-  await restorePendingInfoDialog()
-}
-
-async function generateDeviceAssetTag() {
-  generatingDeviceAssetTag.value = true
-  try {
-    const productType = getProductTypeForDeviceProductId(deviceForm.value.product_id)
-    if (deviceAssetTagPrefix.value) {
-      rememberAssetPrefixForType(productType, deviceAssetTagPrefix.value)
-    }
-    const assetTag = await store.generateDeviceAssetTag({
-      productId: deviceForm.value.product_id || null,
-      prefix: deviceAssetTagPrefix.value || null,
-    })
-    if (assetTag) {
-      deviceForm.value.asset_tag = assetTag
-      const inferredPrefix = String(assetTag).replace(/-\d+$/, '')
-      rememberAssetPrefixForType(productType, inferredPrefix)
-      if (!deviceAssetTagPrefix.value) {
-        deviceAssetTagPrefix.value = inferredPrefix
-      }
-    }
-  } catch (error) {
-    $q.notify({ type: 'negative', message: error?.response?.data?.detail || 'Failed to generate asset tag' })
-  } finally {
-    generatingDeviceAssetTag.value = false
-  }
-}
-
-function focusDeviceField(field) {
-  const fieldRefMap = deviceFieldCaptureEntity.value === 'location'
-    ? {
-        barcode: locationBarcodeInputRef,
-        qr_code: locationQrCodeInputRef,
-        rfid: locationRfidInputRef,
-      }
-    : {
-        asset_tag: deviceAssetTagInputRef,
-        serial_number: deviceSerialInputRef,
-        barcode: deviceBarcodeInputRef,
-        qr_code: deviceQrCodeInputRef,
-        rfid: deviceRfidInputRef,
-      }
-  fieldRefMap[field]?.value?.focus?.()
-}
-
-function setCapturedDeviceFieldValue(field, value) {
-  if (!field) return
-  const targetForm = deviceFieldCaptureEntity.value === 'location' ? locationForm.value : deviceForm.value
-  if (!Object.prototype.hasOwnProperty.call(targetForm, field)) return
-  const normalized = String(value || '').trim()
-  if (!normalized) return
-  targetForm[field] = normalized
-  $q.notify({ type: 'positive', message: `${deviceFieldCaptureLabel.value || 'Field'} captured` })
-}
-
-function openDeviceFieldCapture(field, label) {
-  deviceFieldCaptureEntity.value = 'device'
-  deviceFieldCaptureTarget.value = field
-  deviceFieldCaptureLabel.value = label
-  deviceFieldCaptureValue.value = ''
-  deviceFieldCaptureError.value = ''
-  deviceFieldCaptureMode.value = 'keyboard'
-  deviceFieldCaptureDialogOpen.value = true
-}
-
-function openLocationFieldCapture(field, label) {
-  deviceFieldCaptureEntity.value = 'location'
-  deviceFieldCaptureTarget.value = field
-  deviceFieldCaptureLabel.value = label
-  deviceFieldCaptureValue.value = ''
-  deviceFieldCaptureError.value = ''
-  deviceFieldCaptureMode.value = 'keyboard'
-  deviceFieldCaptureDialogOpen.value = true
-}
-
-function focusCaptureInput() {
-  if (!deviceFieldCaptureDialogOpen.value) return
-  if (deviceFieldCaptureMode.value !== 'keyboard') return
-  nextTick(() => {
-    deviceFieldCaptureInputRef.value?.focus?.()
-  })
-}
-
-function applyDeviceFieldCaptureValue() {
-  setCapturedDeviceFieldValue(deviceFieldCaptureTarget.value, deviceFieldCaptureValue.value)
-  if (!deviceFieldCaptureValue.value) return
-  deviceFieldCaptureDialogOpen.value = false
-}
-
-function focusDeviceCaptureTargetField() {
-  focusDeviceField(deviceFieldCaptureTarget.value)
-  $q.notify({ type: 'info', message: `Target ${deviceFieldCaptureLabel.value} focused for keyboard scanner input` })
-}
-
-function stopDeviceFieldCapture() {
-  if (deviceFieldCaptureRaf.value) {
-    cancelAnimationFrame(deviceFieldCaptureRaf.value)
-    deviceFieldCaptureRaf.value = null
-  }
-  if (deviceFieldCaptureNfcController.value) {
-    deviceFieldCaptureNfcController.value.abort()
-    deviceFieldCaptureNfcController.value = null
-  }
-  if (deviceFieldCaptureStream.value) {
-    for (const track of deviceFieldCaptureStream.value.getTracks()) {
-      track.stop()
-    }
-    deviceFieldCaptureStream.value = null
-  }
-  if (deviceCaptureVideoRef.value) {
-    deviceCaptureVideoRef.value.srcObject = null
-  }
-  deviceFieldCaptureCameraActive.value = false
-  deviceFieldCaptureNfcActive.value = false
-}
-
-async function startDeviceCameraCapture() {
-  deviceFieldCaptureError.value = ''
-  if (!deviceCaptureSupportsCamera.value) {
-    deviceFieldCaptureError.value = 'Camera barcode scanning is not supported by this browser.'
-    return
-  }
-  if (!navigator.mediaDevices?.getUserMedia) {
-    deviceFieldCaptureError.value = 'Camera access is not available in this browser.'
-    return
-  }
-
-  stopDeviceFieldCapture()
-  try {
-    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } } })
-    deviceFieldCaptureStream.value = stream
-    deviceFieldCaptureCameraActive.value = true
-    await nextTick()
-
-    const videoEl = deviceCaptureVideoRef.value
-    if (!videoEl) {
-      deviceFieldCaptureError.value = 'Camera preview is unavailable.'
-      return
-    }
-    videoEl.srcObject = stream
-    await videoEl.play()
-
-    const detector = new window.BarcodeDetector({
-      formats: ['qr_code', 'code_128', 'code_39', 'ean_13', 'ean_8', 'upc_a', 'upc_e'],
-    })
-
-    const detectLoop = async () => {
-      if (!deviceFieldCaptureDialogOpen.value || !deviceFieldCaptureCameraActive.value) return
-      try {
-        const codes = await detector.detect(videoEl)
-        const first = Array.isArray(codes) && codes.length ? codes[0] : null
-        const value = String(first?.rawValue || '').trim()
-        if (value) {
-          setCapturedDeviceFieldValue(deviceFieldCaptureTarget.value, value)
-          deviceFieldCaptureDialogOpen.value = false
-          stopDeviceFieldCapture()
-          return
-        }
-      } catch {
-        // Continue scanning until a value is found or the dialog closes.
-      }
-      deviceFieldCaptureRaf.value = requestAnimationFrame(detectLoop)
-    }
-
-    deviceFieldCaptureRaf.value = requestAnimationFrame(detectLoop)
-  } catch (error) {
-    deviceFieldCaptureError.value = error?.message || 'Unable to start camera scanning.'
-    stopDeviceFieldCapture()
-  }
-}
-
-function parseNfcRecordValue(record) {
-  try {
-    if (!record?.data) return ''
-    const decoder = new TextDecoder(record.encoding || 'utf-8')
-    const decoded = decoder.decode(record.data).trim()
-    return decoded
-  } catch {
-    return ''
-  }
-}
-
-async function startDeviceNfcCapture() {
-  deviceFieldCaptureError.value = ''
-  if (!deviceCaptureSupportsNfc.value) {
-    deviceFieldCaptureError.value = 'Web NFC is not supported by this browser/device.'
-    return
-  }
-
-  stopDeviceFieldCapture()
-  try {
-    const ndef = new window.NDEFReader()
-    const controller = new AbortController()
-    deviceFieldCaptureNfcController.value = controller
-    await ndef.scan({ signal: controller.signal })
-    deviceFieldCaptureNfcActive.value = true
-    $q.notify({ type: 'info', message: 'NFC scan started. Hold a tag near your device.' })
-
-    ndef.onreadingerror = () => {
-      deviceFieldCaptureError.value = 'NFC tag detected but data could not be read.'
-    }
-
-    ndef.onreading = (event) => {
-      const records = event?.message?.records || []
-      for (const record of records) {
-        const value = parseNfcRecordValue(record)
-        if (value) {
-          setCapturedDeviceFieldValue(deviceFieldCaptureTarget.value, value)
-          deviceFieldCaptureDialogOpen.value = false
-          stopDeviceFieldCapture()
-          return
-        }
-      }
-      deviceFieldCaptureError.value = 'NFC tag read but no usable text payload was found.'
-    }
-  } catch (error) {
-    deviceFieldCaptureError.value = error?.message || 'Unable to start NFC scanning.'
-    stopDeviceFieldCapture()
-  }
-}
-
-watch(deviceFieldCaptureMode, (mode) => {
-  if (!deviceFieldCaptureDialogOpen.value) return
-  if (mode === 'keyboard') {
-    stopDeviceFieldCapture()
-    focusCaptureInput()
-    return
-  }
-  if (mode === 'camera') {
-    void startDeviceCameraCapture()
-    return
-  }
-  if (mode === 'nfc') {
-    void startDeviceNfcCapture()
-  }
-})
-
-watch(deviceFieldCaptureDialogOpen, (open) => {
-  if (open) {
-    focusCaptureInput()
-    return
-  }
-  stopDeviceFieldCapture()
-})
-
-function onNewBulkBrandValue(value, done) {
-  const normalized = String(value || '').trim()
-  done(normalized, 'add-unique')
-  onBulkBrandChanged(normalized)
-}
-
-function onNewBulkManufacturerValue(value, done) {
-  const normalized = String(value || '').trim()
-  done(normalized, 'add-unique')
-  onBulkManufacturerChanged(normalized)
-}
-
-function onBulkBrandChanged(value) {
-  const brand = String(value || '').trim()
-  bulkProductForm.value.brand = brand
-  if (brand && brandManufacturerMap.value[brand]) {
-    onBulkManufacturerChanged(brandManufacturerMap.value[brand])
-  }
-}
-
-function onBulkManufacturerChanged(value) {
-  bulkProductForm.value.manufacturer = String(value || '').trim()
 }
 
 function openEditDevice(device) {
   deviceEditing.value = device
-  deviceForm.value = {
-    product_id: device.product_id ?? null,
-    asset_tag: device.asset_tag ?? '',
-    serial_number: device.serial_number ?? '',
-    barcode: device.barcode ?? '',
-    qr_code: device.qr_code ?? '',
-    rfid: device.rfid ?? '',
-    location_zone_id: device.location_zone_id ?? null,
-    case_device_id: device.case_device_id ?? null,
-    status: device.status ?? 'available',
-    condition: device.condition ?? 'good',
-    purchase_date: device.purchase_date || '',
-    purchase_price: device.purchase_price ?? null,
-    purchased_from: device.purchased_from ?? '',
-    sold_price: device.sold_price ?? null,
-    finance_upto: device.finance_upto ?? '',
-    finance_company: device.finance_company ?? '',
-    finance_ref: device.finance_ref ?? '',
-    pre_prep: device.pre_prep ?? '',
-    warranty_end_date: device.warranty_end_date || '',
-    retire_date: device.retire_date || '',
-    usage_hours: device.usage_hours ?? null,
-    notes: device.notes ?? '',
-  }
-  applyAssetPrefixForType(getProductTypeForDeviceProductId(device.product_id))
-  warrantyManuallyEdited.value = true
-  deviceDialogError.value = ''
   deviceDialogOpen.value = true
-}
-
-watch(() => productForm.value.product_type, (nextType) => {
-  if (!productDialogOpen.value) return
-  applySkuPrefixForType(nextType)
-})
-
-watch(() => deviceForm.value.product_id, (nextProductId) => {
-  if (!deviceDialogOpen.value) return
-  applyAssetPrefixForType(getProductTypeForDeviceProductId(nextProductId))
-})
-
-// Auto-generate `code` from `name` for location dialog when enabled
-// (moved below where `locationForm` is declared to avoid initialization order error)
-
-function addYearsToDateString(dateString, yearsToAdd) {
-  if (!dateString) return ''
-  const dateObj = new Date(`${dateString}T00:00:00`)
-  if (Number.isNaN(dateObj.getTime())) return ''
-  dateObj.setFullYear(dateObj.getFullYear() + yearsToAdd)
-  return dateObj.toISOString().slice(0, 10)
-}
-
-function onPurchaseDateChanged(value) {
-  const purchaseDate = String(value || '').trim()
-  if (!purchaseDate) return
-  if (warrantyManuallyEdited.value && deviceForm.value.warranty_end_date) return
-  const prefetchedWarrantyDate = addYearsToDateString(purchaseDate, 3)
-  if (prefetchedWarrantyDate) {
-    deviceForm.value.warranty_end_date = prefetchedWarrantyDate
-  }
-}
-
-function onWarrantyEndDateChanged() {
-  warrantyManuallyEdited.value = true
 }
 
 function normalizeOptionalDate(value) {
   return value ? value : null
 }
 
-async function saveDevice() {
-  const valid = await deviceFormRef.value?.validate()
-  if (!valid) return
-
-  saving.value = true
-  deviceDialogError.value = ''
-  try {
-    const payload = {
-      product_id: deviceForm.value.product_id,
-      asset_tag: deviceForm.value.asset_tag.trim(),
-      serial_number: deviceForm.value.serial_number || null,
-      barcode: deviceForm.value.barcode || null,
-      qr_code: deviceForm.value.qr_code || null,
-      rfid: deviceForm.value.rfid || null,
-      location_zone_id: deviceForm.value.location_zone_id,
-      case_device_id: deviceForm.value.case_device_id,
-      status: deviceForm.value.status,
-      condition: deviceForm.value.condition,
-      purchase_date: normalizeOptionalDate(deviceForm.value.purchase_date),
-      purchase_price: deviceForm.value.purchase_price === '' || deviceForm.value.purchase_price === null || deviceForm.value.purchase_price === undefined ? null : Number(deviceForm.value.purchase_price),
-      purchased_from: deviceForm.value.purchased_from || null,
-      sold_price: deviceForm.value.sold_price === '' || deviceForm.value.sold_price === null || deviceForm.value.sold_price === undefined ? null : Number(deviceForm.value.sold_price),
-      finance_upto: deviceForm.value.finance_upto || null,
-      finance_company: deviceForm.value.finance_company || null,
-      finance_ref: deviceForm.value.finance_ref || null,
-      pre_prep: deviceForm.value.pre_prep || null,
-      warranty_end_date: normalizeOptionalDate(deviceForm.value.warranty_end_date),
-      retire_date: normalizeOptionalDate(deviceForm.value.retire_date),
-      usage_hours: deviceForm.value.usage_hours,
-      notes: deviceForm.value.notes || null,
-    }
-
-    if (deviceEditing.value) {
-      await store.updateDevice(deviceEditing.value.id, payload)
-      $q.notify({ type: 'positive', message: 'Device updated' })
-    } else {
-      await store.createDevice(payload)
-      $q.notify({ type: 'positive', message: 'Device created' })
-    }
-    deviceDialogOpen.value = false
-    await restorePendingInfoDialog()
-  } catch (error) {
-    deviceDialogError.value = error?.response?.data?.detail || 'Failed to save device'
-  } finally {
-    saving.value = false
-  }
-}
-
 function deviceStatusColor(status) {
   return DEVICE_STATUSES.find(item => item.value === status)?.color || 'grey'
+}
+
+function conditionColor(condition) {
+  if (condition === 'damaged') return 'negative'
+  if (condition === 'fair') return 'warning'
+  if (condition === 'good') return 'positive'
+  return 'grey-7'
 }
 
 function maintenanceStatusColor(status) {
@@ -6190,5 +4376,22 @@ async function onLocationDropToRoot() {
   background: rgba(74, 122, 104, 0.24);
   color: #cfe7dd !important;
   box-shadow: 0 0 0 1px rgba(129, 186, 165, 0.22) inset;
+}
+
+.comment-bubble {
+  background: #f5f5f5;
+  border-radius: 6px;
+  padding: 6px 10px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-size: 0.85rem;
+  line-height: 1.4;
+}
+
+</style>
+
+<style lang="scss">
+body.body--dark .comment-bubble {
+  background: #333;
 }
 </style>

@@ -778,6 +778,14 @@ def list_products(db: Session = Depends(get_db)) -> list[ProductRead]:
     return [_to_product_read(db, product) for product in products]
 
 
+@router.get("/products/{product_id}", response_model=ProductRead)
+def get_product(product_id: int, db: Session = Depends(get_db)) -> ProductRead:
+    product = db.get(Product, product_id)
+    if product is None:
+        raise HTTPException(status_code=404, detail="Product not found")
+    return _to_product_read(db, product)
+
+
 @router.get("/products/generate-sku")
 def generate_product_sku(db: Session = Depends(get_db), prefix: str = "PRD-") -> dict[str, str]:
     cleaned_prefix = (prefix or "PRD-").strip()
@@ -1063,6 +1071,14 @@ def create_devices_for_product(
 def list_devices(db: Session = Depends(get_db)) -> list[DeviceRead]:
     rows = list(db.scalars(select(Device).order_by(Device.id)).all())
     return [_to_device_read(db, row) for row in rows]
+
+
+@router.get("/devices/{device_id}", response_model=DeviceRead)
+def get_device(device_id: int, db: Session = Depends(get_db)) -> DeviceRead:
+    device = db.get(Device, device_id)
+    if device is None:
+        raise HTTPException(status_code=404, detail="Device not found")
+    return _to_device_read(db, device)
 
 
 @router.get("/devices/generate-asset-tag")
@@ -1670,6 +1686,7 @@ def create_defect_report(
         created_by_user_id=current_user.id,
     )
     db.add(report)
+    _update_device_on_defect_change(db, data["device_id"])
     db.commit()
     db.refresh(report)
     emit_realtime_event("inventory.updated", {"entity": "defect_report", "action": "create", "id": report.id})
@@ -1712,6 +1729,7 @@ def update_defect_report(
     )
     for key, value in updates.items():
         setattr(report, key, value)
+    _update_device_on_defect_change(db, report.device_id)
     db.commit()
     db.refresh(report)
     emit_realtime_event("inventory.updated", {"entity": "defect_report", "action": "update", "id": report.id})
@@ -1727,7 +1745,9 @@ def delete_defect_report(
     report = db.get(DefectReport, report_id)
     if report is None:
         raise HTTPException(status_code=404, detail="Defect report not found")
+    device_id = report.device_id
     db.delete(report)
+    _update_device_on_defect_change(db, device_id)
     db.commit()
     emit_realtime_event("inventory.updated", {"entity": "defect_report", "action": "delete", "id": report_id})
     return {"ok": True}
@@ -2120,6 +2140,7 @@ def process_scan(
                 created_by_user_id=current_user.id,
             )
             db.add(report)
+            _update_device_on_defect_change(db, device.id)
             db.commit()
             db.refresh(report)
             emit_realtime_event("inventory.updated", {"entity": "defect_report", "action": "create", "id": report.id})
@@ -2652,6 +2673,29 @@ def _validate_defect_status(status: str) -> None:
 def _validate_defect_severity(severity: str) -> None:
     if severity not in DEFECT_SEVERITIES:
         raise HTTPException(status_code=400, detail=f"severity must be one of: {', '.join(DEFECT_SEVERITIES)}")
+
+
+RESOLVED_DEFECT_STATUSES = {"resolved", "closed"}
+
+
+def _update_device_on_defect_change(db: Session, device_id: int) -> None:
+    device = db.get(Device, device_id)
+    if device is None:
+        return
+    db.flush()
+    open_count = db.scalar(
+        select(func.count()).select_from(DefectReport).where(
+            DefectReport.device_id == device_id,
+            DefectReport.status.notin_(RESOLVED_DEFECT_STATUSES),
+        )
+    )
+    if open_count and open_count > 0:
+        device.status = "maintenance"
+        device.condition = "damaged"
+    else:
+        device.status = "available"
+        device.condition = "good"
+    db.add(device)
 
 
 def _validate_defect_report_payload(db: Session, payload: dict) -> None:
