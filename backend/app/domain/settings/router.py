@@ -425,6 +425,7 @@ def get_company_profile(
             "postal_code": None,
             "city": None,
             "country": None,
+            "default_country": None,
             "contact_email": None,
             "contact_phone": None,
             "website": None,
@@ -471,6 +472,7 @@ def get_company_profile(
         postal_code=parsed.get("postal_code") if isinstance(parsed, dict) else None,
         city=parsed.get("city") if isinstance(parsed, dict) else None,
         country=parsed.get("country") if isinstance(parsed, dict) else None,
+        default_country=parsed.get("default_country") if isinstance(parsed, dict) else None,
         contact_email=parsed.get("contact_email") if isinstance(parsed, dict) else None,
         contact_phone=parsed.get("contact_phone") if isinstance(parsed, dict) else None,
         website=parsed.get("website") if isinstance(parsed, dict) else None,
@@ -532,6 +534,7 @@ def update_company_profile(
     normalized_postal = payload.postal_code.strip() if isinstance(payload.postal_code, str) else None
     normalized_city = payload.city.strip() if isinstance(payload.city, str) else None
     normalized_country = payload.country.strip() if isinstance(payload.country, str) else None
+    normalized_default_country = payload.default_country.strip() if isinstance(payload.default_country, str) else None
     normalized_email = payload.contact_email.strip() if isinstance(payload.contact_email, str) else None
     normalized_phone = payload.contact_phone.strip() if isinstance(payload.contact_phone, str) else None
     normalized_website = payload.website.strip() if isinstance(payload.website, str) else None
@@ -552,6 +555,7 @@ def update_company_profile(
             "postal_code": normalized_postal or None,
             "city": normalized_city or None,
             "country": normalized_country or None,
+            "default_country": normalized_default_country or None,
             "contact_email": normalized_email or None,
             "contact_phone": normalized_phone or None,
             "website": normalized_website or None,
@@ -579,6 +583,7 @@ def update_company_profile(
         postal_code=normalized_postal or None,
         city=normalized_city or None,
         country=normalized_country or None,
+        default_country=normalized_default_country or None,
         contact_email=normalized_email or None,
         contact_phone=normalized_phone or None,
         website=normalized_website or None,

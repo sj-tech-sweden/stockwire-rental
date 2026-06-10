@@ -13,6 +13,10 @@ class Customer(Base):
     name: Mapped[str] = mapped_column(String(255), index=True)
     email: Mapped[str] = mapped_column(String(255), nullable=True, index=True)
     phone: Mapped[str] = mapped_column(String(50), nullable=True)
+    address: Mapped[str] = mapped_column(String(255), nullable=True)
+    city: Mapped[str] = mapped_column(String(100), nullable=True)
+    postal_code: Mapped[str] = mapped_column(String(20), nullable=True)
+    country: Mapped[str] = mapped_column(String(100), nullable=True)
     notes: Mapped[str] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
 

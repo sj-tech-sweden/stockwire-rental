@@ -37,6 +37,7 @@ class CompanyProfileRead(BaseModel):
     postal_code: str | None = None
     city: str | None = None
     country: str | None = None
+    default_country: str | None = None
     contact_email: str | None = None
     contact_phone: str | None = None
     website: str | None = None
@@ -57,6 +58,7 @@ class CompanyProfileUpdate(BaseModel):
     postal_code: str | None = None
     city: str | None = None
     country: str | None = None
+    default_country: str | None = None
     contact_email: str | None = None
     contact_phone: str | None = None
     website: str | None = None

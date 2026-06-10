@@ -43,6 +43,8 @@
             </q-card-section>
             <q-card-section class="q-pt-none q-pb-sm">
               <div class="text-caption">{{ t('customers.phone') }}: {{ props.row.phone || '-' }}</div>
+              <div class="text-caption" v-if="props.row.address || props.row.city">{{ [props.row.address, props.row.city, props.row.postal_code].filter(Boolean).join(', ') }}</div>
+              <div class="text-caption" v-if="props.row.country">{{ props.row.country }}</div>
               <div class="text-caption">{{ t('customers.created') }}: {{ props.row.created_at ? new Date(props.row.created_at).toLocaleDateString() : '—' }}</div>
               <div class="text-caption">{{ props.row.notes || t('customers.noNotes') }}</div>
             </q-card-section>
@@ -73,6 +75,18 @@
             />
             <q-input v-model="form.email" :label="t('profile.email')" type="email" outlined dense class="q-mb-sm" />
             <q-input v-model="form.phone" :label="t('customers.phone')" outlined dense class="q-mb-sm" />
+            <q-input v-model="form.address" :label="t('customers.address')" outlined dense class="q-mb-sm" />
+            <div class="row q-col-gutter-sm">
+              <div class="col-12 col-md-6">
+                <q-input v-model="form.city" :label="t('customers.city')" outlined dense class="q-mb-sm" />
+              </div>
+              <div class="col-12 col-md-3">
+                <q-input v-model="form.postal_code" :label="t('customers.postalCode')" outlined dense class="q-mb-sm" />
+              </div>
+              <div class="col-12 col-md-3">
+                <q-select v-model="form.country" :options="COUNTRIES" :label="t('customers.country')" outlined dense clearable emit-value map-options class="q-mb-sm" />
+              </div>
+            </div>
             <q-input v-model="form.notes" :label="t('customers.notes')" type="textarea" autogrow outlined dense />
 
             <q-separator class="q-my-md" />
@@ -164,6 +178,8 @@ import { useI18n } from 'vue-i18n'
 import { useCustomersStore } from '../stores/customers'
 import { useCustomFieldsStore } from '../stores/customFields'
 import { useAuthStore } from '../stores/auth'
+import { useSettingsStore } from '../stores/settings'
+import { COUNTRIES } from '../constants/countries'
 import { useCompactGrid } from '../composables/useCompactGrid'
 import { translateMaybePrefillCustomFieldLabel, translateMaybePrefillCustomFieldOption } from '../i18n/prefillContent'
 
@@ -188,6 +204,7 @@ const columns = [
   { name: 'name', label: t('customers.name'), field: 'name', sortable: true, align: 'left' },
   { name: 'email', label: t('profile.email'), field: 'email', sortable: true, align: 'left' },
   { name: 'phone', label: t('customers.phone'), field: 'phone', sortable: true, align: 'left' },
+  { name: 'city', label: t('customers.city'), field: 'city', sortable: true, align: 'left' },
   { name: 'notes', label: t('customers.notes'), field: 'notes', sortable: false, align: 'left' },
   {
     name: 'created_at',
@@ -204,7 +221,7 @@ const filteredCustomers = computed(() => {
   const term = search.value.trim().toLowerCase()
   if (!term) return store.customers
   return store.customers.filter((customer) =>
-    [customer.name, customer.email, customer.phone, customer.notes]
+    [customer.name, customer.email, customer.phone, customer.address, customer.city, customer.postal_code, customer.country, customer.notes]
       .filter(Boolean)
       .some(value => String(value).toLowerCase().includes(term))
   )
@@ -249,6 +266,10 @@ const emptyForm = () => ({
   name: '',
   email: '',
   phone: '',
+  address: '',
+  city: '',
+  postal_code: '',
+  country: '',
   notes: '',
 })
 
@@ -281,6 +302,10 @@ async function loadCustomerFieldRows(entityId) {
 async function openCreate() {
   editing.value = null
   form.value = emptyForm()
+  const settingsStore = useSettingsStore()
+  if (settingsStore.companyProfile?.default_country) {
+    form.value.country = settingsStore.companyProfile.default_country
+  }
   await loadCustomerFieldRows(null)
   dialogError.value = ''
   dialogOpen.value = true
@@ -292,6 +317,10 @@ async function openEdit(customer) {
     name: customer.name ?? '',
     email: customer.email ?? '',
     phone: customer.phone ?? '',
+    address: customer.address ?? '',
+    city: customer.city ?? '',
+    postal_code: customer.postal_code ?? '',
+    country: customer.country ?? '',
     notes: customer.notes ?? '',
   }
   await loadCustomerFieldRows(customer.id)
@@ -311,6 +340,10 @@ async function saveCustomer() {
       name: form.value.name.trim(),
       email: form.value.email?.trim() || null,
       phone: form.value.phone?.trim() || null,
+      address: form.value.address?.trim() || null,
+      city: form.value.city?.trim() || null,
+      postal_code: form.value.postal_code?.trim() || null,
+      country: form.value.country?.trim() || null,
       notes: form.value.notes?.trim() || null,
     }
 

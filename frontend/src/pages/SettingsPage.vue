@@ -368,7 +368,8 @@
             <div class="col-12 col-md-6"><q-input v-model="companyProfileDraft.address_line2" :label="t('settings.company.addressLine2')" outlined dense /></div>
             <div class="col-12 col-md-3"><q-input v-model="companyProfileDraft.postal_code" :label="t('settings.company.postalCode')" outlined dense /></div>
             <div class="col-12 col-md-3"><q-input v-model="companyProfileDraft.city" :label="t('settings.company.city')" outlined dense /></div>
-            <div class="col-12 col-md-3"><q-input v-model="companyProfileDraft.country" :label="t('settings.company.country')" outlined dense /></div>
+            <div class="col-12 col-md-3"><q-select v-model="companyProfileDraft.country" :options="COUNTRIES" :label="t('settings.company.country')" outlined dense clearable emit-value map-options /></div>
+            <div class="col-12 col-md-3"><q-select v-model="companyProfileDraft.default_country" :options="COUNTRIES" :label="t('settings.company.defaultCountry')" outlined dense clearable emit-value map-options /></div>
             <div class="col-12 col-md-3"><q-input v-model="companyProfileDraft.contact_phone" :label="t('settings.company.phone')" outlined dense /></div>
             <div class="col-12 col-md-6"><q-input v-model="companyProfileDraft.contact_email" :label="t('settings.company.contactEmail')" type="email" outlined dense /></div>
             <div class="col-12 col-md-6"><q-input v-model="companyProfileDraft.website" :label="t('settings.company.website')" outlined dense /></div>
@@ -1248,6 +1249,7 @@ import {
   filterCurrencyOptions,
   normalizeCurrencyCode,
 } from '../constants/currencies'
+import { COUNTRIES } from '../constants/countries'
 import { getApiBaseUrl } from '../utils/runtime-config'
 
 const route = useRoute()
@@ -1455,6 +1457,7 @@ const companyProfileDraft = ref({
   postal_code: '',
   city: '',
   country: '',
+  default_country: '',
   contact_email: '',
   contact_phone: '',
   website: '',
@@ -2616,6 +2619,7 @@ function applyCompanyProfileDraft(profile) {
     postal_code: String(profile?.postal_code || '').trim(),
     city: String(profile?.city || '').trim(),
     country: String(profile?.country || '').trim(),
+    default_country: String(profile?.default_country || '').trim(),
     contact_email: String(profile?.contact_email || '').trim(),
     contact_phone: String(profile?.contact_phone || '').trim(),
     website: String(profile?.website || '').trim(),
@@ -2694,6 +2698,7 @@ async function saveCompanyProfile() {
       postal_code: companyProfileDraft.value.postal_code,
       city: companyProfileDraft.value.city,
       country: companyProfileDraft.value.country,
+      default_country: companyProfileDraft.value.default_country,
       contact_email: companyProfileDraft.value.contact_email,
       contact_phone: companyProfileDraft.value.contact_phone,
       website: companyProfileDraft.value.website,

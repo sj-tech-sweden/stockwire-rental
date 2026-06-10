@@ -7,6 +7,10 @@ class CustomerBase(BaseModel):
     name: str
     email: str | None = None
     phone: str | None = None
+    address: str | None = None
+    city: str | None = None
+    postal_code: str | None = None
+    country: str | None = None
     notes: str | None = None
 
 
@@ -18,6 +22,10 @@ class CustomerUpdate(BaseModel):
     name: str | None = None
     email: str | None = None
     phone: str | None = None
+    address: str | None = None
+    city: str | None = None
+    postal_code: str | None = None
+    country: str | None = None
     notes: str | None = None
 
 
