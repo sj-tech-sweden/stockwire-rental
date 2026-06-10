@@ -1,6 +1,6 @@
 <template>
-  <q-dialog :model-value="modelValue" :maximized="isPhone" @update:model-value="emit('update:modelValue', $event)">
-    <q-card :style="isPhone ? 'width: 100vw; max-width: 100vw; height: 100vh' : 'min-width: 820px; max-width: 96vw'" class="ec-card">
+  <q-dialog :model-value="modelValue" :maximized="effectiveIsPhone" @update:model-value="emit('update:modelValue', $event)">
+    <q-card :style="effectiveIsPhone ? 'width: 100vw; max-width: 100vw; height: 100vh' : 'min-width: 820px; max-width: 96vw'" class="ec-card">
       <q-card-section>
         <div class="text-h6">{{ t('inventory.infoDialogs.deviceTitle', { assetTag: device?.asset_tag || '-' }) }}</div>
         <div class="text-caption text-grey-7">
@@ -8,7 +8,7 @@
         </div>
       </q-card-section>
 
-      <q-card-section class="q-pt-none" :style="isPhone ? 'max-height: calc(100vh - 140px); overflow: auto;' : ''">
+      <q-card-section class="q-pt-none" :style="effectiveIsPhone ? 'max-height: calc(100vh - 140px); overflow: auto;' : ''">
         <div class="row q-col-gutter-sm q-mb-md">
           <div class="col-12 col-md-4"><q-badge color="grey-8" text-color="white" :label="`Status: ${device?.status || '-'}`" /></div>
           <div class="col-12 col-md-4"><q-badge color="grey-7" text-color="white" :label="`Condition: ${device?.condition || '-'}`" /></div>
@@ -22,12 +22,12 @@
               v-if="device?.current_job_id"
               flat
               dense
-              :round="isPhone"
+              :round="effectiveIsPhone"
               color="primary"
               icon="edit"
               class="q-ml-xs"
-              :label="isPhone ? void 0 : 'Edit'"
-              :aria-label="isPhone ? 'Edit job' : void 0"
+              :label="effectiveIsPhone ? void 0 : 'Edit'"
+              :aria-label="effectiveIsPhone ? 'Edit job' : void 0"
               @click="openJobFromLink(device.current_job_id)"
             />
           </div>
@@ -156,32 +156,32 @@
                 <q-btn
                   flat
                   dense
-                  :round="isPhone"
+                  :round="effectiveIsPhone"
                   :color="productActionColor"
                   class="inventory-action-contrast"
                   icon="inventory_2"
-                  :label="isPhone ? void 0 : 'Product'"
-                  :aria-label="isPhone ? 'Open product' : void 0"
+                  :label="effectiveIsPhone ? void 0 : 'Product'"
+                  :aria-label="effectiveIsPhone ? 'Open product' : void 0"
                   @click="emit('edit-product', row.product_id)"
                 />
                 <q-btn
                   flat
                   dense
-                  :round="isPhone"
+                  :round="effectiveIsPhone"
                   :color="infoActionColor"
                   icon="info"
-                  :label="isPhone ? void 0 : 'Info'"
-                  :aria-label="isPhone ? 'Open device info' : void 0"
+                  :label="effectiveIsPhone ? void 0 : 'Info'"
+                  :aria-label="effectiveIsPhone ? 'Open device info' : void 0"
                   @click="emit('view-device', row.id)"
                 />
                 <q-btn
                   flat
                   dense
-                  :round="isPhone"
+                  :round="effectiveIsPhone"
                   color="primary"
                   icon="edit"
-                  :label="isPhone ? void 0 : 'Edit'"
-                  :aria-label="isPhone ? 'Edit device' : void 0"
+                  :label="effectiveIsPhone ? void 0 : 'Edit'"
+                  :aria-label="effectiveIsPhone ? 'Edit device' : void 0"
                   @click="emit('edit-device', row.id)"
                 />
               </div>
@@ -209,32 +209,32 @@
                 <q-btn
                   flat
                   dense
-                  :round="isPhone"
+                  :round="effectiveIsPhone"
                   :color="productActionColor"
                   class="inventory-action-contrast"
                   icon="inventory_2"
-                  :label="isPhone ? void 0 : 'Product'"
-                  :aria-label="isPhone ? 'Open product' : void 0"
+                  :label="effectiveIsPhone ? void 0 : 'Product'"
+                  :aria-label="effectiveIsPhone ? 'Open product' : void 0"
                   @click="emit('edit-product', row.product_id)"
                 />
                 <q-btn
                   flat
                   dense
-                  :round="isPhone"
+                  :round="effectiveIsPhone"
                   :color="infoActionColor"
                   icon="info"
-                  :label="isPhone ? void 0 : 'Info'"
-                  :aria-label="isPhone ? 'Open device info' : void 0"
+                  :label="effectiveIsPhone ? void 0 : 'Info'"
+                  :aria-label="effectiveIsPhone ? 'Open device info' : void 0"
                   @click="emit('view-device', row.id)"
                 />
                 <q-btn
                   flat
                   dense
-                  :round="isPhone"
+                  :round="effectiveIsPhone"
                   color="primary"
                   icon="edit"
-                  :label="isPhone ? void 0 : 'Edit'"
-                  :aria-label="isPhone ? 'Edit device' : void 0"
+                  :label="effectiveIsPhone ? void 0 : 'Edit'"
+                  :aria-label="effectiveIsPhone ? 'Edit device' : void 0"
                   @click="emit('edit-device', row.id)"
                 />
               </div>
@@ -312,11 +312,11 @@
               <q-btn
                 flat
                 dense
-                :round="isPhone"
+                :round="effectiveIsPhone"
                 color="primary"
                 icon="edit"
-                :label="isPhone ? void 0 : 'Edit'"
-                :aria-label="isPhone ? 'Edit job' : void 0"
+                :label="effectiveIsPhone ? void 0 : 'Edit'"
+                :aria-label="effectiveIsPhone ? 'Edit job' : void 0"
                 @click="openJobFromLink(row.job_id)"
               />
             </q-item-section>
@@ -439,9 +439,9 @@
         />
       </q-card-section>
 
-      <q-card-actions :align="isPhone ? 'stretch' : 'right'" :class="isPhone ? 'q-pa-md bg-grey-2' : ''">
+      <q-card-actions :align="effectiveIsPhone ? 'stretch' : 'right'" :class="effectiveIsPhone ? 'q-pa-md bg-grey-2' : ''">
         <q-space />
-        <q-btn flat :class="isPhone ? 'full-width' : ''" :label="t('app.actions.close')" @click="emit('update:modelValue', false)" />
+        <q-btn flat :class="effectiveIsPhone ? 'full-width' : ''" :label="t('app.actions.close')" @click="emit('update:modelValue', false)" />
       </q-card-actions>
     </q-card>
   </q-dialog>
@@ -470,6 +470,8 @@ const { t } = useI18n()
 const store = useInventoryStore()
 const jobsStore = useJobsStore()
 const settingsStore = useSettingsStore()
+
+const effectiveIsPhone = computed(() => props.isPhone || $q.screen.lt.md)
 
 const deviceInfoAudits = ref([])
 const deviceInfoDefects = ref([])

@@ -24,6 +24,8 @@
       :rows="filteredDefects"
       :columns="columns"
       row-key="id"
+      :grid="compactGrid"
+      :hide-header="compactGrid"
       flat
       bordered
       class="ec-card"
@@ -130,6 +132,90 @@
           </td>
         </tr>
       </template>
+
+      <template #item="props">
+        <div class="q-pa-xs col-12">
+          <q-card flat bordered>
+            <q-card-section class="q-pb-sm">
+              <div class="text-subtitle2">
+                <a class="link" @click="openDeviceInfo(props.row.device_id)">{{ props.row.asset_tag }}</a>
+              </div>
+              <div class="text-caption text-grey-7">
+                <a v-if="props.row.product_id" class="link" @click="openProductInfo(props.row)">{{ props.row.product_name }}</a>
+                <span v-else>{{ props.row.product_name }}</span>
+              </div>
+            </q-card-section>
+            <q-card-section class="q-pt-none q-pb-sm">
+              <div class="row q-col-gutter-xs">
+                <div class="col-6">
+                  <q-select
+                    :model-value="props.row.status"
+                    :options="defectStatusOptions"
+                    dense
+                    outlined
+                    emit-value
+                    map-options
+                    size="sm"
+                    @update:model-value="(v) => updateDefectField(props.row, 'status', v)"
+                  />
+                </div>
+                <div class="col-6">
+                  <q-select
+                    :model-value="props.row.severity"
+                    :options="defectSeverityOptions"
+                    dense
+                    outlined
+                    emit-value
+                    map-options
+                    size="sm"
+                    @update:model-value="(v) => updateDefectField(props.row, 'severity', v)"
+                  />
+                </div>
+                <div class="col-12 q-mt-xs">
+                  <q-input
+                    :model-value="props.row.title"
+                    dense
+                    outlined
+                    placeholder="Title"
+                    @update:model-value="(v) => updateDefectField(props.row, 'title', v)"
+                  />
+                </div>
+                <div class="col-12" v-if="props.row.description">
+                  <div class="text-caption q-mt-xs">{{ props.row.description }}</div>
+                </div>
+                <div class="col-12 text-caption text-grey-6 q-mt-xs">
+                  Created: {{ props.row.created_at }}
+                </div>
+                <div class="col-12" v-if="expandedDefectId === props.row.id">
+                  <div class="text-subtitle2 q-mt-sm q-mb-sm">Comments</div>
+                  <div v-if="!expandedComments.length" class="text-caption text-grey-6 q-mb-sm">No comments yet.</div>
+                  <div v-for="comment in expandedComments" :key="comment.id" class="q-mb-xs">
+                    <div class="comment-bubble">{{ comment.comment }}</div>
+                  </div>
+                  <div class="row items-center q-mt-sm">
+                    <q-input
+                      v-model="newCommentText"
+                      dense
+                      outlined
+                      type="textarea"
+                      autogrow
+                      placeholder="Add a comment..."
+                      class="col-grow"
+                    />
+                    <q-btn dense flat icon="send" color="primary" :loading="savingComment" :disable="!newCommentText?.trim()" @click="addComment(expandedDefectId)" class="q-ml-xs" />
+                  </div>
+                </div>
+              </div>
+            </q-card-section>
+            <q-card-actions align="right">
+              <q-btn dense flat icon="chat" color="primary" @click="toggleComments(props.row)">
+                <q-badge v-if="props.row.commentCount" color="primary" floating>{{ props.row.commentCount }}</q-badge>
+              </q-btn>
+              <q-btn dense flat icon="delete" color="negative" @click="deleteDefect(props.row)" />
+            </q-card-actions>
+          </q-card>
+        </div>
+      </template>
     </q-table>
     <ProductInfoDialog
       v-model="productInfoDialogOpen"
@@ -157,6 +243,7 @@ import { useI18n } from 'vue-i18n'
 import { useQuasar } from 'quasar'
 import { api } from 'boot/axios'
 import { useInventoryStore } from '../stores/inventory'
+import { useCompactGrid } from '../composables/useCompactGrid'
 import ProductDialog from '../components/ProductDialog.vue'
 import ProductInfoDialog from '../components/ProductInfoDialog.vue'
 import DeviceInfoDialog from '../components/DeviceInfoDialog.vue'
@@ -164,6 +251,8 @@ import DeviceInfoDialog from '../components/DeviceInfoDialog.vue'
 const { t } = useI18n()
 const $q = useQuasar()
 const inventoryStore = useInventoryStore()
+
+const compactGrid = useCompactGrid(1024)
 
 const productInfoDialogOpen = ref(false)
 const productInfoTarget = ref(null)
