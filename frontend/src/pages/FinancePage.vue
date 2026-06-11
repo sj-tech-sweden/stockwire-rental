@@ -477,9 +477,14 @@ async function resetFilters() {
   await applyFilters()
 }
 
-function onTransactionSaved() {
+async function onTransactionSaved() {
   dialogOpen.value = false
   editing.value = null
+  try {
+    await store.fetchTransactions({ ...filters })
+  } catch (error) {
+    $q.notify({ type: 'negative', message: error?.response?.data?.detail || error?.message || t('finance.failedFilterTransactions') })
+  }
 }
 
 async function settle(row) {
