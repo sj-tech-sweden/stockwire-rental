@@ -1080,127 +1080,29 @@
       </q-tab-panel>
     </q-tab-panels>
 
-    <q-dialog v-model="userDialogOpen" persistent>
-      <q-card style="width: 460px; max-width: 95vw" class="ec-card">
-        <q-card-section>
-          <div class="text-h6">{{ userEditing ? t('settings.auth.editUser') : t('settings.auth.newUser') }}</div>
-        </q-card-section>
-        <q-card-section class="q-pt-none">
-          <q-form ref="userFormRef" @submit.prevent="saveUser">
-            <q-input v-model="userForm.full_name" :label="t('settings.auth.fullName')" outlined dense class="q-mb-sm" :rules="[v => !!v || t('login.required')]" />
-            <q-input v-model="userForm.email" :label="t('settings.auth.email')" type="email" outlined dense class="q-mb-sm" :rules="[v => !!v || t('login.required')]" />
-            <q-input
-              v-model="userForm.password"
-              :label="userEditing ? t('settings.auth.newPasswordOptional') : t('settings.auth.password')"
-              type="password"
-              outlined
-              dense
-              class="q-mb-sm"
-              :rules="userEditing ? [] : [v => !!v || t('login.required')]"
-            />
-            <q-select
-              v-model="userForm.role"
-              :options="roleOptions"
-              :label="t('settings.auth.role')"
-              outlined
-              dense
-              emit-value
-              map-options
-              class="q-mb-sm"
-            />
-            <q-toggle v-model="userForm.is_active" :label="t('settings.auth.active')" color="primary" />
-            <q-banner v-if="userDialogError" class="bg-negative text-white q-mt-sm rounded-borders" dense>
-              {{ userDialogError }}
-            </q-banner>
-          </q-form>
-        </q-card-section>
-        <q-card-actions align="right">
-          <q-btn flat :label="t('app.actions.cancel')" @click="userDialogOpen = false" />
-          <q-btn color="primary" unelevated :loading="saving" :label="t('app.actions.save')" @click="saveUser" />
-        </q-card-actions>
-      </q-card>
-    </q-dialog>
+    <SettingsUserDialog
+      v-model="userDialogOpen"
+      :user="userDialogEditing"
+      @saved="onUserSaved"
+    />
 
-    <q-dialog v-model="deleteUserDialogOpen" persistent>
-      <q-card class="ec-card">
-        <q-card-section class="row items-center">
-          <q-icon name="warning" color="negative" size="md" class="q-mr-md" />
-          <span>{{ t('settings.auth.deleteUserPrompt', { name: deleteUserTarget?.full_name }) }}</span>
-        </q-card-section>
-        <q-card-actions align="right">
-          <q-btn flat :label="t('app.actions.cancel')" @click="deleteUserDialogOpen = false" />
-          <q-btn color="negative" unelevated :loading="saving" :label="t('users.delete')" @click="doDeleteUser" />
-        </q-card-actions>
-      </q-card>
-    </q-dialog>
+    <SettingsDeleteUserDialog
+      v-model="deleteUserDialogOpen"
+      :user="deleteUserTarget"
+      @deleted="onUserDeleted"
+    />
 
-    <q-dialog v-model="apiKeyDialogOpen" persistent>
-      <q-card style="width: 460px; max-width: 95vw" class="ec-card">
-        <q-card-section>
-          <div class="text-h6">{{ t('settings.auth.createApiKeyTitle') }}</div>
-        </q-card-section>
-        <q-card-section class="q-pt-none">
-          <q-input v-model="apiKeyForm.name" :label="t('users.keyName')" outlined dense class="q-mb-sm" />
-          <div class="row items-start q-col-gutter-sm q-mb-sm">
-            <div class="col">
-              <q-input v-model="apiKeyForm.raw_key" :label="t('settings.auth.rawKey')" outlined dense :hint="t('settings.auth.rawKeyHint')" />
-            </div>
-            <q-btn dense flat icon="autorenew" color="primary" @click="generateApiKey" class="q-mt-md" />
-            <q-btn dense flat icon="content_copy" color="primary" @click="copyApiKey" class="q-mt-md" />
-          </div>
-          <q-toggle v-model="apiKeyForm.is_admin" :label="t('settings.auth.adminKey')" color="primary" />
-        </q-card-section>
-        <q-card-actions align="right">
-          <q-btn flat :label="t('app.actions.cancel')" @click="apiKeyDialogOpen = false" />
-          <q-btn color="primary" unelevated :loading="saving" :label="t('users.create')" @click="saveApiKey" />
-        </q-card-actions>
-      </q-card>
-    </q-dialog>
+    <ApiKeyDialog
+      v-model="apiKeyDialogOpen"
+      @saved="onApiKeySaved"
+    />
 
-    <q-dialog v-model="fieldDialogOpen" persistent>
-      <q-card style="width: 560px; max-width: 95vw" class="ec-card">
-        <q-card-section>
-          <div class="text-h6">{{ fieldEditing ? t('settings.customFields.editField') : t('settings.customFields.newField') }}</div>
-        </q-card-section>
-        <q-card-section class="q-pt-none">
-          <q-select
-            v-model="fieldForm.entity_type"
-            :options="entityTypeOptions"
-            :label="t('settings.customFields.entityType')"
-            outlined
-            dense
-            emit-value
-            map-options
-            class="q-mb-sm"
-          />
-          <q-input v-model="fieldForm.label" :label="t('settings.customFields.label')" outlined dense class="q-mb-sm" />
-          <q-input v-model="fieldForm.key" :label="t('settings.customFields.key')" outlined dense class="q-mb-sm" :hint="t('settings.customFields.keyHint')" />
-          <q-select
-            v-model="fieldForm.value_type"
-            :options="valueTypeOptions"
-            :label="t('settings.customFields.valueType')"
-            outlined
-            dense
-            emit-value
-            map-options
-            class="q-mb-sm"
-          />
-          <q-input
-            v-model="fieldForm.options_text"
-            :label="t('settings.customFields.optionsCommaSeparated')"
-            outlined
-            dense
-            class="q-mb-sm"
-          />
-          <q-toggle v-model="fieldForm.is_required" :label="t('settings.customFields.required')" class="q-mb-sm" />
-          <q-toggle v-model="fieldForm.is_active" :label="t('settings.auth.active')" />
-        </q-card-section>
-        <q-card-actions align="right">
-          <q-btn flat :label="t('app.actions.cancel')" @click="fieldDialogOpen = false" />
-          <q-btn color="primary" unelevated :loading="fieldDialogSaving" :label="t('app.actions.save')" @click="saveField" />
-        </q-card-actions>
-      </q-card>
-    </q-dialog>
+    <FieldDialog
+      v-model="fieldDialogOpen"
+      :field="fieldDialogEditing"
+      :entity-type="fieldDialogEntityType"
+      @saved="onFieldSaved"
+    />
   </q-page>
 </template>
 
@@ -1252,6 +1154,11 @@ import {
 import { COUNTRIES } from '../constants/countries'
 import { getApiBaseUrl } from '../utils/runtime-config'
 
+import SettingsUserDialog from '../components/SettingsUserDialog.vue'
+import SettingsDeleteUserDialog from '../components/SettingsDeleteUserDialog.vue'
+import ApiKeyDialog from '../components/ApiKeyDialog.vue'
+import FieldDialog from '../components/FieldDialog.vue'
+
 const route = useRoute()
 const apiBaseUrl = getApiBaseUrl()
 const knownTabs = new Set(['auth', 'company', 'custom-fields', 'inventory', 'integrations', 'offline-queue', 'about'])
@@ -1286,60 +1193,23 @@ const apiKeyColumns = [
 ]
 
 const userDialogOpen = ref(false)
-const userEditing = ref(null)
-const userDialogError = ref('')
-const userFormRef = ref(null)
-const emptyUserForm = () => ({ full_name: '', email: '', password: '', role: 'viewer', is_active: true })
-const userForm = ref(emptyUserForm())
-
+const userDialogEditing = ref(null)
 const deleteUserDialogOpen = ref(false)
 const deleteUserTarget = ref(null)
-
 const apiKeyDialogOpen = ref(false)
-const apiKeyForm = ref({ name: '', raw_key: '', is_admin: false })
-const saving = ref(false)
 
 function roleColor(role) {
   return { admin: 'negative', manager: 'warning', viewer: 'primary' }[role] ?? 'grey'
 }
 
 function openCreateUser() {
-  userEditing.value = null
-  userForm.value = emptyUserForm()
-  userDialogError.value = ''
+  userDialogEditing.value = null
   userDialogOpen.value = true
 }
 
 function openEditUser(user) {
-  userEditing.value = user
-  userForm.value = { full_name: user.full_name, email: user.email, password: '', role: user.role, is_active: user.is_active }
-  userDialogError.value = ''
+  userDialogEditing.value = user
   userDialogOpen.value = true
-}
-
-async function saveUser() {
-  const valid = await userFormRef.value?.validate()
-  if (!valid) return
-
-  saving.value = true
-  userDialogError.value = ''
-  try {
-    const payload = { ...userForm.value }
-    if (userEditing.value && !payload.password) delete payload.password
-
-    if (userEditing.value) {
-      await authStore.updateUser(userEditing.value.id, payload)
-      $q.notify({ type: 'positive', message: t('settings.auth.userUpdated') })
-    } else {
-      await authStore.createUser(payload)
-      $q.notify({ type: 'positive', message: t('settings.auth.userCreated') })
-    }
-    userDialogOpen.value = false
-  } catch (error) {
-    userDialogError.value = error?.response?.data?.detail || t('settings.auth.failedSaveUser')
-  } finally {
-    saving.value = false
-  }
 }
 
 function confirmDeleteUser(user) {
@@ -1347,61 +1217,22 @@ function confirmDeleteUser(user) {
   deleteUserDialogOpen.value = true
 }
 
-async function doDeleteUser() {
-  if (!deleteUserTarget.value) return
-  saving.value = true
-  try {
-    await authStore.deleteUser(deleteUserTarget.value.id)
-    deleteUserDialogOpen.value = false
-    $q.notify({ type: 'positive', message: t('settings.auth.userDeleted') })
-  } catch (error) {
-    $q.notify({ type: 'negative', message: error?.response?.data?.detail || t('common.deleteFailed') })
-  } finally {
-    saving.value = false
-  }
+function onUserSaved() {
+  userDialogOpen.value = false
+  userDialogEditing.value = null
 }
 
-function generateApiKey() {
-  const array = new Uint8Array(32)
-  crypto.getRandomValues(array)
-  apiKeyForm.value.raw_key = 'sw_' + btoa(String.fromCharCode(...array))
-    .replace(/[+/=]/g, '')
-    .slice(0, 40)
-}
-
-async function copyApiKey() {
-  const key = apiKeyForm.value.raw_key
-  if (!key) return
-  try {
-    await navigator.clipboard.writeText(key)
-    $q.notify({ type: 'positive', message: t('settings.auth.apiKeyCopied') })
-  } catch {
-    $q.notify({ type: 'negative', message: t('settings.auth.apiKeyCopyFailed') })
-  }
+function onUserDeleted() {
+  deleteUserDialogOpen.value = false
+  deleteUserTarget.value = null
 }
 
 function openCreateApiKey() {
-  apiKeyForm.value = { name: '', raw_key: '', is_admin: false }
-  generateApiKey()
   apiKeyDialogOpen.value = true
 }
 
-async function saveApiKey() {
-  if (!apiKeyForm.value.name || !apiKeyForm.value.raw_key) {
-    $q.notify({ type: 'warning', message: t('settings.auth.apiKeyNameRawRequired') })
-    return
-  }
-
-  saving.value = true
-  try {
-    await authStore.createApiKey(apiKeyForm.value)
-    apiKeyDialogOpen.value = false
-    $q.notify({ type: 'positive', message: t('settings.auth.apiKeyCreated') })
-  } catch (error) {
-    $q.notify({ type: 'negative', message: error?.response?.data?.detail || t('settings.auth.failedCreateApiKey') })
-  } finally {
-    saving.value = false
-  }
+function onApiKeySaved() {
+  apiKeyDialogOpen.value = false
 }
 
 async function deleteApiKey(row) {
@@ -1791,69 +1622,25 @@ function formatCustomFieldOptions(options) {
 }
 
 const fieldDialogOpen = ref(false)
-const fieldDialogSaving = ref(false)
-const fieldEditing = ref(null)
-const fieldForm = ref(emptyFieldForm())
-
-function emptyFieldForm() {
-  return {
-    entity_type: 'product',
-    key: '',
-    label: '',
-    value_type: 'text',
-    options_text: '',
-    is_required: false,
-    is_active: true,
-  }
-}
+const fieldDialogEditing = ref(null)
+const fieldDialogEntityType = ref(null)
 
 function openCreateField() {
-  fieldEditing.value = null
-  fieldForm.value = { ...emptyFieldForm(), entity_type: activeEntityType.value }
+  fieldDialogEditing.value = null
+  fieldDialogEntityType.value = activeEntityType.value
   fieldDialogOpen.value = true
 }
 
 function openEditField(definition) {
-  fieldEditing.value = definition
-  fieldForm.value = {
-    entity_type: definition.entity_type,
-    key: definition.key,
-    label: definition.label,
-    value_type: definition.value_type,
-    options_text: (definition.options || []).join(', '),
-    is_required: !!definition.is_required,
-    is_active: !!definition.is_active,
-  }
+  fieldDialogEditing.value = definition
+  fieldDialogEntityType.value = definition.entity_type
   fieldDialogOpen.value = true
 }
 
-async function saveField() {
-  fieldDialogSaving.value = true
-  try {
-    const payload = {
-      entity_type: fieldForm.value.entity_type,
-      key: fieldForm.value.key,
-      label: fieldForm.value.label,
-      value_type: fieldForm.value.value_type,
-      options: fieldForm.value.options_text.split(',').map(option => option.trim()).filter(Boolean),
-      is_required: !!fieldForm.value.is_required,
-      is_active: !!fieldForm.value.is_active,
-    }
-
-    if (fieldEditing.value) {
-      await customFieldsStore.updateDefinition(fieldEditing.value.id, payload)
-      $q.notify({ type: 'positive', message: t('settings.customFields.fieldUpdated') })
-    } else {
-      await customFieldsStore.createDefinition(payload)
-      $q.notify({ type: 'positive', message: t('settings.customFields.fieldCreated') })
-    }
-    fieldDialogOpen.value = false
-    await loadDefinitions()
-  } catch (error) {
-    $q.notify({ type: 'negative', message: error?.response?.data?.detail || t('settings.customFields.failedSaveField') })
-  } finally {
-    fieldDialogSaving.value = false
-  }
+function onFieldSaved() {
+  fieldDialogOpen.value = false
+  fieldDialogEditing.value = null
+  fieldDialogEntityType.value = null
 }
 
 async function deleteField(definition) {
