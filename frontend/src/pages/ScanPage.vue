@@ -53,7 +53,7 @@
           </q-btn>
         </div>
 
-        <div v-if="scanAction === 'job_out' || scanAction === 'rental_job_out'" class="q-mb-md">
+        <div v-if="scanAction === 'job_out' || scanAction === 'rental_job_out' || scanAction === 'job_in' || scanAction === 'rental_job_in'" class="q-mb-md">
           <div class="step-row">
             <div class="step-item" :class="activeJobCode ? 'step-done' : 'step-active'">
               <span class="step-dot">1</span>
@@ -62,7 +62,7 @@
             <div class="step-line" />
             <div class="step-item" :class="activeJobCode ? 'step-active' : 'step-pending'">
               <span class="step-dot">2</span>
-              <span>{{ scanAction === 'rental_job_out' ? t('scan.scanRental') : t('scan.scanDevice') }}</span>
+              <span>{{ scanAction === 'rental_job_out' || scanAction === 'rental_job_in' ? t('scan.scanRental') : t('scan.scanDevice') }}</span>
             </div>
           </div>
         </div>
@@ -115,45 +115,21 @@
           {{ t('scan.step1RequiredMove') }}
         </q-banner>
 
-        <q-banner v-if="(scanAction === 'job_out' || scanAction === 'rental_job_out') && activeJobCode" class="bg-primary text-white q-mb-md rounded-borders">
+        <q-banner v-if="(scanAction === 'job_out' || scanAction === 'rental_job_out' || scanAction === 'job_in' || scanAction === 'rental_job_in') && activeJobCode" class="bg-primary text-white q-mb-md rounded-borders">
           {{ t('scan.jobSelected') }}: {{ activeJobCode }}
           <span v-if="activeJobId"> (#{{ activeJobId }})</span>
           <q-btn flat dense no-caps class="q-ml-sm" :label="t('scan.change')" @click="clearActiveJob" />
         </q-banner>
 
-        <q-banner v-if="(scanAction === 'job_out' || scanAction === 'rental_job_out') && activeJobCode" class="bg-teal-8 text-white q-mb-md rounded-borders" dense>
+        <q-banner v-if="scanAction === 'job_in' && globalCheckin" class="bg-teal-8 text-white q-mb-md rounded-borders" dense>
+          {{ t('scan.step2ScanAndSubmit', { item: t('scan.device').toLowerCase(), submit: scanSubmitLabel }) }}
+        </q-banner>
+
+        <q-banner v-if="(scanAction === 'job_out' || scanAction === 'rental_job_out' || scanAction === 'job_in' || scanAction === 'rental_job_in') && activeJobCode" class="bg-teal-8 text-white q-mb-md rounded-borders" dense>
           {{ t('scan.step2ScanAndSubmit', { item: scanAction === 'rental_job_out' ? t('scan.rental').toLowerCase() : t('scan.device').toLowerCase(), submit: scanSubmitLabel }) }}
         </q-banner>
 
         <div class="row q-col-gutter-sm q-mb-sm items-end">
-          <div class="col-12 col-md-4" v-if="scanAction === 'move'">
-            <q-select
-              v-model="scanZoneId"
-              :options="locationSelectOptions"
-              :label="t('scan.moveToLocation')"
-              outlined
-              dense
-              emit-value
-              map-options
-              :disable="!!scanCaseDeviceId"
-            />
-          </div>
-          <div class="col-12 col-md-4" v-if="scanAction === 'move'">
-            <q-select
-              v-model="scanCaseDeviceId"
-              :options="caseMoveSelectOptions"
-              :label="t('scan.orMoveIntoCase')"
-              outlined
-              dense
-              clearable
-              emit-value
-              map-options
-              :disable="!!scanZoneId"
-            />
-          </div>
-          <div class="col-12 col-md-4" v-if="scanAction === 'move'">
-            <q-input v-model="scanZoneCode" :label="t('scan.orScanLocationCaseIdentifier')" :placeholder="t('scan.locationCasePlaceholder')" outlined dense />
-          </div>
           <div class="col-12 col-md-4" v-if="scanAction === 'assign_component'">
             <q-select
               v-model="scanComponentDeviceId"
@@ -166,9 +142,6 @@
               map-options
             />
           </div>
-          <div class="col-12 col-md-4" v-if="scanAction === 'move' && moveDestinationReady">
-            <q-btn color="grey-8" text-color="white" icon="restart_alt" :label="t('scan.changeDestination')" no-caps unelevated @click="clearMoveDestination" />
-          </div>
           <div class="col-12 col-md-4" v-if="(scanAction === 'job_out' || scanAction === 'rental_job_out') && !activeJobCode">
             <q-select
               v-model="scanJobId"
@@ -179,6 +152,22 @@
               clearable
               emit-value
               map-options
+              use-input
+              input-debounce="300"
+            />
+          </div>
+          <div class="col-12 col-md-4" v-if="scanAction === 'job_in' && !globalCheckin && !activeJobCode">
+            <q-select
+              v-model="scanJobId"
+              :options="intakeJobSelectOptions"
+              :label="t('scan.selectJobWithCheckedOutDevices')"
+              outlined
+              dense
+              clearable
+              emit-value
+              map-options
+              use-input
+              input-debounce="300"
             />
           </div>
           <div class="col-12 col-md-4" v-if="scanAction === 'job_in'">
@@ -189,21 +178,8 @@
               class="q-mb-sm"
               @update:model-value="onGlobalCheckinChanged"
             />
-            <q-select
-              v-model="scanJobId"
-              :options="intakeJobSelectOptions"
-              :label="t('scan.selectJobWithCheckedOutDevices')"
-              outlined
-              dense
-              clearable
-              emit-value
-              map-options
-              class="q-mb-sm"
-              :disable="globalCheckin"
-            />
-            <q-input v-model="scanJobCode" :label="t('scan.jobCode')" :placeholder="t('scan.jobCodePlaceholder')" outlined dense :disable="globalCheckin" />
           </div>
-          <div class="col-12 col-md-4" v-if="scanAction === 'rental_job_in'">
+          <div class="col-12 col-md-4" v-if="scanAction === 'rental_job_in' && !activeJobCode">
             <q-select
               v-model="scanJobId"
               :options="jobSelectOptions"
@@ -213,18 +189,9 @@
               clearable
               emit-value
               map-options
-              class="q-mb-sm"
+              use-input
+              input-debounce="300"
             />
-            <q-input v-model="scanJobCode" :label="t('scan.jobCode')" :placeholder="t('scan.jobCodePlaceholder')" outlined dense />
-          </div>
-          <div class="col-12 col-md-4" v-if="scanAction === 'maintenance'">
-            <q-select v-model="scanMaintenanceType" :options="maintenanceTypeOptions" :label="t('scan.maintenanceType')" outlined dense emit-value map-options />
-          </div>
-          <div class="col-12 col-md-4" v-if="scanAction === 'maintenance'">
-            <q-select v-model="scanIntervalMode" :options="maintenanceIntervalModeOptions" :label="t('scan.intervalMode')" outlined dense emit-value map-options />
-          </div>
-          <div class="col-12 col-md-4" v-if="scanAction === 'maintenance'">
-            <q-input v-model.number="scanIntervalValue" type="number" min="1" :label="scanIntervalMode === 'runtime' ? t('scan.hoursInterval') : t('scan.daysInterval')" outlined dense />
           </div>
         </div>
 
@@ -576,9 +543,7 @@ const scanJobId = ref(null)
 const globalCheckin = ref(false)
 const activeJobCode = ref('')
 const activeJobId = ref(null)
-const scanMaintenanceType = ref('inspection')
-const scanIntervalMode = ref('calendar')
-const scanIntervalValue = ref(null)
+
 const scanResultMessage = ref('')
 const scanResultSuccess = ref(false)
 const lastLookupCode = ref('')
@@ -619,7 +584,6 @@ const scanActionGroupButtons = computed(() => [
   { label: t('scan.lookup'), value: 'lookup', icon: 'search' },
   { label: t('scan.move'), value: 'move', icon: 'swap_horiz' },
   { label: t('scan.assignComponent'), value: 'assign_component', icon: 'widgets' },
-  { label: t('scan.maintenance'), value: 'maintenance', icon: 'build_circle' },
   { label: t('scan.outtake'), value: 'outtake', icon: 'shopping_cart_checkout' },
   { label: t('scan.intake'), value: 'intake', icon: 'assignment_return' },
   { label: t('scan.rentalOps'), value: 'rental_ops', icon: 'inventory_2' },
@@ -738,10 +702,9 @@ function onGlobalScanHotkey(event) {
   const groupByDigit = {
     '1': 'lookup',
     '2': 'move',
-    '3': 'maintenance',
-    '4': 'outtake',
-    '5': 'intake',
-    '6': 'rental_ops',
+    '3': 'outtake',
+    '4': 'intake',
+    '5': 'rental_ops',
   }
   const group = groupByDigit[event.key]
   if (!group) return
@@ -755,20 +718,6 @@ const inputModeButtons = computed(() => {
   if (supportsNfc.value) buttons.push({ label: 'NFC', value: 'nfc' })
   return buttons
 })
-
-const maintenanceTypeOptions = computed(() => [
-  { label: t('scan.maintenanceInspection'), value: 'inspection' },
-  { label: t('scan.maintenanceCleaning'), value: 'cleaning' },
-  { label: t('scan.maintenanceRepair'), value: 'repair' },
-  { label: t('scan.maintenanceCalibration'), value: 'calibration' },
-  { label: t('scan.maintenancePatTest'), value: 'pat_test' },
-  { label: t('scan.maintenanceScheduled'), value: 'scheduled' },
-])
-
-const maintenanceIntervalModeOptions = computed(() => [
-  { label: t('scan.calendarTime'), value: 'calendar' },
-  { label: t('scan.runtimeHours'), value: 'runtime' },
-])
 
 const workflowColumns = computed(() => [
   { name: 'product', label: t('scan.product'), field: 'product_name', align: 'left', sortable: true },
@@ -789,12 +738,16 @@ const scanSubmitLabel = computed(() => {
   if (scanAction.value === 'job_out' || scanAction.value === 'rental_job_out') {
     return activeJobCode.value ? (scanAction.value === 'rental_job_out' ? t('scan.scanRental') : t('scan.scanDevice')) : t('scan.selectJob')
   }
+  if (scanAction.value === 'job_in') {
+    if (!activeJobCode.value && !globalCheckin.value) return t('scan.selectJob')
+    return t('scan.scanDevice')
+  }
+  if (scanAction.value === 'rental_job_in') {
+    if (!activeJobCode.value) return t('scan.selectJob')
+    return t('scan.scanDevice')
+  }
   if (scanAction.value === 'rental_receive') return t('scan.receiveRental')
   if (scanAction.value === 'rental_return_supplier') return t('scan.returnRental')
-  if (scanAction.value === 'rental_job_in' && !selectedOrTypedJob()) return t('scan.selectJob')
-  if (scanAction.value === 'job_in' && !globalCheckin.value && !selectedOrTypedJob()) {
-    return t('scan.selectJob')
-  }
   return t('scan.scan')
 })
 
@@ -810,6 +763,12 @@ const scanCodePlaceholder = computed(() => {
       : t('scan.scanDestinationFirstPlaceholder')
   }
   if ((scanAction.value === 'job_out' || scanAction.value === 'rental_job_out') && !activeJobCode.value) {
+    return t('scan.selectScanTypeJobCodeFirst')
+  }
+  if (scanAction.value === 'job_in' && !globalCheckin.value && !activeJobCode.value) {
+    return t('scan.selectScanTypeJobCodeFirst')
+  }
+  if (scanAction.value === 'rental_job_in' && !activeJobCode.value) {
     return t('scan.selectScanTypeJobCodeFirst')
   }
   if (RENTAL_SCAN_ACTIONS.includes(scanAction.value)) {
@@ -949,7 +908,11 @@ const locationSelectOptions = computed(() => {
 
 const jobSelectOptions = computed(() => {
   return [...jobsStore.jobs]
-    .sort((a, b) => String(a.job_code || '').localeCompare(String(b.job_code || '')))
+    .sort((a, b) => {
+      const dateA = a.start_date || ''
+      const dateB = b.start_date || ''
+      return String(dateB).localeCompare(String(dateA))
+    })
     .map(job => ({
       label: `${job.job_code}${job.description ? ` · ${job.description}` : ''}`,
       value: job.id,
@@ -969,7 +932,11 @@ const pickedByJobId = computed(() => {
 const intakeJobSelectOptions = computed(() => {
   return [...jobsStore.jobs]
     .filter(job => Number(pickedByJobId.value.get(job.id) || 0) > 0)
-    .sort((a, b) => String(a.job_code || '').localeCompare(String(b.job_code || '')))
+    .sort((a, b) => {
+      const dateA = a.start_date || ''
+      const dateB = b.start_date || ''
+      return String(dateB).localeCompare(String(dateA))
+    })
     .map(job => ({
       label: `${job.job_code} · ${pickedByJobId.value.get(job.id)} ${t('scan.checkedOut').toLowerCase()}`,
       value: job.id,
@@ -1264,7 +1231,7 @@ function onActionChanged() {
   if (scanAction.value !== 'job_in') {
     lastIntakeResult.value = null
   }
-  if (scanAction.value !== 'job_out' && scanAction.value !== 'rental_job_out') {
+  if (scanAction.value !== 'job_out' && scanAction.value !== 'rental_job_out' && scanAction.value !== 'job_in' && scanAction.value !== 'rental_job_in') {
     clearActiveJob()
   }
   if (scanAction.value !== 'move' && scanAction.value !== 'assign_component') {
@@ -1277,6 +1244,8 @@ function onGlobalCheckinChanged(value) {
   if (!value) return
   scanJobCode.value = ''
   scanJobId.value = null
+  activeJobCode.value = ''
+  activeJobId.value = null
 }
 
 function resolveZoneIdFromCode(value) {
@@ -1434,28 +1403,54 @@ async function runScanAction() {
     }
   }
 
-  if (scanAction.value === 'job_in') {
-    if (!globalCheckin.value) {
-      const job = selectedOrTypedJob()
-      if (!job) {
-        scanResultMessage.value = t('scan.selectValidJobForIntakeOrGlobal')
-        scanResultSuccess.value = false
-        return
-      }
-      scanJobCode.value = job.job_code
-      scanJobId.value = job.id
+  if (scanAction.value === 'job_in' && !globalCheckin.value && !activeJobCode.value) {
+    let job = selectedOrTypedJob()
+    if (!job && code) {
+      const normalizedCode = code.toUpperCase()
+      job = jobsStore.jobs.find(item => String(item.job_code || '').toUpperCase() === normalizedCode) || null
+    }
+    if (!job) {
+      scanResultMessage.value = t('scan.selectValidJobForIntakeOrGlobal')
+      scanResultSuccess.value = false
+      return
+    }
+    activeJobCode.value = job.job_code
+    activeJobId.value = job.id
+    scanJobId.value = job.id
+    scanJobCode.value = job.job_code
+
+    if (!code || code.toUpperCase() === String(job.job_code || '').toUpperCase()) {
+      scanCode.value = ''
+      scanResultMessage.value = t('scan.jobSelectedScanCodesNow', { jobCode: job.job_code, item: t('scan.device').toLowerCase() })
+      scanResultSuccess.value = true
+      focusScanCodeInput()
+      return
     }
   }
 
-  if (scanAction.value === 'rental_job_in') {
-    const job = selectedOrTypedJob()
+  if (scanAction.value === 'rental_job_in' && !activeJobCode.value) {
+    let job = selectedOrTypedJob()
+    if (!job && code) {
+      const normalizedCode = code.toUpperCase()
+      job = jobsStore.jobs.find(item => String(item.job_code || '').toUpperCase() === normalizedCode) || null
+    }
     if (!job) {
       scanResultMessage.value = t('scan.selectValidJobForRentalIntake')
       scanResultSuccess.value = false
       return
     }
-    scanJobCode.value = job.job_code
+    activeJobCode.value = job.job_code
+    activeJobId.value = job.id
     scanJobId.value = job.id
+    scanJobCode.value = job.job_code
+
+    if (!code || code.toUpperCase() === String(job.job_code || '').toUpperCase()) {
+      scanCode.value = ''
+      scanResultMessage.value = t('scan.jobSelectedScanCodesNow', { jobCode: job.job_code, item: t('scan.rental').toLowerCase() })
+      scanResultSuccess.value = true
+      focusScanCodeInput()
+      return
+    }
   }
 
   if (!code) {
@@ -1477,14 +1472,9 @@ async function runScanAction() {
       zone_id: scanAction.value === 'move' ? scanZoneId.value : null,
       case_device_id: scanAction.value === 'move' ? scanCaseDeviceId.value : null,
       parent_component_device_id: scanAction.value === 'assign_component' ? scanComponentDeviceId.value : null,
-      job_code: (scanAction.value === 'job_out' || scanAction.value === 'rental_job_out')
-        ? activeJobCode.value
-        : (scanAction.value === 'job_in'
-          ? (globalCheckin.value ? null : scanJobCode.value)
-          : (scanAction.value === 'rental_job_in' ? scanJobCode.value : null)),
-      maintenance_type: scanAction.value === 'maintenance' ? scanMaintenanceType.value : null,
-      interval_mode: scanAction.value === 'maintenance' ? scanIntervalMode.value : null,
-      interval_value: scanAction.value === 'maintenance' ? scanIntervalValue.value : null,
+      job_code: scanAction.value === 'job_in' && globalCheckin.value
+        ? null
+        : activeJobCode.value,
     })
     if (scanAction.value === 'lookup' && response.success) {
       lastLookupCode.value = response.asset_tag || code
@@ -1501,7 +1491,6 @@ async function runScanAction() {
       trackRecentMove(response, code)
     }
     scanCode.value = ''
-    if (scanAction.value === 'move') scanZoneCode.value = ''
   } catch (error) {
     scanResultMessage.value = error?.response?.data?.detail || t('scan.scanFailed')
     scanResultSuccess.value = false
@@ -1646,17 +1635,19 @@ watch(scanCaseDeviceId, (value) => {
 })
 
 watch([scanAction, scanJobId], () => {
-  if (scanAction.value !== 'job_out' && scanAction.value !== 'rental_job_out') return
+  if (scanAction.value !== 'job_out' && scanAction.value !== 'rental_job_out' && scanAction.value !== 'job_in' && scanAction.value !== 'rental_job_in') return
   if (activeJobCode.value) return
   if (!scanJobId.value) return
+  if (scanAction.value === 'job_in' && globalCheckin.value) return
 
   const job = jobsStore.jobs.find(item => item.id === scanJobId.value)
   if (!job) return
 
+  const itemLabel = scanAction.value === 'rental_job_out' || scanAction.value === 'rental_job_in' ? t('scan.rental').toLowerCase() : t('scan.device').toLowerCase()
   activeJobCode.value = job.job_code
   activeJobId.value = job.id
   scanJobCode.value = job.job_code
-  scanResultMessage.value = t('scan.jobSelectedScanCodesNow', { jobCode: job.job_code, item: scanAction.value === 'rental_job_out' ? t('scan.rental').toLowerCase() : t('scan.device').toLowerCase() })
+  scanResultMessage.value = t('scan.jobSelectedScanCodesNow', { jobCode: job.job_code, item: itemLabel })
   scanResultSuccess.value = true
   scanCode.value = ''
   focusScanCodeInput()
