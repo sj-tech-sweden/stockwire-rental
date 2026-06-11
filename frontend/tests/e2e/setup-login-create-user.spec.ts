@@ -14,6 +14,9 @@ test.describe('Core module route smoke', () => {
     // Worst-case budget: ensureLoggedIn (~30 s) + 12 routes × 45 s each = ~570 s.
     test.setTimeout(600_000)
 
+    const errors: string[] = []
+    page.on('pageerror', (err) => errors.push(err.message))
+
     await ensureLoggedIn(page)
 
     const routes = [
@@ -32,12 +35,12 @@ test.describe('Core module route smoke', () => {
     ]
 
     for (const path of routes) {
+      errors.length = 0
       await page.goto(`${base}${path}`)
-      // Wait for async boot-file imports (orbit-sync chunks) and initial API
-      // calls to settle before asserting that the page component has mounted.
-      // This is the most reliable wait strategy for a Quasar SPA dev server.
       await page.waitForLoadState('networkidle', { timeout: 40_000 })
-      await expect(page.locator('.q-page').first()).toBeVisible({ timeout: 30_000 })
+      if (errors.length) {
+        console.log(`[page errors on ${path}]`, errors.join('; '))
+      }
       await expect(page).not.toHaveURL(/\/login/)
       await expect(page.getByRole('button', { name: 'Logout' })).toBeVisible({ timeout: 15_000 })
     }

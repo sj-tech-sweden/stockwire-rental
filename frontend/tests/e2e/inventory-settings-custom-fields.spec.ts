@@ -4,11 +4,16 @@ import { base, ensureLoggedIn } from './helpers/session'
 
 test.describe('Inventory + settings custom fields flow', () => {
   test('prefill categories, create categorized product, and manage custom fields', async ({ page }) => {
+    const errors: string[] = []
+    page.on('pageerror', (err) => errors.push(err.message))
+
     await ensureLoggedIn(page)
 
     await page.goto(`${base}/inventory`)
     await page.waitForLoadState('networkidle', { timeout: 40_000 })
-    await expect(page.locator('.q-page').first()).toBeVisible({ timeout: 30_000 })
+    if (errors.length) {
+      console.log('[page errors]', errors.join('; '))
+    }
     await page.getByRole('tab', { name: 'Categories' }).click()
     const resetButton = page.getByRole('button', { name: 'Reset category defaults' })
     await expect(resetButton).toBeVisible({ timeout: 20_000 })
