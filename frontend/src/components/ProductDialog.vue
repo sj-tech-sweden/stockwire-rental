@@ -600,6 +600,8 @@ function filterComponentProductOptions(val, update) {
     filteredComponentProductOptions.value = componentProductOptions.value.filter(
       option => option.label.toLowerCase().includes(needle)
     )
+  })
+}
 function filterBrandOptions(val, update) {
   update(() => {
     const needle = val.trim().toLowerCase()

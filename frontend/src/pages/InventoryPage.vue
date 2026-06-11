@@ -1760,23 +1760,6 @@ function onMaintenanceCompleteSaved() {
   maintenanceCompleteDialogOpen.value = false
   maintenanceCompleteTarget.value = null
 }
-  try {
-    const completedDate = normalizeOptionalDate(maintenanceCompleteForm.value.completed_date) || new Date().toISOString().slice(0, 10)
-    const notes = String(maintenanceCompleteForm.value.notes || '').trim() || null
-    await store.completeMaintenance(item.id, {
-      completed_date: completedDate,
-      notes,
-    })
-    maintenanceCompleteDialogOpen.value = false
-    maintenanceCompleteTarget.value = null
-    maintenanceCompleteForm.value = emptyMaintenanceCompleteForm()
-    $q.notify({ type: 'positive', message: 'Maintenance completed' })
-  } catch (error) {
-    maintenanceCompleteDialogError.value = error?.response?.data?.detail || 'Failed to complete maintenance'
-  } finally {
-    saving.value = false
-  }
-}
 
 function selectedRowIds(rows) {
   return [...new Set((rows || []).map(row => Number(row?.id || 0)).filter(Boolean))]
