@@ -122,7 +122,7 @@ import { useSettingsStore } from 'src/stores/settings'
 import { api } from 'src/boot/axios'
 import { collectImportSourceKeys, convertDimensionValueToCm, getImportValueBySourceKey, parseImportRows, resolveImportEntityType } from 'src/utils/import-data'
 
-defineProps({
+const props = defineProps({
   modelValue: { type: Boolean, required: true },
 })
 
