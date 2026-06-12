@@ -23,8 +23,8 @@ dependencies = [
   "passlib[bcrypt]==1.7.4",
   "python3-saml==1.16.0",
   "python-multipart==0.0.32",
-  "boto3==1.43.27",
-  "httpx==0.28.1"
+  "httpx==0.28.1",
+  "boto3==1.43.28"
 ]
 
 [project.optional-dependencies]
@@ -32,7 +32,7 @@ dev = [
   "pytest==9.0.3",
   "pytest-asyncio==1.4.0",
   "httpx==0.28.1",
-  "ruff==0.15.16"
+  "ruff==0.15.17"
 ]
 
 [tool.pytest.ini_options]
