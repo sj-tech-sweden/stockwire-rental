@@ -2997,7 +2997,7 @@ async function retryFailedOfflineQueue() {
 onMounted(async () => {
   authLoading.value = true
   try {
-    await Promise.all([
+    await Promise.allSettled([
       authStore.fetchUsers(),
       authStore.fetchApiKeys(),
       loadDefinitions(),

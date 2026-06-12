@@ -91,7 +91,7 @@ export default configure(function () {
                 statuses: [200]
               }
             }
-          },
+          }
         ]
       },
       manifest: {
