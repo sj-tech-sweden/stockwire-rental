@@ -498,6 +498,29 @@ class LabelTemplateRead(LabelTemplateUpsert):
     updated_at: str | None = None
 
 
+class SmtpSettingsRead(BaseModel):
+    host: str = ""
+    port: int = 587
+    username: str = ""
+    password: str = ""
+    from_email: str = ""
+    from_name: str = ""
+    use_tls: bool = True
+    resend_api_key: str = ""
+    env_managed: bool = False
+
+
+class SmtpSettingsUpdate(BaseModel):
+    host: str = ""
+    port: int = 587
+    username: str = ""
+    password: str = ""
+    from_email: str = ""
+    from_name: str = ""
+    use_tls: bool = True
+    resend_api_key: str = ""
+
+
 class AppVersionRead(BaseModel):
     version: str
     backend_version: str | None = None

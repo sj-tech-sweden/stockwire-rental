@@ -62,3 +62,12 @@ class OIDCExchangeRequest(BaseModel):
 class SAMLAssertionRequest(BaseModel):
     provider: str
     saml_response: str
+
+
+class ForgotPasswordRequest(BaseModel):
+    email: str
+
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    new_password: str

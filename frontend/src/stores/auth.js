@@ -197,6 +197,14 @@ export const useAuthStore = defineStore('auth', () => {
     _setSession(data)
   }
 
+  async function forgotPassword(email) {
+    await api.post('/api/v1/auth/forgot-password', { email })
+  }
+
+  async function resetPassword(token, newPassword) {
+    await api.post('/api/v1/auth/reset-password', { token, new_password: newPassword })
+  }
+
   async function fetchApiKeys() {
     try {
       const { data } = await api.get('/api/v1/auth/api-keys')
@@ -260,6 +268,8 @@ export const useAuthStore = defineStore('auth', () => {
     fetchMe,
     updateMyProfile,
     ssoProviders,
+    forgotPassword,
+    resetPassword,
     fetchSsoProviders,
     getOidcAuthorizeUrl,
     oidcExchange,

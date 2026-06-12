@@ -15,6 +15,8 @@ import VenuesPage from '../pages/VenuesPage.vue'
 import AuthLayout from '../layouts/AuthLayout.vue'
 import LoginPage from '../pages/LoginPage.vue'
 import SetupPage from '../pages/SetupPage.vue'
+import ForgotPasswordPage from '../pages/ForgotPasswordPage.vue'
+import ResetPasswordPage from '../pages/ResetPasswordPage.vue'
 import ProfilePage from '../pages/ProfilePage.vue'
 
 const routes = [
@@ -33,6 +35,20 @@ const routes = [
     component: AuthLayout,
     meta: { public: true },
     children: [{ path: '', component: SetupPage }]
+  },
+  {
+    path: '/forgot-password',
+    name: 'forgot-password',
+    component: AuthLayout,
+    meta: { public: true },
+    children: [{ path: '', component: ForgotPasswordPage }]
+  },
+  {
+    path: '/reset-password/:token',
+    name: 'reset-password',
+    component: AuthLayout,
+    meta: { public: true },
+    children: [{ path: '', component: ResetPasswordPage }]
   },
   {
     path: '/',
