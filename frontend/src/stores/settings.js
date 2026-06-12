@@ -304,6 +304,17 @@ export const DEFAULT_INTEGRATIONS = {
   ],
 }
 
+export const DEFAULT_SMTP_SETTINGS = {
+  host: '',
+  port: 587,
+  username: '',
+  from_email: '',
+  from_name: '',
+  use_tls: true,
+  resend_api_key: '',
+  env_managed: false,
+}
+
 export const DEFAULT_AUTH_SSO_SETTINGS = {
   enabled: false,
   auto_create_users: false,
@@ -353,6 +364,7 @@ export const useSettingsStore = defineStore('settings', () => {
   const integrations = ref(cloneIntegrations(DEFAULT_INTEGRATIONS))
   const authSsoSettings = ref(cloneAuthSsoSettings(DEFAULT_AUTH_SSO_SETTINGS))
   const companyProfile = ref({ ...DEFAULT_COMPANY_PROFILE })
+  const smtpSettings = ref({ ...DEFAULT_SMTP_SETTINGS })
   const labelTemplates = ref([])
   const loading = ref(false)
 
@@ -698,6 +710,50 @@ export const useSettingsStore = defineStore('settings', () => {
     return companyProfile.value
   }
 
+  async function fetchSmtpSettings() {
+    const { data } = await api.get('/api/v1/settings/email-smtp')
+    smtpSettings.value = {
+      host: String(data?.host || ''),
+      port: Number(data?.port || 587),
+      username: String(data?.username || ''),
+      from_email: String(data?.from_email || ''),
+      from_name: String(data?.from_name || ''),
+      use_tls: Boolean(data?.use_tls),
+      resend_api_key: String(data?.resend_api_key || ''),
+      env_managed: Boolean(data?.env_managed),
+    }
+    return smtpSettings.value
+  }
+
+  async function updateSmtpSettings(payload) {
+    const { data } = await api.put('/api/v1/settings/email-smtp', {
+      host: String(payload?.host || '').trim(),
+      port: Number(payload?.port || 587),
+      username: String(payload?.username || '').trim(),
+      password: String(payload?.password || '').trim(),
+      from_email: String(payload?.from_email || '').trim(),
+      from_name: String(payload?.from_name || '').trim(),
+      use_tls: Boolean(payload?.use_tls),
+      resend_api_key: String(payload?.resend_api_key || '').trim(),
+    })
+    smtpSettings.value = {
+      host: String(data?.host || ''),
+      port: Number(data?.port || 587),
+      username: String(data?.username || ''),
+      from_email: String(data?.from_email || ''),
+      from_name: String(data?.from_name || ''),
+      use_tls: Boolean(data?.use_tls),
+      resend_api_key: String(data?.resend_api_key || ''),
+      env_managed: Boolean(data?.env_managed),
+    }
+    return smtpSettings.value
+  }
+
+  async function sendTestEmail(to) {
+    const { data } = await api.post('/api/v1/settings/email-smtp/test', { to })
+    return data
+  }
+
   async function fetchLabelTemplates() {
     const { data } = await api.get('/api/v1/settings/label-templates')
     labelTemplates.value = Array.isArray(data) ? data : []
@@ -1035,6 +1091,7 @@ export const useSettingsStore = defineStore('settings', () => {
     integrations,
     authSsoSettings,
     companyProfile,
+    smtpSettings,
     labelTemplates,
     loading,
     fetchLocationTypes,
@@ -1053,6 +1110,9 @@ export const useSettingsStore = defineStore('settings', () => {
     updateAuthSsoSettings,
     fetchCompanyProfile,
     updateCompanyProfile,
+    fetchSmtpSettings,
+    updateSmtpSettings,
+    sendTestEmail,
     fetchLabelTemplates,
     createLabelTemplate,
     updateLabelTemplate,

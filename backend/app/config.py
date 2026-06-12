@@ -45,6 +45,19 @@ class Settings(BaseSettings):
     storage_s3_prefix: str = "uploads"
     storage_s3_presign_expiry_seconds: int = 900
 
+    smtp_host: str = ""
+    smtp_port: int = 587
+    smtp_user: str = ""
+    smtp_password: str = ""
+    smtp_from_email: str = "noreply@stockwire.app"
+    smtp_from_name: str = "Stockwire Rental"
+    smtp_use_tls: bool = True
+
+    resend_api_key: str = ""
+
+    password_reset_expire_minutes: int = 15
+    password_reset_base_url: str = "http://localhost:9000"
+
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", case_sensitive=False)
 
     @property

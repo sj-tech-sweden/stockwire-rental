@@ -8,6 +8,7 @@
       <q-tab name="custom-fields" icon="list_alt" :label="t('settings.tabs.customFields')" />
       <q-tab name="inventory" icon="account_tree" :label="t('settings.tabs.inventory')" />
       <q-tab name="integrations" icon="hub" :label="t('settings.tabs.integrations')" />
+      <q-tab name="email" icon="email" :label="t('settings.tabs.email')" />
       <q-tab name="offline-queue" icon="sync" :label="t('settings.tabs.offlineQueue')" />
       <q-tab name="about" icon="info" :label="t('settings.tabs.about')" />
     </q-tabs>
@@ -922,6 +923,146 @@
         </q-card>
       </q-tab-panel>
 
+      <q-tab-panel name="email" class="q-pa-none">
+        <q-card class="ec-card q-pa-md">
+          <div class="text-subtitle1 q-mb-sm">{{ t('settings.email.title') }}</div>
+          <div class="text-body2 q-mb-md">{{ t('settings.email.description') }}</div>
+
+          <q-banner v-if="settingsStore.smtpSettings.env_managed" class="bg-info text-white q-mb-md rounded-borders" dense>
+            {{ t('settings.email.envManagedBanner') }}
+          </q-banner>
+
+          <q-form @submit.prevent="saveSmtpSettings">
+            <div class="text-subtitle2 q-mb-sm">{{ t('settings.email.resendTitle') }}</div>
+            <div class="row q-col-gutter-sm q-mb-md">
+              <div class="col-12">
+                <q-input
+                  v-model="smtpDraft.resend_api_key"
+                  :label="t('settings.email.resendApiKey')"
+                  type="password"
+                  outlined
+                  dense
+                  :disable="settingsStore.smtpSettings.env_managed"
+                  autocomplete="new-password"
+                />
+              </div>
+            </div>
+
+            <q-separator class="q-mb-md" />
+
+            <div class="text-subtitle2 q-mb-sm">{{ t('settings.email.connection') }}</div>
+            <div class="row q-col-gutter-sm q-mb-md">
+              <div class="col-12 col-md-6">
+                <q-input
+                  v-model="smtpDraft.host"
+                  :label="t('settings.email.host')"
+                  outlined
+                  dense
+                  :disable="settingsStore.smtpSettings.env_managed"
+                  :hint="settingsStore.smtpSettings.env_managed ? t('settings.email.envManaged') : ''"
+                />
+              </div>
+              <div class="col-12 col-md-3">
+                <q-input
+                  v-model.number="smtpDraft.port"
+                  :label="t('settings.email.port')"
+                  type="number"
+                  outlined
+                  dense
+                  :disable="settingsStore.smtpSettings.env_managed"
+                  min="1"
+                  max="65535"
+                />
+              </div>
+              <div class="col-12 col-md-3" style="padding-top: 18px">
+                <q-toggle
+                  v-model="smtpDraft.use_tls"
+                  :label="t('settings.email.useTls')"
+                  color="primary"
+                  :disable="settingsStore.smtpSettings.env_managed"
+                />
+              </div>
+            </div>
+
+            <div class="text-subtitle2 q-mb-sm">{{ t('settings.email.senderInfo') }}</div>
+            <div class="row q-col-gutter-sm q-mb-md">
+              <div class="col-12 col-md-4">
+                <q-input
+                  v-model="smtpDraft.username"
+                  :label="t('settings.email.username')"
+                  outlined
+                  dense
+                  :disable="settingsStore.smtpSettings.env_managed"
+                />
+              </div>
+              <div class="col-12 col-md-4">
+                <q-input
+                  v-model="smtpDraft.password"
+                  :label="t('settings.email.password')"
+                  type="password"
+                  outlined
+                  dense
+                  :disable="settingsStore.smtpSettings.env_managed"
+                  autocomplete="new-password"
+                />
+              </div>
+              <div class="col-12 col-md-4">
+                <q-input
+                  v-model="smtpDraft.from_email"
+                  :label="t('settings.email.fromEmail')"
+                  type="email"
+                  outlined
+                  dense
+                  :disable="settingsStore.smtpSettings.env_managed"
+                />
+              </div>
+              <div class="col-12 col-md-4">
+                <q-input
+                  v-model="smtpDraft.from_name"
+                  :label="t('settings.email.fromName')"
+                  outlined
+                  dense
+                  :disable="settingsStore.smtpSettings.env_managed"
+                />
+              </div>
+            </div>
+
+            <q-banner v-if="smtpError" class="bg-negative text-white q-mb-md rounded-borders" dense>
+              {{ smtpError }}
+            </q-banner>
+
+            <div class="row items-center q-gutter-sm q-mb-md">
+              <q-btn
+                v-if="!settingsStore.smtpSettings.env_managed"
+                type="submit"
+                color="positive"
+                :label="t('settings.email.save')"
+                unelevated
+                :loading="smtpSaving"
+              />
+              <q-input
+                v-model="smtpTestEmail"
+                :label="t('settings.email.testEmailPlaceholder')"
+                outlined
+                dense
+                type="email"
+                class="col"
+                :disable="smtpTesting"
+              />
+              <q-btn
+                color="secondary"
+                icon="send"
+                :label="t('settings.email.testEmail')"
+                unelevated
+                :loading="smtpTesting"
+                :disable="!smtpTestEmail || !smtpTestEmail.includes('@')"
+                @click="testSmtpSettings"
+              />
+            </div>
+          </q-form>
+        </q-card>
+      </q-tab-panel>
+
       <q-tab-panel name="offline-queue" class="q-pa-none">
         <q-card class="ec-card q-pa-md">
           <div class="row items-center q-mb-sm">
@@ -1121,6 +1262,7 @@ import { useJobsStore } from '../stores/jobs'
 import {
   DEFAULT_AUTH_SSO_SETTINGS,
   DEFAULT_BRAND_LINKS,
+  DEFAULT_SMTP_SETTINGS,
   DEFAULT_BRAND_MANUFACTURER_MAP,
   DEFAULT_BRAND_OPTIONS,
   DEFAULT_CATEGORY_PREFILL_PATHS,
@@ -1268,6 +1410,11 @@ const integrationsDraft = ref({
 const authSsoDraft = ref({ ...DEFAULT_AUTH_SSO_SETTINGS })
 const authSsoValidationError = ref('')
 const authSsoSaving = ref(false)
+const smtpDraft = ref({ ...DEFAULT_SMTP_SETTINGS })
+const smtpSaving = ref(false)
+const smtpError = ref('')
+const smtpTestEmail = ref('')
+const smtpTesting = ref(false)
 const companyProfileDraft = ref({
   company_name: '',
   default_language: 'en',
@@ -2383,6 +2530,60 @@ async function saveAuthSsoSettings() {
   }
 }
 
+function applySmtpDraft(settings) {
+  const prev = smtpDraft.value
+  smtpDraft.value = {
+    host: String(settings?.host || ''),
+    port: Number(settings?.port || 587),
+    username: String(settings?.username || ''),
+    password: settings?.password ?? prev?.password ?? '',
+    from_email: String(settings?.from_email || ''),
+    from_name: String(settings?.from_name || ''),
+    use_tls: Boolean(settings?.use_tls),
+    resend_api_key: settings?.resend_api_key ?? prev?.resend_api_key ?? '',
+  }
+}
+
+async function saveSmtpSettings() {
+  smtpError.value = ''
+  smtpSaving.value = true
+  try {
+    const saved = await settingsStore.updateSmtpSettings({
+      host: String(smtpDraft.value.host || '').trim(),
+      port: Number(smtpDraft.value.port || 587),
+      username: String(smtpDraft.value.username || '').trim(),
+      password: String(smtpDraft.value.password || '').trim(),
+      from_email: String(smtpDraft.value.from_email || '').trim(),
+      from_name: String(smtpDraft.value.from_name || '').trim(),
+      use_tls: Boolean(smtpDraft.value.use_tls),
+      resend_api_key: String(smtpDraft.value.resend_api_key || '').trim(),
+    })
+    applySmtpDraft(saved)
+    $q.notify({ type: 'positive', message: t('settings.email.saved') })
+  } catch (error) {
+    smtpError.value = error?.response?.data?.detail || error?.message || t('settings.email.failedSave')
+    $q.notify({ type: 'negative', message: smtpError.value })
+  } finally {
+    smtpSaving.value = false
+  }
+}
+
+async function testSmtpSettings() {
+  const to = String(smtpTestEmail.value || '').trim()
+  if (!to || !to.includes('@')) return
+  smtpTesting.value = true
+  try {
+    await settingsStore.sendTestEmail(to)
+    $q.notify({ type: 'positive', message: t('settings.email.testSent') })
+  } catch (error) {
+    const msg = error?.response?.data?.detail || error?.message || t('settings.email.testFailed')
+    console.error('Test email failed:', error)
+    $q.notify({ type: 'negative', message: msg })
+  } finally {
+    smtpTesting.value = false
+  }
+}
+
 function applyCompanyProfileDraft(profile) {
   companyProfileDraft.value = {
     company_name: String(profile?.company_name || '').trim(),
@@ -2806,6 +3007,7 @@ onMounted(async () => {
       settingsStore.fetchProductDefaults(),
       settingsStore.fetchIntegrations(),
       settingsStore.fetchAuthSsoSettings(),
+      settingsStore.fetchSmtpSettings(),
       settingsStore.fetchCompanyProfile(),
       jobsStore.fetchAll(),
       customersStore.fetchAll(),
@@ -2824,6 +3026,7 @@ onMounted(async () => {
       eventory_instances: withEventoryDraftMeta((settingsStore.integrations?.eventory_instances || DEFAULT_INTEGRATIONS.eventory_instances).map(instance => ({ ...instance }))),
     }
     applyAuthSsoDraft(settingsStore.authSsoSettings)
+    applySmtpDraft(settingsStore.smtpSettings)
     for (const instance of integrationsDraft.value.eventory_instances || []) {
       if (instance?.sync_running) {
         const key = String(instance?.id || '').trim()

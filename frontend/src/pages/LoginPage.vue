@@ -68,6 +68,17 @@
           :loading="loading"
           unelevated
         />
+
+        <div class="text-center q-mt-sm">
+          <q-btn
+            :label="t('login.forgotPassword')"
+            color="grey-7"
+            flat
+            dense
+            size="sm"
+            :to="{ name: 'forgot-password' }"
+          />
+        </div>
       </q-form>
 
       <q-separator class="q-my-md" dark />

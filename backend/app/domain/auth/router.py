@@ -1,15 +1,19 @@
+import logging
 from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
+from jose import jwt
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
+
+logger = logging.getLogger(__name__)
 
 from app.config import settings
 from app.db.session import get_db
 from app.domain.auth.deps import get_current_user, require_admin
 from app.domain.auth.models import User, UserSession
-from app.domain.auth.schemas import Token, UserCreate, UserLogin, UserSummary, UserSelfUpdate, OIDCExchangeRequest, SAMLAssertionRequest, SSOProviderSummary
-from app.domain.auth.security import create_access_token, generate_refresh_token, compute_refresh_token_hash, hash_password, verify_password, hash_api_key, hash_api_key_lookup
+from app.domain.auth.schemas import Token, UserCreate, UserLogin, UserSummary, UserSelfUpdate, OIDCExchangeRequest, SAMLAssertionRequest, SSOProviderSummary, ForgotPasswordRequest, ResetPasswordRequest
+from app.domain.auth.security import create_access_token, generate_refresh_token, compute_refresh_token_hash, hash_password, verify_password, hash_api_key, hash_api_key_lookup, decode_token
 from app.domain.auth.sso import (
     build_oidc_authorize_url,
     claims_to_identity,
@@ -203,6 +207,105 @@ def login(payload: UserLogin, response: Response, db: Session = Depends(get_db))
     if not user.is_active:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Account disabled")
     return _make_token_response(user, response, db)
+
+
+@router.post("/forgot-password", status_code=status.HTTP_204_NO_CONTENT)
+def forgot_password(
+    payload: ForgotPasswordRequest,
+    db: Session = Depends(get_db),
+) -> None:
+    normalized_email = payload.email.strip().lower()
+    user = db.scalar(select(User).where(func.lower(User.email) == normalized_email))
+    if user is None:
+        return
+
+    reset_token = jwt.encode(
+        {
+            "sub": str(user.id),
+            "purpose": "password_reset",
+            "exp": datetime.now(timezone.utc) + timedelta(minutes=settings.password_reset_expire_minutes),
+        },
+        settings.jwt_secret_key,
+        algorithm=settings.jwt_algorithm,
+    )
+
+    reset_url = f"{settings.password_reset_base_url}/reset-password/{reset_token}"
+
+    try:
+        from app.services.email import EmailMessage, send_email
+
+        send_email(
+            EmailMessage(
+                to=user.email,
+                subject="Password Reset Request",
+                text_body=f"Click the following link to reset your password: {reset_url}",
+                html_body=_build_password_reset_email(reset_url),
+            ),
+            db=db,
+        )
+    except Exception:
+        logger.exception("Failed to send password reset email to %s", user.email)
+
+
+def _build_password_reset_email(reset_url: str) -> str:
+    return f"""<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"></head>
+<body style="font-family: Arial, sans-serif; background: #f4f4f4; margin: 0; padding: 0;">
+  <table width="100%" cellpadding="0" cellspacing="0">
+    <tr><td align="center" style="padding: 40px 20px;">
+      <table width="600" cellpadding="0" cellspacing="0" style="background: #ffffff; border-radius: 8px; overflow: hidden;">
+        <tr><td style="padding: 32px 40px; background: #1976d2;">
+          <h1 style="color: #ffffff; margin: 0; font-size: 24px;">Stockwire Rental</h1>
+        </td></tr>
+        <tr><td style="padding: 32px 40px;">
+          <h2 style="color: #333; margin: 0 0 16px;">Password Reset Request</h2>
+          <p style="color: #555; line-height: 1.6; margin: 0 0 24px;">
+            You recently requested to reset your password. Click the button below to choose a new one.
+            This link expires in {settings.password_reset_expire_minutes} minutes.
+          </p>
+          <table cellpadding="0" cellspacing="0">
+            <tr>
+              <td align="center" style="background: #1976d2; border-radius: 4px;">
+                <a href="{reset_url}" style="display: inline-block; padding: 12px 32px; color: #ffffff; text-decoration: none; font-size: 16px;">Reset Password</a>
+              </td>
+            </tr>
+          </table>
+          <p style="color: #999; font-size: 13px; margin: 24px 0 0;">
+            If you did not request a password reset, please ignore this email.
+          </p>
+        </td></tr>
+        <tr><td style="padding: 16px 40px; background: #f4f4f4; text-align: center;">
+          <p style="color: #999; font-size: 12px; margin: 0;">&copy; Stockwire Rental &mdash; All rights reserved.</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>"""
+
+
+@router.post("/reset-password", status_code=status.HTTP_204_NO_CONTENT)
+def reset_password(
+    payload: ResetPasswordRequest,
+    db: Session = Depends(get_db),
+) -> None:
+    try:
+        claims = decode_token(payload.token)
+    except Exception:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid or expired token")
+
+    if claims.get("purpose") != "password_reset":
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid token purpose")
+
+    user_id = int(claims["sub"])
+    user = db.get(User, user_id)
+    if user is None:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid or expired token")
+
+    user.password_hash = hash_password(payload.new_password)
+    db.add(user)
+    db.commit()
 
 
 @router.post("/refresh", response_model=Token)

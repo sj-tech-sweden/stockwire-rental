@@ -13,12 +13,14 @@ from urllib.request import Request, build_opener, HTTPRedirectHandler, HTTPHandl
 import os
 from pathlib import Path
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
+from pydantic import BaseModel
 import redis
 from sqlalchemy import select, text
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
+from app.config import settings
 from app.db.session import SessionLocal, get_db
 from app.domain.auth.deps import get_current_user, require_admin, require_editor
 from app.domain.auth.models import User
@@ -58,6 +60,8 @@ from app.domain.settings.schemas import (
     LocationTypeOptionsUpdate,
     ProductDefaultsRead,
     ProductDefaultsUpdate,
+    SmtpSettingsRead,
+    SmtpSettingsUpdate,
 )
 from app.domain.storage.models import AssetFile
 from app.domain.storage.schemas import CompanyProfileRead, CompanyProfileUpdate
@@ -78,6 +82,7 @@ INTEGRATIONS_KEY = "integrations.plugins"
 AUTH_SSO_SETTINGS_KEY = "auth.sso"
 COMPANY_PROFILE_KEY = "company.profile"
 LABEL_TEMPLATES_KEY = "labels.templates"
+EMAIL_SMTP_KEY = "email.smtp"
 DEFAULT_EVENTORY_API_URL = "https://api.eventory.se"
 
 DEFAULT_INTEGRATIONS = {
@@ -400,6 +405,120 @@ def update_auth_sso_settings(
     setting.value_json = json.dumps(normalized)
     db.commit()
     return AuthSSOSettingsRead(**normalized)
+
+
+def _is_smtp_env_managed() -> bool:
+    return bool((settings.smtp_host or "").strip() or (settings.resend_api_key or "").strip())
+
+
+def default_smtp_settings_payload() -> dict[str, Any]:
+    return {
+        "host": settings.smtp_host or "",
+        "port": settings.smtp_port,
+        "username": settings.smtp_user or "",
+        "password": settings.smtp_password or "",
+        "from_email": settings.smtp_from_email or "",
+        "from_name": settings.smtp_from_name or "",
+        "use_tls": settings.smtp_use_tls,
+        "resend_api_key": settings.resend_api_key or "",
+    }
+
+
+def _get_stored_smtp_value(db: Session, key: str) -> str:
+    setting = db.scalar(select(AppSetting).where(AppSetting.key == EMAIL_SMTP_KEY))
+    if setting and setting.value_json:
+        try:
+            parsed = json.loads(setting.value_json)
+            return str(parsed.get(key) or "")
+        except Exception:
+            pass
+    return ""
+
+
+def _get_effective_smtp_config(db: Session) -> dict[str, Any]:
+    if _is_smtp_env_managed():
+        payload = default_smtp_settings_payload()
+        payload["env_managed"] = True
+        return payload
+    setting = _get_or_create_setting(db, EMAIL_SMTP_KEY, default_smtp_settings_payload())
+    try:
+        parsed = json.loads(setting.value_json or "{}")
+    except Exception:
+        parsed = {}
+    payload = {
+        "host": str(parsed.get("host") or ""),
+        "port": int(parsed.get("port") or settings.smtp_port),
+        "username": str(parsed.get("username") or ""),
+        "password": str(parsed.get("password") or ""),
+        "from_email": str(parsed.get("from_email") or settings.smtp_from_email),
+        "from_name": str(parsed.get("from_name") or settings.smtp_from_name),
+        "use_tls": bool(parsed.get("use_tls", settings.smtp_use_tls)),
+        "resend_api_key": str(parsed.get("resend_api_key") or ""),
+        "env_managed": False,
+    }
+    return payload
+
+
+@router.get("/email-smtp", response_model=SmtpSettingsRead)
+def get_email_smtp_settings(
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_user),
+) -> SmtpSettingsRead:
+    return SmtpSettingsRead(**_get_effective_smtp_config(db))
+
+
+@router.put("/email-smtp", response_model=SmtpSettingsRead)
+def update_email_smtp_settings(
+    payload: SmtpSettingsUpdate,
+    db: Session = Depends(get_db),
+    _: User = Depends(require_admin),
+) -> SmtpSettingsRead:
+    if _is_smtp_env_managed():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Email settings are managed by environment variables and cannot be updated via the API.",
+        )
+    setting = _get_or_create_setting(db, EMAIL_SMTP_KEY, default_smtp_settings_payload())
+    data = payload.model_dump()
+    if not data.get("password"):
+        data["password"] = _get_stored_smtp_value(db, "password")
+    if not data.get("resend_api_key"):
+        data["resend_api_key"] = _get_stored_smtp_value(db, "resend_api_key")
+    setting.value_json = json.dumps(data)
+    db.commit()
+    result = data
+    result["env_managed"] = False
+    return SmtpSettingsRead(**result)
+
+
+class SmtpTestRequest(BaseModel):
+    to: str
+
+
+@router.post("/email-smtp/test", status_code=status.HTTP_200_OK)
+def test_email_smtp(
+    payload: SmtpTestRequest,
+    db: Session = Depends(get_db),
+    _: User = Depends(require_admin),
+) -> dict:
+    from app.services.email import EmailMessage, send_email
+
+    to = payload.to.strip()
+    if not to or "@" not in to:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Valid recipient email is required")
+
+    err = send_email(
+        EmailMessage(
+            to=to,
+            subject="Test Email from Stockwire Rental",
+            text_body="This is a test email to verify your SMTP configuration.",
+            html_body="<p>This is a test email to verify your SMTP configuration.</p>",
+        ),
+        db=db,
+    )
+    if err is None:
+        return {"ok": True, "message": "Test email sent"}
+    raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to send test email: {err}")
 
 
 @router.get("/company-profile", response_model=CompanyProfileRead)
