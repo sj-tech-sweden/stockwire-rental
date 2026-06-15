@@ -115,6 +115,30 @@
 
           <div class="row q-col-gutter-sm q-mt-sm">
             <div class="col-12 col-md-6">
+              <q-select
+                v-model="form.project_id"
+                :options="projectOptions"
+                :label="t('jobs.project')"
+                outlined
+                dense
+                clearable
+                emit-value
+                map-options
+              />
+            </div>
+            <div class="col-12 col-md-6">
+              <q-input
+                v-model="form.location_in_venue"
+                :label="t('jobs.locationInVenue')"
+                outlined
+                dense
+                clearable
+              />
+            </div>
+          </div>
+
+          <div class="row q-col-gutter-sm q-mt-sm">
+            <div class="col-12 col-md-6">
               <q-input v-model="form.start_date" :label="t('jobs.startDate')" type="date" outlined dense />
             </div>
             <div class="col-12 col-md-6">
@@ -224,139 +248,8 @@
             </div>
           </q-expansion-item>
 
-          <q-expansion-item class="q-mt-md" icon="person_add" :label="t('jobs.createNewCustomer')" dense>
-            <div class="q-pt-sm">
-              <q-input v-model="customerDraft.name" :label="t('jobs.customerName')" outlined dense class="q-mb-sm" />
-              <div class="row q-col-gutter-sm">
-                <div class="col-12 col-md-6">
-                  <q-input v-model="customerDraft.email" :label="t('profile.email')" outlined dense class="q-mb-sm" />
-                </div>
-                <div class="col-12 col-md-6">
-                  <q-input v-model="customerDraft.phone" :label="t('customers.phone')" outlined dense class="q-mb-sm" />
-                </div>
-              </div>
-              <q-input v-model="customerDraft.notes" :label="t('jobs.customerNotes')" type="textarea" autogrow outlined dense />
-
-              <q-separator class="q-my-sm" />
-              <div class="text-subtitle2 q-mb-xs">{{ t('jobs.customerCustomFields') }}</div>
-              <div v-if="customerDraftFieldRows.length">
-                <div v-for="field in customerDraftFieldRows" :key="field.field_definition_id" class="q-mb-sm">
-                  <q-input
-                    v-if="field.value_type === 'text'"
-                    v-model="field.value"
-                    :label="customFieldLabel(field.label)"
-                    outlined
-                    dense
-                  />
-                  <q-input
-                    v-else-if="field.value_type === 'number'"
-                    v-model="field.value"
-                    :label="customFieldLabel(field.label)"
-                    type="number"
-                    outlined
-                    dense
-                  />
-                  <q-select
-                    v-else-if="field.value_type === 'boolean'"
-                    v-model="field.value"
-                    :options="booleanValueOptions"
-                    :label="customFieldLabel(field.label)"
-                    outlined
-                    dense
-                    emit-value
-                    map-options
-                  />
-                  <q-input
-                    v-else-if="field.value_type === 'date'"
-                    v-model="field.value"
-                    :label="customFieldLabel(field.label)"
-                    type="date"
-                    outlined
-                    dense
-                  />
-                  <q-select
-                    v-else-if="field.value_type === 'select'"
-                    v-model="field.value"
-                    :options="(field.options || []).map(option => ({ label: customFieldOption(option), value: option }))"
-                    :label="customFieldLabel(field.label)"
-                    outlined
-                    dense
-                    clearable
-                    emit-value
-                    map-options
-                  />
-                </div>
-              </div>
-              <div v-else class="text-caption text-grey-7">{{ t('jobs.noCustomerCustomFields') }}</div>
-            </div>
-          </q-expansion-item>
-
-          <q-expansion-item class="q-mt-md" icon="place" :label="t('jobs.createNewVenue')" dense>
-            <div class="q-pt-sm">
-              <q-input v-model="venueDraft.name" :label="t('jobs.venueName')" outlined dense class="q-mb-sm" />
-              <div class="row q-col-gutter-sm">
-                <div class="col-12 col-md-6">
-                  <q-input v-model="venueDraft.address" :label="t('venues.address')" outlined dense class="q-mb-sm" />
-                </div>
-                <div class="col-12 col-md-6">
-                  <q-input v-model="venueDraft.city" :label="t('venues.city')" outlined dense class="q-mb-sm" />
-                </div>
-              </div>
-              <q-input v-model="venueDraft.notes" :label="t('jobs.venueNotes')" type="textarea" autogrow outlined dense />
-
-              <q-separator class="q-my-sm" />
-              <div class="text-subtitle2 q-mb-xs">{{ t('jobs.venueCustomFields') }}</div>
-              <div v-if="venueDraftFieldRows.length">
-                <div v-for="field in venueDraftFieldRows" :key="field.field_definition_id" class="q-mb-sm">
-                  <q-input
-                    v-if="field.value_type === 'text'"
-                    v-model="field.value"
-                    :label="customFieldLabel(field.label)"
-                    outlined
-                    dense
-                  />
-                  <q-input
-                    v-else-if="field.value_type === 'number'"
-                    v-model="field.value"
-                    :label="customFieldLabel(field.label)"
-                    type="number"
-                    outlined
-                    dense
-                  />
-                  <q-select
-                    v-else-if="field.value_type === 'boolean'"
-                    v-model="field.value"
-                    :options="booleanValueOptions"
-                    :label="customFieldLabel(field.label)"
-                    outlined
-                    dense
-                    emit-value
-                    map-options
-                  />
-                  <q-input
-                    v-else-if="field.value_type === 'date'"
-                    v-model="field.value"
-                    :label="customFieldLabel(field.label)"
-                    type="date"
-                    outlined
-                    dense
-                  />
-                  <q-select
-                    v-else-if="field.value_type === 'select'"
-                    v-model="field.value"
-                    :options="(field.options || []).map(option => ({ label: customFieldOption(option), value: option }))"
-                    :label="customFieldLabel(field.label)"
-                    outlined
-                    dense
-                    clearable
-                    emit-value
-                    map-options
-                  />
-                </div>
-              </div>
-              <div v-else class="text-caption text-grey-7">{{ t('jobs.noVenueCustomFields') }}</div>
-            </div>
-          </q-expansion-item>
+          <CustomerCreateInline class="q-mt-md" @created="onCustomerCreated" />
+          <VenueCreateInline class="q-mt-md" @created="onVenueCreated" />
 
           <q-expansion-item class="q-mt-md" icon="inventory_2" :label="t('jobs.requiredProductsAndQuantities')" dense>
             <div class="q-pt-sm">
@@ -608,7 +501,10 @@ import { useInventoryStore } from '../stores/inventory'
 import { useCustomFieldsStore } from '../stores/customFields'
 import { useAuthStore } from '../stores/auth'
 import { useSettingsStore } from '../stores/settings'
+import { useProjectsStore } from '../stores/projects'
 import EntityAttachmentsPanel from './EntityAttachmentsPanel.vue'
+import CustomerCreateInline from './CustomerCreateInline.vue'
+import VenueCreateInline from './VenueCreateInline.vue'
 import { translateMaybePrefillCustomFieldLabel, translateMaybePrefillCustomFieldOption } from '../i18n/prefillContent'
 import { normalizeCurrencyCode } from '../constants/currencies'
 import { googleMapsEmbedUrl, googleMapsSearchUrl, locationQueryFromParts } from '../utils/maps'
@@ -619,6 +515,7 @@ const props = defineProps({
   customers: { type: Array, default: () => [] },
   venues: { type: Array, default: () => [] },
   products: { type: Array, default: () => [] },
+  initialValues: { type: Object, default: null },
 })
 
 const emit = defineEmits([
@@ -635,6 +532,7 @@ const inventoryStore = useInventoryStore()
 const customFieldsStore = useCustomFieldsStore()
 const authStore = useAuthStore()
 const settingsStore = useSettingsStore()
+const projectsStore = useProjectsStore()
 
 const isPhone = computed(() => $q.screen.lt.md)
 const activeCurrencyCode = computed(() => normalizeCurrencyCode(settingsStore.companyProfile?.currency, 'SEK'))
@@ -666,6 +564,11 @@ const venueOptions = computed(() => venuesStore.venues.map(venue => ({
   value: venue.id,
 })))
 
+const projectOptions = computed(() => projectsStore.projects.map(p => ({
+  label: p.name,
+  value: p.id,
+})))
+
 const filteredCustomerOptions = ref([])
 const filteredVenueOptions = ref([])
 const filteredProductOptions = ref([])
@@ -677,8 +580,6 @@ const requirementManufacturerFilter = ref(null)
 const requirementTypeFilter = ref(null)
 const requirementSort = ref('category_name')
 const jobFieldRows = ref([])
-const customerDraftFieldRows = ref([])
-const venueDraftFieldRows = ref([])
 
 const booleanValueOptions = computed(() => [
   { label: t('common.true'), value: 'true' },
@@ -893,6 +794,8 @@ function formatMoney(value) {
 const emptyForm = () => ({
   job_code: '',
   description: '',
+  project_id: null,
+  location_in_venue: '',
   customer_id: null,
   customer_name: '',
   venue_id: null,
@@ -907,10 +810,6 @@ const emptyForm = () => ({
 })
 
 const form = ref(emptyForm())
-const emptyCustomerDraft = () => ({ name: '', email: '', phone: '', notes: '' })
-const emptyVenueDraft = () => ({ name: '', address: '', city: '', notes: '' })
-const customerDraft = ref(emptyCustomerDraft())
-const venueDraft = ref(emptyVenueDraft())
 const requirementRows = ref([])
 const requirementDraft = ref({ product_id: null, quantity_required: 1 })
 
@@ -1244,7 +1143,7 @@ const selectedVenueLocationQuery = computed(() => {
     const venue = venuesStore.venues.find(item => item.id === form.value.venue_id)
     return locationQueryFromParts(venue || {})
   }
-  return locationQueryFromParts(venueDraft.value)
+  return ''
 })
 
 const selectedVenueMapLink = computed(() => googleMapsSearchUrl(selectedVenueLocationQuery.value))
@@ -1295,28 +1194,6 @@ function createEmptyJobFieldRows() {
   }))
 }
 
-function createEmptyCustomerFieldRows() {
-  const defs = (customFieldsStore.definitions || []).filter(def => def.entity_type === 'customer' && def.is_active !== false)
-  return defs.map(def => ({
-    field_definition_id: def.id,
-    label: def.label,
-    value_type: def.value_type,
-    options: def.options || [],
-    value: null,
-  }))
-}
-
-function createEmptyVenueFieldRows() {
-  const defs = (customFieldsStore.definitions || []).filter(def => def.entity_type === 'venue' && def.is_active !== false)
-  return defs.map(def => ({
-    field_definition_id: def.id,
-    label: def.label,
-    value_type: def.value_type,
-    options: def.options || [],
-    value: null,
-  }))
-}
-
 async function loadJobFieldRows(entityId) {
   if (!entityId) {
     jobFieldRows.value = createEmptyJobFieldRows()
@@ -1345,8 +1222,6 @@ async function generateJobCode() {
 function openCreate() {
   editing.value = null
   form.value = emptyForm()
-  customerDraft.value = emptyCustomerDraft()
-  venueDraft.value = emptyVenueDraft()
   requirementRows.value = []
   requirementDraft.value = { product_id: null, quantity_required: 1 }
   requirementProductSearch.value = ''
@@ -1357,8 +1232,6 @@ function openCreate() {
   requirementTypeFilter.value = null
   requirementSort.value = 'category_name'
   loadJobFieldRows(null)
-  customerDraftFieldRows.value = createEmptyCustomerFieldRows()
-  venueDraftFieldRows.value = createEmptyVenueFieldRows()
   dialogError.value = ''
   generateJobCode()
 }
@@ -1368,6 +1241,8 @@ function openEdit(job) {
   form.value = {
     job_code: job.job_code ?? '',
     description: job.description ?? '',
+    project_id: job.project_id ?? null,
+    location_in_venue: job.location_in_venue ?? '',
     customer_id: job.customer_id ?? null,
     customer_name: job.customer_name ?? '',
     venue_id: job.venue_id ?? null,
@@ -1380,8 +1255,6 @@ function openEdit(job) {
     invoice_paid_at: normalizeDate(job.invoice_paid_at),
     notes: job.notes ?? '',
   }
-  customerDraft.value = emptyCustomerDraft()
-  venueDraft.value = emptyVenueDraft()
   requirementRows.value = jobsStore.requirements
     .filter(req => req.job_id === job.id)
     .map(req => ({
@@ -1399,8 +1272,6 @@ function openEdit(job) {
   requirementTypeFilter.value = null
   requirementSort.value = 'category_name'
   loadJobFieldRows(job.id)
-  customerDraftFieldRows.value = createEmptyCustomerFieldRows()
-  venueDraftFieldRows.value = createEmptyVenueFieldRows()
   dialogError.value = ''
 }
 
@@ -1412,36 +1283,14 @@ function venueNameForId(id) {
   return venuesStore.venues.find(venue => venue.id === id)?.name ?? ''
 }
 
-async function ensureCustomer() {
-  if (form.value.customer_id) return form.value.customer_id
-  const name = customerDraft.value.name.trim()
-  if (!name) return null
-  const created = await customersStore.createCustomer({ ...customerDraft.value, name })
-  if (customerDraftFieldRows.value.length) {
-    await customFieldsStore.saveEntityValues('customer', created.id, customerDraftFieldRows.value.map(row => ({
-      field_definition_id: row.field_definition_id,
-      value: row.value,
-    })))
-  }
-  form.value.customer_id = created.id
-  form.value.customer_name = created.name
-  return created.id
+function onCustomerCreated(customer) {
+  form.value.customer_id = customer.id
+  form.value.customer_name = customer.name
 }
 
-async function ensureVenue() {
-  if (form.value.venue_id) return form.value.venue_id
-  const name = venueDraft.value.name.trim()
-  if (!name) return null
-  const created = await venuesStore.createVenue({ ...venueDraft.value, name })
-  if (venueDraftFieldRows.value.length) {
-    await customFieldsStore.saveEntityValues('venue', created.id, venueDraftFieldRows.value.map(row => ({
-      field_definition_id: row.field_definition_id,
-      value: row.value,
-    })))
-  }
-  form.value.venue_id = created.id
-  form.value.venue_name = created.name
-  return created.id
+function onVenueCreated(venue) {
+  form.value.venue_id = venue.id
+  form.value.venue_name = venue.name
 }
 
 async function saveJob() {
@@ -1451,9 +1300,6 @@ async function saveJob() {
   dialogError.value = ''
   saving.value = true
   try {
-    await ensureCustomer()
-    await ensureVenue()
-
     if (!form.value.customer_id && !form.value.customer_name?.trim()) {
       dialogError.value = t('jobs.selectOrCreateCustomer')
       return
@@ -1509,10 +1355,16 @@ function closeJobDialog() {
 
 watch(() => props.modelValue, async (open) => {
   if (open) {
+    if (!projectsStore.projects.length) {
+      projectsStore.fetchAll()
+    }
     if (props.job) {
       openEdit(props.job)
     } else {
       openCreate()
+      if (props.initialValues) {
+        Object.assign(form.value, props.initialValues)
+      }
     }
   }
 })

@@ -62,6 +62,7 @@ const routes = [
       { path: 'scan', component: ScanPage },
       { path: 'activity', component: ActivityPage },
       { path: 'jobs', component: JobsPage },
+      { path: 'projects', component: () => import('../pages/ProjectsPage.vue') },
       { path: 'defects', component: () => import('../pages/DefectsPage.vue') },
       { path: 'customers', component: CustomersPage },
       { path: 'venues', component: VenuesPage },

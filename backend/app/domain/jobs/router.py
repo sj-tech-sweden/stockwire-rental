@@ -22,6 +22,7 @@ from app.domain.jobs.schemas import (
     JobRequirementUpdate,
     JobUpdate,
 )
+from app.domain.projects.models import Project
 from app.domain.venues.models import Venue
 
 router = APIRouter(prefix="/jobs", tags=["jobs"], dependencies=[Depends(get_current_user)])
@@ -33,8 +34,11 @@ def bootstrap_status() -> dict[str, str]:
 
 
 @router.get("", response_model=list[JobRead])
-def list_jobs(db: Session = Depends(get_db)) -> list[Job]:
-    return list(db.scalars(select(Job).order_by(Job.id)).all())
+def list_jobs(db: Session = Depends(get_db), project_id: int | None = None) -> list[Job]:
+    stmt = select(Job).order_by(Job.id)
+    if project_id is not None:
+        stmt = stmt.where(Job.project_id == project_id)
+    return list(db.scalars(stmt).all())
 
 
 @router.get("/generate-code")
@@ -167,6 +171,13 @@ def _prepare_job_payload(data: dict, db: Session) -> dict:
             prepared["customer_name"] = customer.name
         elif "customer_name" not in prepared:
             prepared["customer_name"] = None
+
+    if "project_id" in prepared:
+        project_id = prepared["project_id"]
+        if project_id is not None:
+            project = db.get(Project, project_id)
+            if project is None:
+                raise HTTPException(status_code=404, detail="Project not found")
 
     if "venue_id" in prepared:
         venue_id = prepared["venue_id"]

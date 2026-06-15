@@ -8,6 +8,7 @@ from app.domain.customers.router import router as customers_router
 from app.domain.finance.router import router as finance_router
 from app.domain.inventory.router import router as inventory_router
 from app.domain.jobs.router import router as jobs_router
+from app.domain.projects.router import router as projects_router
 from app.domain.realtime.router import router as realtime_router
 from app.domain.settings.router import router as settings_router
 from app.domain.storage.router import router as storage_router
@@ -21,6 +22,7 @@ api_router.include_router(inventory_router)
 api_router.include_router(custom_fields_router)
 api_router.include_router(customers_router)
 api_router.include_router(jobs_router)
+api_router.include_router(projects_router)
 api_router.include_router(realtime_router)
 api_router.include_router(venues_router)
 api_router.include_router(finance_router)
