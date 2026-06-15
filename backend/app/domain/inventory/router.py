@@ -240,7 +240,8 @@ async def import_inventory(
                     entity_type='product',
                     entity_id=existing.id,
                     action='update',
-                    message=f'Updated product {existing.sku} - {existing.name}',
+                    message_format='product_updated',
+                    message_params={'sku': existing.sku, 'name': existing.name},
                     details={'sku': existing.sku, 'name': existing.name},
                 )
                 emit_realtime_event('inventory.updated', {'entity': 'product', 'action': 'update', 'id': existing.id})
@@ -283,7 +284,8 @@ async def import_inventory(
                     entity_type='product',
                     entity_id=product.id,
                     action='create',
-                    message=f'Imported product {product.sku} - {product.name}',
+                    message_format='product_imported',
+                    message_params={'sku': product.sku, 'name': product.name},
                     details={'sku': product.sku, 'name': product.name},
                 )
                 emit_realtime_event('inventory.updated', {'entity': 'product', 'action': 'create', 'id': product.id})
@@ -819,7 +821,8 @@ def create_product(payload: ProductCreate, db: Session = Depends(get_db), curren
         entity_type="product",
         entity_id=product.id,
         action="create",
-        message=f"Created product {product.sku} - {product.name}",
+        message_format="product_created",
+        message_params={"sku": product.sku, "name": product.name},
         details={"sku": product.sku, "name": product.name},
     )
     emit_realtime_event("inventory.updated", {"entity": "product", "action": "create", "id": product.id})
@@ -854,7 +857,8 @@ def update_product(product_id: int, payload: ProductUpdate, db: Session = Depend
         entity_type="product",
         entity_id=product.id,
         action="update",
-        message=f"Updated product {product.sku} - {product.name}",
+        message_format="product_updated",
+        message_params={"sku": product.sku, "name": product.name},
         details={"sku": product.sku, "name": product.name},
     )
     emit_realtime_event("inventory.updated", {"entity": "product", "action": "update", "id": product.id})

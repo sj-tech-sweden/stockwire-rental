@@ -62,6 +62,13 @@ def _to_activity_log_read(row: ActivityLog) -> ActivityLogRead:
         except json.JSONDecodeError:
             details = {"raw": row.details_json}
 
+    message_params = None
+    if row.message_params_json:
+        try:
+            message_params = json.loads(row.message_params_json)
+        except json.JSONDecodeError:
+            message_params = {"raw": row.message_params_json}
+
     return ActivityLogRead(
         id=row.id,
         created_at=row.created_at,
@@ -70,6 +77,8 @@ def _to_activity_log_read(row: ActivityLog) -> ActivityLogRead:
         entity_id=row.entity_id,
         action=row.action,
         message=row.message,
+        message_format=row.message_format,
+        message_params=message_params,
         details=details,
     )
 

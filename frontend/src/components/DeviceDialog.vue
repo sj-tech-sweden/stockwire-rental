@@ -1,72 +1,72 @@
 <template>
   <q-dialog :model-value="modelValue" persistent :maximized="isPhone" @update:model-value="emit('update:modelValue', $event)">
     <q-card :style="isPhone ? 'width: 100vw; max-width: 100vw; height: 100vh' : 'min-width: 820px; max-width: 95vw'" class="ec-card">
-      <q-card-section><div class="text-h6">{{ deviceEditing ? 'Edit device' : 'New device' }}</div></q-card-section>
+      <q-card-section><div class="text-h6">{{ t(deviceEditing ? 'inventory.deviceDialog.edit' : 'inventory.deviceDialog.new') }}</div></q-card-section>
       <q-card-section class="q-pt-none" :style="isPhone ? 'max-height: calc(100vh - 140px); overflow: auto;' : ''">
         <q-form ref="deviceFormRef" @submit.prevent="saveDevice">
           <div class="row q-col-gutter-sm">
             <div class="col-12 col-md-6">
-              <q-select v-model="deviceForm.product_id" :options="productOptions" label="Product" outlined dense emit-value map-options :rules="[v => !!v || 'Required']" />
+              <q-select v-model="deviceForm.product_id" :options="productOptions" :label="t('inventory.deviceDialog.product')" outlined dense emit-value map-options :rules="[v => !!v || t('inventory.deviceDialog.required')]" />
             </div>
             <div class="col-12 col-md-3">
-              <q-input ref="deviceAssetTagInputRef" v-model="deviceForm.asset_tag" label="Asset tag" outlined dense :rules="[v => !!v || 'Required']">
+              <q-input ref="deviceAssetTagInputRef" v-model="deviceForm.asset_tag" :label="t('inventory.deviceDialog.assetTag')" outlined dense :rules="[v => !!v || t('inventory.deviceDialog.required')]">
                 <template #append>
-                  <q-btn flat dense no-caps color="primary" icon="autorenew" label="Generate" :loading="generatingDeviceAssetTag" @click="generateDeviceAssetTag" />
-                  <q-btn flat dense round color="positive" icon="qr_code_scanner" @click="openDeviceFieldCapture('asset_tag', 'Asset tag')">
-                    <q-tooltip>Open scan options (keyboard/camera/NFC)</q-tooltip>
+                  <q-btn flat dense no-caps color="primary" icon="autorenew" :label="t('inventory.deviceDialog.generate')" :loading="generatingDeviceAssetTag" @click="generateDeviceAssetTag" />
+                  <q-btn flat dense round color="positive" icon="qr_code_scanner" @click="openDeviceFieldCapture('asset_tag', t('inventory.deviceDialog.assetTag'))">
+                    <q-tooltip>{{ t('inventory.deviceDialog.openScanOptions') }}</q-tooltip>
                   </q-btn>
                 </template>
               </q-input>
             </div>
             <div class="col-12 col-md-2">
-              <q-input v-model="deviceAssetTagPrefix" label="Tag prefix" outlined dense hint="e.g. LGT" />
+              <q-input v-model="deviceAssetTagPrefix" :label="t('inventory.deviceDialog.tagPrefix')" outlined dense hint="t.ex. LGT" />
             </div>
             <div class="col-12 col-md-3">
-              <q-input ref="deviceSerialInputRef" v-model="deviceForm.serial_number" label="Serial number" outlined dense>
+              <q-input ref="deviceSerialInputRef" v-model="deviceForm.serial_number" :label="t('inventory.deviceDialog.serialNumber')" outlined dense>
                 <template #append>
-                  <q-btn flat dense round color="positive" icon="qr_code_scanner" @click="openDeviceFieldCapture('serial_number', 'Serial number')">
-                    <q-tooltip>Open scan options (keyboard/camera/NFC)</q-tooltip>
+                  <q-btn flat dense round color="positive" icon="qr_code_scanner" @click="openDeviceFieldCapture('serial_number', t('inventory.deviceDialog.serialNumber'))">
+                    <q-tooltip>{{ t('inventory.deviceDialog.openScanOptions') }}</q-tooltip>
                   </q-btn>
                 </template>
               </q-input>
             </div>
             <div class="col-12 col-md-3">
-              <q-input ref="deviceBarcodeInputRef" v-model="deviceForm.barcode" label="Barcode" outlined dense>
+              <q-input ref="deviceBarcodeInputRef" v-model="deviceForm.barcode" :label="t('inventory.deviceDialog.barcode')" outlined dense>
                 <template #append>
-                  <q-btn flat dense round color="positive" icon="qr_code_scanner" @click="openDeviceFieldCapture('barcode', 'Barcode')">
-                    <q-tooltip>Open scan options (keyboard/camera/NFC)</q-tooltip>
+                  <q-btn flat dense round color="positive" icon="qr_code_scanner" @click="openDeviceFieldCapture('barcode', t('inventory.deviceDialog.barcode'))">
+                    <q-tooltip>{{ t('inventory.deviceDialog.openScanOptions') }}</q-tooltip>
                   </q-btn>
                 </template>
               </q-input>
             </div>
             <div class="col-12 col-md-3">
-              <q-input ref="deviceQrCodeInputRef" v-model="deviceForm.qr_code" label="QR code" outlined dense>
+              <q-input ref="deviceQrCodeInputRef" v-model="deviceForm.qr_code" :label="t('inventory.deviceDialog.qrCode')" outlined dense>
                 <template #append>
-                  <q-btn flat dense round color="positive" icon="qr_code_scanner" @click="openDeviceFieldCapture('qr_code', 'QR code')">
-                    <q-tooltip>Open scan options (keyboard/camera/NFC)</q-tooltip>
+                  <q-btn flat dense round color="positive" icon="qr_code_scanner" @click="openDeviceFieldCapture('qr_code', t('inventory.deviceDialog.qrCode'))">
+                    <q-tooltip>{{ t('inventory.deviceDialog.openScanOptions') }}</q-tooltip>
                   </q-btn>
                 </template>
               </q-input>
             </div>
             <div class="col-12 col-md-3">
-              <q-input ref="deviceRfidInputRef" v-model="deviceForm.rfid" label="RFID" outlined dense>
+              <q-input ref="deviceRfidInputRef" v-model="deviceForm.rfid" :label="t('inventory.deviceDialog.rfid')" outlined dense>
                 <template #append>
-                  <q-btn flat dense round color="positive" icon="qr_code_scanner" @click="openDeviceFieldCapture('rfid', 'RFID')">
-                    <q-tooltip>Open scan options (keyboard/camera/NFC)</q-tooltip>
+                  <q-btn flat dense round color="positive" icon="qr_code_scanner" @click="openDeviceFieldCapture('rfid', t('inventory.deviceDialog.rfid'))">
+                    <q-tooltip>{{ t('inventory.deviceDialog.openScanOptions') }}</q-tooltip>
                   </q-btn>
                 </template>
               </q-input>
             </div>
-            <div class="col-12 col-md-3"><q-input v-model.number="deviceForm.usage_hours" type="number" step="0.01" label="Usage hours" outlined dense /></div>
-            <div class="col-12 col-md-4"><q-select v-model="deviceForm.status" :options="statusOptions" label="Status" outlined dense emit-value map-options /></div>
-            <div class="col-12 col-md-4"><q-select v-model="deviceForm.condition" :options="conditionOptions" label="Condition" outlined dense emit-value map-options /></div>
-            <div class="col-12 col-md-4"><q-select v-model="deviceForm.location_zone_id" :options="locationSelectOptions" label="Location" outlined dense emit-value map-options clearable /></div>
-            <div class="col-12 col-md-4"><q-select v-model="deviceForm.case_device_id" :options="caseDeviceOptions" label="Inside case" outlined dense emit-value map-options clearable /></div>
+            <div class="col-12 col-md-3"><q-input v-model.number="deviceForm.usage_hours" type="number" step="0.01" :label="t('inventory.deviceDialog.usageHours')" outlined dense /></div>
+            <div class="col-12 col-md-4"><q-select v-model="deviceForm.status" :options="statusOptions" :label="t('inventory.deviceDialog.status')" outlined dense emit-value map-options /></div>
+            <div class="col-12 col-md-4"><q-select v-model="deviceForm.condition" :options="conditionOptions" :label="t('inventory.deviceDialog.condition')" outlined dense emit-value map-options /></div>
+            <div class="col-12 col-md-4"><q-select v-model="deviceForm.location_zone_id" :options="locationSelectOptions" :label="t('inventory.deviceDialog.location')" outlined dense emit-value map-options clearable /></div>
+            <div class="col-12 col-md-4"><q-select v-model="deviceForm.case_device_id" :options="caseDeviceOptions" :label="t('inventory.deviceDialog.insideCase')" outlined dense emit-value map-options clearable /></div>
             <div class="col-12 col-md-4">
               <q-select
                 v-model="componentDeviceIds"
                 :options="componentDeviceOptions"
-                label="Component devices"
+                :label="t('inventory.deviceDialog.componentDevices')"
                 outlined dense
                 multiple
                 use-chips
@@ -74,24 +74,24 @@
                 map-options
                 :loading="loadingComponentDevices"
                 :disable="!deviceEditing"
-                :hint="!deviceEditing ? 'Save first, then edit to assign components' : ''"
+                :hint="!deviceEditing ? t('inventory.deviceDialog.saveFirstToAssignComponents') : ''"
               >
                 <template #no-option>
-                  <q-item><q-item-section class="text-grey">No available component devices</q-item-section></q-item>
+                  <q-item><q-item-section class="text-grey">{{ t('inventory.deviceDialog.noAvailableComponentDevices') }}</q-item-section></q-item>
                 </template>
               </q-select>
             </div>
-            <div class="col-12 col-md-4"><q-input v-model="deviceForm.purchase_date" type="date" label="Purchase date" outlined dense @update:model-value="onPurchaseDateChanged" /></div>
-            <div class="col-12 col-md-4"><q-input v-model.number="deviceForm.purchase_price" type="number" step="0.01" label="Purchase price" outlined dense /></div>
-            <div class="col-12 col-md-4"><q-input v-model="deviceForm.purchased_from" label="Purchased from" outlined dense /></div>
-            <div class="col-12 col-md-4"><q-input v-model.number="deviceForm.sold_price" type="number" step="0.01" label="Sold price" outlined dense /></div>
-            <div class="col-12 col-md-4"><q-input v-model="deviceForm.finance_upto" label="Finance up to" outlined dense /></div>
-            <div class="col-12 col-md-4"><q-input v-model="deviceForm.finance_company" label="Finance company" outlined dense /></div>
-            <div class="col-12 col-md-4"><q-input v-model="deviceForm.finance_ref" label="Finance ref" outlined dense /></div>
-            <div class="col-12 col-md-4"><q-input v-model="deviceForm.pre_prep" label="Pre-prep" outlined dense /></div>
-            <div class="col-12 col-md-4"><q-input v-model="deviceForm.warranty_end_date" type="date" label="Warranty end" outlined dense @update:model-value="onWarrantyEndDateChanged" /></div>
-            <div class="col-12 col-md-4"><q-input v-model="deviceForm.retire_date" type="date" label="Retire date" outlined dense /></div>
-            <div class="col-12"><q-input v-model="deviceForm.notes" type="textarea" autogrow label="Notes" outlined dense /></div>
+            <div class="col-12 col-md-4"><q-input v-model="deviceForm.purchase_date" type="date" :label="t('inventory.deviceDialog.purchaseDate')" outlined dense @update:model-value="onPurchaseDateChanged" /></div>
+            <div class="col-12 col-md-4"><q-input v-model.number="deviceForm.purchase_price" type="number" step="0.01" :label="t('inventory.deviceDialog.purchasePrice')" outlined dense /></div>
+            <div class="col-12 col-md-4"><q-input v-model="deviceForm.purchased_from" :label="t('inventory.deviceDialog.purchasedFrom')" outlined dense /></div>
+            <div class="col-12 col-md-4"><q-input v-model.number="deviceForm.sold_price" type="number" step="0.01" :label="t('inventory.deviceDialog.soldPrice')" outlined dense /></div>
+            <div class="col-12 col-md-4"><q-input v-model="deviceForm.finance_upto" :label="t('inventory.deviceDialog.financeUpTo')" outlined dense /></div>
+            <div class="col-12 col-md-4"><q-input v-model="deviceForm.finance_company" :label="t('inventory.deviceDialog.financeCompany')" outlined dense /></div>
+            <div class="col-12 col-md-4"><q-input v-model="deviceForm.finance_ref" :label="t('inventory.deviceDialog.financeRef')" outlined dense /></div>
+            <div class="col-12 col-md-4"><q-input v-model="deviceForm.pre_prep" :label="t('inventory.deviceDialog.prePrep')" outlined dense /></div>
+            <div class="col-12 col-md-4"><q-input v-model="deviceForm.warranty_end_date" type="date" :label="t('inventory.deviceDialog.warrantyEnd')" outlined dense @update:model-value="onWarrantyEndDateChanged" /></div>
+            <div class="col-12 col-md-4"><q-input v-model="deviceForm.retire_date" type="date" :label="t('inventory.deviceDialog.retireDate')" outlined dense /></div>
+            <div class="col-12"><q-input v-model="deviceForm.notes" type="textarea" autogrow :label="t('inventory.deviceDialog.notes')" outlined dense /></div>
           </div>
           <q-banner v-if="deviceDialogError" class="bg-negative text-white q-mt-sm rounded-borders" dense>{{ deviceDialogError }}</q-banner>
         </q-form>
@@ -99,12 +99,12 @@
       <EntityAttachmentsPanel
         entity-type="device"
         :entity-id="deviceEditing?.id || null"
-        title="Device Documents"
+        :title="t('inventory.deviceDialog.deviceDocuments')"
         default-category="device-document"
       />
       <q-card-actions :align="isPhone ? 'stretch' : 'right'" :class="isPhone ? 'q-pa-md bg-grey-2' : ''">
-        <q-btn flat :class="isPhone ? 'full-width q-mb-sm' : ''" label="Cancel" @click="closeDialog" />
-        <q-btn color="primary" unelevated :class="isPhone ? 'full-width' : ''" :label="deviceEditing ? 'Save' : 'Create'" :loading="saving" @click="saveDevice" />
+        <q-btn flat :class="isPhone ? 'full-width q-mb-sm' : ''" :label="t('app.actions.cancel')" @click="closeDialog" />
+        <q-btn color="primary" unelevated :class="isPhone ? 'full-width' : ''" :label="deviceEditing ? t('app.actions.save') : t('inventory.create')" :loading="saving" @click="saveDevice" />
       </q-card-actions>
     </q-card>
   </q-dialog>
@@ -230,9 +230,9 @@ const deviceCaptureSupportsNfc = computed(() => {
   return !!window.isSecureContext && typeof window.NDEFReader === 'function'
 })
 const deviceFieldCaptureModeButtons = computed(() => {
-  const buttons = [{ label: 'Keyboard', value: 'keyboard', icon: 'keyboard' }]
-  if (deviceCaptureSupportsCamera.value) buttons.push({ label: 'Camera', value: 'camera', icon: 'photo_camera' })
-  if (deviceCaptureSupportsNfc.value) buttons.push({ label: 'NFC', value: 'nfc', icon: 'nfc' })
+  const buttons = [{ label: t('inventory.deviceDialog.keyboard'), value: 'keyboard', icon: 'keyboard' }]
+  if (deviceCaptureSupportsCamera.value) buttons.push({ label: t('inventory.deviceDialog.camera'), value: 'camera', icon: 'photo_camera' })
+  if (deviceCaptureSupportsNfc.value) buttons.push({ label: t('inventory.deviceDialog.nfc'), value: 'nfc', icon: 'nfc' })
   return buttons
 })
 
@@ -243,7 +243,8 @@ const emptyDeviceForm = () => ({
 })
 const deviceForm = ref(emptyDeviceForm())
 
-const statusOptions = DEVICE_STATUSES.map(item => ({ label: item.label, value: item.value }))
+const statusKeyMap = { available: 'Available', reserved: 'Reserved', in_use: 'InUse', maintenance: 'Maintenance' }
+const statusOptions = DEVICE_STATUSES.map(item => ({ label: t('inventory.deviceStatus' + (statusKeyMap[item.value] || item.value)), value: item.value }))
 const conditionOptions = [
   { label: t('inventory.conditionExcellent'), value: 'excellent' },
   { label: t('inventory.conditionGood'), value: 'good' },
@@ -253,7 +254,7 @@ const conditionOptions = [
 
 const productOptions = computed(() => store.products.map(p => ({ label: `${p.sku} - ${p.name}`, value: p.id })))
 const locationSelectOptions = computed(() => {
-  const flat = [{ label: 'Unassigned', value: null }]
+  const flat = [{ label: t('inventory.deviceDialog.unassigned'), value: null }]
   const walk = (nodes, prefix = '') => {
     for (const node of nodes || []) {
       const label = prefix ? `${prefix} / ${node.name}` : node.name
@@ -271,7 +272,7 @@ const caseDeviceOptions = computed(() => {
       return product?.product_type === 'case'
     })
     .map(device => ({
-      label: `${device.asset_tag} (${store.products.find(item => item.id === device.product_id)?.name || 'Case'})`,
+      label: `${device.asset_tag} (${store.products.find(item => item.id === device.product_id)?.name || t('inventory.deviceDialog.case')})`,
       value: device.id,
     }))
 })
@@ -432,7 +433,7 @@ async function generateDeviceAssetTag() {
       }
     }
   } catch (error) {
-    $q.notify({ type: 'negative', message: error?.response?.data?.detail || 'Failed to generate asset tag' })
+    $q.notify({ type: 'negative', message: error?.response?.data?.detail || t('inventory.deviceDialog.failedGenerateAssetTag') })
   } finally {
     generatingDeviceAssetTag.value = false
   }
@@ -473,10 +474,10 @@ async function saveDevice() {
     let savedDevice
     if (deviceEditing.value) {
       savedDevice = await store.updateDevice(deviceEditing.value.id, payload)
-      $q.notify({ type: 'positive', message: 'Device updated' })
+      $q.notify({ type: 'positive', message: t('inventory.deviceDialog.deviceUpdated') })
     } else {
       savedDevice = await store.createDevice(payload)
-      $q.notify({ type: 'positive', message: 'Device created' })
+      $q.notify({ type: 'positive', message: t('inventory.deviceDialog.deviceCreated') })
     }
     if (savedDevice?.id || deviceEditing.value?.id) {
       const id = savedDevice?.id || deviceEditing.value?.id
@@ -485,7 +486,7 @@ async function saveDevice() {
     emit('update:modelValue', false)
     emit('saved')
   } catch (error) {
-    deviceDialogError.value = error?.response?.data?.detail || 'Failed to save device'
+    deviceDialogError.value = error?.response?.data?.detail || t('inventory.deviceDialog.failedSaveDevice')
   } finally {
     saving.value = false
   }
@@ -535,7 +536,7 @@ function setCapturedDeviceFieldValue(field, value) {
   const normalized = String(value || '').trim()
   if (!normalized) return
   deviceForm.value[field] = normalized
-  $q.notify({ type: 'positive', message: `${deviceFieldCaptureLabel.value || 'Field'} captured` })
+  $q.notify({ type: 'positive', message: t('inventory.deviceDialog.fieldCaptured', { field: deviceFieldCaptureLabel.value || '' }) })
 }
 
 function openDeviceFieldCapture(field, label) {
@@ -591,11 +592,11 @@ function stopDeviceFieldCapture() {
 async function startDeviceCameraCapture() {
   deviceFieldCaptureError.value = ''
   if (!deviceCaptureSupportsCamera.value) {
-    deviceFieldCaptureError.value = 'Camera barcode scanning is not supported by this browser.'
+    deviceFieldCaptureError.value = t('inventory.deviceDialog.cameraNotSupported')
     return
   }
   if (!navigator.mediaDevices?.getUserMedia) {
-    deviceFieldCaptureError.value = 'Camera access is not available in this browser.'
+    deviceFieldCaptureError.value = t('inventory.deviceDialog.cameraNotAvailable')
     return
   }
 
@@ -608,7 +609,7 @@ async function startDeviceCameraCapture() {
 
     const videoEl = deviceCaptureVideoRef.value
     if (!videoEl) {
-      deviceFieldCaptureError.value = 'Camera preview is unavailable.'
+      deviceFieldCaptureError.value = t('inventory.deviceDialog.cameraPreviewUnavailable')
       return
     }
     videoEl.srcObject = stream
@@ -638,7 +639,7 @@ async function startDeviceCameraCapture() {
 
     deviceFieldCaptureRaf.value = requestAnimationFrame(detectLoop)
   } catch (error) {
-    deviceFieldCaptureError.value = error?.message || 'Unable to start camera scanning.'
+    deviceFieldCaptureError.value = error?.message || t('inventory.deviceDialog.unableToStartCamera')
     stopDeviceFieldCapture()
   }
 }
@@ -657,7 +658,7 @@ function parseNfcRecordValue(record) {
 async function startDeviceNfcCapture() {
   deviceFieldCaptureError.value = ''
   if (!deviceCaptureSupportsNfc.value) {
-    deviceFieldCaptureError.value = 'Web NFC is not supported by this browser/device.'
+    deviceFieldCaptureError.value = t('inventory.deviceDialog.nfcNotSupported')
     return
   }
 
@@ -668,10 +669,10 @@ async function startDeviceNfcCapture() {
     deviceFieldCaptureNfcController.value = controller
     await ndef.scan({ signal: controller.signal })
     deviceFieldCaptureNfcActive.value = true
-    $q.notify({ type: 'info', message: 'NFC scan started. Hold a tag near your device.' })
+    $q.notify({ type: 'info', message: t('inventory.deviceDialog.nfcScanStarted') })
 
     ndef.onreadingerror = () => {
-      deviceFieldCaptureError.value = 'NFC tag detected but data could not be read.'
+      deviceFieldCaptureError.value = t('inventory.deviceDialog.nfcReadError')
     }
 
     ndef.onreading = (event) => {
@@ -685,10 +686,10 @@ async function startDeviceNfcCapture() {
           return
         }
       }
-      deviceFieldCaptureError.value = 'NFC tag read but no usable text payload was found.'
+      deviceFieldCaptureError.value = t('inventory.deviceDialog.nfcNoTextPayload')
     }
   } catch (error) {
-    deviceFieldCaptureError.value = error?.message || 'Unable to start NFC scanning.'
+    deviceFieldCaptureError.value = error?.message || t('inventory.deviceDialog.unableToStartNfc')
     stopDeviceFieldCapture()
   }
 }

@@ -36,7 +36,8 @@ def create_customer(payload: CustomerCreate, db: Session = Depends(get_db), curr
         entity_type="customer",
         entity_id=customer.id,
         action="create",
-        message=f"Created customer {customer.name}",
+        message_format="customer_created",
+        message_params={"name": customer.name},
         details={"name": customer.name},
     )
     emit_realtime_event("customers.updated", {"entity": "customer", "action": "create", "id": customer.id})
@@ -59,7 +60,8 @@ def update_customer(customer_id: int, payload: CustomerUpdate, db: Session = Dep
         entity_type="customer",
         entity_id=customer.id,
         action="update",
-        message=f"Updated customer {customer.name}",
+        message_format="customer_updated",
+        message_params={"name": customer.name},
         details={"name": customer.name},
     )
     emit_realtime_event("customers.updated", {"entity": "customer", "action": "update", "id": customer.id})
@@ -87,7 +89,8 @@ def delete_customer(customer_id: int, db: Session = Depends(get_db), current_use
         entity_type="customer",
         entity_id=customer_id,
         action="delete",
-        message=f"Deleted customer {customer_name}",
+        message_format="customer_deleted",
+        message_params={"name": customer_name},
         details={"name": customer_name},
     )
     emit_realtime_event("customers.updated", {"entity": "customer", "action": "delete", "id": customer_id})

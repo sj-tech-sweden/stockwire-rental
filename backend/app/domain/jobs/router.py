@@ -57,7 +57,8 @@ def create_job(payload: JobCreate, db: Session = Depends(get_db), current_user: 
         entity_type="job",
         entity_id=job.id,
         action="create",
-        message=f"Created job {job.job_code}",
+        message_format="job_created",
+        message_params={"jobCode": job.job_code},
         details={"job_code": job.job_code},
     )
     emit_realtime_event("jobs.updated", {"entity": "job", "action": "create", "id": job.id})
@@ -80,7 +81,8 @@ def update_job(job_id: int, payload: JobUpdate, db: Session = Depends(get_db), c
         entity_type="job",
         entity_id=job.id,
         action="update",
-        message=f"Updated job {job.job_code}",
+        message_format="job_updated",
+        message_params={"jobCode": job.job_code},
         details={"job_code": job.job_code},
     )
     emit_realtime_event("jobs.updated", {"entity": "job", "action": "update", "id": job.id})
@@ -102,7 +104,8 @@ def delete_job(job_id: int, db: Session = Depends(get_db), current_user: User = 
         entity_type="job",
         entity_id=job_id,
         action="delete",
-        message=f"Deleted job {job_code}",
+        message_format="job_deleted",
+        message_params={"jobCode": job_code},
         details={"job_code": job_code},
     )
     emit_realtime_event("jobs.updated", {"entity": "job", "action": "delete", "id": job_id})

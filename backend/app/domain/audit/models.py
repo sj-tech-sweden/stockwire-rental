@@ -16,4 +16,6 @@ class ActivityLog(Base):
     entity_id: Mapped[int] = mapped_column(nullable=True, index=True)
     action: Mapped[str] = mapped_column(String(40), index=True)
     message: Mapped[str] = mapped_column(String(500))
+    message_format: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    message_params_json: Mapped[str | None] = mapped_column(Text, nullable=True)
     details_json: Mapped[str] = mapped_column(Text, nullable=True)

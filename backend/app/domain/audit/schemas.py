@@ -12,4 +12,6 @@ class ActivityLogRead(BaseModel):
     entity_id: int | None = None
     action: str
     message: str
+    message_format: str | None = None
+    message_params: dict | None = None
     details: dict | None = None

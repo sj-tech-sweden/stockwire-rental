@@ -2,20 +2,20 @@
   <q-dialog :model-value="modelValue" :maximized="isPhone" @update:model-value="emit('update:modelValue', $event)">
     <q-card :style="isPhone ? 'width: 100vw; max-width: 100vw; height: 100vh' : 'min-width: 860px; max-width: 96vw'" class="ec-card">
       <q-card-section>
-        <div class="text-h6">Availability Calendar · {{ product?.sku || '-' }}</div>
+        <div class="text-h6">{{ t('inventory.availability.title', { sku: product?.sku || '-' }) }}</div>
         <div class="text-caption text-grey-7">{{ product?.name || '-' }}</div>
       </q-card-section>
 
       <q-card-section class="q-pt-none" :style="isPhone ? 'max-height: calc(100vh - 140px); overflow: auto;' : ''">
         <div class="row items-center q-col-gutter-sm q-mb-sm">
           <div class="col-auto">
-            <q-toggle v-model="includeDrafts" color="primary" label="Include drafts" />
+            <q-toggle v-model="includeDrafts" color="primary" :label="t('inventory.availability.includeDrafts')" />
           </div>
           <div class="col-auto">
             <q-select
               v-model="days"
               :options="daysOptions"
-              label="Range"
+              :label="t('inventory.availability.range')"
               outlined
               dense
               emit-value
@@ -25,10 +25,10 @@
         </div>
 
         <div class="row items-center q-col-gutter-xs q-mb-sm text-caption text-grey-7">
-          <div class="col-auto">Heatmap:</div>
-          <div class="col-auto"><q-badge color="negative" text-color="white" label="Low / shortage" /></div>
-          <div class="col-auto"><q-badge color="warning" text-color="black" label="Tight" /></div>
-          <div class="col-auto"><q-badge color="positive" text-color="white" label="Healthy" /></div>
+          <div class="col-auto">{{ t('inventory.availability.heatmap') }}</div>
+          <div class="col-auto"><q-badge color="negative" text-color="white" :label="t('inventory.availability.lowShortage')" /></div>
+          <div class="col-auto"><q-badge color="warning" text-color="black" :label="t('inventory.availability.tight')" /></div>
+          <div class="col-auto"><q-badge color="positive" text-color="white" :label="t('inventory.availability.healthy')" /></div>
         </div>
 
         <q-table
@@ -63,7 +63,7 @@
 
       <q-card-actions :align="isPhone ? 'stretch' : 'right'" :class="isPhone ? 'q-pa-md bg-grey-2' : ''">
         <q-space />
-        <q-btn flat :class="isPhone ? 'full-width' : ''" label="Close" @click="emit('update:modelValue', false)" />
+        <q-btn flat :class="isPhone ? 'full-width' : ''" :label="t('inventory.availability.close')" @click="emit('update:modelValue', false)" />
       </q-card-actions>
     </q-card>
   </q-dialog>
@@ -215,20 +215,20 @@ function heat(row) {
   const reserved = Math.max(Number(row?.reserved || 0), 0)
 
   if (total <= 0) {
-    if (reserved > 0) return { rgb: '220, 53, 69', alpha: 0.34, level: 'Low / shortage' }
-    return { rgb: '245, 124, 0', alpha: 0.2, level: 'Tight' }
+    if (reserved > 0) return { rgb: '220, 53, 69', alpha: 0.34, level: t('inventory.availability.lowShortage') }
+    return { rgb: '245, 124, 0', alpha: 0.2, level: t('inventory.availability.tight') }
   }
 
   const availabilityRatio = available / total
   const utilization = clamp(reserved / total, 0, 1.6)
 
   if (availabilityRatio <= 0.25) {
-    return { rgb: '220, 53, 69', alpha: 0.18 + (utilization * 0.18), level: 'Low / shortage' }
+    return { rgb: '220, 53, 69', alpha: 0.18 + (utilization * 0.18), level: t('inventory.availability.lowShortage') }
   }
   if (availabilityRatio <= 0.55) {
-    return { rgb: '245, 124, 0', alpha: 0.14 + (utilization * 0.14), level: 'Tight' }
+    return { rgb: '245, 124, 0', alpha: 0.14 + (utilization * 0.14), level: t('inventory.availability.tight') }
   }
-  return { rgb: '46, 125, 50', alpha: 0.12 + ((1 - availabilityRatio) * 0.16), level: 'Healthy' }
+  return { rgb: '46, 125, 50', alpha: 0.12 + ((1 - availabilityRatio) * 0.16), level: t('inventory.availability.healthy') }
 }
 
 function heatStyle(row) {
