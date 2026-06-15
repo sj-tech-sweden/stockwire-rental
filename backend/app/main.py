@@ -22,7 +22,7 @@ app.add_middleware(
 
 app.include_router(api_router)
 
-if settings.prometheus_enabled:
+if os.environ.get("PROMETHEUS_ENABLED", "true").lower() == "true" and settings.prometheus_enabled:
     from app.services.metrics import setup_metrics
     setup_metrics(app)
 
