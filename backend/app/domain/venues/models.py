@@ -21,3 +21,5 @@ class Venue(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
 
     jobs: Mapped[list["Job"]] = relationship(back_populates="venue")
+
+    projects: Mapped[list["Project"]] = relationship()

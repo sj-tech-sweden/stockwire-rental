@@ -230,6 +230,7 @@ const baseMenuList = [
   { icon: 'report_problem', key: 'app.nav.defects', to: '/defects', separator: false },
   { icon: 'history', key: 'app.nav.activity', to: '/activity', separator: false },
   { icon: 'work', key: 'app.nav.jobs', to: '/jobs', separator: false },
+  { icon: 'folder', key: 'app.nav.projects', to: '/projects', separator: false },
   { icon: 'business', key: 'app.nav.customers', to: '/customers', separator: false },
   { icon: 'place', key: 'app.nav.venues', to: '/venues', separator: false },
   { icon: 'payments', key: 'app.nav.finance', to: '/finance', separator: false }

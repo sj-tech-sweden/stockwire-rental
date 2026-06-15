@@ -6,6 +6,8 @@ from pydantic import BaseModel, Field
 
 class JobBase(BaseModel):
     job_code: str
+    project_id: int | None = None
+    location_in_venue: str | None = None
     customer_id: int | None = None
     customer_name: str | None = None
     venue_id: int | None = None
@@ -26,6 +28,8 @@ class JobCreate(JobBase):
 
 class JobUpdate(BaseModel):
     job_code: str | None = None
+    project_id: int | None = None
+    location_in_venue: str | None = None
     customer_id: int | None = None
     customer_name: str | None = None
     venue_id: int | None = None

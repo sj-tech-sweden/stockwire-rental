@@ -150,6 +150,7 @@
 
 <script setup>
 import { computed, onMounted, ref } from 'vue'
+import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 
 import { JOB_STATUSES, useJobsStore } from '../stores/jobs'
@@ -158,6 +159,7 @@ import { useVenuesStore } from '../stores/venues'
 import { useInventoryStore } from '../stores/inventory'
 import { useAuthStore } from '../stores/auth'
 import { useSettingsStore } from '../stores/settings'
+import { useProjectsStore } from '../stores/projects'
 import { useCompactGrid } from '../composables/useCompactGrid'
 import { normalizeCurrencyCode } from '../constants/currencies'
 import { googleMapsSearchUrl, locationQueryFromParts } from '../utils/maps'
@@ -171,6 +173,8 @@ const venuesStore = useVenuesStore()
 const inventoryStore = useInventoryStore()
 const authStore = useAuthStore()
 const settingsStore = useSettingsStore()
+const projectsStore = useProjectsStore()
+const route = useRoute()
 const { t, locale } = useI18n()
 
 const pageLoading = ref(false)
@@ -252,6 +256,7 @@ const columns = computed(() => [
   { name: 'description', label: t('jobs.description'), field: 'description', sortable: true, align: 'left' },
   { name: 'customer_name', label: t('jobs.customer'), field: 'customer_name', sortable: true, align: 'left' },
   { name: 'venue_name', label: t('jobs.venue'), field: 'venue_name', sortable: true, align: 'left' },
+  { name: 'project_name', label: t('jobs.project'), field: 'project_name', sortable: true, align: 'left' },
   { name: 'status', label: t('jobs.status'), field: 'status', sortable: true, align: 'left' },
   { name: 'sales_price', label: t('jobs.salesLabel'), field: 'sales_price', sortable: true, align: 'right' },
   { name: 'invoice_paid', label: t('jobs.invoiceLabel'), field: 'invoice_paid', sortable: true, align: 'left' },
@@ -261,12 +266,25 @@ const columns = computed(() => [
   { name: 'actions', label: '', field: 'actions', align: 'right' },
 ])
 
+const jobsWithProject = computed(() =>
+  jobsStore.jobs.map(job => ({
+    ...job,
+    project_name: projectsStore.projects.find(p => p.id === job.project_id)?.name || '',
+  }))
+)
+
+const filterProjectId = computed(() => {
+  const raw = route.query.projectId
+  return raw ? Number(raw) : null
+})
+
 const visibleJobs = computed(() => {
   const term = search.value.trim().toLowerCase()
-  return jobsStore.jobs.filter(job => {
+  return jobsWithProject.value.filter(job => {
+    if (filterProjectId.value && job.project_id !== filterProjectId.value) return false
     if (activeFilter.value && job.status !== activeFilter.value) return false
     if (!term) return true
-    return [job.job_code, job.description, job.customer_name, job.venue_name, job.status]
+    return [job.job_code, job.description, job.customer_name, job.venue_name, job.project_name, job.status]
       .filter(Boolean)
       .some(value => String(value).toLowerCase().includes(term))
   })
@@ -281,6 +299,7 @@ async function loadData() {
       venuesStore.fetchAll(),
       inventoryStore.fetchAll(),
       settingsStore.fetchCompanyProfile(),
+      projectsStore.fetchAll(),
     ])
   } finally {
     pageLoading.value = false

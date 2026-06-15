@@ -21,3 +21,4 @@ class Customer(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
 
     jobs: Mapped[list["Job"]] = relationship(back_populates="customer")
+    projects: Mapped[list["Project"]] = relationship(back_populates="customer")

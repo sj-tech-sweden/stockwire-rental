@@ -1,0 +1,2 @@
+"""Projects domain package."""
+

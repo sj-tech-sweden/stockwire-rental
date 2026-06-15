@@ -11,6 +11,8 @@ class Job(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     job_code: Mapped[str] = mapped_column(String(50), unique=True, index=True)
+    project_id: Mapped[int] = mapped_column(ForeignKey("projects.id"), nullable=True, index=True)
+    location_in_venue: Mapped[str] = mapped_column(String(255), nullable=True)
     customer_id: Mapped[int] = mapped_column(ForeignKey("customers.id"), nullable=True, index=True)
     venue_id: Mapped[int] = mapped_column(ForeignKey("venues.id"), nullable=True, index=True)
     customer_name: Mapped[str] = mapped_column(String(255), nullable=True, index=True)
@@ -27,6 +29,7 @@ class Job(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
 
     owner: Mapped["User"] = relationship(back_populates="jobs")
+    project: Mapped["Project"] = relationship(back_populates="jobs")
     customer: Mapped["Customer"] = relationship(back_populates="jobs")
     venue: Mapped["Venue"] = relationship(back_populates="jobs")
     requirements: Mapped[list["JobRequirement"]] = relationship(back_populates="job", cascade="all,delete")
