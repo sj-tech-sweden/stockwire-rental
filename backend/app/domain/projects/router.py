@@ -11,6 +11,7 @@ from app.domain.projects.models import Project
 from app.domain.venues.models import Venue
 from app.domain.projects.schemas import ProjectCreate, ProjectRead, ProjectUpdate
 from app.domain.realtime.events import emit_realtime_event
+from app.services.metrics import created_total, deleted_total, entities_count
 
 router = APIRouter(prefix="/projects", tags=["projects"], dependencies=[Depends(get_current_user)])
 
@@ -42,6 +43,8 @@ def create_project(payload: ProjectCreate, db: Session = Depends(get_db), _: Use
     db.commit()
     db.refresh(project)
     emit_realtime_event("projects.updated", {"entity": "project", "action": "create", "id": project.id})
+    created_total.labels(entity="project").inc()
+    entities_count.labels(entity="project").inc()
     db.commit()
     return project
 
@@ -84,5 +87,7 @@ def delete_project(project_id: int, db: Session = Depends(get_db), _: User = Dep
     db.delete(project)
     db.commit()
     emit_realtime_event("projects.updated", {"entity": "project", "action": "delete", "id": project_id})
+    deleted_total.labels(entity="project").inc()
+    entities_count.labels(entity="project").dec()
     db.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)

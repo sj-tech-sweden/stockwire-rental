@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 from app.config import settings
 from app.db.session import get_db
 from app.domain.auth.deps import get_current_user, require_admin
-from app.domain.auth.models import User, UserSession
+from app.domain.auth.models import User, UserSession, APIKey, Role, UserRole
 from app.domain.auth.schemas import Token, UserCreate, UserLogin, UserSummary, UserSelfUpdate, OIDCExchangeRequest, SAMLAssertionRequest, SSOProviderSummary, ForgotPasswordRequest, ResetPasswordRequest
 from app.domain.auth.security import create_access_token, generate_refresh_token, compute_refresh_token_hash, hash_password, verify_password, hash_api_key, hash_api_key_lookup, decode_token
 from app.domain.auth.sso import (
@@ -26,7 +26,6 @@ from app.domain.auth.sso import (
     upsert_external_user,
 )
 from pydantic import BaseModel
-from app.domain.auth.models import APIKey, Role, UserRole
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -85,6 +84,25 @@ def sso_providers(db: Session = Depends(get_db)) -> list[SSOProviderSummary]:
     if not runtime.enabled:
         return []
     return list_enabled_providers(db)
+
+
+@router.get("/sso/saml-provider-config/{provider}")
+def saml_provider_config(provider: str, db: Session = Depends(get_db)) -> dict:
+    runtime = get_runtime_sso_config(db)
+    if not runtime.enabled:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="SSO not enabled")
+    saml = get_saml_provider(provider, db)
+    return {
+        "provider": saml.key,
+        "kind": "saml",
+        "display_name": saml.display_name,
+        "enabled": saml.enabled,
+        "auto_create_users": saml.allow_auto_create,
+        "idp_entity_id": saml.idp_entity_id,
+        "idp_sso_url": saml.idp_sso_url,
+        "sp_entity_id": saml.sp_entity_id,
+        "acs_url": saml.acs_url,
+    }
 
 
 @router.get("/sso/oidc/authorize/{provider}")

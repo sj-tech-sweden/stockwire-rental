@@ -251,6 +251,24 @@ async function startSso(provider) {
       window.location.assign(url)
       return
     }
+    if (provider.kind === 'saml') {
+      const samlConfig = await authStore.fetchSamlProviderConfig(provider.provider)
+      if (!samlConfig?.idp_sso_url) throw new Error('Missing SAML IdP SSO URL')
+      const relayState = btoa(JSON.stringify({ provider: provider.provider }))
+      const samlRequest = {
+        Issuer: samlConfig.sp_entity_id,
+        Destination: samlConfig.idp_sso_url,
+        'urn:oasis:names:tc:SAML:2.0:protocol': {
+          AssertionConsumerServiceURL: samlConfig.acs_url,
+          ProtocolBinding: 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect',
+          IssueInstant: new Date().toISOString(),
+        },
+      }
+      const samlRequestStr = btoa(JSON.stringify(samlRequest))
+      const samlUrl = `${samlConfig.idp_sso_url}?SAMLRequest=${encodeURIComponent(samlRequestStr)}&RelayState=${encodeURIComponent(relayState)}`
+      window.location.assign(samlUrl)
+      return
+    }
     error.value = 'SAML provider is configured. Start from your IdP app and pass saml_response to /login query.'
   } catch (e) {
     error.value = e?.response?.data?.detail || t('login.ssoStartFailed')

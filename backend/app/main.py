@@ -22,6 +22,10 @@ app.add_middleware(
 
 app.include_router(api_router)
 
+if settings.prometheus_enabled:
+    from app.services.metrics import setup_metrics
+    setup_metrics(app)
+
 
 @app.on_event("startup")
 def run_startup_checks() -> None:

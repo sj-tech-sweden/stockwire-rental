@@ -1,0 +1,179 @@
+{
+  "title": "Stockwire Metrics",
+  "uid": "stockwire-metrics",
+  "version": 1,
+  "schemaVersion": 39,
+  "timezone": "browser",
+  "editable": true,
+  "graphTooltip": 0,
+  "tags": ["stockwire"],
+  "panels": [
+    {
+      "id": 1,
+      "title": "HTTP Request Rate",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "custom": { "showPoints": "never" }
+        }
+      },
+      "targets": [
+        {
+          "expr": "sum by (status_group) (rate(http_requests_total{handler!=\"\"}[5m]))",
+          "legendFormat": "__auto"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "Request Duration (p50 / p95 / p99)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "custom": { "showPoints": "never" }
+        }
+      },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.50, sum(rate(http_request_duration_seconds_bucket[5m])) by (le))",
+          "legendFormat": "p50"
+        },
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[5m])) by (le))",
+          "legendFormat": "p95"
+        },
+        {
+          "expr": "histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket[5m])) by (le))",
+          "legendFormat": "p99"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Active Requests",
+      "type": "gauge",
+      "gridPos": { "h": 6, "w": 4, "x": 0, "y": 8 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "min": 0,
+          "max": 100,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "orange", "value": 10 },
+              { "color": "red", "value": 50 }
+            ]
+          }
+        }
+      },
+      "targets": [
+        { "expr": "sum(http_requests_in_progress)" }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "Entity Counts",
+      "type": "bargauge",
+      "gridPos": { "h": 6, "w": 8, "x": 4, "y": 8 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "min": 0
+        }
+      },
+      "targets": [
+        { "expr": "app_entities" }
+      ],
+      "transformations": [
+        {
+          "id": "organize",
+          "options": { "excludeByName": { "Time": true }, "indexByName": {}, "renameByName": {} }
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "title": "Create Rate (per entity)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 8, "x": 12, "y": 8 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ops",
+          "custom": { "showPoints": "never" }
+        }
+      },
+      "targets": [
+        { "expr": "rate(app_created_total[5m])" }
+      ]
+    },
+    {
+      "id": 6,
+      "title": "Delete Rate (per entity)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 14 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ops",
+          "custom": { "showPoints": "never" }
+        }
+      },
+      "targets": [
+        { "expr": "rate(app_deleted_total[5m])" }
+      ]
+    },
+    {
+      "id": 7,
+      "title": "Frontend Page Views",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 14 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ops",
+          "custom": { "showPoints": "never" }
+        }
+      },
+      "targets": [
+        { "expr": "rate(app_frontend_page_views_total[5m])" }
+      ]
+    },
+    {
+      "id": 8,
+      "title": "Frontend API Duration (avg)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 22 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "custom": { "showPoints": "never" }
+        }
+      },
+      "targets": [
+        {
+          "expr": "rate(app_frontend_api_duration_seconds_sum[5m]) / rate(app_frontend_api_duration_seconds_count[5m])",
+          "legendFormat": "avg duration"
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "title": "Frontend Errors",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 22 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ops",
+          "custom": { "showPoints": "never" }
+        }
+      },
+      "targets": [
+        { "expr": "rate(app_frontend_errors_total[5m])" }
+      ]
+    }
+  ]
+}

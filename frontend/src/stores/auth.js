@@ -173,6 +173,11 @@ export const useAuthStore = defineStore('auth', () => {
     return ssoProviders.value
   }
 
+  async function fetchSamlProviderConfig(provider) {
+    const { data } = await api.get(`/api/v1/auth/sso/saml-provider-config/${encodeURIComponent(provider)}`)
+    return data
+  }
+
   async function getOidcAuthorizeUrl(provider, redirectUri) {
     const { data } = await api.get(`/api/v1/auth/sso/oidc/authorize/${encodeURIComponent(provider)}`, {
       params: { redirect_uri: redirectUri },

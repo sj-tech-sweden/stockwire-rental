@@ -13,6 +13,7 @@ from app.domain.customers.models import Customer
 from app.domain.jobs.models import Job, JobRequirement
 from app.domain.inventory.models import Product
 from app.domain.realtime.events import emit_realtime_event
+from app.services.metrics import created_total, deleted_total, entities_count
 from app.domain.jobs.schemas import (
     JobCreate,
     JobRead,
@@ -66,6 +67,8 @@ def create_job(payload: JobCreate, db: Session = Depends(get_db), current_user: 
         details={"job_code": job.job_code},
     )
     emit_realtime_event("jobs.updated", {"entity": "job", "action": "create", "id": job.id})
+    created_total.labels(entity="job").inc()
+    entities_count.labels(entity="job").inc()
     db.commit()
     return job
 
@@ -113,6 +116,8 @@ def delete_job(job_id: int, db: Session = Depends(get_db), current_user: User = 
         details={"job_code": job_code},
     )
     emit_realtime_event("jobs.updated", {"entity": "job", "action": "delete", "id": job_id})
+    deleted_total.labels(entity="job").inc()
+    entities_count.labels(entity="job").dec()
     db.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
