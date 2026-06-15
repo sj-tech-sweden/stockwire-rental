@@ -66,7 +66,7 @@ services:
       - backend
 
   prometheus:
-    image: prom/prometheus:v3.2.1
+    image: prom/prometheus:v3.12.0
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
       - '--web.config.file=/etc/prometheus/web.yml'
