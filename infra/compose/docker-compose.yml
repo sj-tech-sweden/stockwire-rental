@@ -41,6 +41,9 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-stockwire_rental}
       REDIS_URL: redis://valkey:6379/0
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:9000,http://localhost:3000}
+      PROMETHEUS_ENABLED: true
+      PROMETHEUS_METRICS_USER: ${PROMETHEUS_METRICS_USER:-prometheus}
+      PROMETHEUS_METRICS_PASSWORD: ${PROMETHEUS_METRICS_PASSWORD:-metrics}
     ports:
       - "8000:8000"
     depends_on:
@@ -62,5 +65,38 @@ services:
     depends_on:
       - backend
 
+  prometheus:
+    image: prom/prometheus:v3.2.1
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--web.config.file=/etc/prometheus/web.yml'
+      - '--storage.tsdb.path=/prometheus'
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./prometheus-web.yml:/etc/prometheus/web.yml:ro
+      - prometheus-data:/prometheus
+    depends_on:
+      - backend
+      - frontend
+
+  grafana:
+    image: grafana/grafana:11.5.2
+    environment:
+      GF_INSTALL_PLUGINS: ""
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./grafana/datasources:/etc/grafana/provisioning/datasources:ro
+      - ./grafana/dashboards/dashboard.yml:/etc/grafana/provisioning/dashboards/dashboard.yml:ro
+      - ./grafana/dashboards/stockwire-metrics.json:/etc/grafana/provisioning/dashboards/definitions/stockwire-metrics.json:ro
+      - grafana-data:/var/lib/grafana
+    depends_on:
+      - prometheus
+
 volumes:
   stockwire-rental-postgres18-data:
+  prometheus-data:
+  grafana-data:

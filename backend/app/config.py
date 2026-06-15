@@ -58,6 +58,11 @@ class Settings(BaseSettings):
     password_reset_expire_minutes: int = 15
     password_reset_base_url: str = "http://localhost:9000"
 
+    prometheus_enabled: bool = True
+    prometheus_pushgateway: str = ""
+    prometheus_metrics_user: str = ""
+    prometheus_metrics_password: str = ""
+
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", case_sensitive=False)
 
     @property

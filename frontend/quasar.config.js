@@ -23,7 +23,7 @@ export default configure(function () {
 
   return {
     supportTS: false,
-    boot: ['axios', 'i18n', 'theme', 'force-header-theme', 'realtime-sync', 'orbit-sync'],
+    boot: ['axios', 'i18n', 'theme', 'force-header-theme', 'realtime-sync', 'orbit-sync', 'metrics'],
     css: ['app.css'],
     extras: ['material-icons'],
     build: {

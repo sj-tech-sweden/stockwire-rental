@@ -10,6 +10,7 @@ from app.domain.jobs.models import Job
 from app.domain.realtime.events import emit_realtime_event
 from app.domain.venues.models import Venue
 from app.domain.venues.schemas import VenueCreate, VenueRead, VenueUpdate
+from app.services.metrics import created_total, deleted_total, entities_count
 
 router = APIRouter(prefix="/venues", tags=["venues"], dependencies=[Depends(get_current_user)])
 
@@ -41,6 +42,8 @@ def create_venue(payload: VenueCreate, db: Session = Depends(get_db), current_us
         details={"name": venue.name},
     )
     emit_realtime_event("venues.updated", {"entity": "venue", "action": "create", "id": venue.id})
+    created_total.labels(entity="venue").inc()
+    entities_count.labels(entity="venue").inc()
     db.commit()
     return venue
 
@@ -94,5 +97,7 @@ def delete_venue(venue_id: int, db: Session = Depends(get_db), current_user: Use
         details={"name": venue_name},
     )
     emit_realtime_event("venues.updated", {"entity": "venue", "action": "delete", "id": venue_id})
+    deleted_total.labels(entity="venue").inc()
+    entities_count.labels(entity="venue").dec()
     db.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)

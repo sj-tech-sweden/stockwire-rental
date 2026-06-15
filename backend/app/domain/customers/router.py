@@ -8,6 +8,7 @@ from app.domain.auth.models import User
 from app.domain.audit.service import record_activity
 from app.domain.customers.models import Customer
 from app.domain.customers.schemas import CustomerCreate, CustomerRead, CustomerUpdate
+from app.services.metrics import created_total, deleted_total, entities_count
 from app.domain.jobs.models import Job
 from app.domain.realtime.events import emit_realtime_event
 
@@ -41,6 +42,8 @@ def create_customer(payload: CustomerCreate, db: Session = Depends(get_db), curr
         details={"name": customer.name},
     )
     emit_realtime_event("customers.updated", {"entity": "customer", "action": "create", "id": customer.id})
+    created_total.labels(entity="customer").inc()
+    entities_count.labels(entity="customer").inc()
     db.commit()
     return customer
 
@@ -94,5 +97,7 @@ def delete_customer(customer_id: int, db: Session = Depends(get_db), current_use
         details={"name": customer_name},
     )
     emit_realtime_event("customers.updated", {"entity": "customer", "action": "delete", "id": customer_id})
+    deleted_total.labels(entity="customer").inc()
+    entities_count.labels(entity="customer").dec()
     db.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)

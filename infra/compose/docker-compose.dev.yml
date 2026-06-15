@@ -41,6 +41,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-stockwire_rental}
       REDIS_URL: redis://valkey:6379/0
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:9000,http://localhost:3000}
+      PROMETHEUS_ENABLED: true
     ports:
       - "8000:8000"
     volumes:

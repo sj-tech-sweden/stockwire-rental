@@ -1,0 +1,10 @@
+# Prometheus web configuration with basic auth.
+# Generate the password hash:
+#   docker run --rm quay.io/prometheus/bcrypt-hash -c "$(mkpasswd -m bcrypt 'your-password')"
+# Or with htpasswd:
+#   htpasswd -nB admin | head -1 | cut -d: -f2
+#
+# Default: admin / prometheus
+
+basic_auth_users:
+  admin: $2y$10$Yg5CIfPRLsyjQRpXHk3dweyBm5Y/zNPcMYVPmlSfE4TGw0K7qC4Oe
