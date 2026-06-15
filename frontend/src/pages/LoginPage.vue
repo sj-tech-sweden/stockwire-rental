@@ -194,13 +194,21 @@ onMounted(async () => {
   }
 })
 
+function resolveRedirect() {
+  return route.query.redirect ||
+    sessionStorage.getItem('sw_login_redirect') ||
+    '/'
+}
+
 async function submit() {
   error.value = ''
   loading.value = true
   try {
     await authStore.login(email.value, password.value)
     setUserLocalePreference(authStore.me?.id || null, selectedLocale.value)
-    router.push('/')
+    const redirect = resolveRedirect()
+    sessionStorage.removeItem('sw_login_redirect')
+    router.push(redirect)
   } catch (e) {
     error.value = e?.response?.data?.detail || t('login.loginFailed')
   } finally {
@@ -218,7 +226,9 @@ async function completeOidcLogin(provider, code) {
   ssoLoading.value = true
   try {
     await authStore.oidcExchange(provider, code, callbackRedirectUri(provider))
-    router.replace('/')
+    const redirect = resolveRedirect()
+    sessionStorage.removeItem('sw_login_redirect')
+    router.replace(redirect)
   } catch (e) {
     error.value = e?.response?.data?.detail || t('login.oidcFailed')
   } finally {
@@ -231,7 +241,9 @@ async function completeSamlLogin(provider, samlResponse) {
   ssoLoading.value = true
   try {
     await authStore.samlLogin(provider, samlResponse)
-    router.replace('/')
+    const redirect = resolveRedirect()
+    sessionStorage.removeItem('sw_login_redirect')
+    router.replace(redirect)
   } catch (e) {
     error.value = e?.response?.data?.detail || t('login.samlFailed')
   } finally {

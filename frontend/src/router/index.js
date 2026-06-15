@@ -89,7 +89,8 @@ router.beforeEach(async (to) => {
     } catch {
       // If backend unreachable, go to login anyway
     }
-    return '/login'
+    sessionStorage.setItem('sw_login_redirect', to.fullPath)
+    return { path: '/login', query: { redirect: to.fullPath } }
   }
 
   if (to.path.startsWith('/settings') && !authStore.canManageSettings) {
