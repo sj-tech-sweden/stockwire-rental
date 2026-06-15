@@ -13,13 +13,13 @@ setenv VIRTUAL_ENV /Users/samsjo02/Documents/script/rentalcore/stockwire-rental/
 
 set _OLD_VIRTUAL_PATH="$PATH"
 setenv PATH "$VIRTUAL_ENV/"bin":$PATH"
+setenv VIRTUAL_ENV_PROMPT .venv312
 
 
 set _OLD_VIRTUAL_PROMPT="$prompt"
 
 if (! "$?VIRTUAL_ENV_DISABLE_PROMPT") then
-    set prompt = '(.venv312) '"$prompt"
-    setenv VIRTUAL_ENV_PROMPT '(.venv312) '
+    set prompt = "(".venv312") $prompt:q"
 endif
 
 alias pydoc python -m pydoc

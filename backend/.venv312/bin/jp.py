@@ -1,4 +1,4 @@
-#!/Users/samsjo02/Documents/script/rentalcore/stockwire-rental/backend/.venv312/bin/python
+#!/Users/samsjo02/Documents/script/rentalcore/stockwire-rental/backend/.venv312/bin/python3.14
 
 import sys
 import json

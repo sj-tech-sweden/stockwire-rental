@@ -22,11 +22,9 @@ app.add_middleware(
 
 app.include_router(api_router)
 
-# Disable metrics middleware during tests to avoid route name collection issues
-if "PYTEST_CURRENT_TEST" not in os.environ:
-    if os.environ.get("PROMETHEUS_ENABLED", "true").lower() == "true" and settings.prometheus_enabled:
-        from app.services.metrics import setup_metrics
-        setup_metrics(app)
+if os.environ.get("PROMETHEUS_ENABLED", "true").lower() == "true" and settings.prometheus_enabled:
+    from app.services.metrics import setup_metrics
+    setup_metrics(app)
 
 
 @app.on_event("startup")
