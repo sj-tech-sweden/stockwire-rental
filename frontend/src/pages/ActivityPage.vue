@@ -45,7 +45,10 @@
         </q-td>
       </template>
       <template #body-cell-action="props">
-        <q-td :props="props"><q-badge :color="actionColor(props.row)" :label="props.value" /></q-td>
+        <q-td :props="props"><q-badge :color="actionColor(props.row)" :label="actionLabel(props.row.action)" /></q-td>
+      </template>
+      <template #body-cell-message="props">
+        <q-td :props="props" class="ellipsis" style="max-width: 300px">{{ messageLabel(props.row) }}</q-td>
       </template>
       <template #body-cell-user="props">
         <q-td :props="props">{{ userLabel(props.row) }}</q-td>
@@ -56,12 +59,12 @@
             <q-card-section class="q-pb-sm">
               <div class="row items-center justify-between">
                 <div class="text-subtitle2">{{ entityLabel(props.row) }}</div>
-                <q-badge :color="actionColor(props.row)" :label="props.row.action" />
+                <q-badge :color="actionColor(props.row)" :label="actionLabel(props.row.action)" />
               </div>
               <div class="text-caption text-grey-7">{{ formatTs(props.row.created_at) }}</div>
             </q-card-section>
             <q-card-section class="q-pt-none q-pb-sm">
-              <div class="text-caption">{{ props.row.message || '-' }}</div>
+              <div class="text-caption">{{ messageLabel(props.row) }}</div>
               <div class="text-caption">{{ t('activity.user') }}: {{ userLabel(props.row) }}</div>
             </q-card-section>
             <q-card-actions align="right" v-if="entityRoute(props.row)">
@@ -137,6 +140,30 @@ function actionColor(row) {
   if (row.action === 'update') return 'warning'
   if (row.action === 'delete') return 'negative'
   return 'primary'
+}
+
+function actionLabel(value) {
+  const mapping = {
+    lookup: t('activity.actionLookup'),
+    scan: t('activity.actionScan'),
+    create: t('activity.actionCreate'),
+    update: t('activity.actionUpdate'),
+    delete: t('activity.actionDelete'),
+    job_in: t('activity.actionJobIn'),
+    job_out: t('activity.actionJobOut'),
+    move: t('activity.actionMove'),
+  }
+  return mapping[value] || value || t('activity.actionUnknown')
+}
+
+function messageLabel(log) {
+  if (log.message_format) {
+    const format = log.message_format.replace(/\./g, '_')
+    const key = 'activity.messageFormat.' + format
+    const params = log.message_params || {}
+    return t(key, params)
+  }
+  return log.message || '-' || t('activity.actionUnknown')
 }
 
 function entityLabel(log) {

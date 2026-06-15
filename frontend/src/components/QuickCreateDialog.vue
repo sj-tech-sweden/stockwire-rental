@@ -67,7 +67,8 @@ const form = ref({
   location_zone_id: null,
 })
 
-const statusOptions = DEVICE_STATUSES.map(item => ({ label: item.label, value: item.value }))
+const DEVICE_STATUS_KEY_MAP = { available: 'Available', reserved: 'Reserved', in_use: 'InUse', maintenance: 'Maintenance' }
+const statusOptions = DEVICE_STATUSES.map(item => ({ label: t('inventory.deviceStatus' + DEVICE_STATUS_KEY_MAP[item.value]), value: item.value }))
 const conditionOptions = [
   { label: t('inventory.conditionExcellent'), value: 'excellent' },
   { label: t('inventory.conditionGood'), value: 'good' },

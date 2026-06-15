@@ -343,10 +343,10 @@
           class="ec-card"
         >
           <template #body-cell-status="props">
-            <q-td :props="props"><q-badge :label="props.value" :color="deviceStatusColor(props.value)" /></q-td>
+            <q-td :props="props"><q-badge :label="statusLabel(props.value)" :color="deviceStatusColor(props.value)" /></q-td>
           </template>
           <template #body-cell-condition="props">
-            <q-td :props="props"><q-badge :label="props.value || 'n/a'" :color="conditionColor(props.value)" /></q-td>
+            <q-td :props="props"><q-badge :label="conditionLabel(props.value)" :color="conditionColor(props.value)" /></q-td>
           </template>
           <template #body-cell-current_job_code="props">
             <q-td :props="props">
@@ -355,7 +355,7 @@
             </q-td>
           </template>
           <template #body-cell-location_zone_id="props">
-            <q-td :props="props">{{ props.row.case_asset_tag ? `Case: ${props.row.case_asset_tag}` : (zoneNameById(props.value) || 'Unassigned') }}</q-td>
+            <q-td :props="props">{{ props.row.case_asset_tag ? t('inventory.infoDialogs.caseLocation', { assetTag: props.row.case_asset_tag }) : (zoneNameById(props.value) || t('inventory.infoDialogs.unassigned')) }}</q-td>
           </template>
           <template #body-cell-actions="props">
             <q-td :props="props" auto-width>
@@ -372,11 +372,11 @@
                 </q-card-section>
                 <q-card-section class="q-pt-none q-pb-sm">
                   <div class="row q-col-gutter-xs">
-                    <div class="col-6"><q-badge :color="deviceStatusColor(props.row.status)" :label="props.row.status" /></div>
-                    <div class="col-6"><q-badge color="grey-7" :label="props.row.condition || 'n/a'" /></div>
-                    <div class="col-12" v-if="props.row.serial_number"><div class="text-caption">Serial: {{ props.row.serial_number }}</div></div>
-                    <div class="col-12" v-if="props.row.current_job_code"><div class="text-caption">On job: {{ props.row.current_job_code }}</div></div>
-                    <div class="col-12"><div class="text-caption">Location: {{ props.row.case_asset_tag ? `Case: ${props.row.case_asset_tag}` : (zoneNameById(props.row.location_zone_id) || 'Unassigned') }}</div></div>
+                    <div class="col-6"><q-badge :color="deviceStatusColor(props.row.status)" :label="statusLabel(props.row.status)" /></div>
+                    <div class="col-6"><q-badge color="grey-7" :label="conditionLabel(props.row.condition)" /></div>
+                    <div class="col-12" v-if="props.row.serial_number"><div class="text-caption">{{ t('inventory.infoDialogs.serialNumber') }}: {{ props.row.serial_number }}</div></div>
+                    <div class="col-12" v-if="props.row.current_job_code"><div class="text-caption">{{ t('inventory.infoDialogs.currentJob') }}: {{ props.row.current_job_code }}</div></div>
+                    <div class="col-12"><div class="text-caption">{{ t('inventory.infoDialogs.location') }}: {{ props.row.case_asset_tag ? t('inventory.infoDialogs.caseLocation', { assetTag: props.row.case_asset_tag }) : (zoneNameById(props.row.location_zone_id) || t('inventory.infoDialogs.unassigned')) }}</div></div>
                   </div>
                 </q-card-section>
                 <q-card-actions align="right">
@@ -626,12 +626,12 @@
                   {{ prop.node.name }}
                   <span class="text-caption text-grey-7">({{ prop.node.code }})</span>
                 </div>
-                <q-badge size="sm" class="q-mr-xs" color="primary" :label="prop.node.zone_type" />
+                <q-badge size="sm" class="q-mr-xs" color="primary" :label="zoneTypeLabel(prop.node.zone_type)" />
                 <q-badge
                   size="sm"
                   class="q-mr-xs"
                   :color="prop.node.is_active ? 'positive' : 'grey'"
-                  :label="prop.node.is_active ? 'Active' : 'Inactive'"
+                  :label="prop.node.is_active ? t('app.general.active') : t('app.general.inactive')"
                 />
                 <q-btn flat dense round icon="playlist_add" class="q-mr-xs inventory-action-contrast" @click.stop="openBulkCreateSubzones(prop.node)">
                   <q-tooltip>{{ tr('inventory.bulkCreateSubzones.addButton', 'Add multiple subzones') }}</q-tooltip>
@@ -858,7 +858,8 @@ const productTypeOptions = [
   { label: t('inventory.productTypeCase'), value: 'case' },
 ]
 
-const statusOptions = DEVICE_STATUSES.map(item => ({ label: item.label, value: item.value }))
+const DEVICE_STATUS_KEY_MAP = { available: 'Available', reserved: 'Reserved', in_use: 'InUse', maintenance: 'Maintenance' }
+const statusOptions = DEVICE_STATUSES.map(item => ({ label: t('inventory.deviceStatus' + DEVICE_STATUS_KEY_MAP[item.value]), value: item.value }))
 const conditionOptions = [
   { label: t('inventory.conditionExcellent'), value: 'excellent' },
   { label: t('inventory.conditionGood'), value: 'good' },
@@ -1687,11 +1688,44 @@ function deviceStatusColor(status) {
   return DEVICE_STATUSES.find(item => item.value === status)?.color || 'grey'
 }
 
+function statusLabel(value) {
+  const mapping = {
+    available: t('inventory.deviceStatusAvailable'),
+    reserved: t('inventory.deviceStatusReserved'),
+    in_use: t('inventory.deviceStatusInUse'),
+    maintenance: t('inventory.deviceStatusMaintenance'),
+  }
+  return mapping[value] || value
+}
+
 function conditionColor(condition) {
   if (condition === 'damaged') return 'negative'
   if (condition === 'fair') return 'warning'
   if (condition === 'good') return 'positive'
   return 'grey-7'
+}
+
+function conditionLabel(value) {
+  const mapping = {
+    good: t('inventory.conditionGood'),
+    fair: t('inventory.conditionFair'),
+    damaged: t('inventory.conditionDamaged'),
+  }
+  return mapping[value] || value || t('inventory.infoDialogs.notAvailable')
+}
+
+function zoneTypeLabel(value) {
+  const mapping = {
+    rack: t('inventory.zoneTypeRack'),
+    shelf: t('inventory.zoneTypeShelf'),
+    bin: t('inventory.zoneTypeBin'),
+    pallet: t('inventory.zoneTypePallet'),
+    stage: t('inventory.zoneTypeStage'),
+    truck: t('inventory.zoneTypeTruck'),
+    warehouse: t('inventory.zoneTypeWarehouse'),
+    workshop: t('inventory.zoneTypeWorkshop'),
+  }
+  return mapping[value] || value
 }
 
 function maintenanceStatusColor(status) {

@@ -1440,12 +1440,12 @@ const companyProfileDraft = ref({
   contact_phone: '',
   website: '',
 })
-const companyLogoSlots = [
+const companyLogoSlots = computed(() => [
   {
     key: 'default',
-    label: 'Default logo',
-    hint: 'Fallback if no specific theme/size logo is available.',
-    usage: ['Fallback', 'Legacy pages'],
+    label: t('labels.logoDefault'),
+    hint: t('settings.company.logoDefaultHint'),
+    usage: [t('settings.company.fallback'), t('settings.company.legacyPages')],
     publicVariant: 'default',
     fileIdField: 'logo_file_id',
     urlField: 'logo_url',
@@ -1453,9 +1453,9 @@ const companyLogoSlots = [
   },
   {
     key: 'lightWide',
-    label: 'Light wide logo',
-    hint: 'Preferred on dark auth page backgrounds.',
-    usage: ['Auth page'],
+    label: t('labels.logoLightWide'),
+    hint: t('settings.company.logoLightWideHint'),
+    usage: [t('settings.company.authPage')],
     publicVariant: 'light-wide',
     fileIdField: 'logo_light_wide_file_id',
     urlField: 'logo_light_wide_url',
@@ -1463,9 +1463,9 @@ const companyLogoSlots = [
   },
   {
     key: 'lightSmall',
-    label: 'Light small logo',
-    hint: 'Compact light variant for tight dark UI areas.',
-    usage: ['Header in dark mode'],
+    label: t('labels.logoLightSmall'),
+    hint: t('settings.company.logoLightSmallHint'),
+    usage: [t('settings.company.headerInDarkMode')],
     publicVariant: 'light-small',
     fileIdField: 'logo_light_small_file_id',
     urlField: 'logo_light_small_url',
@@ -1473,9 +1473,9 @@ const companyLogoSlots = [
   },
   {
     key: 'darkWide',
-    label: 'Dark wide logo',
-    hint: 'Preferred on light surfaces such as labels and documents.',
-    usage: ['Labels', 'Documents'],
+    label: t('labels.logoDarkWide'),
+    hint: t('settings.company.logoDarkWideHint'),
+    usage: [t('app.general.labels'), t('settings.company.legacyPages')],
     publicVariant: 'dark-wide',
     fileIdField: 'logo_dark_wide_file_id',
     urlField: 'logo_dark_wide_url',
@@ -1483,16 +1483,17 @@ const companyLogoSlots = [
   },
   {
     key: 'darkSmall',
-    label: 'Dark small logo',
-    hint: 'Compact dark variant for light UI surfaces.',
-    usage: ['Header in light mode'],
+    label: t('labels.logoDarkSmall'),
+    hint: t('settings.company.logoDarkSmallHint'),
+    usage: [t('settings.company.headerInLightMode')],
     publicVariant: 'dark-small',
     fileIdField: 'logo_dark_small_file_id',
     urlField: 'logo_dark_small_url',
     category: 'logo-dark-small',
   },
-]
-const companyLogoSlotByKey = Object.fromEntries(companyLogoSlots.map(slot => [slot.key, slot]))
+])
+const companyLogoSlotByKey = computed(() => Object.fromEntries(companyLogoSlots.value.map(slot => [slot.key, slot]))
+)
 const companyLogoFiles = ref({
   default: null,
   lightWide: null,
@@ -2616,7 +2617,7 @@ function applyCompanyProfileDraft(profile) {
 }
 
 async function uploadCompanyLogo(slotKey) {
-  const slot = companyLogoSlotByKey[slotKey]
+  const slot = companyLogoSlotByKey.value[slotKey]
   if (!slot) return
   const file = companyLogoFiles.value[slotKey]
   if (!file) {
@@ -2643,7 +2644,7 @@ async function uploadCompanyLogo(slotKey) {
 }
 
 function clearCompanyLogoSlot(slotKey) {
-  const slot = companyLogoSlotByKey[slotKey]
+  const slot = companyLogoSlotByKey.value[slotKey]
   if (!slot) return
   companyProfileDraft.value[slot.fileIdField] = null
   companyProfileDraft.value[slot.urlField] = null

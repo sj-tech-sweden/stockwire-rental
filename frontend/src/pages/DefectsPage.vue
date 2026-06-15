@@ -1,22 +1,22 @@
 <template>
   <q-page class="q-pa-md ec-page">
     <div class="row items-center q-mb-md">
-      <div class="text-h5 col">Defect Reports</div>
-      <q-btn color="primary" icon="refresh" label="Refresh" unelevated @click="refresh" :loading="loading" />
+      <div class="text-h5 col">{{ t('defects.title') }}</div>
+      <q-btn color="primary" icon="refresh" :label="t('defects.refresh')" unelevated @click="refresh" :loading="loading" />
     </div>
 
     <div class="row q-col-gutter-sm q-mb-sm">
       <div class="col-12 col-md-3">
-        <q-select v-model="statusFilter" :options="statusOptions" label="Status" outlined dense emit-value map-options clearable @update:model-value="refresh" />
+        <q-select v-model="statusFilter" :options="statusOptions" :label="t('defects.filterStatus')" outlined dense emit-value map-options clearable @update:model-value="refresh" />
       </div>
       <div class="col-12 col-md-3">
-        <q-select v-model="severityFilter" :options="severityOptions" label="Severity" outlined dense emit-value map-options clearable @update:model-value="refresh" />
+        <q-select v-model="severityFilter" :options="severityOptions" :label="t('defects.filterSeverity')" outlined dense emit-value map-options clearable @update:model-value="refresh" />
       </div>
       <div class="col-12 col-md-3">
-        <q-input v-model="assetTagFilter" dense outlined clearable label="Asset tag" @update:model-value="refresh" />
+        <q-input v-model="assetTagFilter" dense outlined clearable :label="t('defects.filterAssetTag')" @update:model-value="refresh" />
       </div>
       <div class="col-12 col-md-3">
-        <q-input v-model="search" dense outlined clearable placeholder="Search title..." @update:model-value="refresh" />
+        <q-input v-model="search" dense outlined clearable :placeholder="t('defects.searchTitle')" @update:model-value="refresh" />
       </div>
     </div>
 
@@ -112,8 +112,8 @@
       <template #top-row>
         <tr v-if="expandedDefectId">
           <td :colspan="columns.length" class="q-pa-md bg-grey-1">
-            <div class="text-subtitle2 q-mb-sm">Comments</div>
-            <div v-if="!expandedComments.length" class="text-caption text-grey-6 q-mb-sm">No comments yet.</div>
+            <div class="text-subtitle2 q-mb-sm">{{ t('defects.comments') }}</div>
+            <div v-if="!expandedComments.length" class="text-caption text-grey-6 q-mb-sm">{{ t('defects.noComments') }}</div>
             <div v-for="comment in expandedComments" :key="comment.id" class="q-mb-xs">
               <div class="comment-bubble">{{ comment.comment }}</div>
             </div>
@@ -124,7 +124,7 @@
                 outlined
                 type="textarea"
                 autogrow
-                placeholder="Add a comment..."
+                :placeholder="t('defects.addComment')"
                 class="col-grow"
               />
               <q-btn dense flat icon="send" color="primary" :loading="savingComment" :disable="!newCommentText?.trim()" @click="addComment(expandedDefectId)" class="q-ml-xs" />
@@ -176,7 +176,7 @@
                     :model-value="props.row.title"
                     dense
                     outlined
-                    placeholder="Title"
+                    :placeholder="t('defects.titlePlaceholder')"
                     @update:model-value="(v) => updateDefectField(props.row, 'title', v)"
                   />
                 </div>
@@ -184,11 +184,11 @@
                   <div class="text-caption q-mt-xs">{{ props.row.description }}</div>
                 </div>
                 <div class="col-12 text-caption text-grey-6 q-mt-xs">
-                  Created: {{ props.row.created_at }}
+                  {{ t('defects.created') }}: {{ props.row.created_at }}
                 </div>
                 <div class="col-12" v-if="expandedDefectId === props.row.id">
-                  <div class="text-subtitle2 q-mt-sm q-mb-sm">Comments</div>
-                  <div v-if="!expandedComments.length" class="text-caption text-grey-6 q-mb-sm">No comments yet.</div>
+                  <div class="text-subtitle2 q-mt-sm q-mb-sm">{{ t('defects.comments') }}</div>
+                  <div v-if="!expandedComments.length" class="text-caption text-grey-6 q-mb-sm">{{ t('defects.noComments') }}</div>
                   <div v-for="comment in expandedComments" :key="comment.id" class="q-mb-xs">
                     <div class="comment-bubble">{{ comment.comment }}</div>
                   </div>
@@ -199,7 +199,7 @@
                       outlined
                       type="textarea"
                       autogrow
-                      placeholder="Add a comment..."
+                      :placeholder="t('defects.addComment')"
                       class="col-grow"
                     />
                     <q-btn dense flat icon="send" color="primary" :loading="savingComment" :disable="!newCommentText?.trim()" @click="addComment(expandedDefectId)" class="q-ml-xs" />
@@ -275,31 +275,31 @@ const newCommentText = ref('')
 const savingComment = ref(false)
 
 const defectStatusOptions = [
-  { label: 'Open', value: 'open' },
-  { label: 'In Progress', value: 'in_progress' },
-  { label: 'Resolved', value: 'resolved' },
-  { label: 'Closed', value: 'closed' },
+  { label: t('inventory.defectStatusOpen'), value: 'open' },
+  { label: t('inventory.defectStatusInProgress'), value: 'in_progress' },
+  { label: t('inventory.defectStatusResolved'), value: 'resolved' },
+  { label: t('inventory.defectStatusClosed'), value: 'closed' },
 ]
 
 const defectSeverityOptions = [
-  { label: 'Low', value: 'low' },
-  { label: 'Medium', value: 'medium' },
-  { label: 'High', value: 'high' },
-  { label: 'Critical', value: 'critical' },
+  { label: t('inventory.defectSeverityLow'), value: 'low' },
+  { label: t('inventory.defectSeverityMedium'), value: 'medium' },
+  { label: t('inventory.defectSeverityHigh'), value: 'high' },
+  { label: t('inventory.defectSeverityCritical'), value: 'critical' },
 ]
 
-const statusOptions = computed(() => [{ label: 'All', value: null }, ...defectStatusOptions])
-const severityOptions = computed(() => [{ label: 'All', value: null }, ...defectSeverityOptions])
+const statusOptions = computed(() => [{ label: t('defects.all'), value: null }, ...defectStatusOptions])
+const severityOptions = computed(() => [{ label: t('defects.all'), value: null }, ...defectSeverityOptions])
 
 const columns = [
-  { name: 'id', label: 'ID', field: 'id', sortable: true, style: 'width: 60px' },
-  { name: 'asset_tag', label: 'Device', field: 'asset_tag', sortable: true },
-  { name: 'product_name', label: 'Product', field: 'product_name', sortable: true },
-  { name: 'title', label: 'Title', field: 'title', sortable: true, style: 'min-width: 180px' },
-  { name: 'description', label: 'Description', field: 'description', style: 'min-width: 200px' },
-  { name: 'status', label: 'Status', field: 'status', sortable: true },
-  { name: 'severity', label: 'Severity', field: 'severity', sortable: true },
-  { name: 'created_at', label: 'Created', field: 'created_at', sortable: true },
+  { name: 'id', label: t('defects.columnId'), field: 'id', sortable: true, style: 'width: 60px' },
+  { name: 'asset_tag', label: t('defects.columnDevice'), field: 'asset_tag', sortable: true },
+  { name: 'product_name', label: t('defects.columnProduct'), field: 'product_name', sortable: true },
+  { name: 'title', label: t('defects.columnTitle'), field: 'title', sortable: true, style: 'min-width: 180px' },
+  { name: 'description', label: t('defects.columnDescription'), field: 'description', style: 'min-width: 200px' },
+  { name: 'status', label: t('defects.columnStatus'), field: 'status', sortable: true },
+  { name: 'severity', label: t('defects.columnSeverity'), field: 'severity', sortable: true },
+  { name: 'created_at', label: t('defects.columnCreated'), field: 'created_at', sortable: true },
   { name: 'actions', label: '', field: 'actions', style: 'width: 90px' },
 ]
 
@@ -436,11 +436,11 @@ function onProductDialogSaved() {
 
 async function deleteDefect(defect) {
   $q.dialog({
-    title: 'Delete Defect',
-    message: `Permanently delete defect "${defect.title || defect.id}"?`,
+    title: t('inventory.deleteDefect'),
+    message: t('inventory.deleteDefectConfirm', { title: defect.title || defect.id }),
     cancel: true,
     persistent: true,
-    ok: { label: 'Delete', color: 'negative' },
+    ok: { label: t('inventory.delete'), color: 'negative' },
   }).onOk(async () => {
     try {
       await api.delete(`/api/v1/inventory/defect-reports/${defect.id}`)
@@ -450,7 +450,7 @@ async function deleteDefect(defect) {
         expandedComments.value = []
       }
     } catch (error) {
-      $q.notify({ type: 'negative', message: error?.response?.data?.detail || 'Failed to delete defect' })
+      $q.notify({ type: 'negative', message: error?.response?.data?.detail || t('inventory.failedDeleteDefect') })
     }
   })
 }

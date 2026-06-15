@@ -36,7 +36,8 @@ def create_venue(payload: VenueCreate, db: Session = Depends(get_db), current_us
         entity_type="venue",
         entity_id=venue.id,
         action="create",
-        message=f"Created venue {venue.name}",
+        message_format="venue_created",
+        message_params={"name": venue.name},
         details={"name": venue.name},
     )
     emit_realtime_event("venues.updated", {"entity": "venue", "action": "create", "id": venue.id})
@@ -59,7 +60,8 @@ def update_venue(venue_id: int, payload: VenueUpdate, db: Session = Depends(get_
         entity_type="venue",
         entity_id=venue.id,
         action="update",
-        message=f"Updated venue {venue.name}",
+        message_format="venue_updated",
+        message_params={"name": venue.name},
         details={"name": venue.name},
     )
     emit_realtime_event("venues.updated", {"entity": "venue", "action": "update", "id": venue.id})
@@ -87,7 +89,8 @@ def delete_venue(venue_id: int, db: Session = Depends(get_db), current_user: Use
         entity_type="venue",
         entity_id=venue_id,
         action="delete",
-        message=f"Deleted venue {venue_name}",
+        message_format="venue_deleted",
+        message_params={"name": venue_name},
         details={"name": venue_name},
     )
     emit_realtime_event("venues.updated", {"entity": "venue", "action": "delete", "id": venue_id})

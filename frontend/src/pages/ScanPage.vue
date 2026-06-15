@@ -1094,26 +1094,33 @@ const lookupDeviceEntries = computed(() => detailEntries(lastLookupResult.value?
   ['notes', 'Notes'],
 ]))
 const lookupProductEntries = computed(() => detailEntries(lastLookupResult.value?.product_details, [
-  ['sku', 'SKU'],
-  ['name', 'Name'],
-  ['category', 'Category'],
-  ['brand', 'Brand'],
-  ['manufacturer', 'Manufacturer'],
-  ['product_type', 'Type'],
-  ['weight_kg', 'Weight (kg)'],
-  ['height_cm', 'Height (cm)'],
-  ['width_cm', 'Width (cm)'],
-  ['depth_cm', 'Depth (cm)'],
-  ['maintenance_interval_days', 'Maintenance interval (days)'],
-  ['power_consumption_watts', 'Power (W)'],
-  ['daily_rate', 'Daily rate'],
+  ['sku', t('scan.productSku')],
+  ['name', t('scan.productName')],
+  ['category', t('scan.categoryName')],
+  ['brand', t('scan.brandName')],
+  ['manufacturer', t('scan.manufacturerName')],
+  ['product_type', t('scan.productType')],
+  ['weight_kg', t('scan.weightKg')],
+  ['height_cm', t('scan.heightCm')],
+  ['width_cm', t('scan.widthCm')],
+  ['depth_cm', t('scan.depthCm')],
+  ['maintenance_interval_days', t('scan.maintenanceIntervalDays')],
+  ['power_consumption_watts', t('scan.powerWatts')],
+  ['daily_rate', t('scan.dailyRate')],
 ]))
 const lookupLocationEntries = computed(() => detailEntries(lastLookupResult.value?.location_details, [
-  ['code', 'Code'],
-  ['name', 'Name'],
-  ['zone_type', 'Type'],
-  ['is_active', 'Active'],
-]))
+  ['code', t('scan.code')],
+  ['name', t('scan.locationName')],
+  ['zone_type', t('scan.zoneType')],
+  ['is_active', t('app.general.active')],
+]).map(entry => {
+  if (entry.key === 'zone_type') {
+    const zoneKey = 'inventory.zoneType' + entry.value.charAt(0).toUpperCase() + entry.value.slice(1)
+    const translated = t(zoneKey)
+    entry.value = translated !== zoneKey ? translated : entry.value
+  }
+  return entry
+}))
 const lookupMaintenanceEntries = computed(() => {
   const raw = lastLookupResult.value?.maintenance_details
   return Array.isArray(raw) ? raw : []
@@ -1485,7 +1492,12 @@ async function runScanAction() {
     }
     await jobsStore.fetchAll()
     await refreshCheckedOutForIntake()
-    scanResultMessage.value = response.message || t('scan.scanProcessed')
+    const knownScanErrors = {
+      'Device not found': t('scan.deviceNotFound'),
+    }
+    scanResultMessage.value = response.success
+      ? (response.message || t('scan.scanProcessed'))
+      : (knownScanErrors[response.message] || response.message || t('scan.scanFailed'))
     scanResultSuccess.value = !!response.success
     if ((scanAction.value === 'move' || scanAction.value === 'assign_component') && response.success) {
       trackRecentMove(response, code)

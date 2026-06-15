@@ -162,7 +162,7 @@
           </template>
           <template #body-cell-status="props">
             <q-td :props="props">
-              <q-badge :color="props.value === 'completed' ? 'positive' : (props.value === 'cancelled' ? 'grey' : 'info')" :label="props.value" />
+              <q-badge :color="props.value === 'completed' ? 'positive' : (props.value === 'cancelled' ? 'grey' : 'info')" :label="jobStatusLabel(props.value)" />
             </q-td>
           </template>
           <template #body-cell-completion_percent="props">
@@ -442,6 +442,17 @@ function statusLabel(value, isOverdue) {
   if (isOverdue && value !== 'completed') return t('finance.overdue')
   const hit = statusOptions.value.find(item => item.value === value)
   return hit?.label || value || t('finance.unknown')
+}
+
+function jobStatusLabel(value) {
+  const mapping = {
+    draft: t('jobs.statusDraft'),
+    confirmed: t('jobs.statusConfirmed'),
+    in_progress: t('jobs.statusInProgress'),
+    completed: t('jobs.statusCompleted'),
+    cancelled: t('jobs.statusCancelled'),
+  }
+  return mapping[value] || value
 }
 
 function typeLabel(value) {
