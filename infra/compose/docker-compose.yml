@@ -82,7 +82,7 @@ services:
       - frontend
 
   grafana:
-    image: grafana/grafana:11.6.15
+    image: grafana/grafana:13.0.2
     environment:
       GF_INSTALL_PLUGINS: ""
       GF_AUTH_ANONYMOUS_ENABLED: "true"
