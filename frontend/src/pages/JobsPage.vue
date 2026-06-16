@@ -55,6 +55,23 @@
         </q-td>
       </template>
 
+      <template #body-cell-productionplanner="props">
+        <q-td :props="props">
+          <div class="row items-center q-gutter-xs">
+            <q-icon
+              v-if="props.row.productionplanner_project_id"
+              name="external_link"
+              color="positive"
+              class="cursor-pointer"
+              @click="openProductionPlanner(props.row.productionplanner_project_id)"
+            >
+              <q-tooltip>{{ t('jobs.openInProductionPlanner') }}</q-tooltip>
+            </q-icon>
+            <q-icon v-else name="link_off" color="grey" />
+          </div>
+        </q-td>
+      </template>
+
       <template #body-cell-sales_price="props">
         <q-td :props="props">
           {{ formatMoney(props.value) }}
@@ -93,6 +110,8 @@
           <q-btn flat round dense icon="visibility" color="grey-7" class="q-mr-xs" :to="`/jobs/${props.row.id}`" />
           <template v-if="authStore.canEdit">
             <q-btn flat round dense icon="edit" color="primary" class="q-mr-xs" @click="openEdit(props.row)" />
+            <q-btn flat round dense icon="sync" color="info" class="q-mr-xs" @click="syncToProductionPlanner(props.row)" :label="t('jobs.syncToPP')" :disable="jobsStore.loading" />
+            <q-btn flat round dense icon="external_link" color="primary" class="q-mr-xs" @click="openProductionPlanner(props.row.productionplanner_project_id)" :disable="!props.row.productionplanner_project_id" :label="t('jobs.openInPP')" />
             <q-btn flat round dense icon="delete" color="negative" @click="confirmDelete(props.row)" />
           </template>
         </q-td>
@@ -265,6 +284,7 @@ const columns = computed(() => [
   { name: 'venue_name', label: t('jobs.venue'), field: 'venue_name', sortable: true, align: 'left' },
   { name: 'project_name', label: t('jobs.project'), field: 'project_name', sortable: true, align: 'left' },
   { name: 'status', label: t('jobs.status'), field: 'status', sortable: true, align: 'left' },
+  { name: 'productionplanner', label: t('jobs.productionPlanner'), field: 'productionplanner', sortable: false, align: 'left' },
   { name: 'sales_price', label: t('jobs.salesLabel'), field: 'sales_price', sortable: true, align: 'right' },
   { name: 'invoice_paid', label: t('jobs.invoiceLabel'), field: 'invoice_paid', sortable: true, align: 'left' },
   { name: 'start_date', label: t('jobs.start'), field: 'start_date', sortable: true, align: 'left', format: formatDate },
@@ -377,6 +397,21 @@ function openEdit(job) {
 function confirmDelete(job) {
   deleteTarget.value = job
   deleteDialogOpen.value = true
+}
+
+async function syncToProductionPlanner(job) {
+  try {
+    await jobsStore.syncJobToProductionPlanner(job.id)
+    await jobsStore.fetchAll()
+  } catch (error) {
+    console.error('Failed to sync to ProductionPlanner:', error)
+  }
+}
+
+function openProductionPlanner(projectId) {
+  if (projectId) {
+    window.open(jobsStore.getProductionPlannerUrl(projectId), '_blank')
+  }
 }
 
 function onJobSaved() {

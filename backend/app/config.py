@@ -63,6 +63,9 @@ class Settings(BaseSettings):
     prometheus_metrics_user: str = ""
     prometheus_metrics_password: str = ""
 
+    productionplanner_api_key: str = ""
+    productionplanner_base_url: str = "https://api.productionplanner.io/v1"
+
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", case_sensitive=False)
 
     @property

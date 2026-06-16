@@ -63,6 +63,7 @@ from app.domain.settings.schemas import (
     ProductDefaultsUpdate,
     SmtpSettingsRead,
     SmtpSettingsUpdate,
+    ProductionPlannerConfig,
 )
 from app.domain.storage.models import AssetFile
 from app.domain.storage.schemas import CompanyProfileRead, CompanyProfileUpdate
@@ -113,9 +114,14 @@ DEFAULT_INTEGRATIONS = {
             "sync_progress_percent": 0,
             "sync_message": None,
         }
-    ]
+    ],
+    "productionplanner": {
+        "enabled": False,
+        "api_key": None,
+        "base_url": "https://api.productionplanner.io/v1",
+    },
 }
-ALLOWED_INTEGRATION_PLUGINS = {"eventory"}
+ALLOWED_INTEGRATION_PLUGINS = {"eventory", "productionplanner"}
 ALLOWED_SYNC_INTERVALS = {0, 15, 30, 60, 120, 240, 480, 1440}
 EVENTORY_SYNC_LOCK = threading.Lock()
 EVENTORY_SYNC_RUNNING: set[str] = set()
@@ -373,8 +379,20 @@ def update_integrations(
                 persisted_by_id.get(str(instance.id or "").strip() or "eventory-main"),
             )
         )
+
+    persisted_pp = persisted.get("productionplanner") if isinstance(persisted, dict) else {}
+    pp_config = payload.productionplanner
+    if pp_config is None:
+        pp_config = ProductionPlannerConfig(**persisted_pp)
+    productionplanner = {
+        "enabled": bool(pp_config.enabled),
+        "api_key": pp_config.api_key,
+        "base_url": pp_config.base_url or "https://api.productionplanner.io/v1",
+    }
+
     data = {
         "eventory_instances": normalized_instances,
+        "productionplanner": productionplanner,
     }
     setting.value_json = json.dumps(data)
     db.commit()
@@ -1438,6 +1456,7 @@ def _parse_integrations(raw: str | None) -> dict[str, object]:
     if not raw:
         return {
             "eventory_instances": [_normalize_eventory_instance(EventoryInstanceConfig(**DEFAULT_INTEGRATIONS["eventory_instances"][0]))],
+            "productionplanner": DEFAULT_INTEGRATIONS.get("productionplanner", {}),
         }
     try:
         data = json.loads(raw)
@@ -1468,8 +1487,13 @@ def _parse_integrations(raw: str | None) -> dict[str, object]:
     if not normalized_instances:
         normalized_instances.append(_normalize_eventory_instance(EventoryInstanceConfig(**DEFAULT_INTEGRATIONS["eventory_instances"][0])))
 
+    productionplanner_raw = {}
+    if isinstance(data, dict) and isinstance(data.get("productionplanner"), dict):
+        productionplanner_raw = data.get("productionplanner") or {}
+
     return {
         "eventory_instances": normalized_instances,
+        "productionplanner": {**DEFAULT_INTEGRATIONS.get("productionplanner", {}), **productionplanner_raw},
     }
 
 

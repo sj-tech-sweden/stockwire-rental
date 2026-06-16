@@ -32,5 +32,13 @@ class ProjectUpdate(BaseModel):
 class ProjectRead(ProjectBase):
     id: int
     created_at: datetime
+    productionplanner_project_id: str | None = None
 
     model_config = {"from_attributes": True}
+
+
+class ProductionPlannerSyncResponse(BaseModel):
+    success: bool
+    message: str
+    productionplanner_project_id: str | None = None
+    productionplanner_url: str | None = None
