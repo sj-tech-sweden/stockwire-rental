@@ -28,6 +28,8 @@ class Job(Base):
     notes: Mapped[str] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
 
+    productionplanner_project_id: Mapped[str] = mapped_column(String(100), nullable=True, index=True)
+
     owner: Mapped["User"] = relationship(back_populates="jobs")
     project: Mapped["Project"] = relationship(back_populates="jobs")
     customer: Mapped["Customer"] = relationship(back_populates="jobs")
