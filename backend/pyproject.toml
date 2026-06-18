@@ -33,7 +33,7 @@ dev = [
   "pytest==9.1.0",
   "pytest-asyncio==1.4.0",
   "httpx==0.28.1",
-  "ruff==0.15.17"
+  "ruff==0.15.18"
 ]
 
 [tool.pytest.ini_options]
