@@ -47,7 +47,7 @@ jobs:
       packages: write
       id-token: write
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           ref: ${{ inputs.git_ref || github.event.inputs.git_ref || github.sha }}
 
