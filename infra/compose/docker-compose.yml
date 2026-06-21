@@ -60,6 +60,7 @@ services:
     environment:
       API_BASE_URL: ${API_BASE_URL:-}
       VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:8000}
+      METRICS_BACKEND_ORIGIN: ${METRICS_BACKEND_ORIGIN:-http://backend:8000}
     ports:
       - "9000:9000"
     depends_on:
