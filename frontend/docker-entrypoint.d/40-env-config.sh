@@ -23,7 +23,7 @@ escaped_runtime_api_base_url="$(
     first = 0
   }' | sed "s/${line_separator_char}/\\\\u2028/g; s/${paragraph_separator_char}/\\\\u2029/g"
 )"
-escaped_metrics_backend_origin="$(printf '%s' "${metrics_backend_origin}" | sed 's/\\/\\\\/g; s/[&|]/\\&/g')"
+escaped_metrics_backend_origin="$(printf '%s' "${metrics_backend_origin}" | sed 's/\\/\\\\/g; s/[$`&|]/\\&/g')"
 
 sed -i "s|__METRICS_BACKEND_ORIGIN__|${escaped_metrics_backend_origin}|g" /etc/nginx/conf.d/default.conf
 
