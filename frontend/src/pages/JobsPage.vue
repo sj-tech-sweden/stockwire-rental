@@ -318,6 +318,8 @@ async function applyRouteContext() {
     const target = jobsStore.jobs.find(item => item.id === focusJobId)
     if (target && authStore.canEdit) {
       openEdit(target)
+    } else if (target && !authStore.canEdit) {
+      search.value = String(target.job_code || '').trim()
     }
   }
 
@@ -373,4 +375,3 @@ function onJobDeleted() {
   deleteTarget.value = null
 }
 </script>
-
