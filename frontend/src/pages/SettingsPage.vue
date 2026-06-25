@@ -1196,6 +1196,22 @@
             </div>
           </div>
 
+          <div class="row q-col-gutter-sm q-mb-md items-center">
+            <div class="col-auto">
+              <q-btn
+                color="warning"
+                icon="refresh"
+                :label="t('settings.about.clearCache')"
+                unelevated
+                :loading="clearCacheLoading"
+                @click="clearCacheAndUpdate"
+              />
+            </div>
+            <div class="col-auto text-caption text-grey-7">
+              {{ t('settings.about.clearCacheHint') }}
+            </div>
+          </div>
+
           <template v-if="safeLatestReleaseUrl">
             <q-btn
               flat
@@ -1553,6 +1569,7 @@ const offlineQueueDeferredIdSet = computed(() => new Set(offlineQueueDeferredIds
 const versionCheckLoading = ref(false)
 const versionCheckResult = ref(null)
 const versionCheckError = ref(false)
+const clearCacheLoading = ref(false)
 const safeLatestReleaseUrl = computed(() => {
   const rawUrl = versionCheckResult.value?.latest_release_url
   if (typeof rawUrl !== 'string' || !rawUrl.trim()) return null
@@ -1604,6 +1621,23 @@ async function checkForUpdates() {
     versionCheckError.value = true
   } finally {
     versionCheckLoading.value = false
+  }
+}
+
+async function clearCacheAndUpdate() {
+  clearCacheLoading.value = true
+  try {
+    if ('serviceWorker' in navigator) {
+      const registrations = await navigator.serviceWorker.getRegistrations()
+      await Promise.all(registrations.map(r => r.unregister()))
+    }
+    if ('caches' in window) {
+      const cacheNames = await caches.keys()
+      await Promise.all(cacheNames.map(name => caches.delete(name)))
+    }
+    window.location.reload()
+  } finally {
+    clearCacheLoading.value = false
   }
 }
 
