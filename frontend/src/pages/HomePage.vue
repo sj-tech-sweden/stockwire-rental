@@ -52,7 +52,7 @@
         </q-card>
       </div>
       <div class="col-12 col-sm-6 col-md-3">
-        <q-card class="ec-card q-pa-md cursor-pointer" clickable @click="openJobsPage">
+        <q-card class="ec-card q-pa-md cursor-pointer" clickable @click="openJobsPage()">
           <div class="text-caption text-grey-6">{{ t('home.activeJobs') }}</div>
           <div class="text-h6 text-warning">{{ activeJobs }}</div>
         </q-card>
@@ -109,7 +109,7 @@
 
     <div class="row q-col-gutter-sm">
       <div class="col-12 col-md-6">
-        <q-card class="ec-card q-pa-md full-height cursor-pointer" clickable @click="openJobsPage">
+        <q-card class="ec-card q-pa-md full-height cursor-pointer" clickable @click="openJobsPage()">
           <div class="text-subtitle1 q-mb-sm">{{ t('home.jobsOverview') }}</div>
           <div class="row q-col-gutter-sm">
             <div class="col-6"><q-badge class="cursor-pointer" color="grey-7" text-color="white" :label="t('home.jobStateDraft', { count: draftJobs })" @click.stop="openJobsPage('draft')" /></div>

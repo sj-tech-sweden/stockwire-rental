@@ -149,7 +149,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 
@@ -335,6 +335,15 @@ onMounted(async () => {
   await loadData()
   await applyRouteContext()
 })
+
+watch(
+  () => [route.query.focusJobId, route.query.status],
+  async ([focusJobId, status], [prevFocusJobId, prevStatus]) => {
+    if (focusJobId === prevFocusJobId && status === prevStatus) return
+    if (!focusJobId && !status) return
+    await applyRouteContext()
+  }
+)
 
 function customerNameForId(id) {
   return customersStore.customers.find(customer => customer.id === id)?.name ?? ''
