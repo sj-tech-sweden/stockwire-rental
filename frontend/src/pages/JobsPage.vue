@@ -338,8 +338,7 @@ onMounted(async () => {
 
 watch(
   () => [route.query.focusJobId, route.query.status],
-  async ([focusJobId, status], [prevFocusJobId, prevStatus]) => {
-    if (focusJobId === prevFocusJobId && status === prevStatus) return
+  async ([focusJobId, status]) => {
     if (!focusJobId && !status) return
     await applyRouteContext()
   }
