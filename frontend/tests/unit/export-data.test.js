@@ -24,11 +24,24 @@ describe('export-data utilities', () => {
       { value: '=2+2' },
       { value: '+SUM(A1:A2)' },
       { value: '@cmd' },
+      { value: '\ttab-prefixed' },
+      { value: '\rreturn-prefixed' },
       { value: '-42' },
       { value: '-1.5e3' },
       { value: '-SUM(A1:A2)' },
     ])
-    expect(csv).toBe("value\n'=2+2\n'+SUM(A1:A2)\n'@cmd\n-42\n-1.5e3\n'-SUM(A1:A2)\n")
+    expect(csv).toBe([
+      'value',
+      "'=2+2",
+      "'+SUM(A1:A2)",
+      "'@cmd",
+      "'\ttab-prefixed",
+      `"'\rreturn-prefixed"`,
+      '-42',
+      '-1.5e3',
+      "'-SUM(A1:A2)",
+      '',
+    ].join('\n'))
   })
 
   it('serializes rows to pretty JSON and ignores invalid rows', () => {
