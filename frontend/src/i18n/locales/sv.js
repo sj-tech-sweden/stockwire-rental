@@ -588,6 +588,8 @@ export default {
       releaseNotes: 'Versionshistorik',
       noReleaseNotes: 'Ingen versionshistorik tillgänglig.',
       failedToCheck: 'Kunde inte söka efter uppdateringar.',
+      clearCache: 'Rensa cache & uppdatera',
+      clearCacheHint: 'Rensar all cachad data och laddar om appen. Använd detta efter en uppdatering för att få den senaste versionen.',
     },
     prefill: {
       categories: {

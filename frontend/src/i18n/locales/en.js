@@ -564,6 +564,8 @@ export default {
       releaseNotes: 'Release notes',
       noReleaseNotes: 'No release notes available.',
       failedToCheck: 'Failed to check for updates.',
+      clearCache: 'Clear cache & update',
+      clearCacheHint: 'Clears all cached data and reloads the app. Use this after an update to get the latest version.',
     },
     prefill: {
       categories: {
