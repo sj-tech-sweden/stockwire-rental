@@ -8,10 +8,15 @@ describe('product info dialog mobile close affordance', () => {
       'src/components/RentalProductInfoDialog.vue',
     ]) {
       const source = readFileSync(resolve(process.cwd(), file), 'utf8')
-      const mobileCloseButtonPattern = /<q-btn[\s\S]*?v-if="isPhone"[\s\S]*?icon="close"[\s\S]*?@click="emit\('update:modelValue', false\)"[\s\S]*?\/>/
+      const buttonBlocks = source.match(/<q-btn[\s\S]*?\/>/g) || []
+      const mobileCloseButton = buttonBlocks.find(block =>
+        block.includes('v-if="isPhone"')
+        && block.includes('icon="close"')
+        && block.includes(`:aria-label="t('app.actions.close')"`)
+        && block.includes(`@click="emit('update:modelValue', false)"`)
+      )
 
-      expect(source).toMatch(mobileCloseButtonPattern)
-      expect(source).toContain(`:aria-label="t('app.actions.close')"`)
+      expect(mobileCloseButton).toBeTruthy()
     }
   })
 })
