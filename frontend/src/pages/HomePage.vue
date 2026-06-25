@@ -19,13 +19,13 @@
         </q-card>
       </div>
       <div class="col-12 col-sm-6 col-md-3">
-        <q-card class="ec-card q-pa-md cursor-pointer" clickable @click="openInventoryTab('devices')">
+        <q-card class="ec-card q-pa-md cursor-pointer" clickable @click="openInventoryDevices()">
           <div class="text-caption text-grey-6">{{ t('home.devices') }}</div>
           <div class="text-h6">{{ store.devices.length }}</div>
         </q-card>
       </div>
       <div class="col-12 col-sm-6 col-md-3">
-        <q-card class="ec-card q-pa-md cursor-pointer" clickable @click="openInventoryTab('devices')">
+        <q-card class="ec-card q-pa-md cursor-pointer" clickable @click="openInventoryDevices('in_use')">
           <div class="text-caption text-grey-6">{{ t('home.checkedOutDevices') }}</div>
           <div class="text-h6">{{ store.checkedOutDevices.length }}</div>
         </q-card>
@@ -34,19 +34,19 @@
 
     <div class="row q-col-gutter-sm q-mb-md">
       <div class="col-12 col-sm-6 col-md-3">
-        <q-card class="ec-card q-pa-md cursor-pointer" clickable @click="openInventoryTab('devices')">
+        <q-card class="ec-card q-pa-md cursor-pointer" clickable @click="openInventoryDevices('available')">
           <div class="text-caption text-grey-6">{{ t('home.availableDevices') }}</div>
           <div class="text-h6 text-positive">{{ availableDevices }}</div>
         </q-card>
       </div>
       <div class="col-12 col-sm-6 col-md-3">
-        <q-card class="ec-card q-pa-md cursor-pointer" clickable @click="openInventoryTab('devices')">
+        <q-card class="ec-card q-pa-md cursor-pointer" clickable @click="openInventoryDevices('in_use')">
           <div class="text-caption text-grey-6">{{ t('home.inUseDevices') }}</div>
           <div class="text-h6 text-info">{{ inUseDevices }}</div>
         </q-card>
       </div>
       <div class="col-12 col-sm-6 col-md-3">
-        <q-card class="ec-card q-pa-md cursor-pointer" clickable @click="openInventoryTab('devices')">
+        <q-card class="ec-card q-pa-md cursor-pointer" clickable @click="openInventoryDevices('maintenance')">
           <div class="text-caption text-grey-6">{{ t('home.maintenanceDevices') }}</div>
           <div class="text-h6 text-negative">{{ maintenanceDevices }}</div>
         </q-card>
@@ -311,6 +311,12 @@ async function openSettingsPage() {
 
 async function openInventoryTab(tab) {
   await router.push({ path: '/inventory', query: { tab } })
+}
+
+async function openInventoryDevices(deviceStatus = '') {
+  const query = { tab: 'devices' }
+  if (deviceStatus) query.deviceStatus = deviceStatus
+  await router.push({ path: '/inventory', query })
 }
 
 async function openJobsPage(status = '') {
