@@ -149,8 +149,8 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue'
-import { useRoute } from 'vue-router'
+import { computed, onMounted, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 
 import { JOB_STATUSES, useJobsStore } from '../stores/jobs'
@@ -175,6 +175,7 @@ const authStore = useAuthStore()
 const settingsStore = useSettingsStore()
 const projectsStore = useProjectsStore()
 const route = useRoute()
+const router = useRouter()
 const { t, locale } = useI18n()
 
 const pageLoading = ref(false)
@@ -306,9 +307,42 @@ async function loadData() {
   }
 }
 
+async function applyRouteContext() {
+  const status = String(route.query.status || '').trim().toLowerCase()
+  if (status && JOB_STATUSES.some(item => item.value === status)) {
+    activeFilter.value = status
+  }
+
+  const focusJobId = Number(route.query.focusJobId || 0)
+  if (focusJobId > 0) {
+    const target = jobsStore.jobs.find(item => item.id === focusJobId)
+    if (target && authStore.canEdit) {
+      openEdit(target)
+    } else if (target) {
+      search.value = String(target.job_code || '').trim()
+    }
+  }
+
+  if (route.query.focusJobId || route.query.status) {
+    const nextQuery = { ...route.query }
+    delete nextQuery.focusJobId
+    delete nextQuery.status
+    await router.replace({ path: '/jobs', query: nextQuery })
+  }
+}
+
 onMounted(async () => {
   await loadData()
+  await applyRouteContext()
 })
+
+watch(
+  () => [route.query.focusJobId, route.query.status],
+  async ([focusJobId, status]) => {
+    if (!focusJobId && !status) return
+    await applyRouteContext()
+  }
+)
 
 function customerNameForId(id) {
   return customersStore.customers.find(customer => customer.id === id)?.name ?? ''
@@ -349,5 +383,3 @@ function onJobDeleted() {
   deleteTarget.value = null
 }
 </script>
-
-

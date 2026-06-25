@@ -7,25 +7,25 @@
 
     <div class="row q-col-gutter-sm q-mb-md">
       <div class="col-12 col-sm-6 col-md-3">
-        <q-card class="ec-card q-pa-md">
+        <q-card class="ec-card q-pa-md cursor-pointer" clickable @click="openSettingsPage">
           <div class="text-caption text-grey-6">{{ t('home.backendHealth') }}</div>
           <div class="text-h6">{{ status }}</div>
         </q-card>
       </div>
       <div class="col-12 col-sm-6 col-md-3">
-        <q-card class="ec-card q-pa-md">
+        <q-card class="ec-card q-pa-md cursor-pointer" clickable @click="openInventoryTab('products')">
           <div class="text-caption text-grey-6">{{ t('home.products') }}</div>
           <div class="text-h6">{{ store.products.length }}</div>
         </q-card>
       </div>
       <div class="col-12 col-sm-6 col-md-3">
-        <q-card class="ec-card q-pa-md">
+        <q-card class="ec-card q-pa-md cursor-pointer" clickable @click="openInventoryDevices()">
           <div class="text-caption text-grey-6">{{ t('home.devices') }}</div>
           <div class="text-h6">{{ store.devices.length }}</div>
         </q-card>
       </div>
       <div class="col-12 col-sm-6 col-md-3">
-        <q-card class="ec-card q-pa-md">
+        <q-card class="ec-card q-pa-md cursor-pointer" clickable @click="openInventoryDevices('in_use')">
           <div class="text-caption text-grey-6">{{ t('home.checkedOutDevices') }}</div>
           <div class="text-h6">{{ store.checkedOutDevices.length }}</div>
         </q-card>
@@ -34,25 +34,25 @@
 
     <div class="row q-col-gutter-sm q-mb-md">
       <div class="col-12 col-sm-6 col-md-3">
-        <q-card class="ec-card q-pa-md">
+        <q-card class="ec-card q-pa-md cursor-pointer" clickable @click="openInventoryDevices('available')">
           <div class="text-caption text-grey-6">{{ t('home.availableDevices') }}</div>
           <div class="text-h6 text-positive">{{ availableDevices }}</div>
         </q-card>
       </div>
       <div class="col-12 col-sm-6 col-md-3">
-        <q-card class="ec-card q-pa-md">
+        <q-card class="ec-card q-pa-md cursor-pointer" clickable @click="openInventoryDevices('in_use')">
           <div class="text-caption text-grey-6">{{ t('home.inUseDevices') }}</div>
           <div class="text-h6 text-info">{{ inUseDevices }}</div>
         </q-card>
       </div>
       <div class="col-12 col-sm-6 col-md-3">
-        <q-card class="ec-card q-pa-md">
+        <q-card class="ec-card q-pa-md cursor-pointer" clickable @click="openInventoryDevices('maintenance')">
           <div class="text-caption text-grey-6">{{ t('home.maintenanceDevices') }}</div>
           <div class="text-h6 text-negative">{{ maintenanceDevices }}</div>
         </q-card>
       </div>
       <div class="col-12 col-sm-6 col-md-3">
-        <q-card class="ec-card q-pa-md">
+        <q-card class="ec-card q-pa-md cursor-pointer" clickable @click="openJobsPage()">
           <div class="text-caption text-grey-6">{{ t('home.activeJobs') }}</div>
           <div class="text-h6 text-warning">{{ activeJobs }}</div>
         </q-card>
@@ -67,7 +67,7 @@
             <q-badge color="negative" text-color="white" :label="String(lowAvailabilityProducts.length)" />
           </div>
           <q-list dense separator>
-            <q-item v-for="item in lowAvailabilityProducts" :key="item.id">
+            <q-item v-for="item in lowAvailabilityProducts" :key="item.id" clickable @click="openProduct(item.id)">
               <q-item-section>
                 <q-item-label>{{ item.sku || `Product #${item.id}` }} · {{ item.name || '-' }}</q-item-label>
                 <q-item-label caption>
@@ -91,7 +91,7 @@
             <q-badge color="warning" text-color="black" :label="String(jobsStartingThisWeek.length)" />
           </div>
           <q-list dense separator>
-            <q-item v-for="job in jobsStartingThisWeek" :key="job.id">
+            <q-item v-for="job in jobsStartingThisWeek" :key="job.id" clickable @click="openJob(job.id)">
               <q-item-section>
                 <q-item-label>{{ job.job_code || `Job #${job.id}` }}</q-item-label>
                 <q-item-label caption>{{ job.start_date || '-' }} · {{ job.status || '-' }}</q-item-label>
@@ -109,18 +109,18 @@
 
     <div class="row q-col-gutter-sm">
       <div class="col-12 col-md-6">
-        <q-card class="ec-card q-pa-md full-height">
+        <q-card class="ec-card q-pa-md full-height cursor-pointer" clickable @click="openJobsPage()">
           <div class="text-subtitle1 q-mb-sm">{{ t('home.jobsOverview') }}</div>
           <div class="row q-col-gutter-sm">
-            <div class="col-6"><q-badge color="grey-7" text-color="white" :label="t('home.jobStateDraft', { count: draftJobs })" /></div>
-            <div class="col-6"><q-badge color="info" text-color="white" :label="t('home.jobStateConfirmed', { count: confirmedJobs })" /></div>
-            <div class="col-6"><q-badge color="warning" text-color="black" :label="t('home.jobStateInProgress', { count: inProgressJobs })" /></div>
-            <div class="col-6"><q-badge color="positive" text-color="white" :label="t('home.jobStateCompleted', { count: completedJobs })" /></div>
+            <div class="col-6"><q-badge class="cursor-pointer" color="grey-7" text-color="white" :label="t('home.jobStateDraft', { count: draftJobs })" @click.stop="openJobsPage('draft')" /></div>
+            <div class="col-6"><q-badge class="cursor-pointer" color="info" text-color="white" :label="t('home.jobStateConfirmed', { count: confirmedJobs })" @click.stop="openJobsPage('confirmed')" /></div>
+            <div class="col-6"><q-badge class="cursor-pointer" color="warning" text-color="black" :label="t('home.jobStateInProgress', { count: inProgressJobs })" @click.stop="openJobsPage('in_progress')" /></div>
+            <div class="col-6"><q-badge class="cursor-pointer" color="positive" text-color="white" :label="t('home.jobStateCompleted', { count: completedJobs })" @click.stop="openJobsPage('completed')" /></div>
           </div>
 
           <div class="text-subtitle2 q-mt-md q-mb-xs">{{ t('home.upcomingJobs') }}</div>
           <q-list dense separator>
-            <q-item v-for="job in upcomingJobs" :key="job.id">
+            <q-item v-for="job in upcomingJobs" :key="job.id" clickable @click.stop="openJob(job.id)">
               <q-item-section>
                 <q-item-label>{{ job.job_code || `Job #${job.id}` }}</q-item-label>
                 <q-item-label caption>
@@ -141,7 +141,7 @@
         <q-card class="ec-card q-pa-md full-height">
           <div class="text-subtitle1 q-mb-sm">{{ t('home.recentScanActivity') }}</div>
           <q-list dense separator>
-            <q-item v-for="item in recentScanActivity" :key="item.id">
+            <q-item v-for="item in recentScanActivity" :key="item.id" clickable @click="openScanActivityTarget(item)">
               <q-item-section>
                 <q-item-label>{{ item.message || item.action }}</q-item-label>
                 <q-item-label caption>
@@ -167,12 +167,15 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useRouter } from 'vue-router'
 
 import { api } from '../boot/axios'
 import { useInventoryStore } from '../stores/inventory'
 import { useJobsStore } from '../stores/jobs'
+import { dashboardJobRoute, dashboardProductRoute, dashboardScanRoute } from '../utils/dashboard-links'
 
 const { t } = useI18n()
+const router = useRouter()
 const status = ref('unknown')
 const loading = ref(false)
 const store = useInventoryStore()
@@ -300,6 +303,42 @@ function formatDateTime(value) {
   const parsed = new Date(value)
   if (Number.isNaN(parsed.getTime())) return String(value)
   return parsed.toLocaleString()
+}
+
+async function openSettingsPage() {
+  await router.push({ path: '/settings' })
+}
+
+async function openInventoryTab(tab) {
+  await router.push({ path: '/inventory', query: { tab } })
+}
+
+async function openInventoryDevices(deviceStatus = '') {
+  const query = { tab: 'devices' }
+  if (deviceStatus) query.deviceStatus = deviceStatus
+  await router.push({ path: '/inventory', query })
+}
+
+async function openJobsPage(status = '') {
+  const query = {}
+  if (status) query.status = status
+  await router.push({ path: '/jobs', query })
+}
+
+async function openJob(jobId) {
+  const route = dashboardJobRoute(jobId)
+  if (!route) return
+  await router.push(route)
+}
+
+async function openProduct(productId) {
+  const route = dashboardProductRoute(productId)
+  if (!route) return
+  await router.push(route)
+}
+
+async function openScanActivityTarget(item) {
+  await router.push(dashboardScanRoute(item))
 }
 
 async function loadDashboard() {

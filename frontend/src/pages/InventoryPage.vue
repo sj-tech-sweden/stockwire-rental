@@ -1505,6 +1505,13 @@ async function applyFocusFromQuery() {
   const focusProductId = Number(route.query.focusProductId || 0)
   const focusDeviceId = Number(route.query.focusDeviceId || 0)
   const focusLocationId = Number(route.query.focusLocationId || 0)
+  const deviceStatus = String(route.query.deviceStatus || '').trim().toLowerCase()
+  const hasDeviceStatusFilter = ['available', 'reserved', 'in_use', 'maintenance'].includes(deviceStatus)
+
+  if (hasDeviceStatusFilter) {
+    tab.value = 'devices'
+    deviceSearch.value = deviceStatus
+  }
 
   if (focusProductId > 0) {
     tab.value = 'products'
@@ -1541,11 +1548,12 @@ async function applyFocusFromQuery() {
     if (zone) openEditLocation(zone)
   }
 
-  if (focusProductId || focusDeviceId || focusLocationId) {
+  if (focusProductId || focusDeviceId || focusLocationId || hasDeviceStatusFilter) {
     const nextQuery = { ...route.query }
     delete nextQuery.focusProductId
     delete nextQuery.focusDeviceId
     delete nextQuery.focusLocationId
+    delete nextQuery.deviceStatus
     await router.replace({ path: '/inventory', query: nextQuery })
   }
 }
@@ -1623,7 +1631,7 @@ onMounted(async () => {
 })
 
 watch(
-  () => [route.query.focusProductId, route.query.focusDeviceId, route.query.focusLocationId, route.query.tab],
+  () => [route.query.focusProductId, route.query.focusDeviceId, route.query.focusLocationId, route.query.deviceStatus, route.query.tab],
   async () => {
     await applyFocusFromQuery()
   }
