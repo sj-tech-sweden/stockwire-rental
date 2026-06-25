@@ -23,10 +23,19 @@ export function serializeRowsToCsv(rows) {
   const columns = collectExportColumns(normalizedRows)
   if (!columns.length) return ''
 
+  const isAllowedNegativeNumber = value => /^-\d+(?:\.\d+)?(?:[eE][+-]?\d+)?$/.test(value)
+  const shouldSanitizeForSpreadsheet = value => {
+    if (!value) return false
+    const firstChar = value[0]
+    if (firstChar === '-' && isAllowedNegativeNumber(value)) return false
+    return /^[=+@\t\r-]/.test(firstChar)
+  }
+
   const escapeCsv = (value) => {
     const normalized = normalizeExportValue(value)
-    if (/[",\n]/.test(normalized)) return `"${normalized.replace(/"/g, '""')}"`
-    return normalized
+    const sanitized = shouldSanitizeForSpreadsheet(normalized) ? `'${normalized}` : normalized
+    if (/[",\n\r]/.test(sanitized)) return `"${sanitized.replace(/"/g, '""')}"`
+    return sanitized
   }
 
   const header = columns.map(escapeCsv).join(',')

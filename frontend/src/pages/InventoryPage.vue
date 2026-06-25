@@ -1842,9 +1842,14 @@ function downloadExportFile(content, filename, mimeType) {
   link.href = url
   link.download = filename
   document.body.appendChild(link)
-  link.click()
-  document.body.removeChild(link)
-  window.URL.revokeObjectURL(url)
+  try {
+    link.click()
+  } finally {
+    link.remove()
+    window.setTimeout(() => {
+      window.URL.revokeObjectURL(url)
+    }, 0)
+  }
 }
 
 function createExportTimestamp(date = new Date()) {
