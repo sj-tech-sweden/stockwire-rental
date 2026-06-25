@@ -1635,7 +1635,8 @@ async function clearCacheAndUpdate() {
       const cacheNames = await caches.keys()
       await Promise.allSettled(cacheNames.map(name => caches.delete(name)))
     }
-  } catch {
+  } catch (error) {
+    console.error('Failed to clear cached app data before reload.', error)
   } finally {
     clearCacheLoading.value = false
     window.location.reload()
