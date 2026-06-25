@@ -1847,7 +1847,7 @@ function downloadExportFile(content, filename, mimeType) {
   window.URL.revokeObjectURL(url)
 }
 
-function formatExportTimestamp(date = new Date()) {
+function createExportTimestamp(date = new Date()) {
   return [
     date.getFullYear(),
     String(date.getMonth() + 1).padStart(2, '0'),
@@ -1867,7 +1867,7 @@ function runDataExport(entity, rows, format) {
   }
 
   const normalizedFormat = String(format || '').toLowerCase()
-  const timestamp = formatExportTimestamp()
+  const timestamp = createExportTimestamp()
   const extension = normalizedFormat === 'json' ? 'json' : 'csv'
   const filename = `${entity}-${timestamp}.${extension}`
   const content = normalizedFormat === 'json' ? serializeRowsToJson(normalizedRows) : serializeRowsToCsv(normalizedRows)
