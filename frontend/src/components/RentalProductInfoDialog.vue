@@ -1,9 +1,21 @@
 <template>
   <q-dialog :model-value="modelValue" :maximized="isPhone" @update:model-value="emit('update:modelValue', $event)">
     <q-card :style="isPhone ? 'width: 100vw; max-width: 100vw; height: 100vh' : 'min-width: 860px; max-width: 96vw'" class="ec-card">
-      <q-card-section>
-        <div class="text-h6">Rental Info · {{ product?.sku || '-' }}</div>
-        <div class="text-caption text-grey-7">{{ product?.name || '-' }}</div>
+      <q-card-section class="row items-start no-wrap">
+        <div>
+          <div class="text-h6">Rental Info · {{ product?.sku || '-' }}</div>
+          <div class="text-caption text-grey-7">{{ product?.name || '-' }}</div>
+        </div>
+        <q-space />
+        <q-btn
+          v-if="isPhone"
+          flat
+          round
+          dense
+          icon="close"
+          :aria-label="t('app.actions.close')"
+          @click="emit('update:modelValue', false)"
+        />
       </q-card-section>
 
       <q-card-section class="q-pt-none" :style="isPhone ? 'max-height: calc(100vh - 140px); overflow: auto;' : ''">
