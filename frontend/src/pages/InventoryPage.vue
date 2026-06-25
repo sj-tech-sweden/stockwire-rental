@@ -44,6 +44,23 @@
           <q-input v-model="productSearch" dense outlined clearable :placeholder="t('inventory.searchProducts')" class="col">
             <template #prepend><q-icon name="search" /></template>
           </q-input>
+          <q-btn-dropdown class="q-ml-sm" color="secondary" icon="download" :label="t('inventory.exportData')" unelevated>
+            <q-list dense>
+              <q-item clickable v-close-popup @click="exportProducts('csv', 'all')">
+                <q-item-section>{{ t('inventory.exportAllCsv') }}</q-item-section>
+              </q-item>
+              <q-item clickable v-close-popup @click="exportProducts('json', 'all')">
+                <q-item-section>{{ t('inventory.exportAllJson') }}</q-item-section>
+              </q-item>
+              <q-separator />
+              <q-item clickable v-close-popup :disable="!selectedProducts.length" @click="exportProducts('csv', 'selected')">
+                <q-item-section>{{ t('inventory.exportSelectedCsv') }}</q-item-section>
+              </q-item>
+              <q-item clickable v-close-popup :disable="!selectedProducts.length" @click="exportProducts('json', 'selected')">
+                <q-item-section>{{ t('inventory.exportSelectedJson') }}</q-item-section>
+              </q-item>
+            </q-list>
+          </q-btn-dropdown>
           <q-btn class="q-ml-sm" color="primary" icon="add" :label="t('inventory.newProduct')" unelevated @click="openCreateProduct" />
         </div>
 
@@ -316,6 +333,23 @@
           <q-input v-model="deviceSearch" dense outlined clearable :placeholder="t('inventory.searchDevices')" class="col">
             <template #prepend><q-icon name="search" /></template>
           </q-input>
+          <q-btn-dropdown class="q-ml-sm" color="secondary" icon="download" :label="t('inventory.exportData')" unelevated>
+            <q-list dense>
+              <q-item clickable v-close-popup @click="exportDevices('csv', 'all')">
+                <q-item-section>{{ t('inventory.exportAllCsv') }}</q-item-section>
+              </q-item>
+              <q-item clickable v-close-popup @click="exportDevices('json', 'all')">
+                <q-item-section>{{ t('inventory.exportAllJson') }}</q-item-section>
+              </q-item>
+              <q-separator />
+              <q-item clickable v-close-popup :disable="!selectedDevices.length" @click="exportDevices('csv', 'selected')">
+                <q-item-section>{{ t('inventory.exportSelectedCsv') }}</q-item-section>
+              </q-item>
+              <q-item clickable v-close-popup :disable="!selectedDevices.length" @click="exportDevices('json', 'selected')">
+                <q-item-section>{{ t('inventory.exportSelectedJson') }}</q-item-section>
+              </q-item>
+            </q-list>
+          </q-btn-dropdown>
           <q-btn class="q-ml-sm" color="primary" icon="add" :label="t('inventory.newDevice')" unelevated @click="openCreateDevice" />
         </div>
 
@@ -764,6 +798,7 @@ import ProductInfoDialog from '../components/ProductInfoDialog.vue'
 import DeviceDialog from '../components/DeviceDialog.vue'
 import DeviceInfoDialog from '../components/DeviceInfoDialog.vue'
 import { normalizeCurrencyCode } from '../constants/currencies'
+import { serializeRowsToCsv, serializeRowsToJson } from '../utils/export-data'
 
 import {
   countCategoryOverview,
@@ -1797,6 +1832,57 @@ function onMaintenanceCompleteSaved() {
 
 function selectedRowIds(rows) {
   return [...new Set((rows || []).map(row => Number(row?.id || 0)).filter(Boolean))]
+}
+
+function downloadExportFile(content, filename, mimeType) {
+  if (typeof window === 'undefined' || typeof document === 'undefined') return
+  const blob = new Blob([content], { type: mimeType })
+  const url = window.URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = filename
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+  window.URL.revokeObjectURL(url)
+}
+
+function formatExportTimestamp(date = new Date()) {
+  return [
+    date.getFullYear(),
+    String(date.getMonth() + 1).padStart(2, '0'),
+    String(date.getDate()).padStart(2, '0'),
+    '-',
+    String(date.getHours()).padStart(2, '0'),
+    String(date.getMinutes()).padStart(2, '0'),
+    String(date.getSeconds()).padStart(2, '0'),
+  ].join('')
+}
+
+function runDataExport(entity, rows, format) {
+  const normalizedRows = Array.isArray(rows) ? rows.filter(row => row && typeof row === 'object') : []
+  if (!normalizedRows.length) {
+    $q.notify({ type: 'warning', message: t('inventory.noDataToExport') })
+    return
+  }
+
+  const normalizedFormat = String(format || '').toLowerCase()
+  const timestamp = formatExportTimestamp()
+  const extension = normalizedFormat === 'json' ? 'json' : 'csv'
+  const filename = `${entity}-${timestamp}.${extension}`
+  const content = normalizedFormat === 'json' ? serializeRowsToJson(normalizedRows) : serializeRowsToCsv(normalizedRows)
+  const mimeType = normalizedFormat === 'json' ? 'application/json;charset=utf-8' : 'text/csv;charset=utf-8'
+  downloadExportFile(content, filename, mimeType)
+}
+
+function exportProducts(format, scope = 'all') {
+  const rows = scope === 'selected' ? selectedProducts.value : filteredProducts.value
+  runDataExport('products', rows, format)
+}
+
+function exportDevices(format, scope = 'all') {
+  const rows = scope === 'selected' ? selectedDevices.value : filteredDevices.value
+  runDataExport('devices', rows, format)
 }
 
 async function openBulkPrintLabels(entity, rowsOrIds) {
