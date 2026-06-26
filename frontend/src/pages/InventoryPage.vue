@@ -1882,12 +1882,12 @@ function createExportTimestamp(date = new Date()) {
 }
 
 async function runDataExport(entity, rows, format) {
-  const normalizedRows = enrichInventoryExportRows(entity, rows, {
+  const baseRows = enrichInventoryExportRows(entity, rows, {
     productById: productById.value,
     zoneById: zoneById.value,
     customFieldValuesByEntityId: new Map(),
   })
-  if (!normalizedRows.length) {
+  if (!baseRows.length) {
     $q.notify({ type: 'warning', message: t('inventory.noDataToExport') })
     return
   }
