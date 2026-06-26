@@ -1882,6 +1882,16 @@ function createExportTimestamp(date = new Date()) {
 }
 
 async function runDataExport(entity, rows, format) {
+  const normalizedRows = enrichInventoryExportRows(entity, rows, {
+    productById: productById.value,
+    zoneById: zoneById.value,
+    customFieldValuesByEntityId: new Map(),
+  })
+  if (!normalizedRows.length) {
+    $q.notify({ type: 'warning', message: t('inventory.noDataToExport') })
+    return
+  }
+
   let customFieldValuesByEntityId = new Map()
   if (entity === 'products' || entity === 'devices') {
     try {
@@ -1895,21 +1905,17 @@ async function runDataExport(entity, rows, format) {
     }
   }
 
-  const normalizedRows = enrichInventoryExportRows(entity, rows, {
+  const enrichedRows = enrichInventoryExportRows(entity, rows, {
     productById: productById.value,
     zoneById: zoneById.value,
     customFieldValuesByEntityId,
   })
-  if (!normalizedRows.length) {
-    $q.notify({ type: 'warning', message: t('inventory.noDataToExport') })
-    return
-  }
 
   const normalizedFormat = String(format || '').toLowerCase()
   const timestamp = createExportTimestamp()
   const extension = normalizedFormat === 'json' ? 'json' : 'csv'
   const filename = `${entity}-${timestamp}.${extension}`
-  const content = normalizedFormat === 'json' ? serializeRowsToJson(normalizedRows) : serializeRowsToCsv(normalizedRows)
+  const content = normalizedFormat === 'json' ? serializeRowsToJson(enrichedRows) : serializeRowsToCsv(enrichedRows)
   const mimeType = normalizedFormat === 'json' ? 'application/json;charset=utf-8' : 'text/csv;charset=utf-8'
   downloadExportFile(content, filename, mimeType)
 }

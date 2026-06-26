@@ -137,13 +137,15 @@ def list_all_entity_values_bulk(
         ).all()
     )
     definition_by_id = {d.id: d for d in definitions}
+    active_definition_ids = list(definition_by_id.keys())
 
     values = list(
         db.scalars(
             select(CustomFieldValue)
             .where(CustomFieldValue.entity_type == entity_type)
+            .where(CustomFieldValue.field_definition_id.in_(active_definition_ids))
         ).all()
-    )
+    ) if active_definition_ids else []
 
     values_by_entity_id: dict[str, dict[str, str | None]] = {}
     for value in values:
