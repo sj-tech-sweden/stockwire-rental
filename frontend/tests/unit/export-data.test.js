@@ -59,8 +59,8 @@ describe('export-data utilities', () => {
       { id: 2, product_id: 11, location_zone_id: 21, product_name: 'Existing Name', location_code: 'EXIST' },
     ], {
       productById: new Map([
-        [10, { id: 10, name: 'LED Panel' }],
-        [11, { id: 11, name: 'Should Not Replace' }],
+        [10, { id: 10, name: 'LED Panel', sku: 'LED-01', category: 'Lighting', brand: 'Ayrton', manufacturer: 'Ayrton Inc' }],
+        [11, { id: 11, name: 'Should Not Replace', sku: 'SPK-01', category: 'Audio', brand: null, manufacturer: null }],
       ]),
       zoneById: new Map([
         [20, { id: 20, name: 'Warehouse A', code: 'WH-A' }],
@@ -69,12 +69,55 @@ describe('export-data utilities', () => {
     })
 
     expect(rows).toEqual([
-      { id: 1, product_id: 10, location_zone_id: 20, product_name: 'LED Panel', location_name: 'Warehouse A', location_code: 'WH-A' },
-      { id: 2, product_id: 11, location_zone_id: 21, product_name: 'Existing Name', location_name: 'Warehouse B', location_code: 'EXIST' },
+      {
+        id: 1, product_id: 10, location_zone_id: 20,
+        product_name: 'LED Panel', product_sku: 'LED-01', product_category: 'Lighting',
+        product_brand: 'Ayrton', product_manufacturer: 'Ayrton Inc',
+        location_name: 'Warehouse A', location_code: 'WH-A',
+      },
+      {
+        id: 2, product_id: 11, location_zone_id: 21,
+        product_name: 'Existing Name', product_sku: 'SPK-01', product_category: 'Audio',
+        product_brand: '', product_manufacturer: '',
+        location_name: 'Warehouse B', location_code: 'EXIST',
+      },
     ])
   })
 
-  it('keeps non-device rows unchanged when enriching export rows', () => {
+  it('appends product custom fields with cf_ prefix when enriching device export rows', () => {
+    const rows = enrichInventoryExportRows('devices', [
+      { id: 1, product_id: 10, location_zone_id: 0 },
+    ], {
+      productById: new Map([
+        [10, { id: 10, name: 'Cable XLR 5m', sku: 'CBL-001', category: 'Cables', brand: null, manufacturer: null }],
+      ]),
+      zoneById: new Map(),
+      customFieldValuesByEntityId: new Map([
+        [10, { cable_type: 'XLR', length_m: '5' }],
+      ]),
+    })
+
+    expect(rows[0].cf_cable_type).toBe('XLR')
+    expect(rows[0].cf_length_m).toBe('5')
+  })
+
+  it('appends product custom fields with cf_ prefix when enriching product export rows', () => {
+    const rows = enrichInventoryExportRows('products', [
+      { id: 1, sku: 'CBL-001', name: 'Cable XLR 5m' },
+      { id: 2, sku: 'LED-01', name: 'LED Panel' },
+    ], {
+      customFieldValuesByEntityId: new Map([
+        [1, { cable_type: 'XLR', length_m: '5' }],
+        [2, {}],
+      ]),
+    })
+
+    expect(rows[0]).toMatchObject({ id: 1, sku: 'CBL-001', cf_cable_type: 'XLR', cf_length_m: '5' })
+    expect(rows[1]).toMatchObject({ id: 2, sku: 'LED-01' })
+    expect(rows[1].cf_cable_type).toBeUndefined()
+  })
+
+  it('keeps non-device rows unchanged when enriching export rows without custom fields', () => {
     const input = [{ id: 1, sku: 'P-1' }]
     expect(enrichInventoryExportRows('products', input)).toEqual(input)
   })

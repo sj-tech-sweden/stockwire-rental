@@ -75,3 +75,8 @@ class CustomFieldValuesRead(BaseModel):
     entity_type: str
     entity_id: int
     values: list[CustomFieldValueRead]
+
+
+class CustomFieldBulkValuesRead(BaseModel):
+    entity_type: str
+    values_by_entity_id: dict[str, dict[str, str | None]]

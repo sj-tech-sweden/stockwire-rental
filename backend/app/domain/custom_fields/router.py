@@ -10,6 +10,7 @@ from app.domain.auth.deps import get_current_user, require_admin
 from app.domain.auth.models import User
 from app.domain.custom_fields.models import CustomFieldDefinition, CustomFieldValue
 from app.domain.custom_fields.schemas import (
+    CustomFieldBulkValuesRead,
     CustomFieldDefinitionCreate,
     CustomFieldDefinitionRead,
     CustomFieldDefinitionUpdate,
@@ -119,6 +120,45 @@ def delete_definition(
     db.delete(definition)
     db.commit()
     return None
+
+
+@router.get("/values/bulk", response_model=CustomFieldBulkValuesRead)
+def list_all_entity_values_bulk(
+    entity_type: str = Query(...),
+    db: Session = Depends(get_db),
+) -> CustomFieldBulkValuesRead:
+    _validate_entity_type(entity_type)
+
+    definitions = list(
+        db.scalars(
+            select(CustomFieldDefinition)
+            .where(CustomFieldDefinition.entity_type == entity_type)
+            .where(CustomFieldDefinition.is_active.is_(True))
+        ).all()
+    )
+    definition_by_id = {d.id: d for d in definitions}
+
+    values = list(
+        db.scalars(
+            select(CustomFieldValue)
+            .where(CustomFieldValue.entity_type == entity_type)
+        ).all()
+    )
+
+    values_by_entity_id: dict[str, dict[str, str | None]] = {}
+    for value in values:
+        defn = definition_by_id.get(value.field_definition_id)
+        if defn is None:
+            continue
+        entity_str = str(value.entity_id)
+        if entity_str not in values_by_entity_id:
+            values_by_entity_id[entity_str] = {}
+        values_by_entity_id[entity_str][defn.key] = value.value_text
+
+    return CustomFieldBulkValuesRead(
+        entity_type=entity_type,
+        values_by_entity_id=values_by_entity_id,
+    )
 
 
 @router.get("/values/{entity_type}/{entity_id}", response_model=CustomFieldValuesRead)

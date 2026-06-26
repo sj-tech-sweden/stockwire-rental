@@ -1881,10 +1881,24 @@ function createExportTimestamp(date = new Date()) {
   ].join('')
 }
 
-function runDataExport(entity, rows, format) {
+async function runDataExport(entity, rows, format) {
+  let customFieldValuesByEntityId = new Map()
+  if (entity === 'products' || entity === 'devices') {
+    try {
+      const result = await customFieldsStore.fetchAllValues('product')
+      const raw = result?.values_by_entity_id ?? {}
+      for (const [idStr, vals] of Object.entries(raw)) {
+        customFieldValuesByEntityId.set(Number(idStr), vals)
+      }
+    } catch {
+      // proceed without custom fields if the request fails
+    }
+  }
+
   const normalizedRows = enrichInventoryExportRows(entity, rows, {
     productById: productById.value,
     zoneById: zoneById.value,
+    customFieldValuesByEntityId,
   })
   if (!normalizedRows.length) {
     $q.notify({ type: 'warning', message: t('inventory.noDataToExport') })

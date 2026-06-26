@@ -78,6 +78,11 @@ export const useCustomFieldsStore = defineStore('custom-fields', () => {
     definitions.value = definitions.value.filter(definition => definition.id !== id)
   }
 
+  async function fetchAllValues(entityType) {
+    const { data } = await api.get('/api/v1/custom-fields/values/bulk', { params: { entity_type: entityType } })
+    return data
+  }
+
   async function fetchEntityValues(entityType, entityId) {
     const { data } = await api.get(`/api/v1/custom-fields/values/${entityType}/${entityId}`)
     return data
@@ -110,6 +115,7 @@ export const useCustomFieldsStore = defineStore('custom-fields', () => {
     createDefinition,
     updateDefinition,
     deleteDefinition,
+    fetchAllValues,
     fetchEntityValues,
     saveEntityValues,
     prefillProductCableFields,
