@@ -178,28 +178,33 @@ const productOptions = computed(() =>
   store.products.map(p => ({ label: `${p.sku} - ${p.name}`, value: p.id }))
 )
 
+const zoneById = computed(() => new Map(store.zones.map(zone => [zone.id, zone])))
+const productById = computed(() => new Map(store.products.map(product => [product.id, product])))
+
 const deviceSelectOptions = computed(() =>
   store.devices.map(d => {
-    const zone = store.zones.find(z => z.id === d.location_zone_id)
+    const zone = zoneById.value.get(d.location_zone_id)
     const zoneName = zone?.name || 'Unassigned'
-    const product = store.products.find(p => p.id === d.product_id)
+    const product = productById.value.get(d.product_id)
     const productName = product?.name || ''
     return { label: productName ? `${d.asset_tag} · ${productName} (${zoneName})` : `${d.asset_tag} (${zoneName})`, value: d.id }
   })
 )
 
-const filteredDeviceOptions = ref([])
+const deviceFilter = ref('')
+const filteredDeviceOptions = computed(() => {
+  const needle = deviceFilter.value.trim().toLowerCase()
+  if (!needle) {
+    return deviceSelectOptions.value
+  }
+  return deviceSelectOptions.value.filter(option =>
+    option.label.toLowerCase().includes(needle)
+  )
+})
 
 function filterDeviceOptions(val, update) {
   update(() => {
-    const needle = val.trim().toLowerCase()
-    if (!needle) {
-      filteredDeviceOptions.value = deviceSelectOptions.value
-      return
-    }
-    filteredDeviceOptions.value = deviceSelectOptions.value.filter(option =>
-      option.label.toLowerCase().includes(needle)
-    )
+    deviceFilter.value = val
   })
 }
 
@@ -211,7 +216,7 @@ watch(() => props.modelValue, (open) => {
   if (!open) return
   error.value = ''
   targetsExpanded.value = true
-  filteredDeviceOptions.value = deviceSelectOptions.value
+  deviceFilter.value = ''
   if (props.task) {
     form.value = {
       product_ids: props.task.product_id ? [props.task.product_id] : [],
