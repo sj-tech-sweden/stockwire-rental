@@ -854,6 +854,14 @@ def test_inventory_category_move_and_custom_fields(client):
     assert upsert.status_code == 200
     assert upsert.json()["values"][0]["value"] == "Batch-A"
 
+    # Bulk endpoint returns all values for the entity type keyed by entity_id
+    bulk = client.get("/api/v1/custom-fields/values/bulk?entity_type=product")
+    assert bulk.status_code == 200
+    bulk_data = bulk.json()
+    assert bulk_data["entity_type"] == "product"
+    assert str(product_id) in bulk_data["values_by_entity_id"]
+    assert bulk_data["values_by_entity_id"][str(product_id)]["serial_batch"] == "Batch-A"
+
     cable_prefill = client.post("/api/v1/custom-fields/definitions/prefill-product-cable")
     assert cable_prefill.status_code == 200
     keys = {item["key"] for item in cable_prefill.json()}

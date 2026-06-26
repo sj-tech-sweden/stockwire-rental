@@ -31,23 +31,52 @@ function firstDisplayValue(...values) {
   return ''
 }
 
+function customFieldsToEntries(cfValues) {
+  return Object.fromEntries(
+    Object.entries(cfValues).map(([key, value]) => [`cf_${key}`, value]),
+  )
+}
+
 export function enrichInventoryExportRows(entity, rows, options = {}) {
   const normalizedRows = Array.isArray(rows) ? rows.filter(row => row && typeof row === 'object') : []
-  if (String(entity || '').toLowerCase() !== 'devices') return normalizedRows
+  const normalizedEntity = String(entity || '').toLowerCase()
 
   const productById = options.productById instanceof Map ? options.productById : new Map()
   const zoneById = options.zoneById instanceof Map ? options.zoneById : new Map()
+  const customFieldValuesByEntityId = options.customFieldValuesByEntityId instanceof Map
+    ? options.customFieldValuesByEntityId
+    : new Map()
 
-  return normalizedRows.map(row => {
-    const product = productById.get(Number(row.product_id || 0))
-    const zone = zoneById.get(Number(row.location_zone_id || 0))
-    return {
-      ...row,
-      product_name: firstDisplayValue(row.product_name, product?.name),
-      location_name: firstDisplayValue(row.location_name, zone?.name),
-      location_code: firstDisplayValue(row.location_code, zone?.code),
-    }
-  })
+  if (normalizedEntity === 'devices') {
+    return normalizedRows.map(row => {
+      const product = productById.get(Number(row.product_id || 0))
+      const zone = zoneById.get(Number(row.location_zone_id || 0))
+      const cfValues = customFieldValuesByEntityId.get(Number(row.product_id || 0)) || {}
+      return {
+        ...row,
+        product_name: firstDisplayValue(row.product_name, product?.name),
+        product_sku: firstDisplayValue(row.product_sku, product?.sku),
+        product_category: firstDisplayValue(row.product_category, product?.category),
+        product_brand: firstDisplayValue(row.product_brand, product?.brand),
+        product_manufacturer: firstDisplayValue(row.product_manufacturer, product?.manufacturer),
+        location_name: firstDisplayValue(row.location_name, zone?.name),
+        location_code: firstDisplayValue(row.location_code, zone?.code),
+        ...customFieldsToEntries(cfValues),
+      }
+    })
+  }
+
+  if (normalizedEntity === 'products') {
+    return normalizedRows.map(row => {
+      const cfValues = customFieldValuesByEntityId.get(Number(row.id || 0)) || {}
+      return {
+        ...row,
+        ...customFieldsToEntries(cfValues),
+      }
+    })
+  }
+
+  return normalizedRows
 }
 
 export function serializeRowsToCsv(rows) {
