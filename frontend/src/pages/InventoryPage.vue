@@ -798,7 +798,7 @@ import ProductInfoDialog from '../components/ProductInfoDialog.vue'
 import DeviceDialog from '../components/DeviceDialog.vue'
 import DeviceInfoDialog from '../components/DeviceInfoDialog.vue'
 import { normalizeCurrencyCode } from '../constants/currencies'
-import { serializeRowsToCsv, serializeRowsToJson } from '../utils/export-data'
+import { enrichInventoryExportRows, serializeRowsToCsv, serializeRowsToJson } from '../utils/export-data'
 
 import {
   countCategoryOverview,
@@ -1427,6 +1427,12 @@ const categoryById = computed(() => {
   return map
 })
 
+const productById = computed(() => {
+  const map = new Map()
+  for (const product of store.products) map.set(product.id, product)
+  return map
+})
+
 const zoneById = computed(() => {
   const map = new Map()
   for (const zone of store.zones) map.set(zone.id, zone)
@@ -1873,7 +1879,10 @@ function createExportTimestamp(date = new Date()) {
 }
 
 function runDataExport(entity, rows, format) {
-  const normalizedRows = Array.isArray(rows) ? rows.filter(row => row && typeof row === 'object') : []
+  const normalizedRows = enrichInventoryExportRows(entity, rows, {
+    productById: productById.value,
+    zoneById: zoneById.value,
+  })
   if (!normalizedRows.length) {
     $q.notify({ type: 'warning', message: t('inventory.noDataToExport') })
     return

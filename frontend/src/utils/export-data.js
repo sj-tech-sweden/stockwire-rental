@@ -18,6 +18,38 @@ export function collectExportColumns(rows) {
   return columns
 }
 
+function hasDisplayValue(value) {
+  if (value === null || value === undefined) return false
+  if (typeof value === 'string') return value.trim().length > 0
+  return true
+}
+
+function firstDisplayValue(...values) {
+  for (const value of values) {
+    if (hasDisplayValue(value)) return value
+  }
+  return ''
+}
+
+export function enrichInventoryExportRows(entity, rows, options = {}) {
+  const normalizedRows = Array.isArray(rows) ? rows.filter(row => row && typeof row === 'object') : []
+  if (String(entity || '').toLowerCase() !== 'devices') return normalizedRows
+
+  const productById = options.productById instanceof Map ? options.productById : new Map()
+  const zoneById = options.zoneById instanceof Map ? options.zoneById : new Map()
+
+  return normalizedRows.map(row => {
+    const product = productById.get(Number(row.product_id || 0))
+    const zone = zoneById.get(Number(row.location_zone_id || 0))
+    return {
+      ...row,
+      product_name: firstDisplayValue(row.product_name, product?.name),
+      location_name: firstDisplayValue(row.location_name, zone?.name),
+      location_code: firstDisplayValue(row.location_code, zone?.code),
+    }
+  })
+}
+
 export function serializeRowsToCsv(rows) {
   const normalizedRows = Array.isArray(rows) ? rows.filter(row => row && typeof row === 'object') : []
   const columns = collectExportColumns(normalizedRows)
