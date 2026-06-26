@@ -44,7 +44,7 @@
           <q-input v-model="productSearch" dense outlined clearable :placeholder="t('inventory.searchProducts')" class="col">
             <template #prepend><q-icon name="search" /></template>
           </q-input>
-          <q-btn-dropdown class="q-ml-sm" color="secondary" icon="download" :label="t('inventory.exportData')" unelevated>
+          <q-btn-dropdown class="q-ml-sm" color="secondary" icon="download" :label="isPhone ? undefined : t('inventory.exportData')" :aria-label="t('inventory.exportData')" unelevated>
             <q-list dense>
               <q-item clickable v-close-popup @click="exportProducts('csv', 'all')">
                 <q-item-section>{{ t('inventory.exportAllCsv') }}</q-item-section>
@@ -61,7 +61,7 @@
               </q-item>
             </q-list>
           </q-btn-dropdown>
-          <q-btn class="q-ml-sm" color="primary" icon="add" :label="t('inventory.newProduct')" unelevated @click="openCreateProduct" />
+          <q-btn class="q-ml-sm" color="primary" icon="add" :label="isPhone ? undefined : t('inventory.newProduct')" :aria-label="t('inventory.newProduct')" unelevated @click="openCreateProduct" />
         </div>
 
         <div v-if="selectedProducts.length" class="row items-center q-gutter-sm q-mb-sm">
