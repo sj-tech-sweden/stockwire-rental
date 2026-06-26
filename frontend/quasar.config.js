@@ -99,7 +99,7 @@ export default configure(function () {
         short_name: 'Stockwire',
         description: 'Offline-capable rental inventory management for Stockwire.',
         display: 'standalone',
-        orientation: 'portrait',
+        orientation: 'any',
         background_color: '#11181D',
         theme_color: '#3F873F',
         icons: [
