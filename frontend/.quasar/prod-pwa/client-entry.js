@@ -152,7 +152,9 @@ createQuasarApp(createApp, quasarUserOptions)
       
       import('boot/realtime-sync'),
       
-      import('boot/orbit-sync')
+      import('boot/orbit-sync'),
+      
+      import('boot/metrics')
       
     ]).then(bootFiles => {
       const boot = mapFn(bootFiles).filter(entry => typeof entry === 'function')

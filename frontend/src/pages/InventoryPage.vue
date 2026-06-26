@@ -723,7 +723,7 @@
       @saved="onQuickCreateDone"
     />
 
-    <MaintenanceDialog v-model="maintenanceDialogOpen" :task="maintenanceEditing" :mode="maintenanceDialogMode" @saved="onMaintenanceSaved" />
+    <MaintenanceDialog v-model="maintenanceDialogOpen" :task="maintenanceEditing" :mode="maintenanceDialogMode" :initial-device-id="maintenanceInitialDeviceId" @saved="onMaintenanceSaved" />
     <MaintenanceScheduleDialog v-model="maintenanceScheduleDialogOpen" :schedule="maintenanceScheduleEditing" @saved="onMaintenanceScheduleSaved" />
     <MaintenanceCompleteDialog v-model="maintenanceCompleteDialogOpen" :task="maintenanceCompleteTarget" @saved="onMaintenanceCompleteSaved" />
 
@@ -916,6 +916,7 @@ const maintenanceTypeOptions = [
   { label: t('inventory.maintenanceTypeCalibration'), value: 'calibration' },
   { label: t('inventory.maintenanceTypePatTest'), value: 'pat_test' },
   { label: t('inventory.maintenanceTypeScheduled'), value: 'scheduled' },
+  { label: t('inventory.maintenanceTypeModification'), value: 'modification' },
 ]
 
 const maintenanceIntervalModeOptions = [
@@ -1796,6 +1797,7 @@ function maintenanceSourceColor(row) {
 const maintenanceDialogOpen = ref(false)
 const maintenanceEditing = ref(null)
 const maintenanceDialogMode = ref('schedule')
+const maintenanceInitialDeviceId = ref(null)
 const maintenanceScheduleDialogOpen = ref(false)
 const maintenanceScheduleEditing = ref(null)
 const maintenanceCompleteDialogOpen = ref(false)
@@ -1804,6 +1806,7 @@ const maintenanceCompleteTarget = ref(null)
 function openCreateMaintenance(mode = 'schedule', preferredDeviceId = null) {
   maintenanceDialogMode.value = mode === 'task' ? 'task' : 'schedule'
   maintenanceEditing.value = null
+  maintenanceInitialDeviceId.value = preferredDeviceId || null
   maintenanceDialogOpen.value = true
 }
 

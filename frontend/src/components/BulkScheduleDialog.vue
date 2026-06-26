@@ -70,6 +70,7 @@ const maintenanceTypeOptions = [
   { label: t('inventory.maintenanceTypeCalibration'), value: 'calibration' },
   { label: t('inventory.maintenanceTypePatTest'), value: 'pat_test' },
   { label: t('inventory.maintenanceTypeScheduled'), value: 'scheduled' },
+  { label: t('inventory.maintenanceTypeModification'), value: 'modification' },
 ]
 
 const maintenanceIntervalModeOptions = [
