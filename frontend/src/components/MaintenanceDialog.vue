@@ -28,14 +28,18 @@
                     <div class="col-12 col-md-6">
                       <q-select
                         v-model="form.device_ids"
-                        :options="deviceSelectOptions"
+                        :options="filteredDeviceOptions"
                         :label="t('inventory.additionalSpecificDevicesOptional')"
                         outlined
                         dense
                         multiple
                         use-chips
+                        use-input
+                        fill-input
+                        input-debounce="0"
                         emit-value
                         map-options
+                        @filter="filterDeviceOptions"
                       />
                     </div>
                   </div>
@@ -48,27 +52,35 @@
               </q-banner>
               <q-select
                 v-model="form.device_ids"
-                :options="deviceSelectOptions"
+                :options="filteredDeviceOptions"
                 :label="t('inventory.device')"
                 outlined
                 dense
                 multiple
                 use-chips
+                use-input
+                fill-input
+                input-debounce="0"
                 emit-value
                 map-options
+                @filter="filterDeviceOptions"
               />
             </div>
             <div class="col-12 col-md-6" v-if="task">
               <q-select
                 v-model="form.device_ids"
-                :options="deviceSelectOptions"
+                :options="filteredDeviceOptions"
                 :label="t('inventory.device')"
                 outlined
                 dense
                 multiple
                 use-chips
+                use-input
+                fill-input
+                input-debounce="0"
                 emit-value
                 map-options
+                @filter="filterDeviceOptions"
               />
             </div>
             <div class="col-12 col-md-6"><q-select v-model="form.maintenance_type" :options="maintenanceTypeOptions" :label="t('inventory.type')" outlined dense emit-value map-options /></div>
@@ -107,6 +119,7 @@ const props = defineProps({
   modelValue: { type: Boolean, required: true },
   task: { type: Object, default: null },
   mode: { type: String, default: 'task' },
+  initialDeviceId: { type: Number, default: null },
 })
 
 const emit = defineEmits(['update:modelValue', 'saved'])
@@ -146,6 +159,7 @@ const maintenanceTypeOptions = [
   { label: t('inventory.maintenanceTypeCalibration'), value: 'calibration' },
   { label: t('inventory.maintenanceTypePatTest'), value: 'pat_test' },
   { label: t('inventory.maintenanceTypeScheduled'), value: 'scheduled' },
+  { label: t('inventory.maintenanceTypeModification'), value: 'modification' },
 ]
 
 const maintenanceStatusOptions = [
@@ -168,9 +182,26 @@ const deviceSelectOptions = computed(() =>
   store.devices.map(d => {
     const zone = store.zones.find(z => z.id === d.location_zone_id)
     const zoneName = zone?.name || 'Unassigned'
-    return { label: `${d.asset_tag} (${zoneName})`, value: d.id }
+    const product = store.products.find(p => p.id === d.product_id)
+    const productName = product?.name || ''
+    return { label: productName ? `${d.asset_tag} · ${productName} (${zoneName})` : `${d.asset_tag} (${zoneName})`, value: d.id }
   })
 )
+
+const filteredDeviceOptions = ref([])
+
+function filterDeviceOptions(val, update) {
+  update(() => {
+    const needle = val.trim().toLowerCase()
+    if (!needle) {
+      filteredDeviceOptions.value = deviceSelectOptions.value
+      return
+    }
+    filteredDeviceOptions.value = deviceSelectOptions.value.filter(option =>
+      option.label.toLowerCase().includes(needle)
+    )
+  })
+}
 
 function normalizeOptionalDate(value) {
   return value || null
@@ -180,6 +211,7 @@ watch(() => props.modelValue, (open) => {
   if (!open) return
   error.value = ''
   targetsExpanded.value = true
+  filteredDeviceOptions.value = deviceSelectOptions.value
   if (props.task) {
     form.value = {
       product_ids: props.task.product_id ? [props.task.product_id] : [],
@@ -193,7 +225,11 @@ watch(() => props.modelValue, (open) => {
       notes: props.task.notes || '',
     }
   } else {
-    form.value = emptyForm()
+    const base = emptyForm()
+    if (props.initialDeviceId) {
+      base.device_ids = [props.initialDeviceId]
+    }
+    form.value = base
   }
 })
 
