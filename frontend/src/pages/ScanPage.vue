@@ -702,6 +702,7 @@ const lastIntakeResult = ref(null)
 const recentMovedDevices = ref([])
 const workflowDeviceSelections = ref({})
 const workflowActionLoadingProductId = ref(null)
+const applyingRouteContext = ref(false)
 
 const inputMode = ref('keyboard')
 const scanCodeInputRef = ref(null)
@@ -1904,25 +1905,31 @@ async function applyRouteContext() {
   const nextJobId = Number(route.query.jobId || 0)
   const nextJobCode = String(route.query.jobCode || '').trim().toUpperCase()
   if (!nextAction && !nextJobId && !nextJobCode) return
+  if (applyingRouteContext.value) return
 
-  if (['job_out', 'job_in', 'rental_job_out', 'rental_job_in'].includes(nextAction) && scanAction.value !== nextAction) {
-    onScanVariantChanged(nextAction)
-  }
-
-  if (['job_out', 'job_in', 'rental_job_out', 'rental_job_in'].includes(scanAction.value)) {
-    const job = nextJobId > 0
-      ? (jobsStore.jobs.find(item => item.id === nextJobId) || null)
-      : jobsStore.jobs.find(item => String(item.job_code || '').toUpperCase() === nextJobCode) || null
-    if (job) {
-      setActiveJob(job, { showMessage: false })
+  applyingRouteContext.value = true
+  try {
+    if (['job_out', 'job_in', 'rental_job_out', 'rental_job_in'].includes(nextAction) && scanAction.value !== nextAction) {
+      onScanVariantChanged(nextAction)
     }
-  }
 
-  const nextQuery = { ...route.query }
-  delete nextQuery.action
-  delete nextQuery.jobId
-  delete nextQuery.jobCode
-  await router.replace({ path: '/scan', query: nextQuery })
+    if (['job_out', 'job_in', 'rental_job_out', 'rental_job_in'].includes(scanAction.value)) {
+      const job = nextJobId > 0
+        ? (jobsStore.jobs.find(item => item.id === nextJobId) || null)
+        : jobsStore.jobs.find(item => String(item.job_code || '').toUpperCase() === nextJobCode) || null
+      if (job) {
+        setActiveJob(job, { showMessage: false })
+      }
+    }
+
+    const nextQuery = { ...route.query }
+    delete nextQuery.action
+    delete nextQuery.jobId
+    delete nextQuery.jobCode
+    await router.replace({ path: '/scan', query: nextQuery })
+  } finally {
+    applyingRouteContext.value = false
+  }
 }
 
 onMounted(async () => {
@@ -1971,6 +1978,7 @@ watch([scanAction, scanJobId], () => {
 watch(
   () => [route.query.action, route.query.jobId, route.query.jobCode],
   async ([nextAction, nextJobId, nextJobCode]) => {
+    if (applyingRouteContext.value) return
     if (!nextAction && !nextJobId && !nextJobCode) return
     await applyRouteContext()
   }
