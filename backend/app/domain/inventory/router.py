@@ -1199,6 +1199,10 @@ def list_checked_out_devices(
             InventoryCheckedOutDeviceRead(
                 device_id=device.id,
                 asset_tag=device.asset_tag,
+                serial_number=device.serial_number,
+                barcode=device.barcode,
+                qr_code=device.qr_code,
+                rfid=device.rfid,
                 product_id=device.product_id,
                 product_name=product.name if product else None,
                 location_zone_id=device.location_zone_id,
@@ -1236,6 +1240,10 @@ def list_checked_out_devices(
             InventoryCheckedOutDeviceRead(
                 device_id=device.id,
                 asset_tag=device.asset_tag,
+                serial_number=device.serial_number,
+                barcode=device.barcode,
+                qr_code=device.qr_code,
+                rfid=device.rfid,
                 product_id=device.product_id,
                 product_name=product.name if product else None,
                 location_zone_id=device.location_zone_id,

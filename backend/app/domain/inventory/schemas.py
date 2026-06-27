@@ -525,6 +525,10 @@ class InventoryAuditRead(BaseModel):
 class InventoryCheckedOutDeviceRead(BaseModel):
     device_id: int
     asset_tag: str | None = None
+    serial_number: str | None = None
+    barcode: str | None = None
+    qr_code: str | None = None
+    rfid: str | None = None
     product_id: int
     product_name: str | None = None
     location_zone_id: int | None = None

@@ -1057,6 +1057,14 @@ const locationSelectOptions = computed(() => {
       walk(node.children || [], label)
     }
   }
+
+  function resetActiveJobSelection() {
+    activeJobCode.value = ''
+    activeJobId.value = null
+    scanCode.value = ''
+    scanJobCode.value = ''
+    scanJobId.value = null
+  }
   walk(store.zoneTree)
   return flat
 })
@@ -1154,6 +1162,10 @@ const checkedOutDeviceRows = computed(() => {
   return (store.checkedOutDevices || []).map((device) => ({
     id: device.device_id,
     asset_tag: device.asset_tag,
+    serial_number: device.serial_number,
+    barcode: device.barcode,
+    qr_code: device.qr_code,
+    rfid: device.rfid,
     product_id: device.product_id,
     product_name: device.product_name || productById.value.get(device.product_id)?.name || `Product #${device.product_id}`,
     location_name: device.location_name || zoneById.value.get(device.location_zone_id)?.name || t('scan.unassigned'),
@@ -1252,12 +1264,17 @@ const workflowDeviceOptionsByProduct = computed(() => {
         .filter(device => device.product_id === row.product_id && device.status === 'available')
         .sort((a, b) => String(a.asset_tag || '').localeCompare(String(b.asset_tag || '')))
         .map((device) => {
-          const locationName = zoneById.value.get(device.location_zone_id)?.name || t('scan.unassigned')
+          const zoneName = zoneById.value.get(device.location_zone_id)?.name || t('scan.unassigned')
+          const scanCode = [device.asset_tag, device.barcode, device.qr_code, device.rfid, device.serial_number]
+            .map(value => String(value || '').trim())
+            .find(Boolean)
           return {
-            label: `${device.asset_tag || `#${device.id}`} · ${locationName}`,
+            label: `${device.asset_tag || device.serial_number || `#${device.id}`} · ${zoneName}`,
             value: device.id,
+            scan_code: scanCode || null,
           }
         })
+        .filter(option => !!option.scan_code)
       if (options.length) map.set(row.product_id, options)
       continue
     }
@@ -1265,10 +1282,17 @@ const workflowDeviceOptionsByProduct = computed(() => {
     const options = checkedOutDeviceRows.value
       .filter(device => device.product_id === row.product_id)
       .sort((a, b) => String(a.asset_tag || '').localeCompare(String(b.asset_tag || '')))
-      .map(device => ({
-        label: `${device.asset_tag || t('scan.unknownAsset')} · ${device.location_name || t('scan.unassigned')}`,
-        value: device.id,
-      }))
+      .map((device) => {
+        const scanCode = [device.asset_tag, device.barcode, device.qr_code, device.rfid, device.serial_number]
+          .map(value => String(value || '').trim())
+          .find(Boolean)
+        return {
+          label: `${device.asset_tag || device.serial_number || t('scan.unknownAsset')} · ${device.location_name || t('scan.unassigned')}`,
+          value: device.id,
+          scan_code: scanCode || null,
+        }
+      })
+      .filter(option => !!option.scan_code)
     if (options.length) map.set(row.product_id, options)
   }
 
@@ -1382,11 +1406,7 @@ async function loadData() {
 }
 
 function clearActiveJob() {
-  activeJobCode.value = ''
-  activeJobId.value = null
-  scanCode.value = ''
-  scanJobCode.value = ''
-  scanJobId.value = null
+  resetActiveJobSelection()
 }
 
 function setActiveJob(job, { showMessage = true } = {}) {
@@ -1497,10 +1517,7 @@ function onActionChanged() {
 
 function onGlobalCheckinChanged(value) {
   if (!value) return
-  scanJobCode.value = ''
-  scanJobId.value = null
-  activeJobCode.value = ''
-  activeJobId.value = null
+  resetActiveJobSelection()
 }
 
 function resolveZoneIdFromCode(value) {
@@ -1568,9 +1585,8 @@ async function scanSelectedWorkflowDevice(row) {
     return
   }
 
-  const sourceRows = scanAction.value === 'job_out' ? (store.devices || []) : checkedOutDeviceRows.value
-  const selectedDevice = sourceRows.find(device => device.id === selectedDeviceId)
-  const scanCodeValue = String(selectedDevice?.asset_tag || '').trim()
+  const selectedOption = workflowDeviceOptions(row).find(option => option.value === selectedDeviceId)
+  const scanCodeValue = String(selectedOption?.scan_code || '').trim()
   if (!scanCodeValue) {
     scanResultMessage.value = t('scan.unableUseSelectedDevice')
     scanResultSuccess.value = false
@@ -1922,10 +1938,7 @@ async function applyRouteContext() {
       }
     }
 
-    const nextQuery = { ...route.query }
-    delete nextQuery.action
-    delete nextQuery.jobId
-    delete nextQuery.jobCode
+    const { action, jobId, jobCode, ...nextQuery } = route.query
     await router.replace({ path: '/scan', query: nextQuery })
   } finally {
     applyingRouteContext.value = false
