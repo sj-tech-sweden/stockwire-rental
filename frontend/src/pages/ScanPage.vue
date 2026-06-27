@@ -1057,14 +1057,6 @@ const locationSelectOptions = computed(() => {
       walk(node.children || [], label)
     }
   }
-
-  function resetActiveJobSelection() {
-    activeJobCode.value = ''
-    activeJobId.value = null
-    scanCode.value = ''
-    scanJobCode.value = ''
-    scanJobId.value = null
-  }
   walk(store.zoneTree)
   return flat
 })
@@ -1409,6 +1401,14 @@ function clearActiveJob() {
   resetActiveJobSelection()
 }
 
+function resetActiveJobSelection() {
+  activeJobCode.value = ''
+  activeJobId.value = null
+  scanCode.value = ''
+  scanJobCode.value = ''
+  scanJobId.value = null
+}
+
 function setActiveJob(job, { showMessage = true } = {}) {
   if (!job) return
   const itemLabel = scanAction.value === 'rental_job_out' || scanAction.value === 'rental_job_in'
@@ -1709,6 +1709,7 @@ async function runScanAction() {
       return
     }
     setActiveJob(job, { showMessage: false })
+    scanCode.value = ''
 
     if (!code || code.toUpperCase() === String(job.job_code || '').toUpperCase()) {
       scanResultMessage.value = t('scan.jobSelectedScanCodesNow', { jobCode: job.job_code, item: scanAction.value === 'rental_job_out' ? t('scan.rental').toLowerCase() : t('scan.device').toLowerCase() })
@@ -1730,6 +1731,7 @@ async function runScanAction() {
       return
     }
     setActiveJob(job, { showMessage: false })
+    scanCode.value = ''
 
     if (!code || code.toUpperCase() === String(job.job_code || '').toUpperCase()) {
       scanResultMessage.value = t('scan.jobSelectedScanCodesNow', { jobCode: job.job_code, item: t('scan.device').toLowerCase() })
@@ -1751,6 +1753,7 @@ async function runScanAction() {
       return
     }
     setActiveJob(job, { showMessage: false })
+    scanCode.value = ''
 
     if (!code || code.toUpperCase() === String(job.job_code || '').toUpperCase()) {
       scanResultMessage.value = t('scan.jobSelectedScanCodesNow', { jobCode: job.job_code, item: t('scan.rental').toLowerCase() })
