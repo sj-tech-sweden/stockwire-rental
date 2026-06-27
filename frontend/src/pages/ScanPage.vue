@@ -1383,6 +1383,7 @@ async function loadData() {
 function clearActiveJob() {
   activeJobCode.value = ''
   activeJobId.value = null
+  scanCode.value = ''
   scanJobCode.value = ''
   scanJobId.value = null
 }
@@ -1555,7 +1556,16 @@ async function refreshCheckedOutForIntake() {
 
 async function scanSelectedWorkflowDevice(row) {
   const selectedDeviceId = workflowDeviceSelections.value[row.product_id]
-  if (!selectedDeviceId || !activeJobCode.value) return
+  if (!selectedDeviceId) {
+    scanResultMessage.value = t('scan.selectDeviceToAdd')
+    scanResultSuccess.value = false
+    return
+  }
+  if (!activeJobCode.value) {
+    scanResultMessage.value = t('scan.selectJob')
+    scanResultSuccess.value = false
+    return
+  }
 
   const sourceRows = scanAction.value === 'job_out' ? (store.devices || []) : checkedOutDeviceRows.value
   const selectedDevice = sourceRows.find(device => device.id === selectedDeviceId)
@@ -1960,8 +1970,7 @@ watch([scanAction, scanJobId], () => {
 
 watch(
   () => [route.query.action, route.query.jobId, route.query.jobCode],
-  async ([nextAction, nextJobId, nextJobCode], [prevAction, prevJobId, prevJobCode]) => {
-    if (nextAction === prevAction && nextJobId === prevJobId && nextJobCode === prevJobCode) return
+  async ([nextAction, nextJobId, nextJobCode]) => {
     if (!nextAction && !nextJobId && !nextJobCode) return
     await applyRouteContext()
   }
