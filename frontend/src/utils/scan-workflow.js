@@ -19,6 +19,24 @@ export function workflowRequirementProgress(row) {
   }
 }
 
+export function resolveDeviceScanCode(device) {
+  return [device?.asset_tag, device?.barcode, device?.qr_code, device?.rfid, device?.serial_number]
+    .map(value => String(value || '').trim())
+    .find(Boolean) || ''
+}
+
+export function buildScanJobLink(action, job) {
+  if (!job?.id) return { path: '/scan' }
+  return {
+    path: '/scan',
+    query: {
+      action,
+      jobId: String(job.id),
+      jobCode: String(job.job_code || ''),
+    },
+  }
+}
+
 export function isWorkflowRequirementComplete(row) {
   return Number(row?.remaining || 0) <= 0
 }

@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  buildScanJobLink,
   isWorkflowRequirementComplete,
+  resolveDeviceScanCode,
   splitWorkflowRequirements,
   summarizeWorkflowRequirements,
   workflowRequirementProgress,
@@ -52,6 +54,23 @@ describe('scan workflow utilities', () => {
       completedCount: 2,
       totalCount: 3,
       percent: 71,
+    })
+  })
+
+  it('uses the first available device identifier for selector-based scanning', () => {
+    expect(resolveDeviceScanCode({ barcode: 'BAR-1', serial_number: 'SER-1' })).toBe('BAR-1')
+    expect(resolveDeviceScanCode({ asset_tag: 'DEV-1', barcode: 'BAR-1' })).toBe('DEV-1')
+    expect(resolveDeviceScanCode({})).toBe('')
+  })
+
+  it('builds deep links to open scan workflows for a job', () => {
+    expect(buildScanJobLink('job_out', { id: 12, job_code: 'JOB-12' })).toEqual({
+      path: '/scan',
+      query: {
+        action: 'job_out',
+        jobId: '12',
+        jobCode: 'JOB-12',
+      },
     })
   })
 })

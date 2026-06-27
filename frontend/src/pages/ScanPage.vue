@@ -668,6 +668,8 @@ import { useCompactGrid } from '../composables/useCompactGrid'
 import ShortcutHelpDialog from '../components/ShortcutHelpDialog.vue'
 import DefectReportDialog from '../components/DefectReportDialog.vue'
 import {
+  buildScanJobLink,
+  resolveDeviceScanCode,
   splitWorkflowRequirements,
   summarizeWorkflowRequirements,
   workflowRequirementProgress,
@@ -1257,9 +1259,7 @@ const workflowDeviceOptionsByProduct = computed(() => {
         .sort((a, b) => String(a.asset_tag || '').localeCompare(String(b.asset_tag || '')))
         .map((device) => {
           const zoneName = zoneById.value.get(device.location_zone_id)?.name || t('scan.unassigned')
-          const scanCode = [device.asset_tag, device.barcode, device.qr_code, device.rfid, device.serial_number]
-            .map(value => String(value || '').trim())
-            .find(Boolean)
+          const scanCode = resolveDeviceScanCode(device)
           return {
             label: `${device.asset_tag || device.serial_number || `#${device.id}`} · ${zoneName}`,
             value: device.id,
@@ -1275,9 +1275,7 @@ const workflowDeviceOptionsByProduct = computed(() => {
       .filter(device => device.product_id === row.product_id)
       .sort((a, b) => String(a.asset_tag || '').localeCompare(String(b.asset_tag || '')))
       .map((device) => {
-        const scanCode = [device.asset_tag, device.barcode, device.qr_code, device.rfid, device.serial_number]
-          .map(value => String(value || '').trim())
-          .find(Boolean)
+        const scanCode = resolveDeviceScanCode(device)
         return {
           label: `${device.asset_tag || device.serial_number || t('scan.unknownAsset')} · ${device.location_name || t('scan.unassigned')}`,
           value: device.id,
@@ -1427,15 +1425,7 @@ function setActiveJob(job, { showMessage = true } = {}) {
 }
 
 function scanJobLink(action, job = activeWorkflowJob.value) {
-  if (!job?.id) return { path: '/scan' }
-  return {
-    path: '/scan',
-    query: {
-      action,
-      jobId: String(job.id),
-      jobCode: String(job.job_code || ''),
-    },
-  }
+  return buildScanJobLink(action, job)
 }
 
 function clearMoveDestination() {
@@ -1585,7 +1575,7 @@ async function scanSelectedWorkflowDevice(row) {
     return
   }
 
-  const selectedOption = workflowDeviceOptions(row).find(option => option.value === selectedDeviceId)
+  const selectedOption = (workflowDeviceOptionsByProduct.value.get(row.product_id) || []).find(option => option.value === selectedDeviceId)
   const scanCodeValue = String(selectedOption?.scan_code || '').trim()
   if (!scanCodeValue) {
     scanResultMessage.value = t('scan.unableUseSelectedDevice')

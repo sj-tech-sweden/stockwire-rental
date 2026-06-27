@@ -540,6 +540,7 @@ import VenueCreateInline from './VenueCreateInline.vue'
 import { translateMaybePrefillCustomFieldLabel, translateMaybePrefillCustomFieldOption } from '../i18n/prefillContent'
 import { normalizeCurrencyCode } from '../constants/currencies'
 import { googleMapsEmbedUrl, googleMapsSearchUrl, locationQueryFromParts } from '../utils/maps'
+import { buildScanJobLink } from '../utils/scan-workflow'
 
 const props = defineProps({
   modelValue: Boolean,
@@ -577,15 +578,7 @@ const dialogError = ref('')
 const formRef = ref(null)
 
 function scanJobLink(action) {
-  if (!editing.value?.id) return { path: '/scan' }
-  return {
-    path: '/scan',
-    query: {
-      action,
-      jobId: String(editing.value.id),
-      jobCode: String(editing.value.job_code || ''),
-    },
-  }
+  return buildScanJobLink(action, editing.value)
 }
 
 function customFieldLabel(label) {
