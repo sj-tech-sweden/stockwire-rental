@@ -874,16 +874,25 @@ const inputModeButtons = computed(() => {
   return buttons
 })
 
-const workflowColumns = computed(() => [
-  { name: 'product', label: t('scan.product'), field: 'product_name', align: 'left', sortable: true },
-  { name: 'required', label: t('scan.required'), field: 'quantity_required', align: 'left', sortable: true },
-  { name: 'picked', label: t('scan.picked'), field: 'quantity_picked', align: 'left', sortable: true },
-  { name: 'checked_out', label: t('scan.checkedOut'), field: 'checked_out', align: 'left', sortable: true },
-  { name: 'remaining', label: t('scan.remaining'), field: 'remaining', align: 'left', sortable: true },
-  { name: 'available', label: t('scan.availableInStore'), field: 'available', align: 'left', sortable: true },
-  { name: 'progress', label: t('scan.packedProgress'), field: 'quantity_picked', align: 'left' },
-  { name: 'add_device', label: t('scan.selectDevice'), field: 'product_id', align: 'left' },
-])
+const shouldShowWorkflowDeviceColumn = computed(() => {
+  return (scanAction.value === 'job_out' || scanAction.value === 'job_in') && workflowDeviceOptionsByProduct.value.size > 0
+})
+
+const workflowColumns = computed(() => {
+  const columns = [
+    { name: 'product', label: t('scan.product'), field: 'product_name', align: 'left', sortable: true },
+    { name: 'required', label: t('scan.required'), field: 'quantity_required', align: 'left', sortable: true },
+    { name: 'picked', label: t('scan.picked'), field: 'quantity_picked', align: 'left', sortable: true },
+    { name: 'checked_out', label: t('scan.checkedOut'), field: 'checked_out', align: 'left', sortable: true },
+    { name: 'remaining', label: t('scan.remaining'), field: 'remaining', align: 'left', sortable: true },
+    { name: 'available', label: t('scan.availableInStore'), field: 'available', align: 'left', sortable: true },
+    { name: 'progress', label: t('scan.packedProgress'), field: 'quantity_picked', align: 'left' },
+  ]
+  if (shouldShowWorkflowDeviceColumn.value) {
+    columns.push({ name: 'add_device', label: t('scan.selectDevice'), field: 'product_id', align: 'left' })
+  }
+  return columns
+})
 
 const scanSubmitLabel = computed(() => {
   if (scanAction.value === 'move') {
@@ -1244,6 +1253,31 @@ const pendingWorkflowRequirements = computed(() => workflowSections.value.pendin
 const completedWorkflowRequirements = computed(() => workflowSections.value.completed)
 const workflowSummary = computed(() => summarizeWorkflowRequirements(workflowRequirements.value))
 
+const availableWorkflowDevicesByProduct = computed(() => {
+  const map = new Map()
+  for (const device of store.devices || []) {
+    if (device.status !== 'available') continue
+    if (!map.has(device.product_id)) map.set(device.product_id, [])
+    map.get(device.product_id).push(device)
+  }
+  for (const devices of map.values()) {
+    devices.sort((a, b) => String(a.asset_tag || '').localeCompare(String(b.asset_tag || '')))
+  }
+  return map
+})
+
+const checkedOutWorkflowDevicesByProduct = computed(() => {
+  const map = new Map()
+  for (const device of checkedOutDeviceRows.value) {
+    if (!map.has(device.product_id)) map.set(device.product_id, [])
+    map.get(device.product_id).push(device)
+  }
+  for (const devices of map.values()) {
+    devices.sort((a, b) => String(a.asset_tag || '').localeCompare(String(b.asset_tag || '')))
+  }
+  return map
+})
+
 const workflowDeviceOptionsByProduct = computed(() => {
   const map = new Map()
   if (scanAction.value !== 'job_out' && scanAction.value !== 'job_in') return map
@@ -1254,9 +1288,7 @@ const workflowDeviceOptionsByProduct = computed(() => {
     if (isRental) continue
 
     if (scanAction.value === 'job_out') {
-      const options = (store.devices || [])
-        .filter(device => device.product_id === row.product_id && device.status === 'available')
-        .sort((a, b) => String(a.asset_tag || '').localeCompare(String(b.asset_tag || '')))
+      const options = (availableWorkflowDevicesByProduct.value.get(row.product_id) || [])
         .map((device) => {
           const zoneName = zoneById.value.get(device.location_zone_id)?.name || t('scan.unassigned')
           const scanCode = resolveDeviceScanCode(device)
@@ -1271,9 +1303,7 @@ const workflowDeviceOptionsByProduct = computed(() => {
       continue
     }
 
-    const options = checkedOutDeviceRows.value
-      .filter(device => device.product_id === row.product_id)
-      .sort((a, b) => String(a.asset_tag || '').localeCompare(String(b.asset_tag || '')))
+    const options = (checkedOutWorkflowDevicesByProduct.value.get(row.product_id) || [])
       .map((device) => {
         const scanCode = resolveDeviceScanCode(device)
         return {
