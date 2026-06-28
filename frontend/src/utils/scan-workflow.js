@@ -5,8 +5,8 @@ export function workflowRequirementProgress(row) {
     return {
       required,
       picked,
-      packed: Math.max(picked, 0),
-      percent: picked > 0 ? 100 : 0,
+      packed: 0,
+      percent: 100,
     }
   }
 
@@ -60,6 +60,6 @@ export function summarizeWorkflowRequirements(rows = []) {
     totalPacked,
     completedCount,
     totalCount: rows.length,
-    percent: totalRequired > 0 ? Math.min(Math.round((totalPacked / totalRequired) * 100), 100) : 0,
+    percent: totalRequired > 0 ? Math.min(Math.round((totalPacked / totalRequired) * 100), 100) : 100,
   }
 }

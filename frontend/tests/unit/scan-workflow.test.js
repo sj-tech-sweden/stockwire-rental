@@ -57,6 +57,45 @@ describe('scan workflow utilities', () => {
     })
   })
 
+  it('treats zero quantity_required as 100% complete with zero packed', () => {
+    expect(workflowRequirementProgress({ quantity_required: 0, quantity_picked: 0 })).toEqual({
+      required: 0,
+      picked: 0,
+      packed: 0,
+      percent: 100,
+    })
+
+    expect(workflowRequirementProgress({ quantity_required: 0, quantity_picked: 3 })).toEqual({
+      required: 0,
+      picked: 3,
+      packed: 0,
+      percent: 100,
+    })
+  })
+
+  it('treats zero totalRequired as 100% packed in the overall summary', () => {
+    expect(
+      summarizeWorkflowRequirements([
+        { quantity_required: 0, quantity_picked: 0, remaining: 0 },
+        { quantity_required: 0, quantity_picked: 0, remaining: 0 },
+      ]),
+    ).toEqual({
+      totalRequired: 0,
+      totalPacked: 0,
+      completedCount: 2,
+      totalCount: 2,
+      percent: 100,
+    })
+
+    expect(summarizeWorkflowRequirements([])).toEqual({
+      totalRequired: 0,
+      totalPacked: 0,
+      completedCount: 0,
+      totalCount: 0,
+      percent: 100,
+    })
+  })
+
   it('uses the first available device identifier for selector-based scanning', () => {
     expect(resolveDeviceScanCode({ barcode: 'BAR-1', serial_number: 'SER-1' })).toBe('BAR-1')
     expect(resolveDeviceScanCode({ asset_tag: 'DEV-1', barcode: 'BAR-1' })).toBe('DEV-1')
