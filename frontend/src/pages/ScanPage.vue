@@ -525,6 +525,7 @@ import { api } from '../boot/axios'
 import { useInventoryStore } from '../stores/inventory'
 import { useJobsStore } from '../stores/jobs'
 import { useCompactGrid } from '../composables/useCompactGrid'
+import { shouldSuppressDuplicateCameraScan } from '../utils/scan-camera'
 import ShortcutHelpDialog from '../components/ShortcutHelpDialog.vue'
 import DefectReportDialog from '../components/DefectReportDialog.vue'
 
@@ -1553,7 +1554,13 @@ async function startCameraScan() {
           if (raw) {
             if (saving.value) return
             const now = Date.now()
-            if (raw === lastCameraScanCode && now - lastCameraScanAt < CAMERA_REPEAT_SUPPRESSION_MS) return
+            if (shouldSuppressDuplicateCameraScan({
+              lastCode: lastCameraScanCode,
+              lastAt: lastCameraScanAt,
+              code: raw,
+              now,
+              cooldownMs: CAMERA_REPEAT_SUPPRESSION_MS,
+            })) return
             lastCameraScanCode = raw
             lastCameraScanAt = now
             scanCode.value = raw
