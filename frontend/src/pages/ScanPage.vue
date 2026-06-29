@@ -1533,7 +1533,13 @@ async function startCameraScan() {
     } catch {
       // use fallback formats
     }
-    const detector = new window.BarcodeDetector({ formats })
+    let detector
+    try {
+      detector = new window.BarcodeDetector({ formats })
+    } catch {
+      // Fall back to no formats parameter if not supported
+      detector = new window.BarcodeDetector()
+    }
     cameraStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
     const video = videoRef.value
     if (!video) return
@@ -1550,15 +1556,18 @@ async function startCameraScan() {
       if (saving.value) return
       try {
         const barcodes = await detector.detect(video)
+        // Re-check saving.value after await to prevent race conditions
+        if (saving.value) return
         if (barcodes?.length) {
           const raw = String(barcodes[0].rawValue || '').trim()
           if (raw) {
             const now = Date.now()
             if (raw === lastCameraCode && now - lastCameraTime < CAMERA_COOLDOWN_MS) return
             lastCameraCode = raw
-            lastCameraTime = now
             scanCode.value = raw
             await runScanAction()
+            // Update cooldown timestamp after scan completes
+            lastCameraTime = Date.now()
           }
         }
       } catch {
