@@ -945,7 +945,7 @@ const intakeJobSelectOptions = computed(() => {
       return String(dateB).localeCompare(String(dateA))
     })
     .map(job => ({
-      label: `${job.job_code} · ${pickedByJobId.value.get(job.id)} ${t('scan.picked').toLowerCase()}`,
+      label: `${job.job_code} · ${t('scan.pickedCount', { count: pickedByJobId.value.get(job.id) })}`,
       value: job.id,
     }))
 })

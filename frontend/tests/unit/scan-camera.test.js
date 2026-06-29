@@ -38,4 +38,16 @@ describe('shouldSuppressDuplicateCameraScan', () => {
 
     expect(suppressed).toBe(false)
   })
+
+  it('allows scans when previous scan state is missing', () => {
+    const suppressed = shouldSuppressDuplicateCameraScan({
+      lastCode: '',
+      lastAt: 0,
+      code: 'DEV-002',
+      now: 1_100,
+      cooldownMs: 1_500,
+    })
+
+    expect(suppressed).toBe(false)
+  })
 })
