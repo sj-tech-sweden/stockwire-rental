@@ -1525,7 +1525,15 @@ async function startCameraScan() {
   }
 
   try {
-    const detector = new window.BarcodeDetector({ formats: ['qr_code', 'code_128', 'ean_13', 'ean_8'] })
+    const fallbackFormats = ['qr_code', 'code_128', 'code_39', 'ean_13', 'ean_8', 'upc_a', 'upc_e', 'itf', 'data_matrix', 'aztec', 'pdf417']
+    let formats = fallbackFormats
+    try {
+      const supported = await window.BarcodeDetector.getSupportedFormats()
+      if (Array.isArray(supported) && supported.length) formats = supported
+    } catch {
+      // use fallback formats
+    }
+    const detector = new window.BarcodeDetector({ formats })
     cameraStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
     const video = videoRef.value
     if (!video) return
@@ -1533,13 +1541,22 @@ async function startCameraScan() {
     await video.play()
     cameraRunning.value = true
 
+    let lastCameraCode = ''
+    let lastCameraTime = 0
+    const CAMERA_COOLDOWN_MS = 2000
+
     cameraTimer = setInterval(async () => {
       if (!video || inputMode.value !== 'camera') return
+      if (saving.value) return
       try {
         const barcodes = await detector.detect(video)
         if (barcodes?.length) {
           const raw = String(barcodes[0].rawValue || '').trim()
           if (raw) {
+            const now = Date.now()
+            if (raw === lastCameraCode && now - lastCameraTime < CAMERA_COOLDOWN_MS) return
+            lastCameraCode = raw
+            lastCameraTime = now
             scanCode.value = raw
             await runScanAction()
           }
