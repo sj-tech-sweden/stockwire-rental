@@ -1501,7 +1501,7 @@ async function runScanAction() {
     if (scanAction.value === 'job_out' || scanAction.value === 'rental_job_out' || scanAction.value === 'job_in' || scanAction.value === 'rental_job_in') {
       await jobsStore.fetchAll()
     }
-    if (scanAction.value === 'job_in' && !globalCheckin.value && selectedOrTypedJobCode()) {
+    if (scanAction.value === 'job_in') {
       await refreshCheckedOutForIntake()
     }
     const knownScanErrors = {
@@ -1546,13 +1546,12 @@ async function startCameraScan() {
     cameraRunning.value = true
 
     cameraTimer = setInterval(async () => {
-      if (!video || inputMode.value !== 'camera') return
+      if (!video || inputMode.value !== 'camera' || saving.value) return
       try {
         const barcodes = await detector.detect(video)
         if (barcodes?.length) {
           const raw = String(barcodes[0].rawValue || '').trim()
           if (raw) {
-            if (saving.value) return
             const now = Date.now()
             if (shouldSuppressDuplicateCameraScan({
               lastCode: lastCameraScanCode,
