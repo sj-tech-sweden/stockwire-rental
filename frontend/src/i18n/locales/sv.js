@@ -1482,6 +1482,7 @@ export default {
     checkInReturnList: 'Incheckningsreturlista',
     checkOutPickList: 'Utcheckningsplocklista',
     forJob: 'för {jobCode}',
+    pickedVsCheckedOutHelp: 'Plockat = valt mot jobbkrav. Utcheckat = enheter som just nu är markerade som i bruk.',
     requiredCount: 'Krävs: {count}',
     pickedCount: 'Plockat: {count}',
     checkedOutCount: 'Utcheckat: {count}',

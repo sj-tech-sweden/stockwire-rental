@@ -379,6 +379,9 @@
         <div class="text-subtitle1 q-mb-sm">
           {{ (scanAction === 'job_in' || scanAction === 'rental_job_in') ? t('scan.checkInReturnList') : t('scan.checkOutPickList') }} {{ t('scan.forJob', { jobCode: activeWorkflowJob.job_code }) }}
         </div>
+        <div class="text-caption text-grey-5 q-mb-sm">
+          {{ t('scan.pickedVsCheckedOutHelp') }}
+        </div>
         <q-table
           :rows="workflowRequirements"
           :columns="workflowColumns"
@@ -558,6 +561,9 @@ const cameraRunning = ref(false)
 const cameraError = ref('')
 let cameraStream = null
 let cameraTimer = null
+let lastCameraScanCode = ''
+let lastCameraScanAt = 0
+const CAMERA_REPEAT_SUPPRESSION_MS = 1800
 const nfcRunning = ref(false)
 const nfcError = ref('')
 let nfcReader = null
@@ -938,7 +944,7 @@ const intakeJobSelectOptions = computed(() => {
       return String(dateB).localeCompare(String(dateA))
     })
     .map(job => ({
-      label: `${job.job_code} · ${pickedByJobId.value.get(job.id)} ${t('scan.checkedOut').toLowerCase()}`,
+      label: `${job.job_code} · ${pickedByJobId.value.get(job.id)} ${t('scan.picked').toLowerCase()}`,
       value: job.id,
     }))
 })
@@ -1334,6 +1340,7 @@ async function scheduleMaintenanceFromLookup() {
 }
 
 async function runScanAction() {
+  if (saving.value) return
   const code = String(scanCode.value || '').trim()
 
   if (scanAction.value === 'move' && !moveDestinationReady.value) {
@@ -1490,8 +1497,12 @@ async function runScanAction() {
     if (scanAction.value === 'job_in') {
       lastIntakeResult.value = response.success && Number(response.device_id || 0) > 0 ? response : null
     }
-    await jobsStore.fetchAll()
-    await refreshCheckedOutForIntake()
+    if (scanAction.value === 'job_out' || scanAction.value === 'rental_job_out' || scanAction.value === 'job_in' || scanAction.value === 'rental_job_in') {
+      await jobsStore.fetchAll()
+    }
+    if (scanAction.value === 'job_in' && !globalCheckin.value && selectedOrTypedJobCode()) {
+      await refreshCheckedOutForIntake()
+    }
     const knownScanErrors = {
       'Device not found': t('scan.deviceNotFound'),
     }
@@ -1540,6 +1551,11 @@ async function startCameraScan() {
         if (barcodes?.length) {
           const raw = String(barcodes[0].rawValue || '').trim()
           if (raw) {
+            if (saving.value) return
+            const now = Date.now()
+            if (raw === lastCameraScanCode && now - lastCameraScanAt < CAMERA_REPEAT_SUPPRESSION_MS) return
+            lastCameraScanCode = raw
+            lastCameraScanAt = now
             scanCode.value = raw
             await runScanAction()
           }
@@ -1564,6 +1580,8 @@ function stopCameraScan() {
     cameraStream = null
   }
   cameraRunning.value = false
+  lastCameraScanCode = ''
+  lastCameraScanAt = 0
 }
 
 async function startNfcScan() {
