@@ -355,7 +355,7 @@
 
         <div class="row q-col-gutter-sm q-mb-sm">
           <div class="col-12 col-md-3">
-            <q-select v-model="deviceProductFilter" :options="deviceProductOptions" :label="t('inventory.columnProduct')" outlined dense clearable emit-value map-options use-input input-debounce="0" @filter="filterDeviceProductOptions" />
+            <q-select v-model="deviceProductFilter" :options="deviceProductOptions" :label="t('inventory.columnProduct')" outlined dense clearable emit-value map-options />
           </div>
           <div class="col-12 col-md-3">
             <q-select v-model="deviceStatusFilter" :options="statusOptions" :label="t('inventory.columnStatus')" outlined dense clearable emit-value map-options />
@@ -1171,22 +1171,12 @@ const productManufacturerOptions = computed(() => {
   return values.sort((a, b) => a.localeCompare(b)).map(value => ({ label: value, value }))
 })
 
-const allDeviceProductOptions = computed(() =>
+const deviceProductOptions = computed(() =>
   store.products
     .filter(p => !isRentalProduct(p))
     .sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')))
     .map(p => ({ label: `${p.name}${p.sku ? ` (${p.sku})` : ''}`, value: p.id }))
 )
-const deviceProductOptions = ref([])
-watch(allDeviceProductOptions, (val) => { deviceProductOptions.value = val }, { immediate: true })
-function filterDeviceProductOptions(val, update) {
-  const needle = val.trim().toLowerCase()
-  update(() => {
-    deviceProductOptions.value = needle
-      ? allDeviceProductOptions.value.filter(o => o.label.toLowerCase().includes(needle))
-      : allDeviceProductOptions.value
-  })
-}
 
 const productAvailabilityById = computed(() => {
   const byId = new Map()
@@ -1232,10 +1222,10 @@ function openProductAvailabilityCalendar(product) {
 const filteredDevices = computed(() => {
   const needle = deviceSearch.value.trim().toLowerCase()
   return store.devices.filter(device => {
-    if (deviceProductFilter.value !== null && device.product_id !== deviceProductFilter.value) return false
-    if (deviceStatusFilter.value && device.status !== deviceStatusFilter.value) return false
-    if (deviceConditionFilter.value && device.condition !== deviceConditionFilter.value) return false
-    if (deviceLocationFilter.value !== null && device.location_zone_id !== deviceLocationFilter.value) return false
+    if (deviceProductFilter.value != null && device.product_id !== deviceProductFilter.value) return false
+    if (deviceStatusFilter.value != null && device.status !== deviceStatusFilter.value) return false
+    if (deviceConditionFilter.value != null && device.condition !== deviceConditionFilter.value) return false
+    if (deviceLocationFilter.value != null && device.location_zone_id !== deviceLocationFilter.value) return false
     if (!needle) return true
     const productName = productById.value.get(device.product_id)?.name || ''
     return [device.asset_tag, device.serial_number, device.status, device.condition, device.barcode, device.rfid, device.current_job_code, productName]
