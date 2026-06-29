@@ -364,7 +364,7 @@
             <q-select v-model="deviceConditionFilter" :options="conditionOptions" :label="t('inventory.columnCondition')" outlined dense clearable emit-value map-options />
           </div>
           <div class="col-12 col-md-3">
-            <q-select v-model="deviceLocationFilter" :options="locationSelectOptions" :label="t('inventory.columnLocation')" outlined dense clearable emit-value map-options />
+            <q-select v-model="deviceLocationFilter" :options="locationSelectOptions" :label="t('inventory.columnLocation')" outlined dense clearable clear-value="undefined" emit-value map-options />
           </div>
         </div>
 
@@ -885,7 +885,7 @@ const deviceSearch = ref('')
 const deviceProductFilter = ref(null)
 const deviceStatusFilter = ref(null)
 const deviceConditionFilter = ref(null)
-const deviceLocationFilter = ref(null)
+const deviceLocationFilter = ref(undefined)
 const maintenanceSearch = ref('')
 const scheduleSearch = ref('')
 const selectedProducts = ref([])
@@ -1225,7 +1225,7 @@ const filteredDevices = computed(() => {
     if (deviceProductFilter.value != null && device.product_id !== deviceProductFilter.value) return false
     if (deviceStatusFilter.value != null && device.status !== deviceStatusFilter.value) return false
     if (deviceConditionFilter.value != null && device.condition !== deviceConditionFilter.value) return false
-    if (deviceLocationFilter.value != null && device.location_zone_id !== deviceLocationFilter.value) return false
+    if (deviceLocationFilter.value !== undefined && device.location_zone_id !== deviceLocationFilter.value) return false
     if (!needle) return true
     const productName = productById.value.get(device.product_id)?.name || ''
     return [device.asset_tag, device.serial_number, device.status, device.condition, device.barcode, device.rfid, device.current_job_code, productName]
@@ -1508,7 +1508,7 @@ const allCategorySelectOptions = computed(() => {
 })
 
 const locationSelectOptions = computed(() => {
-  const flat = [{ label: 'Unassigned', value: null }]
+  const flat = [{ label: t('inventory.infoDialogs.unassigned'), value: null }]
   const walk = (nodes, prefix = '') => {
     for (const node of nodes || []) {
       const label = prefix ? `${prefix} / ${node.name}` : node.name
