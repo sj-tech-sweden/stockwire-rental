@@ -1549,6 +1549,7 @@ async function startCameraScan() {
       if (!video || inputMode.value !== 'camera' || saving.value) return
       try {
         const barcodes = await detector.detect(video)
+        if (saving.value) return
         if (barcodes?.length) {
           const raw = String(barcodes[0].rawValue || '').trim()
           if (raw) {
