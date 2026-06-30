@@ -50,4 +50,40 @@ describe('shouldSuppressDuplicateCameraScan', () => {
 
     expect(suppressed).toBe(false)
   })
+
+  it('allows scans when clock moves backwards', () => {
+    const suppressed = shouldSuppressDuplicateCameraScan({
+      lastCode: 'DEV-001',
+      lastAt: 2_000,
+      code: 'DEV-001',
+      now: 1_900,
+      cooldownMs: 1_500,
+    })
+
+    expect(suppressed).toBe(false)
+  })
+
+  it('allows scans when cooldown is non-positive', () => {
+    const suppressed = shouldSuppressDuplicateCameraScan({
+      lastCode: 'DEV-001',
+      lastAt: 1_000,
+      code: 'DEV-001',
+      now: 1_100,
+      cooldownMs: 0,
+    })
+
+    expect(suppressed).toBe(false)
+  })
+
+  it('allows scans when timestamps are invalid', () => {
+    const suppressed = shouldSuppressDuplicateCameraScan({
+      lastCode: 'DEV-001',
+      lastAt: 1_000,
+      code: 'DEV-001',
+      now: Number.NaN,
+      cooldownMs: 1_500,
+    })
+
+    expect(suppressed).toBe(false)
+  })
 })

@@ -6,6 +6,10 @@ export function shouldSuppressDuplicateCameraScan({
   cooldownMs = 1800,
 }) {
   if (!code) return false
+  if (!Number.isFinite(now)) return false
+  if (!Number.isFinite(cooldownMs) || cooldownMs <= 0) return false
   if (!lastCode || !Number.isFinite(lastAt) || lastAt <= 0) return false
-  return code === lastCode && (now - lastAt) < cooldownMs
+  const elapsedMs = now - lastAt
+  if (elapsedMs < 0) return false
+  return code === lastCode && elapsedMs < cooldownMs
 }

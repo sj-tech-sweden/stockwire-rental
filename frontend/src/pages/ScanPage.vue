@@ -562,6 +562,7 @@ const cameraRunning = ref(false)
 const cameraError = ref('')
 let cameraStream = null
 let cameraTimer = null
+let cameraDetectInFlight = false
 let lastCameraScanCode = ''
 let lastCameraScanAt = 0
 const CAMERA_REPEAT_SUPPRESSION_MS = 1800
@@ -1501,7 +1502,7 @@ async function runScanAction() {
     if (scanAction.value === 'job_out' || scanAction.value === 'rental_job_out' || scanAction.value === 'job_in' || scanAction.value === 'rental_job_in') {
       await jobsStore.fetchAll()
     }
-    if (scanAction.value === 'job_in') {
+    if (scanAction.value === 'job_out' || scanAction.value === 'job_in') {
       await refreshCheckedOutForIntake()
     }
     const knownScanErrors = {
@@ -1546,7 +1547,8 @@ async function startCameraScan() {
     cameraRunning.value = true
 
     cameraTimer = setInterval(async () => {
-      if (!video || inputMode.value !== 'camera' || saving.value) return
+      if (!video || inputMode.value !== 'camera' || saving.value || cameraDetectInFlight) return
+      cameraDetectInFlight = true
       try {
         const barcodes = await detector.detect(video)
         if (saving.value) return
@@ -1569,6 +1571,8 @@ async function startCameraScan() {
         }
       } catch {
         // ignore transient detect errors
+      } finally {
+        cameraDetectInFlight = false
       }
     }, 450)
   } catch {
@@ -1581,6 +1585,7 @@ function stopCameraScan() {
     clearInterval(cameraTimer)
     cameraTimer = null
   }
+  cameraDetectInFlight = false
   if (cameraStream) {
     const tracks = cameraStream.getTracks ? cameraStream.getTracks() : []
     for (const track of tracks) track.stop()
