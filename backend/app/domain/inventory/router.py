@@ -3186,17 +3186,17 @@ def _is_device_checked_out_to_job(db: Session, *, device_id: int, job_id: int) -
 def _lock_devices_for_update(db: Session, devices: list[Device]) -> list[Device]:
     if not devices:
         return []
-    ordered_device_ids = sorted({row.id for row in devices})
-    locked_rows = list(
-        db.scalars(
-            select(Device)
-            .where(Device.id.in_(ordered_device_ids))
-            .order_by(Device.id)
-            .with_for_update()
-        ).all()
+    sorted_device_ids = sorted({row.id for row in devices})
+    locked_rows = db.scalars(
+        select(Device)
+        .where(Device.id.in_(sorted_device_ids))
+        .order_by(Device.id)
+        .with_for_update()
     )
     locked_by_id = {row.id: row for row in locked_rows}
-    return [locked_by_id[row.id] for row in devices if row.id in locked_by_id]
+    if len(locked_by_id) != len(sorted_device_ids):
+        raise HTTPException(status_code=404, detail="One or more devices could not be locked for scan")
+    return [locked_by_id[row.id] for row in devices]
 
 
 def _ensure_job_requirement(db: Session, job_id: int, product_id: int) -> None:
