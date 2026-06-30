@@ -2337,6 +2337,11 @@ def process_scan(
             if action == "job_out":
                 picked_by_product: dict[int, int] = defaultdict(int)
                 for target in target_devices:
+                    if _is_device_checked_out_to_job(db, device_id=target.id, job_id=job.id):
+                        raise HTTPException(
+                            status_code=409,
+                            detail=f"Device is already scanned out to job {job.job_code}",
+                        )
                     _ensure_job_requirement(db, job.id, target.product_id)
                     picked_by_product[target.product_id] += 1
                     target.status = "in_use"
@@ -3122,6 +3127,23 @@ def _resolve_job_for_scan(db: Session, job_code: str | None) -> Job:
     if job is None:
         raise HTTPException(status_code=404, detail="Job not found")
     return job
+
+
+def _is_device_checked_out_to_job(db: Session, *, device_id: int, job_id: int) -> bool:
+    latest_job_audit = db.scalar(
+        select(InventoryAuditLog)
+        .where(InventoryAuditLog.source == "scan")
+        .where(InventoryAuditLog.success.is_(True))
+        .where(InventoryAuditLog.device_id == device_id)
+        .where(InventoryAuditLog.action.in_(("job_out", "job_in")))
+        .order_by(InventoryAuditLog.created_at.desc(), InventoryAuditLog.id.desc())
+        .limit(1)
+    )
+    return bool(
+        latest_job_audit
+        and latest_job_audit.action == "job_out"
+        and latest_job_audit.job_id == job_id
+    )
 
 
 def _ensure_job_requirement(db: Session, job_id: int, product_id: int) -> None:

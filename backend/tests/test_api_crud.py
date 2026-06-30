@@ -1472,11 +1472,24 @@ def test_scan_operations_and_job_requirement_bulk(client):
     assert outtake.status_code == 200
     assert outtake.json()["job_id"] == job.json()["id"]
 
+    duplicate_outtake = client.post(
+        "/api/v1/inventory/scan/process",
+        json={"scan_code": "SCN-01-001", "action": "job_out", "job_code": "JOB-SCAN-001"},
+    )
+    assert duplicate_outtake.status_code == 409
+    assert duplicate_outtake.json()["detail"] == "Device is already scanned out to job JOB-SCAN-001"
+
     intake = client.post(
         "/api/v1/inventory/scan/process",
         json={"scan_code": "SCN-01-001", "action": "job_in", "job_code": "JOB-SCAN-001"},
     )
     assert intake.status_code == 200
+
+    second_outtake = client.post(
+        "/api/v1/inventory/scan/process",
+        json={"scan_code": "SCN-01-001", "action": "job_out", "job_code": "JOB-SCAN-001"},
+    )
+    assert second_outtake.status_code == 200
 
     bulk_reqs = client.put(
         f"/api/v1/jobs/{job.json()['id']}/requirements/bulk",

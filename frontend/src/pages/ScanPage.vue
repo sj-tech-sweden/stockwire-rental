@@ -1550,12 +1550,15 @@ async function startCameraScan() {
     let lastCameraCode = ''
     let lastCameraTime = 0
     const CAMERA_COOLDOWN_MS = 2000
+    let cameraTickInFlight = false
 
     cameraTimer = setInterval(async () => {
       if (!video || inputMode.value !== 'camera') return
-      if (saving.value) return
+      if (cameraTickInFlight || saving.value) return
+      cameraTickInFlight = true
       try {
         const barcodes = await detector.detect(video)
+        if (!cameraTickInFlight || inputMode.value !== 'camera') return
         // Re-check saving.value after await to prevent race conditions
         if (saving.value) return
         if (barcodes?.length) {
@@ -1565,13 +1568,18 @@ async function startCameraScan() {
             if (raw === lastCameraCode && now - lastCameraTime < CAMERA_COOLDOWN_MS) return
             lastCameraCode = raw
             scanCode.value = raw
-            await runScanAction()
-            // Update cooldown timestamp after scan completes
-            lastCameraTime = Date.now()
+            try {
+              await runScanAction()
+            } finally {
+              // Update cooldown timestamp after scan attempt completes
+              lastCameraTime = Date.now()
+            }
           }
         }
       } catch {
         // ignore transient detect errors
+      } finally {
+        cameraTickInFlight = false
       }
     }, 450)
   } catch {
