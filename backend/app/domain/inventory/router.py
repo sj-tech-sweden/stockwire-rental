@@ -3187,13 +3187,13 @@ def _lock_devices_for_update(db: Session, devices: list[Device]) -> list[Device]
     if not devices:
         return []
     sorted_device_ids = sorted({row.id for row in devices})
-    locked_rows = db.scalars(
+    locked_devices_result = db.scalars(
         select(Device)
         .where(Device.id.in_(sorted_device_ids))
         .order_by(Device.id)
         .with_for_update()
     )
-    locked_by_id = {row.id: row for row in locked_rows}
+    locked_by_id = {row.id: row for row in locked_devices_result}
     if len(locked_by_id) != len(sorted_device_ids):
         raise HTTPException(status_code=404, detail="One or more devices could not be locked for scan")
     return [locked_by_id[row.id] for row in devices]
