@@ -3195,7 +3195,7 @@ def _lock_devices_for_update(db: Session, devices: list[Device]) -> list[Device]
     )
     locked_by_id = {row.id: row for row in locked_devices_result}
     if len(locked_by_id) != len(sorted_device_ids):
-        raise HTTPException(status_code=404, detail="One or more devices could not be locked for scan")
+        raise HTTPException(status_code=404, detail="One or more target devices were not found for scan")
     return [locked_by_id[row.id] for row in devices]
 
 
