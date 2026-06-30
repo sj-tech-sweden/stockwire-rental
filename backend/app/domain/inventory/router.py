@@ -2356,7 +2356,7 @@ def process_scan(
                     if req is not None:
                         req.quantity_picked = int(req.quantity_picked or 0) + int(increment)
 
-                db.commit()
+                db.flush()
                 db.refresh(device)
                 affected_count = len(target_devices)
                 response = _scan_response(
@@ -2414,7 +2414,7 @@ def process_scan(
 
             for target in target_devices:
                 target.status = "available"
-            db.commit()
+            db.flush()
             db.refresh(device)
             affected_count = len(target_devices)
             response = _scan_response(

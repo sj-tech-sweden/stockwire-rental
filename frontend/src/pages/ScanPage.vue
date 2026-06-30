@@ -1555,7 +1555,12 @@ async function startCameraScan() {
     }
     cameraStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
     const video = videoRef.value
-    if (!video) return
+    if (!video) {
+      const tracks = cameraStream.getTracks ? cameraStream.getTracks() : []
+      for (const track of tracks) track.stop()
+      cameraStream = null
+      return
+    }
     video.srcObject = cameraStream
     await video.play()
     cameraRunning.value = true
