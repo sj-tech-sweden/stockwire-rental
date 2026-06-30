@@ -2335,6 +2335,7 @@ def process_scan(
                 target_devices = _collect_case_devices(db, device)
 
             if action == "job_out":
+                target_devices = _lock_devices_for_update(db, target_devices)
                 picked_by_product: dict[int, int] = defaultdict(int)
                 for target in target_devices:
                     if _is_device_checked_out_to_job(db, device_id=target.id, job_id=job.id):
@@ -2377,6 +2378,24 @@ def process_scan(
                     job_id=job.id,
                     details={"payload": payload.model_dump(), "affected_device_ids": [row.id for row in target_devices]},
                 )
+                for target in target_devices:
+                    if target.id == device.id:
+                        continue
+                    _record_scan_audit(
+                        db,
+                        action=action,
+                        scan_code=scan_code,
+                        success=True,
+                        message=response.message,
+                        user_id=current_user.id,
+                        device_id=target.id,
+                        product_id=target.product_id,
+                        job_id=job.id,
+                        details={
+                            "payload": payload.model_dump(),
+                            "scanned_case_device_id": device.id,
+                        },
+                    )
                 db.commit()
                 return response
 
@@ -2423,6 +2442,24 @@ def process_scan(
                 job_id=job.id if job is not None else None,
                 details={"payload": payload.model_dump(), "affected_device_ids": [row.id for row in target_devices]},
             )
+            for target in target_devices:
+                if target.id == device.id:
+                    continue
+                _record_scan_audit(
+                    db,
+                    action=action,
+                    scan_code=scan_code,
+                    success=True,
+                    message=response.message,
+                    user_id=current_user.id,
+                    device_id=target.id,
+                    product_id=target.product_id,
+                    job_id=job.id if job is not None else None,
+                    details={
+                        "payload": payload.model_dump(),
+                        "scanned_case_device_id": device.id,
+                    },
+                )
             db.commit()
             return response
 
@@ -3144,6 +3181,22 @@ def _is_device_checked_out_to_job(db: Session, *, device_id: int, job_id: int) -
         and latest_job_audit.action == "job_out"
         and latest_job_audit.job_id == job_id
     )
+
+
+def _lock_devices_for_update(db: Session, devices: list[Device]) -> list[Device]:
+    if not devices:
+        return []
+    ordered_device_ids = sorted({row.id for row in devices})
+    locked_rows = list(
+        db.scalars(
+            select(Device)
+            .where(Device.id.in_(ordered_device_ids))
+            .order_by(Device.id)
+            .with_for_update()
+        ).all()
+    )
+    locked_by_id = {row.id: row for row in locked_rows}
+    return [locked_by_id[row.id] for row in devices if row.id in locked_by_id]
 
 
 def _ensure_job_requirement(db: Session, job_id: int, product_id: int) -> None:
