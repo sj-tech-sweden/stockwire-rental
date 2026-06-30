@@ -379,6 +379,9 @@
         <div class="text-subtitle1 q-mb-sm">
           {{ (scanAction === 'job_in' || scanAction === 'rental_job_in') ? t('scan.checkInReturnList') : t('scan.checkOutPickList') }} {{ t('scan.forJob', { jobCode: activeWorkflowJob.job_code }) }}
         </div>
+        <div class="text-caption text-grey-5 q-mb-sm">
+          {{ t('scan.pickedVsCheckedOutHelp') }}
+        </div>
         <q-table
           :rows="workflowRequirements"
           :columns="workflowColumns"
@@ -522,6 +525,7 @@ import { api } from '../boot/axios'
 import { useInventoryStore } from '../stores/inventory'
 import { useJobsStore } from '../stores/jobs'
 import { useCompactGrid } from '../composables/useCompactGrid'
+import { shouldSuppressDuplicateCameraScan } from '../utils/scan-camera'
 import ShortcutHelpDialog from '../components/ShortcutHelpDialog.vue'
 import DefectReportDialog from '../components/DefectReportDialog.vue'
 
@@ -558,6 +562,10 @@ const cameraRunning = ref(false)
 const cameraError = ref('')
 let cameraStream = null
 let cameraTimer = null
+let cameraDetectInFlight = false
+let lastCameraScanCode = ''
+let lastCameraScanAt = 0
+const CAMERA_REPEAT_SUPPRESSION_MS = 1800
 const nfcRunning = ref(false)
 const nfcError = ref('')
 let nfcReader = null
@@ -938,7 +946,7 @@ const intakeJobSelectOptions = computed(() => {
       return String(dateB).localeCompare(String(dateA))
     })
     .map(job => ({
-      label: `${job.job_code} · ${pickedByJobId.value.get(job.id)} ${t('scan.checkedOut').toLowerCase()}`,
+      label: `${job.job_code} · ${t('scan.pickedCount', { count: pickedByJobId.value.get(job.id) })}`,
       value: job.id,
     }))
 })
@@ -1334,6 +1342,7 @@ async function scheduleMaintenanceFromLookup() {
 }
 
 async function runScanAction() {
+  if (saving.value) return
   const code = String(scanCode.value || '').trim()
 
   if (scanAction.value === 'move' && !moveDestinationReady.value) {
@@ -1490,8 +1499,12 @@ async function runScanAction() {
     if (scanAction.value === 'job_in') {
       lastIntakeResult.value = response.success && Number(response.device_id || 0) > 0 ? response : null
     }
-    await jobsStore.fetchAll()
-    await refreshCheckedOutForIntake()
+    if (scanAction.value === 'job_out' || scanAction.value === 'rental_job_out' || scanAction.value === 'job_in' || scanAction.value === 'rental_job_in') {
+      await jobsStore.fetchAll()
+    }
+    if (scanAction.value === 'job_out' || scanAction.value === 'job_in') {
+      await refreshCheckedOutForIntake()
+    }
     const knownScanErrors = {
       'Device not found': t('scan.deviceNotFound'),
     }
@@ -1547,39 +1560,37 @@ async function startCameraScan() {
     await video.play()
     cameraRunning.value = true
 
-    let lastCameraCode = ''
-    let lastCameraTime = 0
-    const CAMERA_COOLDOWN_MS = 2000
-    let cameraTickInFlight = false
-
     cameraTimer = setInterval(async () => {
-      if (!video || inputMode.value !== 'camera') return
-      if (cameraTickInFlight || saving.value) return
-      cameraTickInFlight = true
+      if (!video || inputMode.value !== 'camera' || saving.value || cameraDetectInFlight) return
+      cameraDetectInFlight = true
       try {
         const barcodes = await detector.detect(video)
-        if (!cameraTickInFlight || inputMode.value !== 'camera') return
-        // Re-check saving.value after await to prevent race conditions
+        if (!cameraDetectInFlight || inputMode.value !== 'camera') return
         if (saving.value) return
         if (barcodes?.length) {
           const raw = String(barcodes[0].rawValue || '').trim()
           if (raw) {
             const now = Date.now()
-            if (raw === lastCameraCode && now - lastCameraTime < CAMERA_COOLDOWN_MS) return
-            lastCameraCode = raw
+            if (shouldSuppressDuplicateCameraScan({
+              lastCode: lastCameraScanCode,
+              lastAt: lastCameraScanAt,
+              code: raw,
+              now,
+              cooldownMs: CAMERA_REPEAT_SUPPRESSION_MS,
+            })) return
+            lastCameraScanCode = raw
             scanCode.value = raw
             try {
               await runScanAction()
             } finally {
-              // Update cooldown timestamp after scan attempt completes
-              lastCameraTime = Date.now()
+              lastCameraScanAt = Date.now()
             }
           }
         }
       } catch {
         // ignore transient detect errors
       } finally {
-        cameraTickInFlight = false
+        cameraDetectInFlight = false
       }
     }, 450)
   } catch {
@@ -1592,12 +1603,15 @@ function stopCameraScan() {
     clearInterval(cameraTimer)
     cameraTimer = null
   }
+  cameraDetectInFlight = false
   if (cameraStream) {
     const tracks = cameraStream.getTracks ? cameraStream.getTracks() : []
     for (const track of tracks) track.stop()
     cameraStream = null
   }
   cameraRunning.value = false
+  lastCameraScanCode = ''
+  lastCameraScanAt = 0
 }
 
 async function startNfcScan() {
