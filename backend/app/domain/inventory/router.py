@@ -2347,11 +2347,13 @@ def process_scan(
                     picked_by_product[target.product_id] += 1
                     target.status = "in_use"
 
-                for product_id, increment in picked_by_product.items():
+                for product_id in sorted(picked_by_product):
+                    increment = picked_by_product[product_id]
                     req = db.scalar(
                         select(JobRequirement)
                         .where(JobRequirement.job_id == job.id)
                         .where(JobRequirement.product_id == product_id)
+                        .with_for_update()
                     )
                     if req is not None:
                         req.quantity_picked = int(req.quantity_picked or 0) + int(increment)
@@ -2403,11 +2405,13 @@ def process_scan(
                 decremented_by_product: dict[int, int] = defaultdict(int)
                 for target in target_devices:
                     decremented_by_product[target.product_id] += 1
-                for product_id, decrement in decremented_by_product.items():
+                for product_id in sorted(decremented_by_product):
+                    decrement = decremented_by_product[product_id]
                     req = db.scalar(
                         select(JobRequirement)
                         .where(JobRequirement.job_id == job.id)
                         .where(JobRequirement.product_id == product_id)
+                        .with_for_update()
                     )
                     if req is not None and req.quantity_picked > 0:
                         req.quantity_picked = max(int(req.quantity_picked or 0) - int(decrement), 0)
