@@ -1482,6 +1482,7 @@ export default {
     checkInReturnList: 'Check-In Return List',
     checkOutPickList: 'Check-Out Pick List',
     forJob: 'for {jobCode}',
+    pickedVsCheckedOutHelp: 'Picked = selected against job requirements. Checked out = devices currently marked in use.',
     requiredCount: 'Required: {count}',
     pickedCount: 'Picked: {count}',
     checkedOutCount: 'Checked Out: {count}',
