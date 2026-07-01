@@ -3201,9 +3201,29 @@ def _is_device_checked_out_to_job(db: Session, *, device_id: int, job_id: int) -
 def _get_devices_checked_out_to_job(db: Session, *, device_ids: list[int], job_id: int) -> set[int]:
     """
     Batch check which devices are already checked out to the given job.
-    Returns a set of device_ids that are currently checked out to this job.
-    Uses a window function to get the latest audit row per device in one query.
+    
+    Uses a window function to efficiently retrieve the latest job_out/job_in audit row 
+    per device in a single query, avoiding N+1 query patterns for case scans with 
+    many contained devices.
+    
+    Filters audit logs by:
+    - source='scan': Only scan-based audit entries
+    - success=True: Only successful operations
+    - action in ('job_out', 'job_in'): Only job checkout/checkin operations
+    
+    The latest row is determined by ordering created_at DESC, then id DESC (as a 
+    tiebreaker when multiple rows have the same timestamp).
+    
+    Args:
+        db: Database session
+        device_ids: List of device IDs to check
+        job_id: Job ID to check against
+    
+    Returns:
+        Set of device IDs that are currently checked out to the specified job.
+        Returns an empty set if device_ids is empty or no devices are checked out.
     """
+    # Early return for empty input - avoids constructing an empty IN clause
     if not device_ids:
         return set()
     
