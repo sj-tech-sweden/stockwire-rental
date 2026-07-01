@@ -1638,7 +1638,10 @@ async function scanSelectedWorkflowDevice(row) {
     if (scanAction.value === 'job_in') {
       lastIntakeResult.value = response.success && Number(response.device_id || 0) > 0 ? response : null
     }
-    await jobsStore.fetchAll()
+    await Promise.all([
+      jobsStore.fetchAll(),
+      refreshCheckedOutForIntake(),
+    ])
     scanResultMessage.value = response.message || t('scan.scanProcessed')
     scanResultSuccess.value = !!response.success
     updateWorkflowDeviceSelection(row.product_id, null)
