@@ -3204,8 +3204,6 @@ def _get_devices_checked_out_to_job(db: Session, *, device_ids: list[int], job_i
     if not device_ids:
         return set()
     
-    from sqlalchemy import literal_column, and_
-    
     # Subquery to get the latest audit row per device using window functions
     latest_audits_subq = (
         select(
