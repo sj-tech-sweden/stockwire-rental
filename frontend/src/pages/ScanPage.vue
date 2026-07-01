@@ -1581,22 +1581,26 @@ function selectedOrTypedJobCode() {
 }
 
 async function refreshCheckedOutForIntake() {
-  if (scanAction.value !== 'job_in') {
+  if (scanAction.value === 'job_in') {
+    if (globalCheckin.value) {
+      await store.fetchCheckedOutDevices()
+      return
+    }
+    const jobCode = selectedOrTypedJobCode()
+    if (jobCode) {
+      await store.fetchCheckedOutDevices(jobCode)
+      return
+    }
     await store.fetchCheckedOutDevices()
     return
   }
-
-  if (globalCheckin.value) {
-    await store.fetchCheckedOutDevices()
-    return
+  if (scanAction.value === 'job_out') {
+    const jobCode = activeJobCode.value || selectedOrTypedJobCode()
+    if (jobCode) {
+      await store.fetchCheckedOutDevices(jobCode)
+      return
+    }
   }
-
-  const jobCode = selectedOrTypedJobCode()
-  if (jobCode) {
-    await store.fetchCheckedOutDevices(jobCode)
-    return
-  }
-
   await store.fetchCheckedOutDevices()
 }
 
@@ -1633,8 +1637,7 @@ async function scanSelectedWorkflowDevice(row) {
     if (scanAction.value === 'job_in') {
       lastIntakeResult.value = response.success && Number(response.device_id || 0) > 0 ? response : null
     }
-    await jobsStore.fetchAll()
-    await refreshCheckedOutForIntake()
+    await Promise.all([jobsStore.fetchAll(), refreshCheckedOutForIntake()])
     scanResultMessage.value = response.message || t('scan.scanProcessed')
     scanResultSuccess.value = !!response.success
     updateWorkflowDeviceSelection(row.product_id, null)
@@ -1823,10 +1826,11 @@ async function runScanAction() {
       lastIntakeResult.value = response.success && Number(response.device_id || 0) > 0 ? response : null
     }
     if (scanAction.value === 'job_out' || scanAction.value === 'rental_job_out' || scanAction.value === 'job_in' || scanAction.value === 'rental_job_in') {
-      await jobsStore.fetchAll()
-    }
-    if (scanAction.value === 'job_out' || scanAction.value === 'job_in') {
-      await refreshCheckedOutForIntake()
+      const refreshPromises = [jobsStore.fetchAll()]
+      if (scanAction.value === 'job_out' || scanAction.value === 'job_in') {
+        refreshPromises.push(refreshCheckedOutForIntake())
+      }
+      await Promise.all(refreshPromises)
     }
     const knownScanErrors = {
       'Device not found': t('scan.deviceNotFound'),
