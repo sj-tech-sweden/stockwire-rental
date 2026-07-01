@@ -2333,10 +2333,9 @@ def process_scan(
             target_devices = [device]
             if product and product.product_type == "case":
                 target_devices = _collect_case_devices(db, device)
+            target_devices = _lock_devices_for_update(db, target_devices)
 
             if action == "job_out":
-                target_devices = _lock_devices_for_update(db, target_devices)
-                
                 # Preflight check: verify none of the devices are already checked out to this job
                 device_ids = [target.id for target in target_devices]
                 checked_out_device_ids = _get_devices_checked_out_to_job(db, device_ids=device_ids, job_id=job.id)

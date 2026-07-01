@@ -1560,8 +1560,14 @@ async function startCameraScan() {
       cameraStream = null
       return
     }
-    video.srcObject = cameraStream
-    await video.play()
+    try {
+      video.srcObject = cameraStream
+      await video.play()
+    } catch (error) {
+      for (const track of cameraStream.getTracks()) track.stop()
+      cameraStream = null
+      throw error
+    }
     cameraRunning.value = true
 
     cameraTimer = setInterval(async () => {
