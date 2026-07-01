@@ -1484,6 +1484,7 @@ export default {
     scanOutJob: 'Scan out',
     scanInJob: 'Scan in',
     forJob: 'for {jobCode}',
+    pickedVsCheckedOutHelp: 'Picked = selected against job requirements. Checked out = devices currently marked in use.',
     requiredCount: 'Required: {count}',
     pickedCount: 'Picked: {count}',
     checkedOutCount: 'Checked Out: {count}',
