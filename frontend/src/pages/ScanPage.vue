@@ -1538,12 +1538,36 @@ async function startCameraScan() {
   }
 
   try {
-    const detector = new window.BarcodeDetector({ formats: ['qr_code', 'code_128', 'ean_13', 'ean_8'] })
+    const fallbackFormats = ['qr_code', 'code_128', 'code_39', 'ean_13', 'ean_8', 'upc_a', 'upc_e', 'itf', 'data_matrix', 'aztec', 'pdf417']
+    let formats = fallbackFormats
+    try {
+      const supported = await window.BarcodeDetector.getSupportedFormats()
+      if (Array.isArray(supported) && supported.length) formats = supported
+    } catch {
+      // use fallback formats
+    }
+    let detector
+    try {
+      detector = new window.BarcodeDetector({ formats })
+    } catch {
+      // Fall back to no formats parameter if not supported
+      detector = new window.BarcodeDetector()
+    }
     cameraStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
     const video = videoRef.value
-    if (!video) return
-    video.srcObject = cameraStream
-    await video.play()
+    if (!video) {
+      for (const track of cameraStream.getTracks()) track.stop()
+      cameraStream = null
+      return
+    }
+    try {
+      video.srcObject = cameraStream
+      await video.play()
+    } catch (error) {
+      for (const track of cameraStream.getTracks()) track.stop()
+      cameraStream = null
+      throw error
+    }
     cameraRunning.value = true
 
     cameraTimer = setInterval(async () => {
@@ -1551,6 +1575,7 @@ async function startCameraScan() {
       cameraDetectInFlight = true
       try {
         const barcodes = await detector.detect(video)
+        if (!cameraDetectInFlight || inputMode.value !== 'camera') return
         if (saving.value) return
         if (barcodes?.length) {
           const raw = String(barcodes[0].rawValue || '').trim()
@@ -1564,9 +1589,12 @@ async function startCameraScan() {
               cooldownMs: CAMERA_REPEAT_SUPPRESSION_MS,
             })) return
             lastCameraScanCode = raw
-            lastCameraScanAt = now
             scanCode.value = raw
-            await runScanAction()
+            try {
+              await runScanAction()
+            } finally {
+              lastCameraScanAt = Date.now()
+            }
           }
         }
       } catch {
