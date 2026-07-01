@@ -24,7 +24,7 @@ dependencies = [
   "python3-saml==1.16.0",
   "python-multipart==0.0.32",
   "httpx==0.28.1",
-  "boto3==1.43.38",
+  "boto3==1.43.39",
   "prometheus-fastapi-instrumentator==8.0.2"
 ]
 
