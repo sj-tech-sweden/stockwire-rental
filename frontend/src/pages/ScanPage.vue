@@ -1290,7 +1290,7 @@ const workflowDeviceOptionsByProduct = computed(() => {
   const map = new Map()
   if (scanAction.value !== 'job_out' && scanAction.value !== 'job_in') return map
 
-  for (const row of workflowRequirements.value) {
+  for (const row of pendingWorkflowRequirements.value) {
     const product = productById.value.get(row.product_id)
     const isRental = Boolean(product?.is_rental_product) || String(product?.product_type || '') === 'rental'
     if (isRental) continue
