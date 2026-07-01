@@ -2336,13 +2336,19 @@ def process_scan(
 
             if action == "job_out":
                 target_devices = _lock_devices_for_update(db, target_devices)
+                
+                # Pre-flight check: verify none of the devices are already checked out to this job
+                device_ids = [target.id for target in target_devices]
+                already_checked_out = _get_devices_checked_out_to_job(db, device_ids=device_ids, job_id=job.id)
+                if already_checked_out:
+                    raise HTTPException(
+                        status_code=409,
+                        detail=f"Device is already scanned out to job {job.job_code}",
+                    )
+                
+                # All devices passed the duplicate check, now proceed with state changes
                 picked_by_product: dict[int, int] = defaultdict(int)
                 for target in target_devices:
-                    if _is_device_checked_out_to_job(db, device_id=target.id, job_id=job.id):
-                        raise HTTPException(
-                            status_code=409,
-                            detail=f"Device is already scanned out to job {job.job_code}",
-                        )
                     _ensure_job_requirement(db, job.id, target.product_id)
                     picked_by_product[target.product_id] += 1
                     target.status = "in_use"
@@ -2397,6 +2403,7 @@ def process_scan(
                             "payload": payload.model_dump(),
                             "scanned_case_device_id": device.id,
                         },
+                        suppress_event=True,
                     )
                 db.commit()
                 return response
@@ -2463,6 +2470,7 @@ def process_scan(
                         "payload": payload.model_dump(),
                         "scanned_case_device_id": device.id,
                     },
+                    suppress_event=True,
                 )
             db.commit()
             return response
@@ -3187,6 +3195,51 @@ def _is_device_checked_out_to_job(db: Session, *, device_id: int, job_id: int) -
     )
 
 
+def _get_devices_checked_out_to_job(db: Session, *, device_ids: list[int], job_id: int) -> set[int]:
+    """
+    Batch check which devices are already checked out to the given job.
+    Returns a set of device_ids that are currently checked out to this job.
+    Uses a window function to get the latest audit row per device in one query.
+    """
+    if not device_ids:
+        return set()
+    
+    from sqlalchemy import literal_column, and_
+    
+    # Subquery to get the latest audit row per device using window functions
+    latest_audits_subq = (
+        select(
+            InventoryAuditLog.device_id,
+            InventoryAuditLog.action,
+            InventoryAuditLog.job_id,
+            func.row_number()
+            .over(
+                partition_by=InventoryAuditLog.device_id,
+                order_by=(
+                    InventoryAuditLog.created_at.desc(),
+                    InventoryAuditLog.id.desc(),
+                ),
+            )
+            .label("rn"),
+        )
+        .where(InventoryAuditLog.source == "scan")
+        .where(InventoryAuditLog.success.is_(True))
+        .where(InventoryAuditLog.device_id.in_(device_ids))
+        .where(InventoryAuditLog.action.in_(("job_out", "job_in")))
+        .subquery()
+    )
+    
+    # Select only the latest row (rn = 1) for each device
+    latest_audits = db.execute(
+        select(latest_audits_subq.c.device_id)
+        .where(latest_audits_subq.c.rn == 1)
+        .where(latest_audits_subq.c.action == "job_out")
+        .where(latest_audits_subq.c.job_id == job_id)
+    ).scalars().all()
+    
+    return set(latest_audits)
+
+
 def _lock_devices_for_update(db: Session, devices: list[Device]) -> list[Device]:
     if not devices:
         return []
@@ -3456,6 +3509,7 @@ def _record_scan_audit(
     zone_id: int | None = None,
     job_id: int | None = None,
     details: dict[str, Any] | None = None,
+    suppress_event: bool = False,
 ) -> None:
     db.add(
         InventoryAuditLog(
@@ -3472,18 +3526,19 @@ def _record_scan_audit(
             details_json=json.dumps(details, ensure_ascii=True) if details else None,
         )
     )
-    emit_realtime_event(
-        "inventory.scan",
-        {
-            "action": action,
-            "success": success,
-            "message": message,
-            "device_id": device_id,
-            "product_id": product_id,
-            "zone_id": zone_id,
-            "job_id": job_id,
-        },
-    )
+    if not suppress_event:
+        emit_realtime_event(
+            "inventory.scan",
+            {
+                "action": action,
+                "success": success,
+                "message": message,
+                "device_id": device_id,
+                "product_id": product_id,
+                "zone_id": zone_id,
+                "job_id": job_id,
+            },
+        )
 
 
 def _to_inventory_audit_read(db: Session, row: InventoryAuditLog) -> InventoryAuditRead:
