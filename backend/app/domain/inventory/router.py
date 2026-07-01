@@ -3181,23 +3181,6 @@ def _resolve_job_for_scan(db: Session, job_code: str | None) -> Job:
     return job
 
 
-def _is_device_checked_out_to_job(db: Session, *, device_id: int, job_id: int) -> bool:
-    latest_job_audit = db.scalar(
-        select(InventoryAuditLog)
-        .where(InventoryAuditLog.source == "scan")
-        .where(InventoryAuditLog.success.is_(True))
-        .where(InventoryAuditLog.device_id == device_id)
-        .where(InventoryAuditLog.action.in_(("job_out", "job_in")))
-        .order_by(InventoryAuditLog.created_at.desc(), InventoryAuditLog.id.desc())
-        .limit(1)
-    )
-    return bool(
-        latest_job_audit
-        and latest_job_audit.action == "job_out"
-        and latest_job_audit.job_id == job_id
-    )
-
-
 def _get_devices_checked_out_to_job(db: Session, *, device_ids: list[int], job_id: int) -> set[int]:
     """
     Batch check which devices are already checked out to the given job.
