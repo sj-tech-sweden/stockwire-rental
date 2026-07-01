@@ -2341,9 +2341,11 @@ def process_scan(
                 device_ids = [target.id for target in target_devices]
                 already_checked_out = _get_devices_checked_out_to_job(db, device_ids=device_ids, job_id=job.id)
                 if already_checked_out:
+                    count = len(already_checked_out)
+                    plural = "s are" if count > 1 else " is"
                     raise HTTPException(
                         status_code=409,
-                        detail=f"Device is already scanned out to job {job.job_code}",
+                        detail=f"Device{plural} already scanned out to job {job.job_code}",
                     )
                 
                 # All devices passed the duplicate check, now proceed with state changes
