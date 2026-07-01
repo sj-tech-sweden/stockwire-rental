@@ -2347,7 +2347,7 @@ def process_scan(
                         status_code=409,
                         detail=f"{device_word} {verb} already scanned out to job {job.job_code}",
                     )
-                
+
                 # All devices passed the duplicate check, now proceed with state changes
                 picked_by_product: dict[int, int] = defaultdict(int)
                 for target in target_devices:
