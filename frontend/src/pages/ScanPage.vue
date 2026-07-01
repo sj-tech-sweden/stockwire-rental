@@ -394,7 +394,7 @@
                 color="primary"
                 icon="shopping_cart_checkout"
                 :label="t('scan.scanOutJob')"
-                :to="scanJobLink('job_out', activeWorkflowJob)"
+                :to="scanJobLink(RENTAL_SCAN_ACTIONS.includes(scanAction) ? 'rental_job_out' : 'job_out', activeWorkflowJob)"
               />
               <q-btn
                 flat
@@ -403,7 +403,7 @@
                 color="primary"
                 icon="assignment_return"
                 :label="t('scan.scanInJob')"
-                :to="scanJobLink('job_in', activeWorkflowJob)"
+                :to="scanJobLink(RENTAL_SCAN_ACTIONS.includes(scanAction) ? 'rental_job_in' : 'job_in', activeWorkflowJob)"
               />
             </div>
           </div>
@@ -1456,6 +1456,7 @@ function setActiveJob(job, { showMessage = true } = {}) {
   scanJobCode.value = job.job_code
   globalCheckin.value = false
   scanCode.value = ''
+  workflowDeviceSelections.value = {}
   if (showMessage) {
     scanResultMessage.value = t('scan.jobSelectedScanCodesNow', { jobCode: job.job_code, item: itemLabel })
     scanResultSuccess.value = true
@@ -1637,7 +1638,7 @@ async function scanSelectedWorkflowDevice(row) {
     if (scanAction.value === 'job_in') {
       lastIntakeResult.value = response.success && Number(response.device_id || 0) > 0 ? response : null
     }
-    await Promise.all([jobsStore.fetchAll(), refreshCheckedOutForIntake()])
+    await jobsStore.fetchAll()
     scanResultMessage.value = response.message || t('scan.scanProcessed')
     scanResultSuccess.value = !!response.success
     updateWorkflowDeviceSelection(row.product_id, null)
