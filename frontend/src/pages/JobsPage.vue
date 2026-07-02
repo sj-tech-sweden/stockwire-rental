@@ -447,7 +447,11 @@ function confirmDelete(job) {
 
 async function syncToProductionPlanner(job) {
   try {
-    await jobsStore.syncJobToProductionPlanner(job.id)
+    const result = await jobsStore.syncJobToProductionPlanner(job.id)
+    if (result?.success !== true) {
+      console.error('ProductionPlanner sync failed:', result?.message || 'Unknown error')
+      return
+    }
     await jobsStore.fetchAll()
   } catch (error) {
     console.error('Failed to sync to ProductionPlanner:', error)

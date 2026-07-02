@@ -228,17 +228,18 @@ def sync_project_to_productionplanner(
 
     try:
         result = anyio.run(_sync_project_to_productionplanner, project, db)
-        from app.domain.audit.service import record_activity
-        record_activity(
-            db,
-            user_id=current_user.id,
-            entity_type="project",
-            entity_id=project.id,
-            action="sync_productionplanner",
-            message_format="project_synced_productionplanner",
-            message_params={"projectName": project.name},
-            details={"productionplanner_project_id": result.productionplanner_project_id},
-        )
+        if result.success:
+            from app.domain.audit.service import record_activity
+            record_activity(
+                db,
+                user_id=current_user.id,
+                entity_type="project",
+                entity_id=project.id,
+                action="sync_productionplanner",
+                message_format="project_synced_productionplanner",
+                message_params={"projectName": project.name},
+                details={"productionplanner_project_id": result.productionplanner_project_id},
+            )
         return result
     except ProductionPlannerError as e:
         raise HTTPException(status_code=e.status_code, detail=e.message)
