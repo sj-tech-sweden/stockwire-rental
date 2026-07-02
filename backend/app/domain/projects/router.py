@@ -97,11 +97,13 @@ def delete_project(project_id: int, db: Session = Depends(get_db), _: User = Dep
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
-async def _get_productionplanner_client(db: Session) -> ProductionPlannerClient:
+async def _get_productionplanner_client(db: Session) -> ProductionPlannerClient | None:
     """Get ProductionPlanner client configured from database settings."""
     setting = _get_or_create_setting(db, INTEGRATIONS_KEY, DEFAULT_INTEGRATIONS)
     parsed = _parse_integrations(setting.value_json)
-    pp_config = parsed.get("productionplanner", {})
+    pp_config = parsed.get("productionplanner", {}) if isinstance(parsed, dict) else {}
+    if not pp_config.get("enabled"):
+        return None
     api_key = pp_config.get("api_key") or settings.productionplanner_api_key
     base_url = pp_config.get("base_url") or settings.productionplanner_base_url
     return ProductionPlannerClient(api_key=api_key, base_url=base_url)
@@ -110,6 +112,11 @@ async def _get_productionplanner_client(db: Session) -> ProductionPlannerClient:
 async def _sync_project_to_productionplanner(project: Project, db: Session) -> ProductionPlannerSyncResponse:
     """Sync a project to ProductionPlanner as a project."""
     client = await _get_productionplanner_client(db)
+    if client is None:
+        return ProductionPlannerSyncResponse(
+            success=False,
+            message="ProductionPlanner integration is disabled",
+        )
     if not client.api_key:
         return ProductionPlannerSyncResponse(
             success=False,
