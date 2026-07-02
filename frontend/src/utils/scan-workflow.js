@@ -31,12 +31,15 @@ export function normalizeWorkflowRequirement(row, { mode } = {}) {
 export function workflowRequirementProgress(row) {
   const required = Number(row?.quantity_required || 0)
   const picked = Number(row?.quantity_picked || 0)
+  const remaining = Number(row?.remaining || 0)
   if (required <= 0) {
+    // In intake mode a row can have remaining > 0 (devices still checked out)
+    // even when required is 0 — treat it as incomplete in that case.
     return {
       required,
       picked,
       packed: 0,
-      percent: 100,
+      percent: remaining > 0 ? 0 : 100,
     }
   }
 
@@ -85,11 +88,19 @@ export function summarizeWorkflowRequirements(rows = []) {
   const totalRequired = rows.reduce((sum, row) => sum + Number(row?.quantity_required || 0), 0)
   const totalPacked = rows.reduce((sum, row) => sum + workflowRequirementProgress(row).packed, 0)
   const completedCount = rows.filter(isWorkflowRequirementComplete).length
+  let percent
+  if (totalRequired > 0) {
+    percent = Math.min(Math.round((totalPacked / totalRequired) * 100), 100)
+  } else {
+    // When totalRequired is 0 (e.g. intake with all required=0), derive percent
+    // from whether every row is fully complete so pending rows don't show 100%.
+    percent = rows.length === 0 || rows.every(isWorkflowRequirementComplete) ? 100 : 0
+  }
   return {
     totalRequired,
     totalPacked,
     completedCount,
     totalCount: rows.length,
-    percent: totalRequired > 0 ? Math.min(Math.round((totalPacked / totalRequired) * 100), 100) : 100,
+    percent,
   }
 }

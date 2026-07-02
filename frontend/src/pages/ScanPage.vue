@@ -1702,6 +1702,7 @@ async function refreshCheckedOutForIntake() {
 
 async function scanSelectedWorkflowDevice(row) {
   if (workflowActionLoadingProductId.value !== null) return
+  if (scanToLocationMode.value && pendingLocationForDevice.value) return
   const selectedDeviceId = workflowDeviceSelections.value[row.product_id]
   const jobCode = activeJobCode.value || selectedOrTypedJobCode()
   if (!selectedDeviceId) {
@@ -1761,6 +1762,7 @@ function maybeSetPendingLocation(response, scanCodeValue, assetTagFallback) {
 
 async function checkInCheckedOutDevice(row) {
   if (checkInLoadingDeviceId.value !== null) return
+  if (scanToLocationMode.value && pendingLocationForDevice.value) return
   const scanCodeValue = resolveDeviceScanCode(row)
   if (!scanCodeValue) {
     scanResultMessage.value = t('scan.unableUseSelectedDevice')
