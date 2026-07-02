@@ -18,11 +18,11 @@ export function normalizeWorkflowRequirement(row, { mode } = {}) {
   }
 
   const normalizedCheckedOut = Math.max(checkedOut, 0)
-  const checkedInCount = Math.min(Math.max(required - normalizedCheckedOut, 0), required)
+  const checkedInCountCapped = Math.min(Math.max(required - normalizedCheckedOut, 0), required)
   return {
     ...row,
     quantity_required: required,
-    quantity_picked: checkedInCount,
+    quantity_picked: checkedInCountCapped,
     checked_out: normalizedCheckedOut,
     remaining: normalizedCheckedOut,
   }

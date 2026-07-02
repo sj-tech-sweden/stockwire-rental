@@ -38,6 +38,18 @@ describe('scan workflow utilities', () => {
       checked_out: 1,
       remaining: 1,
     })
+
+    expect(normalizeWorkflowRequirement({
+      quantity_required: 5,
+      quantity_picked: 5,
+      checked_out: 6,
+      remaining: 0,
+    }, { mode: 'job_in' })).toEqual({
+      quantity_required: 5,
+      quantity_picked: 0,
+      checked_out: 6,
+      remaining: 6,
+    })
   })
 
   it('splits pending and completed requirements for separate lists', () => {
