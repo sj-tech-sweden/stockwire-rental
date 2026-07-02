@@ -1,6 +1,5 @@
 import httpx
 from typing import Optional, List, Dict, Any
-from datetime import date
 
 from app.config import settings
 
