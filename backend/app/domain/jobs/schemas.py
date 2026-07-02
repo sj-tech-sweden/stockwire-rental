@@ -3,6 +3,8 @@ from decimal import Decimal
 
 from pydantic import BaseModel, Field
 
+from app.domain.shared_schemas import ProductionPlannerSyncResponse  # noqa: F401
+
 
 class JobBase(BaseModel):
     job_code: str
@@ -50,13 +52,6 @@ class JobRead(JobBase):
     productionplanner_project_id: str | None = None
 
     model_config = {"from_attributes": True}
-
-
-class ProductionPlannerSyncResponse(BaseModel):
-    success: bool
-    message: str
-    productionplanner_project_id: str | None = None
-    productionplanner_url: str | None = None
 
 
 class JobRequirementBase(BaseModel):
