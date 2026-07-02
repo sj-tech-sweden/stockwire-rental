@@ -4,6 +4,30 @@ from typing import Optional, List, Dict, Any
 from app.config import settings
 
 
+def batch_task_labels(labels: List[str], max_items: int = 10, max_chars: int = 400) -> List[str]:
+    batches: List[str] = []
+    current: List[str] = []
+    current_length = 0
+    separator = "; "
+
+    for raw_label in labels:
+        label = str(raw_label or "").strip()
+        if not label:
+            continue
+        next_length = current_length + (len(separator) if current else 0) + len(label)
+        if current and (len(current) >= max_items or next_length > max_chars):
+            batches.append(separator.join(current))
+            current = [label]
+            current_length = len(label)
+            continue
+        current.append(label)
+        current_length = next_length
+
+    if current:
+        batches.append(separator.join(current))
+    return batches
+
+
 class ProductionPlannerClient:
     def __init__(self, api_key: str = "", base_url: str = ""):
         normalized_base_url = str(base_url or settings.productionplanner_base_url).strip().rstrip("/")
@@ -43,7 +67,12 @@ class ProductionPlannerClient:
             except Exception:
                 message = f"API error: {response.status_code}"
             raise ProductionPlannerError(message, response.status_code)
-        return response.json()
+        if response.status_code == 204 or not response.content:
+            return {}
+        try:
+            return response.json()
+        except ValueError:
+            return {}
 
     async def get_info(self) -> Dict[str, Any]:
         response = await self.client.get("info")

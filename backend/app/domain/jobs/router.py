@@ -27,7 +27,11 @@ from app.domain.jobs.schemas import (
 from app.domain.projects.models import Project
 from app.domain.shared_schemas import ProductionPlannerSyncResponse
 from app.domain.venues.models import Venue
-from app.services.productionplanner import ProductionPlannerClient, ProductionPlannerError
+from app.services.productionplanner import (
+    ProductionPlannerClient,
+    ProductionPlannerError,
+    batch_task_labels,
+)
 from app.domain.settings.router import _parse_integrations, INTEGRATIONS_KEY
 from app.config import settings
 
@@ -287,12 +291,13 @@ async def _sync_job_to_productionplanner(job: Job, db: Session) -> ProductionPla
                         pp_project_id, venue.name, "physical", ", ".join(details)
                     )
 
-            for req in job.requirements:
-                if req.quantity_required > 0 and req.product:
-                    await client.add_task(
-                        pp_project_id,
-                        f"{req.product.name} x{req.quantity_required}",
-                    )
+            task_labels = [
+                f"{req.product.name} x{req.quantity_required}"
+                for req in job.requirements
+                if req.quantity_required > 0 and req.product
+            ]
+            for task_label in batch_task_labels(task_labels):
+                await client.add_task(pp_project_id, task_label)
 
     job.productionplanner_project_id = pp_project_id
     db.commit()

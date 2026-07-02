@@ -14,7 +14,11 @@ from app.domain.venues.models import Venue
 from app.domain.projects.schemas import ProjectCreate, ProjectRead, ProjectUpdate
 from app.domain.realtime.events import emit_realtime_event
 from app.services.metrics import created_total, deleted_total, entities_count
-from app.services.productionplanner import ProductionPlannerClient, ProductionPlannerError
+from app.services.productionplanner import (
+    ProductionPlannerClient,
+    ProductionPlannerError,
+    batch_task_labels,
+)
 from app.domain.settings.router import _parse_integrations, INTEGRATIONS_KEY
 from app.domain.settings.router import _get_or_create_setting, DEFAULT_INTEGRATIONS
 from app.config import settings
@@ -193,13 +197,14 @@ async def _sync_project_to_productionplanner(project: Project, db: Session) -> P
                     .options(selectinload(Job.requirements).selectinload(JobRequirement.product))
                 ).all()
             )
-            for job in jobs:
-                for req in job.requirements:
-                    if req.quantity_required > 0 and req.product:
-                        await client.add_task(
-                            pp_project_id,
-                            f"[{job.job_code}] {req.product.name} x{req.quantity_required}",
-                        )
+            task_labels = [
+                f"[{job.job_code}] {req.product.name} x{req.quantity_required}"
+                for job in jobs
+                for req in job.requirements
+                if req.quantity_required > 0 and req.product
+            ]
+            for task_label in batch_task_labels(task_labels):
+                await client.add_task(pp_project_id, task_label)
 
     project.productionplanner_project_id = pp_project_id
     db.commit()

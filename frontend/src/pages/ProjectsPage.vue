@@ -342,6 +342,7 @@ async function loadData() {
       venuesStore.fetchAll(),
       inventoryStore.fetchAll(),
       jobsStore.fetchAll(),
+      settingsStore.fetchIntegrations(),
     ])
   } finally {
     pageLoading.value = false

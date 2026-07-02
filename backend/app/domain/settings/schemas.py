@@ -360,9 +360,14 @@ class ProductionPlannerConfig(BaseModel):
     base_url: str = "https://api.productionplanner.io/v1"
 
 
+class ProductionPlannerReadConfig(BaseModel):
+    enabled: bool = False
+    base_url: str = "https://api.productionplanner.io/v1"
+
+
 class IntegrationsRead(BaseModel):
     eventory_instances: list[EventoryInstanceConfig] = Field(default_factory=list)
-    productionplanner: ProductionPlannerConfig = Field(default_factory=ProductionPlannerConfig)
+    productionplanner: ProductionPlannerReadConfig = Field(default_factory=ProductionPlannerReadConfig)
 
 
 class IntegrationsUpdate(BaseModel):
