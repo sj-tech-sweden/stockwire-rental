@@ -287,13 +287,11 @@ async def _sync_job_to_productionplanner(job: Job, db: Session) -> ProductionPla
                     )
 
             for req in job.requirements:
-                if req.quantity_required > 0:
-                    product = db.get(Product, req.product_id)
-                    if product:
-                        await client.add_task(
-                            pp_project_id,
-                            f"{product.name} x{req.quantity_required}",
-                        )
+                if req.quantity_required > 0 and req.product:
+                    await client.add_task(
+                        pp_project_id,
+                        f"{req.product.name} x{req.quantity_required}",
+                    )
 
     job.productionplanner_project_id = pp_project_id
     db.commit()
