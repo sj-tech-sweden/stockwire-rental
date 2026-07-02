@@ -2109,3 +2109,103 @@ def test_get_job_productionplanner_info_synced(client):
     assert data["success"] is True
     assert data["productionplanner_project_id"] == "pp-info-456"
     assert "Test Project" in data["message"]
+
+
+def test_sync_project_to_productionplanner(client):
+    from unittest.mock import AsyncMock, patch as mock_patch
+
+    project = client.post(
+        "/api/v1/projects",
+        json={"name": "PP Project Test 01", "status": "active"},
+    )
+    assert project.status_code == 200
+    project_id = project.json()["id"]
+    assert project.json()["productionplanner_project_id"] is None
+
+    mock_client = AsyncMock()
+    mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+    mock_client.__aexit__ = AsyncMock(return_value=False)
+    mock_client.api_key = "test-api-key"
+    mock_client.create_project = AsyncMock(return_value={"data": {"id": "pp-project-abc-123"}})
+
+    with mock_patch(
+        "app.domain.projects.router._get_productionplanner_client",
+        return_value=mock_client,
+    ):
+        result = client.post(f"/api/v1/projects/{project_id}/sync-productionplanner")
+    assert result.status_code == 200
+    data = result.json()
+    assert data["success"] is True
+    assert data["productionplanner_project_id"] == "pp-project-abc-123"
+    assert "productionplanner_url" in data
+    mock_client.create_project.assert_called_once()
+
+    mock_client.create_project.reset_mock()
+    mock_client.update_project = AsyncMock(return_value={})
+
+    with mock_patch(
+        "app.domain.projects.router._get_productionplanner_client",
+        return_value=mock_client,
+    ):
+        result2 = client.post(f"/api/v1/projects/{project_id}/sync-productionplanner")
+    assert result2.status_code == 200
+    data2 = result2.json()
+    assert data2["success"] is True
+    assert data2["productionplanner_project_id"] == "pp-project-abc-123"
+    mock_client.create_project.assert_not_called()
+    mock_client.update_project.assert_called_once()
+
+
+def test_get_project_productionplanner_info_not_synced(client):
+    project = client.post(
+        "/api/v1/projects",
+        json={"name": "PP Project Test 02", "status": "active"},
+    )
+    assert project.status_code == 200
+    project_id = project.json()["id"]
+
+    result = client.get(f"/api/v1/projects/{project_id}/productionplanner")
+    assert result.status_code == 200
+    data = result.json()
+    assert data["success"] is False
+    assert "not yet synced" in data["message"]
+
+
+def test_get_project_productionplanner_info_synced(client):
+    from unittest.mock import AsyncMock, patch as mock_patch
+
+    project = client.post(
+        "/api/v1/projects",
+        json={"name": "PP Project Test 03", "status": "active"},
+    )
+    assert project.status_code == 200
+    project_id = project.json()["id"]
+
+    mock_create_client = AsyncMock()
+    mock_create_client.__aenter__ = AsyncMock(return_value=mock_create_client)
+    mock_create_client.__aexit__ = AsyncMock(return_value=False)
+    mock_create_client.api_key = "test-api-key"
+    mock_create_client.create_project = AsyncMock(return_value={"data": {"id": "pp-project-info-456"}})
+
+    with mock_patch(
+        "app.domain.projects.router._get_productionplanner_client",
+        return_value=mock_create_client,
+    ):
+        client.post(f"/api/v1/projects/{project_id}/sync-productionplanner")
+
+    mock_info_client = AsyncMock()
+    mock_info_client.__aenter__ = AsyncMock(return_value=mock_info_client)
+    mock_info_client.__aexit__ = AsyncMock(return_value=False)
+    mock_info_client.api_key = "test-api-key"
+    mock_info_client.get_project = AsyncMock(return_value={"data": {"id": "pp-project-info-456", "name": "Project Test"}})
+
+    with mock_patch(
+        "app.domain.projects.router._get_productionplanner_client",
+        return_value=mock_info_client,
+    ):
+        result = client.get(f"/api/v1/projects/{project_id}/productionplanner")
+    assert result.status_code == 200
+    data = result.json()
+    assert data["success"] is True
+    assert data["productionplanner_project_id"] == "pp-project-info-456"
+    assert "Project Test" in data["message"]
