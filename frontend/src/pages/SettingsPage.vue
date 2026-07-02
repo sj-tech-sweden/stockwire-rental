@@ -2832,8 +2832,12 @@ async function testIntegration(plugin, config = null, target = 'default') {
   const pluginKey = String(plugin || '').trim().toLowerCase()
   if (!pluginKey) return
 
-  const sourceConfig = config || integrationsDraft.value[pluginKey]
+  let sourceConfig = config || integrationsDraft.value[pluginKey]
   if (!sourceConfig) return
+
+  if (pluginKey === 'productionplanner' && sourceConfig.base_url && !sourceConfig.api_url) {
+    sourceConfig = { ...sourceConfig, api_url: sourceConfig.base_url }
+  }
 
   if (pluginKey === 'eventory') {
     integrationTesting.value = {

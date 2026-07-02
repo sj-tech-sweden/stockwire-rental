@@ -28,7 +28,6 @@ from app.domain.projects.models import Project
 from app.domain.venues.models import Venue
 from app.services.productionplanner import ProductionPlannerClient, ProductionPlannerError
 from app.domain.settings.router import _parse_integrations, INTEGRATIONS_KEY
-from app.db.session import get_db
 from app.config import settings
 
 router = APIRouter(prefix="/jobs", tags=["jobs"], dependencies=[Depends(get_current_user)])
@@ -231,54 +230,64 @@ async def _sync_job_to_productionplanner(job: Job, db: Session) -> ProductionPla
     if job.location_in_venue:
         description_parts.append(f"Location: {job.location_in_venue}")
     if job.project_id:
-        project = db.get(Project, job.project_id)
-        if project:
-            description_parts.append(f"Project: {project.name}")
+        linked_project = db.get(Project, job.project_id)
+        if linked_project:
+            description_parts.append(f"Project: {linked_project.name}")
 
-    project = await client.create_project(
-        name=project_name,
-        description="\n\n".join(description_parts) if description_parts else "",
-        timezone="UTC",
-    )
+    description = "\n\n".join(description_parts) if description_parts else ""
 
-    pp_project_id = project.get("data", {}).get("id")
-    if not pp_project_id:
-        return ProductionPlannerSyncResponse(
-            success=False,
-            message="Failed to create project in ProductionPlanner",
-        )
-
-    if job.start_date:
-        await client.add_date(
-            pp_project_id, job.start_date.isoformat(), "Job Start"
-        )
-    if job.end_date and job.end_date != job.start_date:
-        await client.add_date(
-            pp_project_id, job.end_date.isoformat(), "Job End"
-        )
-
-    if job.venue_id:
-        venue = db.get(Venue, job.venue_id)
-        if venue:
-            details = []
-            if venue.address:
-                details.append(venue.address)
-            if venue.city:
-                details.append(venue.city)
-            if venue.country:
-                details.append(venue.country)
-            await client.add_location(
-                pp_project_id, venue.name, "physical", ", ".join(details)
+    async with client:
+        if job.productionplanner_project_id:
+            await client.update_project(
+                job.productionplanner_project_id,
+                name=project_name,
+                description=description,
             )
-
-    for req in job.requirements:
-        if req.quantity_required > 0:
-            product = db.get(Product, req.product_id)
-            if product:
-                await client.add_task(
-                    pp_project_id,
-                    f"{product.name} x{req.quantity_required}",
+            pp_project_id = job.productionplanner_project_id
+        else:
+            pp_project = await client.create_project(
+                name=project_name,
+                description=description,
+                timezone="UTC",
+            )
+            pp_project_id = pp_project.get("data", {}).get("id")
+            if not pp_project_id:
+                return ProductionPlannerSyncResponse(
+                    success=False,
+                    message="Failed to create project in ProductionPlanner",
                 )
+
+            if job.start_date:
+                await client.add_date(
+                    pp_project_id, job.start_date.isoformat(), "Job Start"
+                )
+            if job.end_date and job.end_date != job.start_date:
+                await client.add_date(
+                    pp_project_id, job.end_date.isoformat(), "Job End"
+                )
+
+            if job.venue_id:
+                venue = db.get(Venue, job.venue_id)
+                if venue:
+                    details = []
+                    if venue.address:
+                        details.append(venue.address)
+                    if venue.city:
+                        details.append(venue.city)
+                    if venue.country:
+                        details.append(venue.country)
+                    await client.add_location(
+                        pp_project_id, venue.name, "physical", ", ".join(details)
+                    )
+
+            for req in job.requirements:
+                if req.quantity_required > 0:
+                    product = db.get(Product, req.product_id)
+                    if product:
+                        await client.add_task(
+                            pp_project_id,
+                            f"{product.name} x{req.quantity_required}",
+                        )
 
     job.productionplanner_project_id = pp_project_id
     db.commit()
@@ -341,22 +350,23 @@ async def get_job_productionplanner_info(
             productionplanner_url=f"https://app.productionplanner.io/projects/{job.productionplanner_project_id}",
         )
 
-    try:
-        project = await client.get_project(job.productionplanner_project_id)
-        data = project.get("data", {})
-        return ProductionPlannerSyncResponse(
-            success=True,
-            message=f"Project: {data.get('name', 'Unknown')}",
-            productionplanner_project_id=job.productionplanner_project_id,
-            productionplanner_url=f"https://app.productionplanner.io/projects/{job.productionplanner_project_id}",
-        )
-    except ProductionPlannerError as e:
-        return ProductionPlannerSyncResponse(
-            success=False,
-            message=f"Failed to fetch project: {e.message}",
-            productionplanner_project_id=job.productionplanner_project_id,
-            productionplanner_url=f"https://app.productionplanner.io/projects/{job.productionplanner_project_id}",
-        )
+    async with client:
+        try:
+            project = await client.get_project(job.productionplanner_project_id)
+            data = project.get("data", {})
+            return ProductionPlannerSyncResponse(
+                success=True,
+                message=f"Project: {data.get('name', 'Unknown')}",
+                productionplanner_project_id=job.productionplanner_project_id,
+                productionplanner_url=f"https://app.productionplanner.io/projects/{job.productionplanner_project_id}",
+            )
+        except ProductionPlannerError as e:
+            return ProductionPlannerSyncResponse(
+                success=False,
+                message=f"Failed to fetch project: {e.message}",
+                productionplanner_project_id=job.productionplanner_project_id,
+                productionplanner_url=f"https://app.productionplanner.io/projects/{job.productionplanner_project_id}",
+            )
 
 
 @router.get("/requirements", response_model=list[JobRequirementRead])

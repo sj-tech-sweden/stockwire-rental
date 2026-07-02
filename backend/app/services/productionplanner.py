@@ -28,6 +28,12 @@ class ProductionPlannerClient:
             await self._client.aclose()
             self._client = None
 
+    async def __aenter__(self) -> "ProductionPlannerClient":
+        return self
+
+    async def __aexit__(self, *args: object) -> None:
+        await self.close()
+
     def _handle_response(self, response: httpx.Response) -> Dict[str, Any]:
         if response.status_code >= 400:
             try:

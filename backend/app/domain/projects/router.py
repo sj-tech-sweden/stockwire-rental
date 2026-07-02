@@ -15,6 +15,7 @@ from app.services.metrics import created_total, deleted_total, entities_count
 from app.services.productionplanner import ProductionPlannerClient, ProductionPlannerError
 from app.domain.settings.router import _parse_integrations, INTEGRATIONS_KEY
 from app.domain.settings.router import _get_or_create_setting, DEFAULT_INTEGRATIONS
+from app.config import settings
 
 router = APIRouter(prefix="/projects", tags=["projects"], dependencies=[Depends(get_current_user)])
 
@@ -101,8 +102,8 @@ async def _get_productionplanner_client(db: Session) -> ProductionPlannerClient:
     setting = _get_or_create_setting(db, INTEGRATIONS_KEY, DEFAULT_INTEGRATIONS)
     parsed = _parse_integrations(setting.value_json)
     pp_config = parsed.get("productionplanner", {})
-    api_key = pp_config.get("api_key")
-    base_url = pp_config.get("base_url")
+    api_key = pp_config.get("api_key") or settings.productionplanner_api_key
+    base_url = pp_config.get("base_url") or settings.productionplanner_base_url
     return ProductionPlannerClient(api_key=api_key, base_url=base_url)
 
 
@@ -131,53 +132,63 @@ async def _sync_project_to_productionplanner(project: Project, db: Session) -> P
         if venue:
             description_parts.append(f"Venue: {venue.name}")
 
-    pp_project = await client.create_project(
-        name=project_name,
-        description="\n\n".join(description_parts) if description_parts else "",
-        timezone="UTC",
-    )
+    description = "\n\n".join(description_parts) if description_parts else ""
 
-    pp_project_id = pp_project.get("data", {}).get("id")
-    if not pp_project_id:
-        return ProductionPlannerSyncResponse(
-            success=False,
-            message="Failed to create project in ProductionPlanner",
-        )
-
-    if project.start_date:
-        await client.add_date(
-            pp_project_id, project.start_date.isoformat(), "Project Start"
-        )
-    if project.end_date and project.end_date != project.start_date:
-        await client.add_date(
-            pp_project_id, project.end_date.isoformat(), "Project End"
-        )
-
-    if project.venue_id:
-        venue = db.get(Venue, project.venue_id)
-        if venue:
-            details = []
-            if venue.address:
-                details.append(venue.address)
-            if venue.city:
-                details.append(venue.city)
-            if venue.country:
-                details.append(venue.country)
-            await client.add_location(
-                pp_project_id, venue.name, "physical", ", ".join(details)
+    async with client:
+        if project.productionplanner_project_id:
+            await client.update_project(
+                project.productionplanner_project_id,
+                name=project_name,
+                description=description,
             )
+            pp_project_id = project.productionplanner_project_id
+        else:
+            pp_project = await client.create_project(
+                name=project_name,
+                description=description,
+                timezone="UTC",
+            )
+            pp_project_id = pp_project.get("data", {}).get("id")
+            if not pp_project_id:
+                return ProductionPlannerSyncResponse(
+                    success=False,
+                    message="Failed to create project in ProductionPlanner",
+                )
 
-    jobs = list(db.scalars(select(Job).where(Job.project_id == project.id)).all())
-    for job in jobs:
-        for req in job.requirements:
-            if req.quantity_required > 0:
-                from app.domain.inventory.models import Product
-                product = db.get(Product, req.product_id)
-                if product:
-                    await client.add_task(
-                        pp_project_id,
-                        f"[{job.job_code}] {product.name} x{req.quantity_required}",
+            if project.start_date:
+                await client.add_date(
+                    pp_project_id, project.start_date.isoformat(), "Project Start"
+                )
+            if project.end_date and project.end_date != project.start_date:
+                await client.add_date(
+                    pp_project_id, project.end_date.isoformat(), "Project End"
+                )
+
+            if project.venue_id:
+                venue = db.get(Venue, project.venue_id)
+                if venue:
+                    details = []
+                    if venue.address:
+                        details.append(venue.address)
+                    if venue.city:
+                        details.append(venue.city)
+                    if venue.country:
+                        details.append(venue.country)
+                    await client.add_location(
+                        pp_project_id, venue.name, "physical", ", ".join(details)
                     )
+
+            jobs = list(db.scalars(select(Job).where(Job.project_id == project.id)).all())
+            for job in jobs:
+                for req in job.requirements:
+                    if req.quantity_required > 0:
+                        from app.domain.inventory.models import Product
+                        product = db.get(Product, req.product_id)
+                        if product:
+                            await client.add_task(
+                                pp_project_id,
+                                f"[{job.job_code}] {product.name} x{req.quantity_required}",
+                            )
 
     project.productionplanner_project_id = pp_project_id
     db.commit()
@@ -241,19 +252,20 @@ async def get_project_productionplanner_info(
             productionplanner_url=f"https://app.productionplanner.io/projects/{project.productionplanner_project_id}",
         )
 
-    try:
-        pp_project = await client.get_project(project.productionplanner_project_id)
-        data = pp_project.get("data", {})
-        return ProductionPlannerSyncResponse(
-            success=True,
-            message=f"Project: {data.get('name', 'Unknown')}",
-            productionplanner_project_id=project.productionplanner_project_id,
-            productionplanner_url=f"https://app.productionplanner.io/projects/{project.productionplanner_project_id}",
-        )
-    except ProductionPlannerError as e:
-        return ProductionPlannerSyncResponse(
-            success=False,
-            message=f"Failed to fetch project: {e.message}",
-            productionplanner_project_id=project.productionplanner_project_id,
-            productionplanner_url=f"https://app.productionplanner.io/projects/{project.productionplanner_project_id}",
-        )
+    async with client:
+        try:
+            pp_project = await client.get_project(project.productionplanner_project_id)
+            data = pp_project.get("data", {})
+            return ProductionPlannerSyncResponse(
+                success=True,
+                message=f"Project: {data.get('name', 'Unknown')}",
+                productionplanner_project_id=project.productionplanner_project_id,
+                productionplanner_url=f"https://app.productionplanner.io/projects/{project.productionplanner_project_id}",
+            )
+        except ProductionPlannerError as e:
+            return ProductionPlannerSyncResponse(
+                success=False,
+                message=f"Failed to fetch project: {e.message}",
+                productionplanner_project_id=project.productionplanner_project_id,
+                productionplanner_url=f"https://app.productionplanner.io/projects/{project.productionplanner_project_id}",
+            )
