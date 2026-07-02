@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import {
   buildScanJobLink,
   isWorkflowRequirementComplete,
+  normalizeWorkflowRequirement,
   resolveDeviceScanCode,
   splitWorkflowRequirements,
   summarizeWorkflowRequirements,
@@ -23,6 +24,20 @@ describe('scan workflow utilities', () => {
     expect(isWorkflowRequirementComplete({ remaining: 0 })).toBe(true)
     expect(isWorkflowRequirementComplete({ remaining: -2 })).toBe(true)
     expect(isWorkflowRequirementComplete({ remaining: 1 })).toBe(false)
+  })
+
+  it('normalizes job-in rows to show checked-in progress and checked-out remaining', () => {
+    expect(normalizeWorkflowRequirement({
+      quantity_required: 5,
+      quantity_picked: 1,
+      checked_out: 1,
+      remaining: 4,
+    }, { mode: 'job_in' })).toEqual({
+      quantity_required: 5,
+      quantity_picked: 4,
+      checked_out: 1,
+      remaining: 1,
+    })
   })
 
   it('splits pending and completed requirements for separate lists', () => {

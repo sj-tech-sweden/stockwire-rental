@@ -1,3 +1,33 @@
+export function isWorkflowIntakeMode(mode) {
+  return mode === 'job_in' || mode === 'rental_job_in'
+}
+
+export function normalizeWorkflowRequirement(row, { mode } = {}) {
+  const required = Number(row?.quantity_required || 0)
+  const picked = Number(row?.quantity_picked || 0)
+  const checkedOut = Number(row?.checked_out || 0)
+
+  if (!isWorkflowIntakeMode(mode)) {
+    return {
+      ...row,
+      quantity_required: required,
+      quantity_picked: picked,
+      checked_out: checkedOut,
+      remaining: Math.max(required - picked, 0),
+    }
+  }
+
+  const normalizedCheckedOut = Math.max(checkedOut, 0)
+  const checkedIn = Math.min(Math.max(required - normalizedCheckedOut, 0), required)
+  return {
+    ...row,
+    quantity_required: required,
+    quantity_picked: checkedIn,
+    checked_out: normalizedCheckedOut,
+    remaining: normalizedCheckedOut,
+  }
+}
+
 export function workflowRequirementProgress(row) {
   const required = Number(row?.quantity_required || 0)
   const picked = Number(row?.quantity_picked || 0)

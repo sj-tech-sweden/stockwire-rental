@@ -425,7 +425,7 @@
         <div class="q-mb-md">
           <div class="row items-center justify-between q-mb-xs">
             <div class="text-caption text-grey-7">
-              {{ t('scan.packedProgressSummary', { packed: workflowSummary.totalPacked, required: workflowSummary.totalRequired, percent: workflowSummary.percent }) }}
+              {{ t(workflowProgressSummaryKey, { packed: workflowSummary.totalPacked, required: workflowSummary.totalRequired, percent: workflowSummary.percent }) }}
             </div>
             <div class="text-caption text-grey-7">
               {{ t('scan.finishedProductsCount', { count: workflowSummary.completedCount, total: workflowSummary.totalCount }) }}
@@ -434,7 +434,7 @@
           <q-linear-progress rounded size="12px" color="positive" track-color="grey-4" :value="workflowSummary.percent / 100" />
         </div>
         <div class="text-caption text-grey-5 q-mb-sm">
-          {{ t('scan.pickedVsCheckedOutHelp') }}
+          {{ t(workflowHelpKey) }}
         </div>
         <q-table
           :rows="pendingWorkflowRequirements"
@@ -447,7 +447,7 @@
           :hide-header="compactGrid"
           :pagination="{ rowsPerPage: 15 }"
           :rows-per-page-options="[15, 30, 50]"
-          :no-data-label="workflowSummary.totalCount ? t('scan.allRequirementsPacked') : t('scan.noWorkflowRequirements')"
+          :no-data-label="workflowSummary.totalCount ? t(workflowAllDoneKey) : t('scan.noWorkflowRequirements')"
         >
           <template #item="props">
             <div class="q-pa-xs col-12 col-sm-6 col-md-4">
@@ -461,7 +461,7 @@
                       <q-badge color="grey-8" text-color="white" :label="t('scan.requiredCount', { count: props.row.quantity_required })" />
                     </div>
                     <div class="col-6">
-                      <q-badge color="blue-8" text-color="white" :label="t('scan.pickedCount', { count: props.row.quantity_picked })" />
+                      <q-badge color="blue-8" text-color="white" :label="t(workflowIntakeMode ? 'scan.checkedInCount' : 'scan.pickedCount', { count: props.row.quantity_picked })" />
                     </div>
                     <div class="col-6">
                       <q-badge color="info" text-color="white" :label="t('scan.checkedOutCount', { count: props.row.checked_out })" />
@@ -474,7 +474,7 @@
                     </div>
                     <div class="col-12">
                       <div class="text-caption text-grey-7 q-mb-xs">
-                        {{ t('scan.productPackedProgress', workflowRowProgress(props.row)) }}
+                        {{ t(workflowProductProgressKey, workflowRowProgress(props.row)) }}
                       </div>
                       <q-linear-progress rounded size="10px" color="positive" track-color="grey-4" :value="workflowRowProgress(props.row).percent / 100" />
                     </div>
@@ -511,7 +511,7 @@
           <template #body-cell-progress="props">
             <q-td :props="props">
               <div class="text-caption q-mb-xs">
-                {{ t('scan.productPackedProgress', workflowRowProgress(props.row)) }}
+                {{ t(workflowProductProgressKey, workflowRowProgress(props.row)) }}
               </div>
               <q-linear-progress rounded size="10px" color="positive" track-color="grey-4" :value="workflowRowProgress(props.row).percent / 100" />
             </q-td>
@@ -575,11 +575,11 @@
               <q-item-section>
                 <q-item-label class="text-weight-medium">{{ row.product_name }}</q-item-label>
                 <q-item-label caption>
-                  {{ t('scan.productPackedProgress', workflowRowProgress(row)) }} · {{ t('scan.checkedOutCount', { count: row.checked_out }) }}
+                  {{ t(workflowProductProgressKey, workflowRowProgress(row)) }} · {{ t('scan.checkedOutCount', { count: row.checked_out }) }}
                 </q-item-label>
               </q-item-section>
               <q-item-section side>
-                <q-badge color="positive" text-color="white" :label="t('scan.packedDone')" />
+                <q-badge color="positive" text-color="white" :label="t(workflowDoneBadgeKey)" />
               </q-item-section>
             </q-item>
           </q-list>
@@ -709,6 +709,8 @@ import ShortcutHelpDialog from '../components/ShortcutHelpDialog.vue'
 import DefectReportDialog from '../components/DefectReportDialog.vue'
 import {
   buildScanJobLink,
+  isWorkflowIntakeMode,
+  normalizeWorkflowRequirement,
   resolveDeviceScanCode,
   splitWorkflowRequirements,
   summarizeWorkflowRequirements,
@@ -925,15 +927,17 @@ const shouldShowWorkflowDeviceColumn = computed(() => {
   return (scanAction.value === 'job_out' || scanAction.value === 'job_in') && workflowDeviceOptionsByProduct.value.size > 0
 })
 
+const workflowIntakeMode = computed(() => isWorkflowIntakeMode(scanAction.value))
+
 const workflowColumns = computed(() => {
   const columns = [
     { name: 'product', label: t('scan.product'), field: 'product_name', align: 'left', sortable: true },
     { name: 'required', label: t('scan.required'), field: 'quantity_required', align: 'left', sortable: true },
-    { name: 'picked', label: t('scan.picked'), field: 'quantity_picked', align: 'left', sortable: true },
+    { name: 'picked', label: workflowIntakeMode.value ? t('scan.checkedIn') : t('scan.picked'), field: 'quantity_picked', align: 'left', sortable: true },
     { name: 'checked_out', label: t('scan.checkedOut'), field: 'checked_out', align: 'left', sortable: true },
     { name: 'remaining', label: t('scan.remaining'), field: 'remaining', align: 'left', sortable: true },
     { name: 'available', label: t('scan.availableInStore'), field: 'available', align: 'left', sortable: true },
-    { name: 'progress', label: t('scan.packedProgress'), field: 'quantity_picked', align: 'left' },
+    { name: 'progress', label: workflowIntakeMode.value ? t('scan.checkedInProgress') : t('scan.packedProgress'), field: 'quantity_picked', align: 'left' },
   ]
   if (shouldShowWorkflowDeviceColumn.value) {
     columns.push({ name: 'add_device', label: t('scan.selectDevice'), field: 'product_id', align: 'left' })
@@ -1280,19 +1284,17 @@ const workflowRequirements = computed(() => {
       : store.devices.filter(device => device.product_id === item.product_id && device.status === 'available').length
     const required = Number(item.quantity_required || 0)
     const picked = Number(item.quantity_picked || 0)
-    const remaining = Math.max(required - picked, 0)
     const checkedOut = isRental
       ? Math.max(rentalFlow.job_out - rentalFlow.job_in, 0)
       : Number(checkedOutCountByProduct.value.get(item.product_id) || 0)
-    return {
+    return normalizeWorkflowRequirement({
       product_id: item.product_id,
       product_name: product?.name || `Product #${item.product_id}`,
       quantity_required: required,
       quantity_picked: picked,
       checked_out: checkedOut,
-      remaining,
       available,
-    }
+    }, { mode: workflowIntakeMode.value ? scanAction.value : null })
   })
 })
 
@@ -1370,6 +1372,12 @@ const workflowDeviceOptionsByProduct = computed(() => {
 function workflowRowProgress(row) {
   return workflowRequirementProgress(row)
 }
+
+const workflowProgressSummaryKey = computed(() => (workflowIntakeMode.value ? 'scan.checkedInProgressSummary' : 'scan.packedProgressSummary'))
+const workflowProductProgressKey = computed(() => (workflowIntakeMode.value ? 'scan.productCheckedInProgress' : 'scan.productPackedProgress'))
+const workflowHelpKey = computed(() => (workflowIntakeMode.value ? 'scan.checkedInVsCheckedOutHelp' : 'scan.pickedVsCheckedOutHelp'))
+const workflowDoneBadgeKey = computed(() => (workflowIntakeMode.value ? 'scan.checkedInDone' : 'scan.packedDone'))
+const workflowAllDoneKey = computed(() => (workflowIntakeMode.value ? 'scan.allRequirementsCheckedIn' : 'scan.allRequirementsPacked'))
 
 function workflowDeviceOptions(row) {
   return workflowDeviceOptionsByProduct.value.get(row.product_id) || []
