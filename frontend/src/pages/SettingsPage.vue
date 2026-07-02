@@ -2835,8 +2835,8 @@ async function testIntegration(plugin, config = null, target = 'default') {
   let sourceConfig = config || integrationsDraft.value[pluginKey]
   if (!sourceConfig) return
 
-  if (pluginKey === 'productionplanner' && sourceConfig.base_url && !sourceConfig.api_url) {
-    sourceConfig = { ...sourceConfig, api_url: sourceConfig.base_url }
+  if (pluginKey === 'productionplanner' && !sourceConfig.api_url) {
+    sourceConfig = { ...sourceConfig, api_url: sourceConfig.base_url || 'https://api.productionplanner.io/v1' }
   }
 
   if (pluginKey === 'eventory') {

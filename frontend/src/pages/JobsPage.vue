@@ -151,6 +151,12 @@
             <q-card-actions align="right">
               <q-btn flat dense icon="visibility" color="grey-7" :to="`/jobs/${props.row.id}`" />
               <template v-if="authStore.canEdit">
+                <q-btn v-if="productionplannerEnabled" flat dense round icon="sync" color="info" :aria-label="t('jobs.syncToPP')" :disable="jobsStore.loading" @click="syncToProductionPlanner(props.row)">
+                  <q-tooltip>{{ t('jobs.syncToPP') }}</q-tooltip>
+                </q-btn>
+                <q-btn v-if="productionplannerEnabled && props.row.productionplanner_project_id" flat dense round icon="external_link" color="primary" :aria-label="t('jobs.openInProductionPlanner')" @click="openProductionPlanner(props.row.productionplanner_project_id)">
+                  <q-tooltip>{{ t('jobs.openInProductionPlanner') }}</q-tooltip>
+                </q-btn>
                 <q-btn flat dense icon="edit" color="primary" @click="openEdit(props.row)" />
                 <q-btn flat dense icon="delete" color="negative" @click="confirmDelete(props.row)" />
               </template>

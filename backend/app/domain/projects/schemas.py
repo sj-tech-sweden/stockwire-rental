@@ -2,6 +2,8 @@ from datetime import date, datetime
 
 from pydantic import BaseModel
 
+from app.domain.shared_schemas import ProductionPlannerSyncResponse  # noqa: F401
+
 
 class ProjectBase(BaseModel):
     name: str
@@ -35,10 +37,3 @@ class ProjectRead(ProjectBase):
     productionplanner_project_id: str | None = None
 
     model_config = {"from_attributes": True}
-
-
-class ProductionPlannerSyncResponse(BaseModel):
-    success: bool
-    message: str
-    productionplanner_project_id: str | None = None
-    productionplanner_url: str | None = None
