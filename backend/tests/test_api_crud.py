@@ -683,6 +683,21 @@ def test_settings_modules_crud(client):
     assert invalid_port_integrations.status_code == 422
     assert invalid_port_integrations.json() == {"detail": "API URL contains an invalid port"}
 
+    insecure_productionplanner_url = client.put(
+        "/api/v1/settings/integrations",
+        json={
+            "productionplanner": {
+                "enabled": True,
+                "api_key": "pp-secret",
+                "base_url": "http://api.productionplanner.io/v1",
+            }
+        },
+    )
+    assert insecure_productionplanner_url.status_code == 422
+    assert insecure_productionplanner_url.json() == {
+        "detail": "ProductionPlanner Base URL must use HTTPS"
+    }
+
     with patch("app.domain.settings.router.socket.getaddrinfo") as mock_getaddrinfo:
         mock_getaddrinfo.return_value = [
             (socket.AF_INET, socket.SOCK_STREAM, 0, "", ("1.1.1.1", 443)),

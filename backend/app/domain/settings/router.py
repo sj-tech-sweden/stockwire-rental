@@ -389,6 +389,11 @@ def update_integrations(
         pp_config = ProductionPlannerConfig(**persisted_pp)
     pp_base_url = str(pp_config.base_url or "https://api.productionplanner.io/v1").strip()
     _validate_url_port(pp_base_url, "ProductionPlanner Base URL")
+    if urlparse(pp_base_url).scheme != "https":
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="ProductionPlanner Base URL must use HTTPS",
+        )
     _ensure_allowed_integration_host("productionplanner", pp_base_url)
     pp_base_url = _canonicalize_allowed_integration_url("productionplanner", pp_base_url)
     pp_api_key = str(pp_config.api_key or "").strip() or None
