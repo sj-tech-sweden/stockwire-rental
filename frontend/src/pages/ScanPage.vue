@@ -1609,12 +1609,13 @@ async function refreshCheckedOutForIntake() {
 async function scanSelectedWorkflowDevice(row) {
   if (workflowActionLoadingProductId.value !== null) return
   const selectedDeviceId = workflowDeviceSelections.value[row.product_id]
+  const jobCode = activeJobCode.value || selectedOrTypedJobCode()
   if (!selectedDeviceId) {
     scanResultMessage.value = t('scan.selectDeviceToAdd')
     scanResultSuccess.value = false
     return
   }
-  if (!activeJobCode.value) {
+  if (!jobCode) {
     scanResultMessage.value = t('scan.selectJob')
     scanResultSuccess.value = false
     return
@@ -1635,7 +1636,7 @@ async function scanSelectedWorkflowDevice(row) {
     const response = await store.processScan({
       scan_code: scanCodeValue,
       action: scanAction.value,
-      job_code: activeJobCode.value,
+      job_code: jobCode,
     })
     if (scanAction.value === 'job_in') {
       lastIntakeResult.value = response.success && Number(response.device_id || 0) > 0 ? response : null
