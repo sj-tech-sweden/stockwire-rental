@@ -2,8 +2,6 @@ from datetime import date, datetime
 
 from pydantic import BaseModel
 
-from app.domain.shared_schemas import ProductionPlannerSyncResponse  # noqa: F401
-
 
 class ProjectBase(BaseModel):
     name: str

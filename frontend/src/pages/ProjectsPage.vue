@@ -327,9 +327,9 @@ async function syncToProductionPlanner(project) {
   }
 }
 
-function openProductionPlanner(projectId) {
-  if (projectId) {
-    window.open(projectsStore.getProductionPlannerUrl(projectId), '_blank', 'noopener,noreferrer')
+function openProductionPlanner(productionPlannerProjectId) {
+  if (productionPlannerProjectId) {
+    window.open(projectsStore.getProductionPlannerUrl(productionPlannerProjectId), '_blank', 'noopener,noreferrer')
   }
 }
 

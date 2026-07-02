@@ -420,9 +420,9 @@ async function syncToProductionPlanner(job) {
   }
 }
 
-function openProductionPlanner(projectId) {
-  if (projectId) {
-    window.open(jobsStore.getProductionPlannerUrl(projectId), '_blank', 'noopener,noreferrer')
+function openProductionPlanner(productionPlannerProjectId) {
+  if (productionPlannerProjectId) {
+    window.open(jobsStore.getProductionPlannerUrl(productionPlannerProjectId), '_blank', 'noopener,noreferrer')
   }
 }
 

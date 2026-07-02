@@ -61,12 +61,16 @@ class ProductionPlannerClient:
 
     def _handle_response(self, response: httpx.Response) -> Dict[str, Any]:
         if response.status_code >= 400:
+            message = None
             try:
                 error_data = response.json()
-                message = error_data.get("message", f"API error: {response.status_code}")
-            except Exception:
-                message = f"API error: {response.status_code}"
-            raise ProductionPlannerError(message, response.status_code)
+                if isinstance(error_data, dict):
+                    message = error_data.get("message") or error_data.get("detail")
+                elif isinstance(error_data, str):
+                    message = error_data
+            except ValueError:
+                message = None
+            raise ProductionPlannerError(message or f"API error: {response.status_code}", response.status_code)
         if response.status_code == 204 or not response.content:
             return {}
         try:
