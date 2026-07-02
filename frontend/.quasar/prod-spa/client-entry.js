@@ -159,4 +159,3 @@ createQuasarApp(createApp, quasarUserOptions)
       start(app, boot)
     })
   })
-

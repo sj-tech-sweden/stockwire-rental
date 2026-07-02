@@ -1,16 +1,17 @@
 import anyio
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 from app.db.session import get_db
 from app.domain.auth.deps import get_current_user, require_editor
 from app.domain.auth.models import User
 from app.domain.customers.models import Customer
-from app.domain.jobs.models import Job
+from app.domain.jobs.models import Job, JobRequirement
 from app.domain.projects.models import Project
+from app.domain.shared_schemas import ProductionPlannerSyncResponse
 from app.domain.venues.models import Venue
-from app.domain.projects.schemas import ProjectCreate, ProjectRead, ProjectUpdate, ProductionPlannerSyncResponse
+from app.domain.projects.schemas import ProjectCreate, ProjectRead, ProjectUpdate
 from app.domain.realtime.events import emit_realtime_event
 from app.services.metrics import created_total, deleted_total, entities_count
 from app.services.productionplanner import ProductionPlannerClient, ProductionPlannerError
@@ -186,7 +187,13 @@ async def _sync_project_to_productionplanner(project: Project, db: Session) -> P
                         pp_project_id, venue.name, "physical", ", ".join(details)
                     )
 
-            jobs = list(db.scalars(select(Job).where(Job.project_id == project.id)).all())
+            jobs = list(
+                db.scalars(
+                    select(Job)
+                    .where(Job.project_id == project.id)
+                    .options(selectinload(Job.requirements).selectinload(JobRequirement.product))
+                ).all()
+            )
             for job in jobs:
                 for req in job.requirements:
                     if req.quantity_required > 0 and req.product:
