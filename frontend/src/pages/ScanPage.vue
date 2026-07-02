@@ -588,6 +588,17 @@
 
       <q-card class="ec-card q-pa-md" v-if="scanAction === 'job_in'">
         <div class="text-subtitle1 q-mb-sm">{{ t('scan.currentlyCheckedOutDevices', { count: checkedOutDeviceRows.length }) }}</div>
+        <div v-if="globalCheckin && globalCheckinProgress" class="q-mb-md">
+          <div class="row items-center justify-between q-mb-xs">
+            <div class="text-caption text-grey-7">
+              {{ t('scan.checkedInProgressSummary', { packed: globalCheckinProgress.checkedIn, required: globalCheckinProgress.total, percent: globalCheckinProgress.percent }) }}
+            </div>
+            <div class="text-caption text-grey-7">
+              {{ t('scan.devicesRemainingCount', { count: globalCheckinProgress.remaining }) }}
+            </div>
+          </div>
+          <q-linear-progress rounded size="12px" color="positive" track-color="grey-4" :value="globalCheckinProgress.percent / 100" />
+        </div>
         <q-toggle
           v-model="scanToLocationMode"
           :label="t('scan.scanToLocationMode')"
@@ -750,6 +761,7 @@ const applyingRouteContext = ref(false)
 const checkInLoadingDeviceId = ref(null)
 const scanToLocationMode = ref(false)
 const pendingLocationForDevice = ref(null) // { scanCode, assetTag, deviceId } | null
+const globalCheckinInitialCount = ref(0)
 
 const inputMode = ref('keyboard')
 const scanCodeInputRef = ref(null)
@@ -1303,6 +1315,15 @@ const pendingWorkflowRequirements = computed(() => workflowSections.value.pendin
 const completedWorkflowRequirements = computed(() => workflowSections.value.completed)
 const workflowSummary = computed(() => summarizeWorkflowRequirements(workflowRequirements.value))
 
+const globalCheckinProgress = computed(() => {
+  if (!globalCheckin.value || globalCheckinInitialCount.value === 0) return null
+  const total = globalCheckinInitialCount.value
+  const remaining = checkedOutDeviceRows.value.length
+  const checkedIn = Math.max(0, total - remaining)
+  const percent = total > 0 ? Math.round((checkedIn / total) * 100) : 100
+  return { total, remaining, checkedIn, percent }
+})
+
 const availableWorkflowDevicesByProduct = computed(() => {
   const map = new Map()
   for (const device of store.devices || []) {
@@ -1600,7 +1621,11 @@ function onActionChanged() {
 }
 
 function onGlobalCheckinChanged(value) {
-  if (!value) return
+  if (!value) {
+    globalCheckinInitialCount.value = 0
+    return
+  }
+  globalCheckinInitialCount.value = 0 // set by refreshCheckedOutForIntake() watcher after fetch completes
   resetActiveJobSelection()
 }
 
@@ -1640,6 +1665,10 @@ async function refreshCheckedOutForIntake() {
   if (scanAction.value === 'job_in') {
     if (globalCheckin.value) {
       await store.fetchCheckedOutDevices()
+      // Record initial count on first global check-in fetch so progress can be shown
+      if (globalCheckinInitialCount.value === 0) {
+        globalCheckinInitialCount.value = (store.checkedOutDevices || []).length
+      }
       return
     }
     const jobCode = selectedOrTypedJobCode()
@@ -1819,6 +1848,9 @@ async function runScanAction() {
       const jobCode = activeJobCode.value || selectedOrTypedJobCode()
       if (jobCode) {
         await store.fetchCheckedOutDevices(jobCode)
+      } else {
+        // Global check-in: refresh the unscoped list since processScan skips this for move actions
+        await store.fetchCheckedOutDevices()
       }
       scanResultMessage.value = t('scan.deviceMovedToZone', { zone: zone.name })
       scanResultSuccess.value = true

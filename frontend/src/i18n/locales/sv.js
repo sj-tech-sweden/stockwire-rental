@@ -1368,6 +1368,7 @@ export default {
     orScanLocationCaseIdentifier: 'Eller skanna plats-/lådidentifierare',
     locationCasePlaceholder: 'RACK-A1, LOC-QR..., eller CASE-001',
     globalCheckInNoJob: 'Global incheckning (utan jobb)',
+    devicesRemainingCount: '{count} kvar',
     selectJobWithCheckedOutDevices: 'Välj jobb med utcheckade enheter',
     jobCode: 'Jobbkod',
     jobCodePlaceholder: 'JOB-001',

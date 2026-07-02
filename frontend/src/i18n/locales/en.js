@@ -1368,6 +1368,7 @@ export default {
     orScanLocationCaseIdentifier: 'Or scan location/case identifier',
     locationCasePlaceholder: 'RACK-A1, LOC-QR..., or CASE-001',
     globalCheckInNoJob: 'Global check-in (no job)',
+    devicesRemainingCount: '{count} remaining',
     selectJobWithCheckedOutDevices: 'Select job with checked-out devices',
     jobCode: 'Job code',
     jobCodePlaceholder: 'JOB-001',
