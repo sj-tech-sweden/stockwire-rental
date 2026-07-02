@@ -876,6 +876,8 @@ def test_integration_connection(
         persisted_pp = persisted.get("productionplanner") if isinstance(persisted, dict) else {}
         if isinstance(persisted_pp, dict):
             persisted_config = persisted_pp
+            if "base_url" in persisted_config and not persisted_config.get("api_url"):
+                persisted_config = {**persisted_config, "api_url": persisted_config["base_url"]}
 
     incoming_config = payload.config or IntegrationPluginConfig(**persisted_config)
     normalized = _normalize_plugin_config(incoming_config)
