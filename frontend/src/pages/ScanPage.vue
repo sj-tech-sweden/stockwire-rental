@@ -1697,7 +1697,7 @@ async function scanSelectedWorkflowDevice(row) {
     })
     if (scanAction.value === 'job_in') {
       lastIntakeResult.value = response.success && Number(response.device_id || 0) > 0 ? response : null
-      maybeSetPendingLocation(response, scanCodeValue, response.asset_tag || selectedOption?.asset_tag || scanCodeValue)
+      maybeSetPendingLocation(response, scanCodeValue, response.asset_tag || scanCodeValue)
     }
     await jobsStore.fetchAll()
     scanResultMessage.value = response.message || t('scan.scanProcessed')
@@ -1790,9 +1790,9 @@ async function runScanAction() {
   if (saving.value) return
   const code = String(scanCode.value || '').trim()
 
-  // Intercept: if waiting for a location scan after a job_in check-in, match against zone barcodes
+  // Intercept: if waiting for a location scan after a job_in check-in, match against zone scan codes
   if (scanToLocationMode.value && pendingLocationForDevice.value && code) {
-    const zone = (store.zones || []).find(z => z.barcode && z.barcode === code)
+    const zone = zoneByCode.value.get(String(code).trim().toUpperCase())
     if (!zone) {
       scanResultMessage.value = t('scan.locationScanNotFound')
       scanResultSuccess.value = false
