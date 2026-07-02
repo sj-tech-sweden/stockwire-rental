@@ -302,15 +302,15 @@ async function startSso(provider) {
 }
 
 /* Improve contrast for labels and input text on dark auth pages */
-.ec-auth-card ::v-deep .q-field__label {
+.ec-auth-card :deep(.q-field__label) {
   color: rgba(255,255,255,0.86) !important;
 }
-.ec-auth-card ::v-deep .q-field__control,
-.ec-auth-card ::v-deep .q-field__native,
-.ec-auth-card ::v-deep .q-input__control .q-field__control {
+.ec-auth-card :deep(.q-field__control),
+.ec-auth-card :deep(.q-field__native),
+.ec-auth-card :deep(.q-input__control .q-field__control) {
   color: rgba(255,255,255,0.95) !important;
 }
-.ec-auth-card ::v-deep .q-icon {
+.ec-auth-card :deep(.q-icon) {
   color: rgba(255,255,255,0.85) !important;
 }
 .ec-auth-card .text-caption {
