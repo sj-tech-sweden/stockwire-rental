@@ -4,7 +4,7 @@ from datetime import date
 import anyio
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 from app.db.session import get_db
 from app.domain.auth.deps import get_current_user, require_editor
@@ -23,9 +23,9 @@ from app.domain.jobs.schemas import (
     JobRequirementRead,
     JobRequirementUpdate,
     JobUpdate,
-    ProductionPlannerSyncResponse,
 )
 from app.domain.projects.models import Project
+from app.domain.shared_schemas import ProductionPlannerSyncResponse
 from app.domain.venues.models import Venue
 from app.services.productionplanner import ProductionPlannerClient, ProductionPlannerError
 from app.domain.settings.router import _parse_integrations, INTEGRATIONS_KEY
@@ -310,7 +310,11 @@ def sync_job_to_productionplanner(
     job_id: int, db: Session = Depends(get_db), current_user: User = Depends(require_editor)
 ) -> ProductionPlannerSyncResponse:
     """Create or update a ProductionPlanner project from this job."""
-    job = db.get(Job, job_id)
+    job = db.scalar(
+        select(Job)
+        .where(Job.id == job_id)
+        .options(selectinload(Job.requirements).selectinload(JobRequirement.product))
+    )
     if job is None:
         raise HTTPException(status_code=404, detail="Job not found")
 
