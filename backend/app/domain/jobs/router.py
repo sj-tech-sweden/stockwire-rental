@@ -26,7 +26,6 @@ from app.domain.jobs.schemas import (
 )
 from app.domain.projects.models import Project
 from app.domain.venues.models import Venue
-from app.domain.finance.models import FinancialTransaction
 from app.services.productionplanner import ProductionPlannerClient, ProductionPlannerError
 from app.domain.settings.router import _parse_integrations, INTEGRATIONS_KEY
 from app.db.session import get_db
