@@ -2438,7 +2438,7 @@ async function saveIntegrations(options = {}) {
   const productionplanner = integrationsDraft.value.productionplanner ? {
     enabled: Boolean(integrationsDraft.value.productionplanner.enabled),
     api_key: String(integrationsDraft.value.productionplanner.api_key || ''),
-    base_url: String(integrationsDraft.value.productionplanner.base_url || 'https://api.productionplanner.io/v1'),
+    base_url: String(integrationsDraft.value.productionplanner.base_url || DEFAULT_INTEGRATIONS.productionplanner.base_url),
   } : { ...DEFAULT_INTEGRATIONS.productionplanner }
 
   integrationsSaving.value = true
@@ -2836,7 +2836,10 @@ async function testIntegration(plugin, config = null, target = 'default') {
   if (!sourceConfig) return
 
   if (pluginKey === 'productionplanner' && !sourceConfig.api_url) {
-    sourceConfig = { ...sourceConfig, api_url: sourceConfig.base_url || 'https://api.productionplanner.io/v1' }
+    sourceConfig = {
+      ...sourceConfig,
+      api_url: sourceConfig.base_url || DEFAULT_INTEGRATIONS.productionplanner.base_url,
+    }
   }
 
   if (pluginKey === 'eventory') {
