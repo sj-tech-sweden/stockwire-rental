@@ -188,14 +188,11 @@ async def _sync_project_to_productionplanner(project: Project, db: Session) -> P
             jobs = list(db.scalars(select(Job).where(Job.project_id == project.id)).all())
             for job in jobs:
                 for req in job.requirements:
-                    if req.quantity_required > 0:
-                        from app.domain.inventory.models import Product
-                        product = db.get(Product, req.product_id)
-                        if product:
-                            await client.add_task(
-                                pp_project_id,
-                                f"[{job.job_code}] {product.name} x{req.quantity_required}",
-                            )
+                    if req.quantity_required > 0 and req.product:
+                        await client.add_task(
+                            pp_project_id,
+                            f"[{job.job_code}] {req.product.name} x{req.quantity_required}",
+                        )
 
     project.productionplanner_project_id = pp_project_id
     db.commit()
