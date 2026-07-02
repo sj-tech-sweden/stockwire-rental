@@ -1,3 +1,4 @@
+import anyio
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -206,7 +207,7 @@ async def _sync_project_to_productionplanner(project: Project, db: Session) -> P
 
 
 @router.post("/{project_id}/sync-productionplanner", response_model=ProductionPlannerSyncResponse)
-async def sync_project_to_productionplanner(
+def sync_project_to_productionplanner(
     project_id: int, db: Session = Depends(get_db), current_user: User = Depends(require_editor)
 ) -> ProductionPlannerSyncResponse:
     """Create or update a ProductionPlanner project from this project."""
@@ -215,7 +216,7 @@ async def sync_project_to_productionplanner(
         raise HTTPException(status_code=404, detail="Project not found")
 
     try:
-        result = await _sync_project_to_productionplanner(project, db)
+        result = anyio.run(_sync_project_to_productionplanner, project, db)
         from app.domain.audit.service import record_activity
         record_activity(
             db,
@@ -233,7 +234,7 @@ async def sync_project_to_productionplanner(
 
 
 @router.get("/{project_id}/productionplanner", response_model=ProductionPlannerSyncResponse)
-async def get_project_productionplanner_info(
+def get_project_productionplanner_info(
     project_id: int, db: Session = Depends(get_db), _: User = Depends(get_current_user)
 ) -> ProductionPlannerSyncResponse:
     """Get ProductionPlanner project info for this project (overview at a glance)."""
@@ -247,7 +248,7 @@ async def get_project_productionplanner_info(
             message="Project not yet synced to ProductionPlanner",
         )
 
-    client = await _get_productionplanner_client(db)
+    client = anyio.run(_get_productionplanner_client, db)
     if not client.api_key:
         return ProductionPlannerSyncResponse(
             success=False,
@@ -256,20 +257,23 @@ async def get_project_productionplanner_info(
             productionplanner_url=f"https://app.productionplanner.io/projects/{project.productionplanner_project_id}",
         )
 
-    async with client:
-        try:
-            pp_project = await client.get_project(project.productionplanner_project_id)
-            data = pp_project.get("data", {})
-            return ProductionPlannerSyncResponse(
-                success=True,
-                message=f"Project: {data.get('name', 'Unknown')}",
-                productionplanner_project_id=project.productionplanner_project_id,
-                productionplanner_url=f"https://app.productionplanner.io/projects/{project.productionplanner_project_id}",
-            )
-        except ProductionPlannerError as e:
-            return ProductionPlannerSyncResponse(
-                success=False,
-                message=f"Failed to fetch project: {e.message}",
-                productionplanner_project_id=project.productionplanner_project_id,
-                productionplanner_url=f"https://app.productionplanner.io/projects/{project.productionplanner_project_id}",
-            )
+    async def _fetch_project_info() -> ProductionPlannerSyncResponse:
+        async with client:
+            try:
+                pp_project = await client.get_project(project.productionplanner_project_id)
+                data = pp_project.get("data", {})
+                return ProductionPlannerSyncResponse(
+                    success=True,
+                    message=f"Project: {data.get('name', 'Unknown')}",
+                    productionplanner_project_id=project.productionplanner_project_id,
+                    productionplanner_url=f"https://app.productionplanner.io/projects/{project.productionplanner_project_id}",
+                )
+            except ProductionPlannerError as e:
+                return ProductionPlannerSyncResponse(
+                    success=False,
+                    message=f"Failed to fetch project: {e.message}",
+                    productionplanner_project_id=project.productionplanner_project_id,
+                    productionplanner_url=f"https://app.productionplanner.io/projects/{project.productionplanner_project_id}",
+                )
+
+    return anyio.run(_fetch_project_info)

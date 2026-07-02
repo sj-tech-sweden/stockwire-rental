@@ -6,8 +6,8 @@ from app.config import settings
 
 class ProductionPlannerClient:
     def __init__(self, api_key: str = "", base_url: str = ""):
-        raw_base_url = base_url or settings.productionplanner_base_url
-        self.base_url = raw_base_url.rstrip("/") + "/"
+        normalized_base_url = str(base_url or settings.productionplanner_base_url).strip().rstrip("/")
+        self.base_url = f"{normalized_base_url}/"
         self.api_key = api_key or settings.productionplanner_api_key
         self._client: Optional[httpx.AsyncClient] = None
 
