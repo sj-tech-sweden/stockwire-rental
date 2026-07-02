@@ -132,7 +132,6 @@ async def _sync_project_to_productionplanner(project: Project, db: Session) -> P
     if project.start_date:
         description_parts.append(f"Project dates: {project.start_date} to {project.end_date or project.start_date}")
     if project.customer_id:
-        from app.domain.customers.models import Customer
         customer = db.get(Customer, project.customer_id)
         if customer:
             description_parts.append(f"Customer: {customer.name}")
