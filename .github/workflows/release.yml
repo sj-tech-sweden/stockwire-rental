@@ -32,7 +32,7 @@ jobs:
       tag: ${{ steps.semver.outputs.tag }}
       release_sha: ${{ steps.set_release_sha.outputs.sha }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.merge_commit_sha || github.sha }}

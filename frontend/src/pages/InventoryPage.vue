@@ -44,7 +44,24 @@
           <q-input v-model="productSearch" dense outlined clearable :placeholder="t('inventory.searchProducts')" class="col">
             <template #prepend><q-icon name="search" /></template>
           </q-input>
-          <q-btn class="q-ml-sm" color="primary" icon="add" :label="t('inventory.newProduct')" unelevated @click="openCreateProduct" />
+          <q-btn-dropdown class="q-ml-sm" color="secondary" icon="download" :label="isPhone ? undefined : t('inventory.exportData')" :aria-label="t('inventory.exportData')" unelevated>
+            <q-list dense>
+              <q-item clickable v-close-popup @click="exportProducts('csv', 'all')">
+                <q-item-section>{{ t('inventory.exportAllCsv') }}</q-item-section>
+              </q-item>
+              <q-item clickable v-close-popup @click="exportProducts('json', 'all')">
+                <q-item-section>{{ t('inventory.exportAllJson') }}</q-item-section>
+              </q-item>
+              <q-separator />
+              <q-item clickable v-close-popup :disable="!selectedProducts.length" @click="exportProducts('csv', 'selected')">
+                <q-item-section>{{ t('inventory.exportSelectedCsv') }}</q-item-section>
+              </q-item>
+              <q-item clickable v-close-popup :disable="!selectedProducts.length" @click="exportProducts('json', 'selected')">
+                <q-item-section>{{ t('inventory.exportSelectedJson') }}</q-item-section>
+              </q-item>
+            </q-list>
+          </q-btn-dropdown>
+          <q-btn class="q-ml-sm" color="primary" icon="add" :label="isPhone ? undefined : t('inventory.newProduct')" :aria-label="t('inventory.newProduct')" unelevated @click="openCreateProduct" />
         </div>
 
         <div v-if="selectedProducts.length" class="row items-center q-gutter-sm q-mb-sm">
@@ -316,7 +333,39 @@
           <q-input v-model="deviceSearch" dense outlined clearable :placeholder="t('inventory.searchDevices')" class="col">
             <template #prepend><q-icon name="search" /></template>
           </q-input>
+          <q-btn-dropdown class="q-ml-sm" color="secondary" icon="download" :label="t('inventory.exportData')" unelevated>
+            <q-list dense>
+              <q-item clickable v-close-popup @click="exportDevices('csv', 'all')">
+                <q-item-section>{{ t('inventory.exportAllCsv') }}</q-item-section>
+              </q-item>
+              <q-item clickable v-close-popup @click="exportDevices('json', 'all')">
+                <q-item-section>{{ t('inventory.exportAllJson') }}</q-item-section>
+              </q-item>
+              <q-separator />
+              <q-item clickable v-close-popup :disable="!selectedDevices.length" @click="exportDevices('csv', 'selected')">
+                <q-item-section>{{ t('inventory.exportSelectedCsv') }}</q-item-section>
+              </q-item>
+              <q-item clickable v-close-popup :disable="!selectedDevices.length" @click="exportDevices('json', 'selected')">
+                <q-item-section>{{ t('inventory.exportSelectedJson') }}</q-item-section>
+              </q-item>
+            </q-list>
+          </q-btn-dropdown>
           <q-btn class="q-ml-sm" color="primary" icon="add" :label="t('inventory.newDevice')" unelevated @click="openCreateDevice" />
+        </div>
+
+        <div class="row q-col-gutter-sm q-mb-sm">
+          <div class="col-12 col-md-3">
+            <q-select v-model="deviceProductFilter" :options="deviceProductOptions" :label="t('inventory.columnProduct')" outlined dense clearable emit-value map-options />
+          </div>
+          <div class="col-12 col-md-3">
+            <q-select v-model="deviceStatusFilter" :options="statusOptions" :label="t('inventory.columnStatus')" outlined dense clearable emit-value map-options />
+          </div>
+          <div class="col-12 col-md-3">
+            <q-select v-model="deviceConditionFilter" :options="conditionOptions" :label="t('inventory.columnCondition')" outlined dense clearable emit-value map-options />
+          </div>
+          <div class="col-12 col-md-3">
+            <q-select v-model="deviceLocationFilter" :options="locationSelectOptions" :label="t('inventory.columnLocation')" outlined dense clearable clear-value="undefined" emit-value map-options />
+          </div>
         </div>
 
         <div v-if="selectedDevices.length" class="row items-center q-gutter-sm q-mb-sm">
@@ -689,7 +738,7 @@
       @saved="onQuickCreateDone"
     />
 
-    <MaintenanceDialog v-model="maintenanceDialogOpen" :task="maintenanceEditing" :mode="maintenanceDialogMode" @saved="onMaintenanceSaved" />
+    <MaintenanceDialog v-model="maintenanceDialogOpen" :task="maintenanceEditing" :mode="maintenanceDialogMode" :initial-device-id="maintenanceInitialDeviceId" @saved="onMaintenanceSaved" />
     <MaintenanceScheduleDialog v-model="maintenanceScheduleDialogOpen" :schedule="maintenanceScheduleEditing" @saved="onMaintenanceScheduleSaved" />
     <MaintenanceCompleteDialog v-model="maintenanceCompleteDialogOpen" :task="maintenanceCompleteTarget" @saved="onMaintenanceCompleteSaved" />
 
@@ -764,6 +813,7 @@ import ProductInfoDialog from '../components/ProductInfoDialog.vue'
 import DeviceDialog from '../components/DeviceDialog.vue'
 import DeviceInfoDialog from '../components/DeviceInfoDialog.vue'
 import { normalizeCurrencyCode } from '../constants/currencies'
+import { enrichInventoryExportRows, serializeRowsToCsv, serializeRowsToJson } from '../utils/export-data'
 
 import {
   countCategoryOverview,
@@ -832,6 +882,10 @@ const productBrandFilter = ref(null)
 const productManufacturerFilter = ref(null)
 const productSort = ref('name_asc')
 const deviceSearch = ref('')
+const deviceProductFilter = ref(null)
+const deviceStatusFilter = ref(null)
+const deviceConditionFilter = ref(null)
+const deviceLocationFilter = ref(undefined)
 const maintenanceSearch = ref('')
 const scheduleSearch = ref('')
 const selectedProducts = ref([])
@@ -881,6 +935,7 @@ const maintenanceTypeOptions = [
   { label: t('inventory.maintenanceTypeCalibration'), value: 'calibration' },
   { label: t('inventory.maintenanceTypePatTest'), value: 'pat_test' },
   { label: t('inventory.maintenanceTypeScheduled'), value: 'scheduled' },
+  { label: t('inventory.maintenanceTypeModification'), value: 'modification' },
 ]
 
 const maintenanceIntervalModeOptions = [
@@ -946,6 +1001,7 @@ const productSortOptions = [
 
 const deviceColumns = [
   { name: 'asset_tag', label: t('inventory.columnAssetTag'), field: 'asset_tag', sortable: true, align: 'left' },
+  { name: 'product_name', label: t('inventory.columnProduct'), field: row => productById.value.get(row.product_id)?.name || '', sortable: true, align: 'left' },
   { name: 'serial_number', label: t('inventory.columnSerial'), field: 'serial_number', sortable: true, align: 'left' },
   { name: 'status', label: t('inventory.columnStatus'), field: 'status', sortable: true, align: 'left' },
   { name: 'condition', label: t('inventory.columnCondition'), field: 'condition', sortable: true, align: 'left' },
@@ -1115,6 +1171,13 @@ const productManufacturerOptions = computed(() => {
   return values.sort((a, b) => a.localeCompare(b)).map(value => ({ label: value, value }))
 })
 
+const deviceProductOptions = computed(() =>
+  store.products
+    .filter(p => !isRentalProduct(p))
+    .sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')))
+    .map(p => ({ label: `${p.name}${p.sku ? ` (${p.sku})` : ''}`, value: p.id }))
+)
+
 const productAvailabilityById = computed(() => {
   const byId = new Map()
   for (const device of store.devices || []) {
@@ -1158,12 +1221,17 @@ function openProductAvailabilityCalendar(product) {
 
 const filteredDevices = computed(() => {
   const needle = deviceSearch.value.trim().toLowerCase()
-  if (!needle) return store.devices
-  return store.devices.filter(device =>
-    [device.asset_tag, device.serial_number, device.status, device.condition, device.barcode, device.rfid, device.current_job_code]
+  return store.devices.filter(device => {
+    if (deviceProductFilter.value != null && device.product_id !== deviceProductFilter.value) return false
+    if (deviceStatusFilter.value != null && device.status !== deviceStatusFilter.value) return false
+    if (deviceConditionFilter.value != null && device.condition !== deviceConditionFilter.value) return false
+    if (deviceLocationFilter.value !== undefined && device.location_zone_id !== deviceLocationFilter.value) return false
+    if (!needle) return true
+    const productName = productById.value.get(device.product_id)?.name || ''
+    return [device.asset_tag, device.serial_number, device.status, device.condition, device.barcode, device.rfid, device.current_job_code, productName]
       .filter(Boolean)
       .some(value => String(value).toLowerCase().includes(needle))
-  )
+  })
 })
 
 const deviceInfoDialogOpen = ref(false)
@@ -1392,6 +1460,12 @@ const categoryById = computed(() => {
   return map
 })
 
+const productById = computed(() => {
+  const map = new Map()
+  for (const product of store.products) map.set(product.id, product)
+  return map
+})
+
 const zoneById = computed(() => {
   const map = new Map()
   for (const zone of store.zones) map.set(zone.id, zone)
@@ -1434,7 +1508,7 @@ const allCategorySelectOptions = computed(() => {
 })
 
 const locationSelectOptions = computed(() => {
-  const flat = [{ label: 'Unassigned', value: null }]
+  const flat = [{ label: t('inventory.infoDialogs.unassigned'), value: null }]
   const walk = (nodes, prefix = '') => {
     for (const node of nodes || []) {
       const label = prefix ? `${prefix} / ${node.name}` : node.name
@@ -1470,6 +1544,13 @@ async function applyFocusFromQuery() {
   const focusProductId = Number(route.query.focusProductId || 0)
   const focusDeviceId = Number(route.query.focusDeviceId || 0)
   const focusLocationId = Number(route.query.focusLocationId || 0)
+  const deviceStatus = String(route.query.deviceStatus || '').trim().toLowerCase()
+  const hasDeviceStatusFilter = ['available', 'reserved', 'in_use', 'maintenance'].includes(deviceStatus)
+
+  if (hasDeviceStatusFilter) {
+    tab.value = 'devices'
+    deviceSearch.value = deviceStatus
+  }
 
   if (focusProductId > 0) {
     tab.value = 'products'
@@ -1506,11 +1587,12 @@ async function applyFocusFromQuery() {
     if (zone) openEditLocation(zone)
   }
 
-  if (focusProductId || focusDeviceId || focusLocationId) {
+  if (focusProductId || focusDeviceId || focusLocationId || hasDeviceStatusFilter) {
     const nextQuery = { ...route.query }
     delete nextQuery.focusProductId
     delete nextQuery.focusDeviceId
     delete nextQuery.focusLocationId
+    delete nextQuery.deviceStatus
     await router.replace({ path: '/inventory', query: nextQuery })
   }
 }
@@ -1588,7 +1670,7 @@ onMounted(async () => {
 })
 
 watch(
-  () => [route.query.focusProductId, route.query.focusDeviceId, route.query.focusLocationId, route.query.tab],
+  () => [route.query.focusProductId, route.query.focusDeviceId, route.query.focusLocationId, route.query.deviceStatus, route.query.tab],
   async () => {
     await applyFocusFromQuery()
   }
@@ -1747,6 +1829,7 @@ function maintenanceSourceColor(row) {
 const maintenanceDialogOpen = ref(false)
 const maintenanceEditing = ref(null)
 const maintenanceDialogMode = ref('schedule')
+const maintenanceInitialDeviceId = ref(null)
 const maintenanceScheduleDialogOpen = ref(false)
 const maintenanceScheduleEditing = ref(null)
 const maintenanceCompleteDialogOpen = ref(false)
@@ -1755,6 +1838,7 @@ const maintenanceCompleteTarget = ref(null)
 function openCreateMaintenance(mode = 'schedule', preferredDeviceId = null) {
   maintenanceDialogMode.value = mode === 'task' ? 'task' : 'schedule'
   maintenanceEditing.value = null
+  maintenanceInitialDeviceId.value = preferredDeviceId || null
   maintenanceDialogOpen.value = true
 }
 
@@ -1797,6 +1881,85 @@ function onMaintenanceCompleteSaved() {
 
 function selectedRowIds(rows) {
   return [...new Set((rows || []).map(row => Number(row?.id || 0)).filter(Boolean))]
+}
+
+function downloadExportFile(content, filename, mimeType) {
+  if (typeof window === 'undefined' || typeof document === 'undefined') return
+  const blob = new Blob([content], { type: mimeType })
+  const url = window.URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = filename
+  document.body.appendChild(link)
+  try {
+    link.click()
+  } finally {
+    link.remove()
+    window.setTimeout(() => {
+      window.URL.revokeObjectURL(url)
+    }, 0)
+  }
+}
+
+function createExportTimestamp(date = new Date()) {
+  return [
+    date.getFullYear(),
+    String(date.getMonth() + 1).padStart(2, '0'),
+    String(date.getDate()).padStart(2, '0'),
+    '-',
+    String(date.getHours()).padStart(2, '0'),
+    String(date.getMinutes()).padStart(2, '0'),
+    String(date.getSeconds()).padStart(2, '0'),
+  ].join('')
+}
+
+async function runDataExport(entity, rows, format) {
+  const baseRows = enrichInventoryExportRows(entity, rows, {
+    productById: productById.value,
+    zoneById: zoneById.value,
+    customFieldValuesByEntityId: new Map(),
+  })
+  if (!baseRows.length) {
+    $q.notify({ type: 'warning', message: t('inventory.noDataToExport') })
+    return
+  }
+
+  let customFieldValuesByEntityId = new Map()
+  if (entity === 'products' || entity === 'devices') {
+    try {
+      const result = await customFieldsStore.fetchAllValues('product')
+      const raw = result?.values_by_entity_id ?? {}
+      for (const [idStr, vals] of Object.entries(raw)) {
+        customFieldValuesByEntityId.set(Number(idStr), vals)
+      }
+    } catch {
+      // proceed without custom fields if the request fails
+    }
+  }
+
+  const enrichedRows = enrichInventoryExportRows(entity, rows, {
+    productById: productById.value,
+    zoneById: zoneById.value,
+    customFieldValuesByEntityId,
+  })
+
+  const normalizedFormat = String(format || '').toLowerCase()
+  const timestamp = createExportTimestamp()
+  const extension = normalizedFormat === 'json' ? 'json' : 'csv'
+  const filename = `${entity}-${timestamp}.${extension}`
+  const content = normalizedFormat === 'json' ? serializeRowsToJson(enrichedRows) : serializeRowsToCsv(enrichedRows)
+  const mimeType = normalizedFormat === 'json' ? 'application/json;charset=utf-8' : 'text/csv;charset=utf-8'
+  downloadExportFile(content, filename, mimeType)
+}
+
+function exportProducts(format, scope = 'all') {
+  const rows = scope === 'selected' ? selectedProducts.value : filteredProducts.value
+  runDataExport('products', rows, format)
+}
+
+function exportDevices(format, scope = 'all') {
+  const rows = scope === 'selected' ? selectedDevices.value : filteredDevices.value
+  runDataExport('devices', rows, format)
 }
 
 async function openBulkPrintLabels(entity, rowsOrIds) {

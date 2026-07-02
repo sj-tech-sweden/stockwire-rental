@@ -7,6 +7,7 @@ from collections.abc import Callable
 from datetime import datetime
 from http.client import HTTPConnection, HTTPSConnection
 from importlib import metadata
+from typing import Any
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode, urljoin, urlparse
 from urllib.request import Request, build_opener, HTTPRedirectHandler, HTTPHandler, HTTPSHandler, ProxyHandler

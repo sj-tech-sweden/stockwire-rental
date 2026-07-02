@@ -854,6 +854,14 @@ def test_inventory_category_move_and_custom_fields(client):
     assert upsert.status_code == 200
     assert upsert.json()["values"][0]["value"] == "Batch-A"
 
+    # Bulk endpoint returns all values for the entity type keyed by entity_id
+    bulk = client.get("/api/v1/custom-fields/values/bulk?entity_type=product")
+    assert bulk.status_code == 200
+    bulk_data = bulk.json()
+    assert bulk_data["entity_type"] == "product"
+    assert str(product_id) in bulk_data["values_by_entity_id"]
+    assert bulk_data["values_by_entity_id"][str(product_id)]["serial_batch"] == "Batch-A"
+
     cable_prefill = client.post("/api/v1/custom-fields/definitions/prefill-product-cable")
     assert cable_prefill.status_code == 200
     keys = {item["key"] for item in cable_prefill.json()}
@@ -1464,11 +1472,24 @@ def test_scan_operations_and_job_requirement_bulk(client):
     assert outtake.status_code == 200
     assert outtake.json()["job_id"] == job.json()["id"]
 
+    duplicate_outtake = client.post(
+        "/api/v1/inventory/scan/process",
+        json={"scan_code": "SCN-01-001", "action": "job_out", "job_code": "JOB-SCAN-001"},
+    )
+    assert duplicate_outtake.status_code == 409
+    assert duplicate_outtake.json()["detail"] == "Device is already scanned out to job JOB-SCAN-001"
+
     intake = client.post(
         "/api/v1/inventory/scan/process",
         json={"scan_code": "SCN-01-001", "action": "job_in", "job_code": "JOB-SCAN-001"},
     )
     assert intake.status_code == 200
+
+    second_outtake = client.post(
+        "/api/v1/inventory/scan/process",
+        json={"scan_code": "SCN-01-001", "action": "job_out", "job_code": "JOB-SCAN-001"},
+    )
+    assert second_outtake.status_code == 200
 
     bulk_reqs = client.put(
         f"/api/v1/jobs/{job.json()['id']}/requirements/bulk",
@@ -1477,6 +1498,93 @@ def test_scan_operations_and_job_requirement_bulk(client):
     assert bulk_reqs.status_code == 200
     assert len(bulk_reqs.json()) == 1
     assert bulk_reqs.json()[0]["quantity_required"] == 5
+
+
+def test_case_scan_out_marks_contained_device_as_checked_out(client):
+    case_product = client.post(
+        "/api/v1/inventory/products",
+        json={"sku": "SCN-CASE-01", "name": "Scan Case", "status": "active", "product_type": "case"},
+    )
+    assert case_product.status_code == 200
+
+    child_product = client.post(
+        "/api/v1/inventory/products",
+        json={"sku": "SCN-CASE-CHILD-01", "name": "Scan Child", "status": "active", "product_type": "equipment"},
+    )
+    assert child_product.status_code == 200
+
+    case_device = client.post(
+        "/api/v1/inventory/devices",
+        json={
+            "product_id": case_product.json()["id"],
+            "asset_tag": "SCN-CASE-01-001",
+            "barcode": "BC-SCN-CASE-01-001",
+            "status": "available",
+            "condition": "good",
+        },
+    )
+    assert case_device.status_code == 200
+
+    child_device = client.post(
+        "/api/v1/inventory/devices",
+        json={
+            "product_id": child_product.json()["id"],
+            "asset_tag": "SCN-CASE-CHILD-01-001",
+            "barcode": "BC-SCN-CASE-CHILD-01-001",
+            "status": "available",
+            "condition": "good",
+            "case_device_id": case_device.json()["id"],
+        },
+    )
+    assert child_device.status_code == 200
+
+    customer = client.post(
+        "/api/v1/customers",
+        json={"name": "Case Scan Customer", "email": "case-scan@example.com"},
+    )
+    assert customer.status_code == 200
+
+    venue = client.post(
+        "/api/v1/venues",
+        json={"name": "Case Scan Venue", "city": "Stockholm"},
+    )
+    assert venue.status_code == 200
+
+    job = client.post(
+        "/api/v1/jobs",
+        json={
+            "job_code": "JOB-SCAN-CASE-001",
+            "customer_id": customer.json()["id"],
+            "venue_id": venue.json()["id"],
+            "status": "confirmed",
+        },
+    )
+    assert job.status_code == 200
+
+    case_outtake = client.post(
+        "/api/v1/inventory/scan/process",
+        json={"scan_code": "SCN-CASE-01-001", "action": "job_out", "job_code": "JOB-SCAN-CASE-001"},
+    )
+    assert case_outtake.status_code == 200
+
+    duplicate_child_outtake = client.post(
+        "/api/v1/inventory/scan/process",
+        json={"scan_code": "SCN-CASE-CHILD-01-001", "action": "job_out", "job_code": "JOB-SCAN-CASE-001"},
+    )
+    assert duplicate_child_outtake.status_code == 409
+    assert duplicate_child_outtake.json()["detail"] == "Device is already scanned out to job JOB-SCAN-CASE-001"
+
+    case_intake = client.post(
+        "/api/v1/inventory/scan/process",
+        json={"scan_code": "SCN-CASE-01-001", "action": "job_in", "job_code": "JOB-SCAN-CASE-001"},
+    )
+    assert case_intake.status_code == 200
+
+    second_child_outtake = client.post(
+        "/api/v1/inventory/scan/process",
+        json={"scan_code": "SCN-CASE-CHILD-01-001", "action": "job_out", "job_code": "JOB-SCAN-CASE-001"},
+    )
+    assert second_child_outtake.status_code == 200
 
 
 def test_inventory_bulk_delete_locations(client):

@@ -269,7 +269,7 @@ class ProductComponentUpsertRequest(BaseModel):
 
 MAINTENANCE_STATUSES = ["scheduled", "in_progress", "completed", "canceled"]
 MAINTENANCE_INTERVAL_MODES = ["calendar", "runtime"]
-MAINTENANCE_TYPES = ["inspection", "cleaning", "repair", "calibration", "pat_test", "scheduled"]
+MAINTENANCE_TYPES = ["inspection", "cleaning", "repair", "calibration", "pat_test", "scheduled", "modification"]
 DEFECT_STATUSES = ["open", "in_progress", "resolved", "closed"]
 DEFECT_SEVERITIES = ["low", "medium", "high", "critical"]
 
