@@ -509,7 +509,7 @@ export const useInventoryStore = defineStore('inventory', () => {
     }
     const { data } = await api.post('/api/v1/inventory/scan/process', payload)
     await fetchAll()
-    await fetchCheckedOutDevices()
+    await fetchCheckedOutDevices(payload?.job_code || null)
     await fetchAuditLogs(100)
     return data
   }
