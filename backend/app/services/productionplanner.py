@@ -87,13 +87,13 @@ class ProductionPlannerClient:
         email: str = "",
     ) -> Dict[str, Any]:
         payload = {"name": name, "role": role, "email": email}
-        payload = {k: v for k, v in payload.items() if v}
-        response = await self.client.post(f"/projects/{project_id}/team", json=payload)
+        payload = {k: v for k, v in payload.items() if v not in (None, "")}
+        response = await self.client.post(f"projects/{project_id}/team", json=payload)
         return self._handle_response(response)
 
     async def add_task(self, project_id: str, label: str) -> Dict[str, Any]:
         payload = {"label": label}
-        response = await self.client.post(f"/projects/{project_id}/tasks", json=payload)
+        response = await self.client.post(f"projects/{project_id}/tasks", json=payload)
         return self._handle_response(response)
 
     async def add_budget_item(
