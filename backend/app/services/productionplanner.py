@@ -1,7 +1,10 @@
+import logging
 import httpx
 from typing import Optional, List, Dict, Any
 
 from app.config import settings
+
+logger = logging.getLogger(__name__)
 
 
 def batch_task_labels(labels: List[str], max_items: int = 10, max_chars: int = 400) -> List[str]:
@@ -15,6 +18,7 @@ def batch_task_labels(labels: List[str], max_items: int = 10, max_chars: int = 4
         if not label:
             continue
         if len(label) > max_chars:
+            logger.warning("batch_task_labels: label truncated from %d to %d chars", len(label), max_chars)
             label = label[:max_chars]
         next_length = current_length + (len(separator) if current else 0) + len(label)
         if current and (len(current) >= max_items or next_length > max_chars):
