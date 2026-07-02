@@ -1607,8 +1607,8 @@ async function refreshCheckedOutForIntake() {
 }
 
 async function scanSelectedWorkflowDevice(row) {
+  if (workflowActionLoadingProductId.value !== null) return
   const selectedDeviceId = workflowDeviceSelections.value[row.product_id]
-  if (!selectedDeviceId) {
     scanResultMessage.value = t('scan.selectDeviceToAdd')
     scanResultSuccess.value = false
     return
