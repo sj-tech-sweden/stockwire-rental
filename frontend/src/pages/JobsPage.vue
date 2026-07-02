@@ -58,15 +58,18 @@
       <template #body-cell-productionplanner="props">
         <q-td :props="props">
           <div class="row items-center q-gutter-xs">
-            <q-icon
+            <q-btn
               v-if="productionplannerEnabled && props.row.productionplanner_project_id"
-              name="external_link"
+              flat
+              dense
+              round
+              icon="external_link"
               color="positive"
-              class="cursor-pointer"
+              :aria-label="t('jobs.openInProductionPlanner')"
               @click="openProductionPlanner(props.row.productionplanner_project_id)"
             >
               <q-tooltip>{{ t('jobs.openInProductionPlanner') }}</q-tooltip>
-            </q-icon>
+            </q-btn>
             <q-icon v-else name="link_off" color="grey" />
           </div>
         </q-td>

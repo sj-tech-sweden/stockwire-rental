@@ -382,6 +382,8 @@ def update_integrations(
         )
 
     persisted_pp = persisted.get("productionplanner") if isinstance(persisted, dict) else {}
+    if not isinstance(persisted_pp, dict):
+        persisted_pp = {}
     pp_config = payload.productionplanner
     if pp_config is None:
         pp_config = ProductionPlannerConfig(**persisted_pp)
@@ -389,9 +391,10 @@ def update_integrations(
     _validate_url_port(pp_base_url, "ProductionPlanner Base URL")
     _ensure_allowed_integration_host("productionplanner", pp_base_url)
     pp_base_url = _canonicalize_allowed_integration_url("productionplanner", pp_base_url)
+    pp_api_key = str(pp_config.api_key or "").strip() or None
     productionplanner = {
         "enabled": bool(pp_config.enabled),
-        "api_key": pp_config.api_key,
+        "api_key": pp_api_key,
         "base_url": pp_base_url,
     }
 
