@@ -62,7 +62,7 @@ class ProductionPlannerClient:
 
     async def add_date(self, project_id: str, date_str: str, label: str = "") -> Dict[str, Any]:
         payload = {"date": date_str, "label": label}
-        response = await self.client.post(f"/projects/{project_id}/dates", json=payload)
+        response = await self.client.post(f"projects/{project_id}/dates", json=payload)
         return self._handle_response(response)
 
     async def add_schedule_item(
@@ -75,8 +75,8 @@ class ProductionPlannerClient:
         type_: str = "",
     ) -> Dict[str, Any]:
         payload = {"time": time, "duration": duration, "activity": activity, "type": type_}
-        payload = {k: v for k, v in payload.items() if v}
-        response = await self.client.post(f"/projects/{project_id}/schedule/{date_str}", json=payload)
+        payload = {k: v for k, v in payload.items() if v not in (None, "")}
+        response = await self.client.post(f"projects/{project_id}/schedule/{date_str}", json=payload)
         return self._handle_response(response)
 
     async def add_team_member(
