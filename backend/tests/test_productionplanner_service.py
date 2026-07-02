@@ -1,6 +1,11 @@
 import httpx
+import pytest
 
-from app.services.productionplanner import ProductionPlannerClient, batch_task_labels
+from app.services.productionplanner import (
+    ProductionPlannerClient,
+    ProductionPlannerError,
+    batch_task_labels,
+)
 
 
 def test_batch_task_labels_reduces_task_calls():
@@ -27,3 +32,17 @@ def test_handle_response_tolerates_empty_and_non_json_success():
             headers={"content-type": "text/plain"},
         )
     ) == {}
+
+
+def test_handle_response_tolerates_non_object_error_json():
+    client = ProductionPlannerClient(api_key="test-key", base_url="https://api.productionplanner.io/v1")
+    request = httpx.Request("POST", "https://api.productionplanner.io/v1/projects")
+
+    with pytest.raises(ProductionPlannerError, match="rate limited"):
+        client._handle_response(
+            httpx.Response(
+                429,
+                request=request,
+                json="rate limited",
+            )
+        )
