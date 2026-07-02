@@ -2433,10 +2433,15 @@ def process_scan(
                     if req is not None and req.quantity_picked > 0:
                         req.quantity_picked = max(int(req.quantity_picked or 0) - int(decrement), 0)
 
+            return_zone = None
+            if payload.zone_id is not None:
+                return_zone = db.get(Zone, payload.zone_id)
+                if return_zone is None:
+                    raise HTTPException(status_code=404, detail="Return zone not found")
             for target in target_devices:
                 target.status = "available"
-                if payload.zone_id is not None:
-                    target.location_zone_id = payload.zone_id
+                if return_zone is not None:
+                    target.location_zone_id = return_zone.id
             db.flush()
             db.refresh(device)
             affected_count = len(target_devices)

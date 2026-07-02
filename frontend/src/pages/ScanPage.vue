@@ -588,19 +588,17 @@
 
       <q-card class="ec-card q-pa-md" v-if="scanAction === 'job_in'">
         <div class="text-subtitle1 q-mb-sm">{{ t('scan.currentlyCheckedOutDevices', { count: checkedOutDeviceRows.length }) }}</div>
-        <q-select
-          v-model="checkInReturnZoneId"
-          :options="locationSelectOptions"
-          :label="t('scan.returnZone')"
-          outlined
-          dense
-          clearable
-          emit-value
-          map-options
-          use-input
-          input-debounce="300"
+        <q-toggle
+          v-model="scanToLocationMode"
+          :label="t('scan.scanToLocationMode')"
           class="q-mb-sm"
         />
+        <q-banner v-if="pendingLocationForDevice" dense rounded class="bg-orange-1 text-orange-9 q-mb-sm">
+          {{ t('scan.awaitingLocationScan', { assetTag: pendingLocationForDevice.assetTag }) }}
+          <template #action>
+            <q-btn flat dense :label="t('scan.skipLocationScan')" @click="pendingLocationForDevice = null" />
+          </template>
+        </q-banner>
         <div v-if="isTightScreen" class="checked-out-grid">
           <q-card v-for="row in checkedOutDeviceRows" :key="row.id" flat bordered class="checked-out-card">
             <q-card-section class="q-pb-sm">
@@ -747,8 +745,9 @@ const recentMovedDevices = ref([])
 const workflowDeviceSelections = ref({})
 const workflowActionLoadingProductId = ref(null)
 const applyingRouteContext = ref(false)
-const checkInReturnZoneId = ref(null)
 const checkInLoadingDeviceId = ref(null)
+const scanToLocationMode = ref(false)
+const pendingLocationForDevice = ref(null) // { scanCode, assetTag, deviceId } | null
 
 const inputMode = ref('keyboard')
 const scanCodeInputRef = ref(null)
@@ -1498,6 +1497,7 @@ function setActiveJob(job, { showMessage = true } = {}) {
   globalCheckin.value = false
   scanCode.value = ''
   workflowDeviceSelections.value = {}
+  pendingLocationForDevice.value = null
   if (showMessage) {
     scanResultMessage.value = t('scan.jobSelectedScanCodesNow', { jobCode: job.job_code, item: itemLabel })
     scanResultSuccess.value = true
@@ -1564,6 +1564,7 @@ function onActionChanged() {
   scanResultMessage.value = ''
   scanResultSuccess.value = false
   workflowDeviceSelections.value = {}
+  pendingLocationForDevice.value = null
   scanJobCode.value = ''
   scanJobId.value = null
   globalCheckin.value = false
@@ -1707,6 +1708,16 @@ async function scanSelectedWorkflowDevice(row) {
   }
 }
 
+function maybeSetPendingLocation(response, scanCodeValue, assetTagFallback) {
+  if (response.success && scanToLocationMode.value && Number(response.device_id || 0) > 0) {
+    pendingLocationForDevice.value = {
+      scanCode: scanCodeValue,
+      assetTag: assetTagFallback || scanCodeValue,
+      deviceId: response.device_id,
+    }
+  }
+}
+
 async function checkInCheckedOutDevice(row) {
   if (checkInLoadingDeviceId.value !== null) return
   const scanCodeValue = resolveDeviceScanCode(row)
@@ -1724,16 +1735,10 @@ async function checkInCheckedOutDevice(row) {
       scan_code: scanCodeValue,
       action: 'job_in',
       job_code: jobCode || null,
-      zone_id: checkInReturnZoneId.value || null,
     })
     lastIntakeResult.value = response.success && Number(response.device_id || 0) > 0 ? response : null
-    const jobCodeForRefresh = jobCode || selectedOrTypedJobCode()
-    await Promise.all([
-      jobsStore.fetchAll(),
-      jobCodeForRefresh
-        ? store.fetchCheckedOutDevices(jobCodeForRefresh)
-        : store.fetchCheckedOutDevices(),
-    ])
+    maybeSetPendingLocation(response, scanCodeValue, row.asset_tag)
+    await jobsStore.fetchAll()
     scanResultMessage.value = response.message || t('scan.scanProcessed')
     scanResultSuccess.value = !!response.success
   } catch (error) {
@@ -1775,6 +1780,42 @@ async function scheduleMaintenanceFromLookup() {
 async function runScanAction() {
   if (saving.value) return
   const code = String(scanCode.value || '').trim()
+
+  // Intercept: if waiting for a location scan after a job_in check-in, match against zone barcodes
+  if (pendingLocationForDevice.value && code) {
+    const zone = (store.zones || []).find(z => z.barcode && z.barcode === code)
+    if (!zone) {
+      scanResultMessage.value = t('scan.locationScanNotFound')
+      scanResultSuccess.value = false
+      scanCode.value = ''
+      focusScanCodeInput()
+      return
+    }
+    saving.value = true
+    scanResultMessage.value = ''
+    try {
+      await store.processScan({
+        scan_code: pendingLocationForDevice.value.scanCode,
+        action: 'move',
+        zone_id: zone.id,
+      })
+      const jobCode = activeJobCode.value || selectedOrTypedJobCode()
+      if (jobCode) {
+        await store.fetchCheckedOutDevices(jobCode)
+      }
+      scanResultMessage.value = t('scan.deviceMovedToZone', { zone: zone.name })
+      scanResultSuccess.value = true
+    } catch (error) {
+      scanResultMessage.value = error?.response?.data?.detail || t('scan.scanFailed')
+      scanResultSuccess.value = false
+    } finally {
+      pendingLocationForDevice.value = null
+      saving.value = false
+      scanCode.value = ''
+      focusScanCodeInput()
+    }
+    return
+  }
 
   if (scanAction.value === 'move' && !moveDestinationReady.value) {
     const destinationCode = String(scanZoneCode.value || code || '').trim()
@@ -1920,6 +1961,7 @@ async function runScanAction() {
     }
     if (scanAction.value === 'job_in') {
       lastIntakeResult.value = response.success && Number(response.device_id || 0) > 0 ? response : null
+      maybeSetPendingLocation(response, code, response.asset_tag)
     }
     if (scanAction.value === 'job_out' || scanAction.value === 'rental_job_out' || scanAction.value === 'job_in' || scanAction.value === 'rental_job_in') {
       await jobsStore.fetchAll()
