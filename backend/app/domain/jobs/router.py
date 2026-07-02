@@ -325,16 +325,17 @@ def sync_job_to_productionplanner(
 
     try:
         result = anyio.run(_sync_job_to_productionplanner, job, db)
-        record_activity(
-            db,
-            user_id=current_user.id,
-            entity_type="job",
-            entity_id=job.id,
-            action="sync_productionplanner",
-            message_format="job_synced_productionplanner",
-            message_params={"jobCode": job.job_code},
-            details={"productionplanner_project_id": result.productionplanner_project_id},
-        )
+        if result.success:
+            record_activity(
+                db,
+                user_id=current_user.id,
+                entity_type="job",
+                entity_id=job.id,
+                action="sync_productionplanner",
+                message_format="job_synced_productionplanner",
+                message_params={"jobCode": job.job_code},
+                details={"productionplanner_project_id": result.productionplanner_project_id},
+            )
         return result
     except ProductionPlannerError as e:
         raise HTTPException(status_code=e.status_code, detail=e.message)

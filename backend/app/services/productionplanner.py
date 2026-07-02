@@ -79,32 +79,33 @@ class ProductionPlannerClient:
         except ValueError:
             return {}
 
-    async def get_info(self) -> Dict[str, Any]:
-        response = await self.client.get("info")
+    async def _request(self, method: str, path: str, **kwargs: Any) -> Dict[str, Any]:
+        try:
+            response = await self.client.request(method, path, **kwargs)
+        except httpx.HTTPError as exc:
+            raise ProductionPlannerError(f"Failed to communicate with ProductionPlanner: {exc}", 502) from exc
         return self._handle_response(response)
 
+    async def get_info(self) -> Dict[str, Any]:
+        return await self._request("GET", "info")
+
     async def list_projects(self) -> List[Dict[str, Any]]:
-        response = await self.client.get("projects")
-        data = self._handle_response(response)
+        data = await self._request("GET", "projects")
         return data.get("data", [])
 
     async def create_project(self, name: str, description: str = "", timezone: str = "UTC") -> Dict[str, Any]:
         payload = {"name": name, "description": description, "timezone": timezone}
-        response = await self.client.post("projects", json=payload)
-        return self._handle_response(response)
+        return await self._request("POST", "projects", json=payload)
 
     async def get_project(self, project_id: str) -> Dict[str, Any]:
-        response = await self.client.get(f"projects/{project_id}")
-        return self._handle_response(response)
+        return await self._request("GET", f"projects/{project_id}")
 
     async def update_project(self, project_id: str, **kwargs) -> Dict[str, Any]:
-        response = await self.client.patch(f"projects/{project_id}", json=kwargs)
-        return self._handle_response(response)
+        return await self._request("PATCH", f"projects/{project_id}", json=kwargs)
 
     async def add_date(self, project_id: str, date_str: str, label: str = "") -> Dict[str, Any]:
         payload = {"date": date_str, "label": label}
-        response = await self.client.post(f"projects/{project_id}/dates", json=payload)
-        return self._handle_response(response)
+        return await self._request("POST", f"projects/{project_id}/dates", json=payload)
 
     async def add_schedule_item(
         self,
@@ -117,8 +118,7 @@ class ProductionPlannerClient:
     ) -> Dict[str, Any]:
         payload = {"time": time, "duration": duration, "activity": activity, "type": type_}
         payload = {k: v for k, v in payload.items() if v not in (None, "")}
-        response = await self.client.post(f"projects/{project_id}/schedule/{date_str}", json=payload)
-        return self._handle_response(response)
+        return await self._request("POST", f"projects/{project_id}/schedule/{date_str}", json=payload)
 
     async def add_team_member(
         self,
@@ -129,13 +129,11 @@ class ProductionPlannerClient:
     ) -> Dict[str, Any]:
         payload = {"name": name, "role": role, "email": email}
         payload = {k: v for k, v in payload.items() if v not in (None, "")}
-        response = await self.client.post(f"projects/{project_id}/team", json=payload)
-        return self._handle_response(response)
+        return await self._request("POST", f"projects/{project_id}/team", json=payload)
 
     async def add_task(self, project_id: str, label: str) -> Dict[str, Any]:
         payload = {"label": label}
-        response = await self.client.post(f"projects/{project_id}/tasks", json=payload)
-        return self._handle_response(response)
+        return await self._request("POST", f"projects/{project_id}/tasks", json=payload)
 
     async def add_budget_item(
         self,
@@ -153,8 +151,7 @@ class ProductionPlannerClient:
             "estimatedCost": estimated_cost,
             "actualCost": actual_cost,
         }
-        response = await self.client.post(f"projects/{project_id}/budget", json=payload)
-        return self._handle_response(response)
+        return await self._request("POST", f"projects/{project_id}/budget", json=payload)
 
     async def add_location(
         self,
@@ -165,8 +162,7 @@ class ProductionPlannerClient:
     ) -> Dict[str, Any]:
         payload = {"name": name, "type": type_, "details": details}
         payload = {k: v for k, v in payload.items() if v not in (None, "")}
-        response = await self.client.post(f"projects/{project_id}/locations", json=payload)
-        return self._handle_response(response)
+        return await self._request("POST", f"projects/{project_id}/locations", json=payload)
 
     async def add_resource_link(
         self,
@@ -178,8 +174,7 @@ class ProductionPlannerClient:
         payload = {"name": name, "url": url}
         if folder_id:
             payload["folderId"] = folder_id
-        response = await self.client.post(f"projects/{project_id}/resources/link", json=payload)
-        return self._handle_response(response)
+        return await self._request("POST", f"projects/{project_id}/resources/link", json=payload)
 
 
 class ProductionPlannerError(Exception):

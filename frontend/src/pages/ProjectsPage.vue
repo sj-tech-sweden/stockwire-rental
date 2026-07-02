@@ -320,7 +320,11 @@ function navigateToJobs(project) {
 
 async function syncToProductionPlanner(project) {
   try {
-    await projectsStore.syncProjectToProductionPlanner(project.id)
+    const result = await projectsStore.syncProjectToProductionPlanner(project.id)
+    if (result?.success !== true) {
+      console.error('ProductionPlanner sync failed:', result?.message || 'Unknown error')
+      return
+    }
     await projectsStore.fetchAll()
   } catch (error) {
     console.error('Failed to sync to ProductionPlanner:', error)
