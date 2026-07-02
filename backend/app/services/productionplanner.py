@@ -112,7 +112,7 @@ class ProductionPlannerClient:
             "estimatedCost": estimated_cost,
             "actualCost": actual_cost,
         }
-        response = await self.client.post(f"/projects/{project_id}/budget", json=payload)
+        response = await self.client.post(f"projects/{project_id}/budget", json=payload)
         return self._handle_response(response)
 
     async def add_location(
