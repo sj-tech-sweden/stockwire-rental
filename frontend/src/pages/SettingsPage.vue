@@ -919,6 +919,61 @@
             </div>
           </div>
 
+          <q-separator class="q-my-md" />
+
+          <div class="row items-center justify-between q-mb-sm">
+            <div class="text-subtitle2">{{ t('settings.integrations.productionplanner.title') }}</div>
+            <q-toggle
+              v-model="integrationsDraft.productionplanner.enabled"
+              :label="t('settings.integrations.productionplanner.enabled')"
+              color="primary"
+            />
+          </div>
+          <div class="text-caption text-grey-7 q-mb-sm">{{ t('settings.integrations.productionplanner.description') }}</div>
+
+          <div v-if="integrationsDraft.productionplanner.enabled" class="q-pa-sm q-mb-sm" style="border: 1px solid #d7dee6; border-radius: 10px">
+            <div class="row q-col-gutter-sm q-mb-sm">
+              <div class="col-12 col-md-6">
+                <q-input
+                  v-model="integrationsDraft.productionplanner.api_key"
+                  :label="t('settings.integrations.productionplanner.apiKey')"
+                  :placeholder="t('settings.integrations.productionplanner.apiKeyPlaceholder')"
+                  :hint="t('settings.integrations.productionplanner.apiKeyHint')"
+                  outlined
+                  dense
+                  type="password"
+                />
+              </div>
+              <div class="col-12 col-md-6">
+                <q-input
+                  v-model="integrationsDraft.productionplanner.base_url"
+                  :label="t('settings.integrations.productionplanner.baseUrl')"
+                  :placeholder="t('settings.integrations.productionplanner.baseUrlDefault')"
+                  outlined
+                  dense
+                />
+              </div>
+            </div>
+            <div class="row items-center q-gutter-sm">
+              <q-btn
+                color="secondary"
+                icon="wifi_tethering"
+                :label="t('settings.integrations.productionplanner.connectionTest')"
+                unelevated
+                :loading="isIntegrationTesting('productionplanner', 'productionplanner')"
+                @click="testIntegration('productionplanner', integrationsDraft.productionplanner, 'productionplanner')"
+              />
+              <q-badge
+                v-if="integrationResult('productionplanner', 'productionplanner')"
+                :color="integrationResult('productionplanner', 'productionplanner').ok ? 'positive' : 'negative'"
+                :label="integrationResult('productionplanner', 'productionplanner').ok ? t('settings.integrations.productionplanner.connected') : t('settings.integrations.productionplanner.failed')"
+              />
+              <span v-if="integrationResult('productionplanner', 'productionplanner')" class="text-caption text-grey-7">
+                {{ integrationResult('productionplanner', 'productionplanner').message }}
+              </span>
+            </div>
+          </div>
+
           <q-btn color="positive" :label="t('settings.integrations.save')" unelevated :loading="integrationsSaving" @click="saveIntegrations" />
         </q-card>
       </q-tab-panel>
@@ -1422,6 +1477,7 @@ const manufacturerLinksDraft = ref({ ...DEFAULT_MANUFACTURER_LINKS })
 const categoryPrefillDraftText = ref('')
 const integrationsDraft = ref({
   eventory_instances: DEFAULT_INTEGRATIONS.eventory_instances.map(instance => ({ ...instance })),
+  productionplanner: { ...DEFAULT_INTEGRATIONS.productionplanner },
 })
 const authSsoDraft = ref({ ...DEFAULT_AUTH_SSO_SETTINGS })
 const authSsoValidationError = ref('')
@@ -1546,9 +1602,11 @@ function filterCompanyCurrencyOptions(val, update) {
 const integrationsSaving = ref(false)
 const integrationTesting = ref({
   eventoryInstances: {},
+  productionplanner: false,
 })
 const integrationTestResults = ref({
   eventoryInstances: {},
+  productionplanner: null,
 })
 const eventoryPreviewLoading = ref({})
 const eventoryPreviewResults = ref({})
@@ -2377,14 +2435,21 @@ async function saveIntegrations(options = {}) {
     }
   })
 
+  const productionplanner = integrationsDraft.value.productionplanner ? {
+    enabled: Boolean(integrationsDraft.value.productionplanner.enabled),
+    api_key: String(integrationsDraft.value.productionplanner.api_key || ''),
+    base_url: String(integrationsDraft.value.productionplanner.base_url || 'https://api.productionplanner.io/v1'),
+  } : { ...DEFAULT_INTEGRATIONS.productionplanner }
+
   integrationsSaving.value = true
   try {
     const saved = await settingsStore.updateIntegrations({
-      ...integrationsDraft.value,
       eventory_instances: normalizedInstances.length ? normalizedInstances : [{ ...DEFAULT_INTEGRATIONS.eventory_instances[0] }],
+      productionplanner,
     })
     integrationsDraft.value = {
       eventory_instances: withEventoryDraftMeta((saved.eventory_instances || DEFAULT_INTEGRATIONS.eventory_instances).map(instance => ({ ...instance }))),
+      productionplanner: saved.productionplanner || { ...DEFAULT_INTEGRATIONS.productionplanner },
     }
     if (!silent) {
       $q.notify({ type: 'positive', message: t('settings.integrations.updated') })
@@ -3061,6 +3126,7 @@ onMounted(async () => {
     categoryPrefillDraftText.value = categoryPathsToText(settingsStore.categoryPrefillPaths)
     integrationsDraft.value = {
       eventory_instances: withEventoryDraftMeta((settingsStore.integrations?.eventory_instances || DEFAULT_INTEGRATIONS.eventory_instances).map(instance => ({ ...instance }))),
+      productionplanner: settingsStore.integrations?.productionplanner ? { ...settingsStore.integrations.productionplanner } : { ...DEFAULT_INTEGRATIONS.productionplanner },
     }
     applyAuthSsoDraft(settingsStore.authSsoSettings)
     applySmtpDraft(settingsStore.smtpSettings)
