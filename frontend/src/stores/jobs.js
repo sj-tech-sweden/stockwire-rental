@@ -180,8 +180,8 @@ export const useJobsStore = defineStore('jobs', () => {
     return data
   }
 
-  function getProductionPlannerUrl(projectId) {
-    return `https://app.productionplanner.io/projects/${projectId}`
+  function getProductionPlannerUrl(productionPlannerProjectId) {
+    return `https://app.productionplanner.io/projects/${productionPlannerProjectId}`
   }
 
   return {
