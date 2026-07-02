@@ -336,6 +336,7 @@ async function loadData() {
       customersStore.fetchAll(),
       venuesStore.fetchAll(),
       inventoryStore.fetchAll(),
+      settingsStore.fetchIntegrations(),
       settingsStore.fetchCompanyProfile(),
       projectsStore.fetchAll(),
     ])

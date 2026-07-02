@@ -396,7 +396,9 @@ def update_integrations(
         )
     _ensure_allowed_integration_host("productionplanner", pp_base_url)
     pp_base_url = _canonicalize_allowed_integration_url("productionplanner", pp_base_url)
-    pp_api_key = str(pp_config.api_key or "").strip() or None
+    incoming_pp_api_key = str(pp_config.api_key or "").strip() or None
+    persisted_pp_api_key = str(persisted_pp.get("api_key") or "").strip() or None
+    pp_api_key = incoming_pp_api_key if incoming_pp_api_key is not None else persisted_pp_api_key
     productionplanner = {
         "enabled": bool(pp_config.enabled),
         "api_key": pp_api_key,
@@ -870,12 +872,18 @@ def test_integration_connection(
         instances = persisted.get("eventory_instances") if isinstance(persisted, dict) else []
         if isinstance(instances, list) and instances:
             persisted_config = instances[0]
+    elif plugin_key == "productionplanner":
+        persisted_pp = persisted.get("productionplanner") if isinstance(persisted, dict) else {}
+        if isinstance(persisted_pp, dict):
+            persisted_config = persisted_pp
 
     incoming_config = payload.config or IntegrationPluginConfig(**persisted_config)
     normalized = _normalize_plugin_config(incoming_config)
 
     api_url = str(normalized.get("api_url") or "").strip()
     api_key = str(normalized.get("api_key") or "").strip()
+    if plugin_key == "productionplanner" and not api_key:
+        api_key = str(persisted_config.get("api_key") or "").strip()
 
     if not api_url:
         return IntegrationConnectionTestRead(
