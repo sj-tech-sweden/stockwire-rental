@@ -301,7 +301,7 @@ async function syncToProductionPlanner(project) {
 
 function openProductionPlanner(projectId) {
   if (projectId) {
-    window.open(projectsStore.getProductionPlannerUrl(projectId), '_blank')
+    window.open(projectsStore.getProductionPlannerUrl(projectId), '_blank', 'noopener,noreferrer')
   }
 }
 

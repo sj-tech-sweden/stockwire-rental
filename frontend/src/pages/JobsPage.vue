@@ -427,7 +427,7 @@ async function syncToProductionPlanner(job) {
 
 function openProductionPlanner(projectId) {
   if (projectId) {
-    window.open(jobsStore.getProductionPlannerUrl(projectId), '_blank')
+    window.open(jobsStore.getProductionPlannerUrl(projectId), '_blank', 'noopener,noreferrer')
   }
 }
 

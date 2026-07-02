@@ -385,10 +385,20 @@ def update_integrations(
     pp_config = payload.productionplanner
     if pp_config is None:
         pp_config = ProductionPlannerConfig(**persisted_pp)
+    pp_base_url = str(pp_config.base_url or "https://api.productionplanner.io/v1").strip()
+    _validate_url_port(pp_base_url, "ProductionPlanner Base URL")
+    parsed_pp_url = urlparse(pp_base_url)
+    if pp_base_url and parsed_pp_url.hostname:
+        pp_hostname = parsed_pp_url.hostname.lower()
+        pp_allowed_hosts = INTEGRATION_ALLOWED_HOSTS.get("productionplanner", set())
+        if pp_allowed_hosts and pp_hostname not in pp_allowed_hosts:
+            raise HTTPException(status_code=422, detail="ProductionPlanner Base URL host is not allowed")
+        if parsed_pp_url.scheme not in {"http", "https"}:
+            raise HTTPException(status_code=422, detail="ProductionPlanner Base URL must use http or https")
     productionplanner = {
         "enabled": bool(pp_config.enabled),
         "api_key": pp_config.api_key,
-        "base_url": pp_config.base_url or "https://api.productionplanner.io/v1",
+        "base_url": pp_base_url,
     }
 
     data = {
