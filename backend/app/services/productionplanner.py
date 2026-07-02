@@ -123,8 +123,8 @@ class ProductionPlannerClient:
         details: str = "",
     ) -> Dict[str, Any]:
         payload = {"name": name, "type": type_, "details": details}
-        payload = {k: v for k, v in payload.items() if v}
-        response = await self.client.post(f"/projects/{project_id}/locations", json=payload)
+        payload = {k: v for k, v in payload.items() if v not in (None, "")}
+        response = await self.client.post(f"projects/{project_id}/locations", json=payload)
         return self._handle_response(response)
 
     async def add_resource_link(
@@ -137,7 +137,7 @@ class ProductionPlannerClient:
         payload = {"name": name, "url": url}
         if folder_id:
             payload["folderId"] = folder_id
-        response = await self.client.post(f"/projects/{project_id}/resources/link", json=payload)
+        response = await self.client.post(f"projects/{project_id}/resources/link", json=payload)
         return self._handle_response(response)
 
 
