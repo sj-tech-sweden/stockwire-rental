@@ -1491,6 +1491,18 @@ def test_scan_operations_and_job_requirement_bulk(client):
     )
     assert second_outtake.status_code == 200
 
+    invalid_zone_intake = client.post(
+        "/api/v1/inventory/scan/process",
+        json={"scan_code": "SCN-01-001", "action": "job_in", "job_code": "JOB-SCAN-001", "zone_id": 999999},
+    )
+    assert invalid_zone_intake.status_code == 404
+    assert invalid_zone_intake.json()["detail"] == "Zone not found"
+
+    device_after_invalid_intake = client.get(f"/api/v1/inventory/devices/{device.json()['id']}")
+    assert device_after_invalid_intake.status_code == 200
+    assert device_after_invalid_intake.json()["status"] == "in_use"
+    assert device_after_invalid_intake.json()["current_job_id"] == job.json()["id"]
+
     bulk_reqs = client.put(
         f"/api/v1/jobs/{job.json()['id']}/requirements/bulk",
         json={"items": [{"product_id": product_id, "quantity_required": 5, "quantity_picked": 1}]},

@@ -1459,9 +1459,9 @@ async function loadData() {
     await Promise.all([
       store.fetchAll(),
       jobsStore.fetchAll(),
-      store.fetchCheckedOutDevices(),
       store.fetchAuditLogs(200),
     ])
+    await refreshCheckedOutForIntake()
   } catch (error) {
     if (error?.response?.status === 401) {
       scanResultMessage.value = t('scan.sessionExpiredRedirecting')

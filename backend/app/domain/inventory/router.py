@@ -2437,7 +2437,7 @@ def process_scan(
             if payload.zone_id is not None:
                 return_zone = db.get(Zone, payload.zone_id)
                 if return_zone is None:
-                    raise HTTPException(status_code=404, detail="Return zone not found")
+                    raise HTTPException(status_code=404, detail="Zone not found")
             for target in target_devices:
                 target.status = "available"
                 if return_zone is not None:
