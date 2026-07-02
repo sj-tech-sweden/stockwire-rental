@@ -1294,7 +1294,7 @@ const workflowRequirements = computed(() => {
       quantity_picked: picked,
       checked_out: checkedOut,
       available,
-    }, { mode: workflowIntakeMode.value ? scanAction.value : null })
+    }, { mode: scanAction.value })
   })
 })
 
