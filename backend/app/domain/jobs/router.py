@@ -201,12 +201,14 @@ def _prepare_job_payload(data: dict, db: Session) -> dict:
     return prepared
 
 
-async def _get_productionplanner_client(db: Session) -> ProductionPlannerClient:
+async def _get_productionplanner_client(db: Session) -> ProductionPlannerClient | None:
     """Get ProductionPlanner client configured from database settings."""
     from app.domain.settings.router import _get_or_create_setting, DEFAULT_INTEGRATIONS
     setting = _get_or_create_setting(db, INTEGRATIONS_KEY, DEFAULT_INTEGRATIONS)
     parsed = _parse_integrations(setting.value_json)
-    pp_config = parsed.get("productionplanner", {})
+    pp_config = parsed.get("productionplanner", {}) if isinstance(parsed, dict) else {}
+    if not pp_config.get("enabled"):
+        return None
     api_key = pp_config.get("api_key") or settings.productionplanner_api_key
     base_url = pp_config.get("base_url") or settings.productionplanner_base_url
     return ProductionPlannerClient(api_key=api_key, base_url=base_url)
@@ -215,12 +217,16 @@ async def _get_productionplanner_client(db: Session) -> ProductionPlannerClient:
 async def _sync_job_to_productionplanner(job: Job, db: Session) -> ProductionPlannerSyncResponse:
     """Sync a job to ProductionPlanner as a project."""
     client = await _get_productionplanner_client(db)
+    if client is None:
+        return ProductionPlannerSyncResponse(
+            success=False,
+            message="ProductionPlanner integration is disabled",
+        )
     if not client.api_key:
         return ProductionPlannerSyncResponse(
             success=False,
             message="ProductionPlanner API key not configured",
         )
-
     project_name = f"{job.job_code} - {job.customer_name or job.venue_name or 'Job'}"
     description_parts = []
     if job.description:
