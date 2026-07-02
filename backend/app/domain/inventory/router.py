@@ -2422,7 +2422,7 @@ def process_scan(
             if payload.zone_id is not None:
                 return_zone = db.get(Zone, payload.zone_id)
                 if return_zone is None:
-                    raise HTTPException(status_code=404, detail="Zone not found")
+                    raise HTTPException(status_code=404, detail="Location not found")
 
             if job is not None:
                 decremented_by_product: dict[int, int] = defaultdict(int)

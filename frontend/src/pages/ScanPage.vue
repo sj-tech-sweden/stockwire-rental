@@ -1639,8 +1639,7 @@ async function refreshCheckedOutForIntake() {
       await store.fetchCheckedOutDevices(jobCode)
       return
     }
-    // Show all checked-out devices before a job is selected so the operator
-    // can identify which job a device belongs to.
+    // Show all checked-out devices before a job is selected in global check-in mode.
     await store.fetchCheckedOutDevices()
     return
   }
@@ -1698,6 +1697,7 @@ async function scanSelectedWorkflowDevice(row) {
     })
     if (scanAction.value === 'job_in') {
       lastIntakeResult.value = response.success && Number(response.device_id || 0) > 0 ? response : null
+      maybeSetPendingLocation(response, scanCodeValue, selectedOption?.label || selectedOption?.asset_tag)
     }
     await jobsStore.fetchAll()
     scanResultMessage.value = response.message || t('scan.scanProcessed')
@@ -1731,6 +1731,11 @@ async function checkInCheckedOutDevice(row) {
     return
   }
   const jobCode = activeJobCode.value || selectedOrTypedJobCode()
+  if (!globalCheckin.value && !jobCode) {
+    scanResultMessage.value = t('scan.selectValidJobForIntakeOrGlobal')
+    scanResultSuccess.value = false
+    return
+  }
   checkInLoadingDeviceId.value = row.id
   scanResultMessage.value = ''
   scanResultSuccess.value = false

@@ -1496,7 +1496,7 @@ def test_scan_operations_and_job_requirement_bulk(client):
         json={"scan_code": "SCN-01-001", "action": "job_in", "job_code": "JOB-SCAN-001", "zone_id": 999999},
     )
     assert invalid_zone_intake.status_code == 404
-    assert invalid_zone_intake.json()["detail"] == "Zone not found"
+    assert invalid_zone_intake.json()["detail"] == "Location not found"
 
     device_after_invalid_intake = client.get(f"/api/v1/inventory/devices/{device.json()['id']}")
     assert device_after_invalid_intake.status_code == 200
