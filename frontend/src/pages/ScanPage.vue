@@ -1697,7 +1697,7 @@ async function scanSelectedWorkflowDevice(row) {
     })
     if (scanAction.value === 'job_in') {
       lastIntakeResult.value = response.success && Number(response.device_id || 0) > 0 ? response : null
-      maybeSetPendingLocation(response, scanCodeValue, response.asset_tag || selectedOption?.asset_tag)
+      maybeSetPendingLocation(response, scanCodeValue, response.asset_tag || selectedOption?.asset_tag || scanCodeValue)
     }
     await jobsStore.fetchAll()
     scanResultMessage.value = response.message || t('scan.scanProcessed')
