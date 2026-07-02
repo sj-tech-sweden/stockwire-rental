@@ -59,7 +59,7 @@
         <q-td :props="props">
           <div class="row items-center q-gutter-xs">
             <q-icon
-              v-if="props.row.productionplanner_project_id"
+              v-if="productionplannerEnabled && props.row.productionplanner_project_id"
               name="external_link"
               color="positive"
               class="cursor-pointer"
@@ -108,8 +108,29 @@
       <template #body-cell-actions="props">
         <q-td v-if="authStore.canEdit" :props="props" auto-width>
           <q-btn flat round dense icon="edit" color="primary" class="q-mr-xs" @click="openEdit(props.row)" />
-          <q-btn flat round dense icon="sync" color="info" class="q-mr-xs" @click="syncToProductionPlanner(props.row)" :label="t('jobs.syncToPP')" :disable="jobsStore.loading" />
-          <q-btn flat round dense icon="external_link" color="primary" class="q-mr-xs" @click="openProductionPlanner(props.row.productionplanner_project_id)" :disable="!props.row.productionplanner_project_id" :label="t('jobs.openInPP')" />
+          <q-btn
+            v-if="productionplannerEnabled"
+            flat
+            round
+            dense
+            icon="sync"
+            color="info"
+            class="q-mr-xs"
+            @click="syncToProductionPlanner(props.row)"
+            :label="t('jobs.syncToPP')"
+            :disable="jobsStore.loading"
+          />
+          <q-btn
+            v-if="productionplannerEnabled && props.row.productionplanner_project_id"
+            flat
+            round
+            dense
+            icon="external_link"
+            color="primary"
+            class="q-mr-xs"
+            @click="openProductionPlanner(props.row.productionplanner_project_id)"
+            :label="t('jobs.openInPP')"
+          />
           <q-btn flat round dense icon="delete" color="negative" @click="confirmDelete(props.row)" />
         </q-td>
       </template>
@@ -207,6 +228,8 @@ const dialogOpen = ref(false)
 const editing = ref(null)
 const deleteDialogOpen = ref(false)
 const deleteTarget = ref(null)
+
+const productionplannerEnabled = computed(() => settingsStore.integrations?.productionplanner?.enabled === true)
 
 const statusFilters = computed(() => JOB_STATUSES.map(status => ({
   ...status,

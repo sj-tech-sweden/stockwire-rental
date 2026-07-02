@@ -74,6 +74,7 @@ router = APIRouter(prefix="/settings", tags=["settings"], dependencies=[Depends(
 ALLOWED_OUTBOUND_INTEGRATION_HOSTS = {
     "api.eventory.se",
     "api.eventory.cc",
+    "api.productionplanner.io",
 }
 
 LOCATION_TYPES_KEY = "inventory.location_types"
@@ -1618,6 +1619,7 @@ def _normalize_eventory_instance(config: EventoryInstanceConfig) -> dict[str, ob
 
 INTEGRATION_ALLOWED_HOSTS: dict[str, set[str]] = {
     "eventory": {"api.eventory.se", "api.eventory.cc"},
+    "productionplanner": {"api.productionplanner.io"},
 }
 
 
