@@ -2091,6 +2091,40 @@ def test_get_job_productionplanner_info_synced(client):
     assert "Test Project" in data["message"]
 
 
+def test_get_job_productionplanner_info_disabled_integration(client):
+    from unittest.mock import AsyncMock, patch as mock_patch
+
+    job = client.post(
+        "/api/v1/jobs",
+        json={"job_code": "PP-TEST-05", "status": "draft"},
+    )
+    assert job.status_code == 200
+    job_id = job.json()["id"]
+
+    mock_create_client = AsyncMock()
+    mock_create_client.__aenter__ = AsyncMock(return_value=mock_create_client)
+    mock_create_client.__aexit__ = AsyncMock(return_value=False)
+    mock_create_client.api_key = "test-api-key"
+    mock_create_client.create_project = AsyncMock(return_value={"data": {"id": "pp-disabled-001"}})
+
+    with mock_patch(
+        "app.domain.jobs.router._get_productionplanner_client",
+        return_value=mock_create_client,
+    ):
+        client.post(f"/api/v1/jobs/{job_id}/sync-productionplanner")
+
+    with mock_patch(
+        "app.domain.jobs.router._get_productionplanner_client",
+        return_value=None,
+    ):
+        result = client.get(f"/api/v1/jobs/{job_id}/productionplanner")
+    assert result.status_code == 200
+    data = result.json()
+    assert data["success"] is False
+    assert "disabled" in data["message"].lower()
+    assert data["productionplanner_project_id"] == "pp-disabled-001"
+
+
 def test_sync_project_to_productionplanner(client):
     from unittest.mock import AsyncMock, patch as mock_patch
 
@@ -2189,3 +2223,37 @@ def test_get_project_productionplanner_info_synced(client):
     assert data["success"] is True
     assert data["productionplanner_project_id"] == "pp-project-info-456"
     assert "Project Test" in data["message"]
+
+
+def test_get_project_productionplanner_info_disabled_integration(client):
+    from unittest.mock import AsyncMock, patch as mock_patch
+
+    project = client.post(
+        "/api/v1/projects",
+        json={"name": "PP Project Test 04", "status": "active"},
+    )
+    assert project.status_code == 200
+    project_id = project.json()["id"]
+
+    mock_create_client = AsyncMock()
+    mock_create_client.__aenter__ = AsyncMock(return_value=mock_create_client)
+    mock_create_client.__aexit__ = AsyncMock(return_value=False)
+    mock_create_client.api_key = "test-api-key"
+    mock_create_client.create_project = AsyncMock(return_value={"data": {"id": "pp-project-disabled-001"}})
+
+    with mock_patch(
+        "app.domain.projects.router._get_productionplanner_client",
+        return_value=mock_create_client,
+    ):
+        client.post(f"/api/v1/projects/{project_id}/sync-productionplanner")
+
+    with mock_patch(
+        "app.domain.projects.router._get_productionplanner_client",
+        return_value=None,
+    ):
+        result = client.get(f"/api/v1/projects/{project_id}/productionplanner")
+    assert result.status_code == 200
+    data = result.json()
+    assert data["success"] is False
+    assert "disabled" in data["message"].lower()
+    assert data["productionplanner_project_id"] == "pp-project-disabled-001"

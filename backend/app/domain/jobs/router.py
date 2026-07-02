@@ -346,13 +346,23 @@ def get_job_productionplanner_info(
             message="Job not yet synced to ProductionPlanner",
         )
 
+    pp_project_id = job.productionplanner_project_id
+    pp_project_url = f"https://app.productionplanner.io/projects/{pp_project_id}" if pp_project_id else None
+
     client = anyio.run(_get_productionplanner_client, db)
+    if client is None:
+        return ProductionPlannerSyncResponse(
+            success=False,
+            message="ProductionPlanner integration is disabled",
+            productionplanner_project_id=pp_project_id,
+            productionplanner_url=pp_project_url,
+        )
     if not client.api_key:
         return ProductionPlannerSyncResponse(
             success=False,
             message="ProductionPlanner API key not configured",
-            productionplanner_project_id=job.productionplanner_project_id,
-            productionplanner_url=f"https://app.productionplanner.io/projects/{job.productionplanner_project_id}",
+            productionplanner_project_id=pp_project_id,
+            productionplanner_url=pp_project_url,
         )
 
     async def _fetch_job_project_info() -> ProductionPlannerSyncResponse:
@@ -363,15 +373,15 @@ def get_job_productionplanner_info(
                 return ProductionPlannerSyncResponse(
                     success=True,
                     message=f"Project: {data.get('name', 'Unknown')}",
-                    productionplanner_project_id=job.productionplanner_project_id,
-                    productionplanner_url=f"https://app.productionplanner.io/projects/{job.productionplanner_project_id}",
+                    productionplanner_project_id=pp_project_id,
+                    productionplanner_url=pp_project_url,
                 )
             except ProductionPlannerError as e:
                 return ProductionPlannerSyncResponse(
                     success=False,
                     message=f"Failed to fetch project: {e.message}",
-                    productionplanner_project_id=job.productionplanner_project_id,
-                    productionplanner_url=f"https://app.productionplanner.io/projects/{job.productionplanner_project_id}",
+                    productionplanner_project_id=pp_project_id,
+                    productionplanner_url=pp_project_url,
                 )
 
     return anyio.run(_fetch_job_project_info)
