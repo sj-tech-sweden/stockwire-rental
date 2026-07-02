@@ -224,7 +224,7 @@ const columns = computed(() => [
   { name: 'start_date', label: t('projects.startDate'), field: 'start_date', sortable: true, align: 'left', format: formatDate },
   { name: 'end_date', label: t('projects.endDate'), field: 'end_date', sortable: true, align: 'left', format: formatDate },
   { name: 'job_count', label: t('projects.jobs'), field: 'job_count', sortable: true, align: 'left' },
-  { name: 'productionplanner', label: t('jobs.productionPlanner'), field: 'productionplanner', sortable: false, align: 'left' },
+  { name: 'productionplanner', label: t('jobs.productionPlanner'), field: 'productionplanner_project_id', sortable: false, align: 'left' },
   { name: 'created_at', label: t('projects.created'), field: 'created_at', sortable: true, align: 'left', format: formatDate },
   { name: 'actions', label: '', field: 'actions', align: 'right' },
 ])
