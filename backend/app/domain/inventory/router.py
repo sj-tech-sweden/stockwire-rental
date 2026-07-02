@@ -2435,6 +2435,8 @@ def process_scan(
 
             for target in target_devices:
                 target.status = "available"
+                if payload.zone_id is not None:
+                    target.location_zone_id = payload.zone_id
             db.flush()
             db.refresh(device)
             affected_count = len(target_devices)

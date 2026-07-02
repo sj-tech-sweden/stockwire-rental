@@ -588,6 +588,19 @@
 
       <q-card class="ec-card q-pa-md" v-if="scanAction === 'job_in'">
         <div class="text-subtitle1 q-mb-sm">{{ t('scan.currentlyCheckedOutDevices', { count: checkedOutDeviceRows.length }) }}</div>
+        <q-select
+          v-model="checkInReturnZoneId"
+          :options="locationSelectOptions"
+          :label="t('scan.returnZone')"
+          outlined
+          dense
+          clearable
+          emit-value
+          map-options
+          use-input
+          input-debounce="300"
+          class="q-mb-sm"
+        />
         <div v-if="isTightScreen" class="checked-out-grid">
           <q-card v-for="row in checkedOutDeviceRows" :key="row.id" flat bordered class="checked-out-card">
             <q-card-section class="q-pb-sm">
@@ -597,10 +610,21 @@
             <q-card-section class="q-pt-none">
               <div class="row q-col-gutter-xs">
                 <div class="col-12">
-                  <q-badge color="blue-8" text-color="white" :label="t('scan.locationValue', { value: row.location_name })" />
+                  <q-badge color="blue-8" text-color="white" :label="t('scan.returnToValue', { value: row.location_name })" />
                 </div>
                 <div class="col-12">
                   <q-badge color="grey-8" text-color="white" :label="t('scan.conditionValue', { value: row.condition })" />
+                </div>
+                <div class="col-12 q-mt-xs">
+                  <q-btn
+                    unelevated
+                    size="sm"
+                    color="primary"
+                    :label="t('scan.checkInDevice')"
+                    :disable="checkInLoadingDeviceId !== null"
+                    :loading="checkInLoadingDeviceId === row.id"
+                    @click="checkInCheckedOutDevice(row)"
+                  />
                 </div>
               </div>
             </q-card-section>
@@ -620,7 +644,21 @@
           :pagination="{ rowsPerPage: 15 }"
           :rows-per-page-options="[15, 30, 50]"
           :no-data-label="t('scan.noDevicesCurrentlyCheckedOut')"
-        />
+        >
+          <template #body-cell-action="props">
+            <q-td :props="props">
+              <q-btn
+                unelevated
+                size="sm"
+                color="primary"
+                :label="t('scan.checkInDevice')"
+                :disable="checkInLoadingDeviceId !== null"
+                :loading="checkInLoadingDeviceId === props.row.id"
+                @click="checkInCheckedOutDevice(props.row)"
+              />
+            </q-td>
+          </template>
+        </q-table>
       </q-card>
 
       <q-card class="ec-card q-pa-md" v-if="isRentalScanMode">
@@ -709,6 +747,8 @@ const recentMovedDevices = ref([])
 const workflowDeviceSelections = ref({})
 const workflowActionLoadingProductId = ref(null)
 const applyingRouteContext = ref(false)
+const checkInReturnZoneId = ref(null)
+const checkInLoadingDeviceId = ref(null)
 
 const inputMode = ref('keyboard')
 const scanCodeInputRef = ref(null)
@@ -1031,8 +1071,9 @@ const canShowMaintenanceActions = computed(() => {
 const checkedOutColumns = computed(() => [
   { name: 'asset_tag', label: t('scan.assetTag'), field: 'asset_tag', align: 'left', sortable: true },
   { name: 'product_name', label: t('scan.product'), field: 'product_name', align: 'left', sortable: true },
-  { name: 'location_name', label: t('scan.location'), field: 'location_name', align: 'left', sortable: true },
+  { name: 'location_name', label: t('scan.returnTo'), field: 'location_name', align: 'left', sortable: true },
   { name: 'condition', label: t('scan.condition'), field: 'condition', align: 'left', sortable: true },
+  { name: 'action', label: '', field: 'id', align: 'right', sortable: false },
 ])
 
 const caseMoveSelectOptions = computed(() => {
@@ -1593,17 +1634,29 @@ async function refreshCheckedOutForIntake() {
       await store.fetchCheckedOutDevices(jobCode)
       return
     }
+    // Show all checked-out devices before a job is selected so the operator
+    // can identify which job a device belongs to.
     await store.fetchCheckedOutDevices()
     return
   }
-  if (scanAction.value === 'job_out') {
+  if (scanAction.value === 'rental_job_in') {
+    const jobCode = selectedOrTypedJobCode()
+    if (jobCode) {
+      await store.fetchCheckedOutDevices(jobCode)
+    }
+    // No jobCode yet and rental_job_in has no useful unscoped list; skip.
+    return
+  }
+  if (scanAction.value === 'job_out' || scanAction.value === 'rental_job_out') {
     const jobCode = activeJobCode.value || selectedOrTypedJobCode()
     if (jobCode) {
       await store.fetchCheckedOutDevices(jobCode)
-      return
     }
+    // No jobCode known yet: skip unscoped fetch to avoid large response.
+    return
   }
-  await store.fetchCheckedOutDevices()
+  // All other scan actions (lookup, move, assign_component, rental flows, etc.)
+  // do not use the checked-out list — return early to avoid unnecessary traffic.
 }
 
 async function scanSelectedWorkflowDevice(row) {
@@ -1653,6 +1706,45 @@ async function scanSelectedWorkflowDevice(row) {
     focusScanCodeInput()
   }
 }
+
+async function checkInCheckedOutDevice(row) {
+  if (checkInLoadingDeviceId.value !== null) return
+  const scanCodeValue = resolveDeviceScanCode(row)
+  if (!scanCodeValue) {
+    scanResultMessage.value = t('scan.unableUseSelectedDevice')
+    scanResultSuccess.value = false
+    return
+  }
+  const jobCode = activeJobCode.value || selectedOrTypedJobCode()
+  checkInLoadingDeviceId.value = row.id
+  scanResultMessage.value = ''
+  scanResultSuccess.value = false
+  try {
+    const response = await store.processScan({
+      scan_code: scanCodeValue,
+      action: 'job_in',
+      job_code: jobCode || null,
+      zone_id: checkInReturnZoneId.value || null,
+    })
+    lastIntakeResult.value = response.success && Number(response.device_id || 0) > 0 ? response : null
+    const jobCodeForRefresh = jobCode || selectedOrTypedJobCode()
+    await Promise.all([
+      jobsStore.fetchAll(),
+      jobCodeForRefresh
+        ? store.fetchCheckedOutDevices(jobCodeForRefresh)
+        : store.fetchCheckedOutDevices(),
+    ])
+    scanResultMessage.value = response.message || t('scan.scanProcessed')
+    scanResultSuccess.value = !!response.success
+  } catch (error) {
+    scanResultMessage.value = error?.response?.data?.detail || t('scan.scanFailed')
+    scanResultSuccess.value = false
+  } finally {
+    checkInLoadingDeviceId.value = null
+    focusScanCodeInput()
+  }
+}
+
 
 async function scheduleMaintenanceFromLookup() {
   const lookupCode = maintenanceTargetCode.value
