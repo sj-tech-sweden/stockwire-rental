@@ -1486,6 +1486,7 @@ function clearComponentDestination() {
 }
 
 function focusScanCodeInput() {
+  if (inputMode.value !== 'keyboard') return
   nextTick(() => {
     const input = scanCodeInputRef.value
     if (input && typeof input.focus === 'function') {
@@ -1994,6 +1995,7 @@ function onInputModeChanged() {
   if (inputMode.value === 'keyboard') {
     stopCameraScan()
     stopNfcScan()
+    focusScanCodeInput()
     return
   }
   if (inputMode.value === 'camera') {
