@@ -40,25 +40,25 @@ class ProductionPlannerClient:
         return response.json()
 
     async def get_info(self) -> Dict[str, Any]:
-        response = await self.client.get("/info")
+        response = await self.client.get("info")
         return self._handle_response(response)
 
     async def list_projects(self) -> List[Dict[str, Any]]:
-        response = await self.client.get("/projects")
+        response = await self.client.get("projects")
         data = self._handle_response(response)
         return data.get("data", [])
 
     async def create_project(self, name: str, description: str = "", timezone: str = "UTC") -> Dict[str, Any]:
         payload = {"name": name, "description": description, "timezone": timezone}
-        response = await self.client.post("/projects", json=payload)
+        response = await self.client.post("projects", json=payload)
         return self._handle_response(response)
 
     async def get_project(self, project_id: str) -> Dict[str, Any]:
-        response = await self.client.get(f"/projects/{project_id}")
+        response = await self.client.get(f"projects/{project_id}")
         return self._handle_response(response)
 
     async def update_project(self, project_id: str, **kwargs) -> Dict[str, Any]:
-        response = await self.client.patch(f"/projects/{project_id}", json=kwargs)
+        response = await self.client.patch(f"projects/{project_id}", json=kwargs)
         return self._handle_response(response)
 
     async def add_date(self, project_id: str, date_str: str, label: str = "") -> Dict[str, Any]:
