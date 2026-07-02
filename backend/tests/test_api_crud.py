@@ -1502,6 +1502,14 @@ def test_scan_operations_and_job_requirement_bulk(client):
     assert device_after_invalid_intake.status_code == 200
     assert device_after_invalid_intake.json()["status"] == "in_use"
     assert device_after_invalid_intake.json()["current_job_id"] == job.json()["id"]
+    requirements_after_invalid_intake = client.get("/api/v1/jobs/requirements")
+    assert requirements_after_invalid_intake.status_code == 200
+    matching_requirement = next(
+        row
+        for row in requirements_after_invalid_intake.json()
+        if row["job_id"] == job.json()["id"] and row["product_id"] == product_id
+    )
+    assert matching_requirement["quantity_picked"] == 1
 
     bulk_reqs = client.put(
         f"/api/v1/jobs/{job.json()['id']}/requirements/bulk",

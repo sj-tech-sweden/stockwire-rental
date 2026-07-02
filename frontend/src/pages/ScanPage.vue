@@ -593,7 +593,7 @@
           :label="t('scan.scanToLocationMode')"
           class="q-mb-sm"
         />
-        <q-banner v-if="pendingLocationForDevice" dense rounded class="bg-orange-1 text-orange-9 q-mb-sm">
+        <q-banner v-if="scanToLocationMode && pendingLocationForDevice" dense rounded class="bg-orange-1 text-orange-9 q-mb-sm">
           {{ t('scan.awaitingLocationScan', { assetTag: pendingLocationForDevice.assetTag }) }}
           <template #action>
             <q-btn flat dense :label="t('scan.skipLocationScan')" @click="pendingLocationForDevice = null" />
@@ -1536,6 +1536,10 @@ function focusScanCodeInput() {
   })
 }
 
+function firstQueryValue(value) {
+  return Array.isArray(value) ? value[0] : value
+}
+
 function formatScanTime(value) {
   if (!value) return '-'
   const date = new Date(value)
@@ -1782,7 +1786,7 @@ async function runScanAction() {
   const code = String(scanCode.value || '').trim()
 
   // Intercept: if waiting for a location scan after a job_in check-in, match against zone barcodes
-  if (pendingLocationForDevice.value && code) {
+  if (scanToLocationMode.value && pendingLocationForDevice.value && code) {
     const zone = (store.zones || []).find(z => z.barcode && z.barcode === code)
     if (!zone) {
       scanResultMessage.value = t('scan.locationScanNotFound')
@@ -2137,9 +2141,9 @@ function onInputModeChanged() {
 }
 
 async function applyRouteContext() {
-  const nextAction = String(route.query.action || '').trim()
-  const nextJobId = Number(route.query.jobId || 0)
-  const nextJobCode = String(route.query.jobCode || '').trim().toUpperCase()
+  const nextAction = String(firstQueryValue(route.query.action) || '').trim()
+  const nextJobId = Number(firstQueryValue(route.query.jobId) || 0)
+  const nextJobCode = String(firstQueryValue(route.query.jobCode) || '').trim().toUpperCase()
   if (!nextAction && !nextJobId && !nextJobCode) return
   if (applyingRouteContext.value) return
 
@@ -2182,6 +2186,11 @@ onMounted(async () => {
 
 watch([scanAction, globalCheckin, scanJobId, scanJobCode], async () => {
   await refreshCheckedOutForIntake()
+})
+
+watch(scanToLocationMode, (enabled) => {
+  if (enabled) return
+  pendingLocationForDevice.value = null
 })
 
 watch(scanZoneId, (value) => {

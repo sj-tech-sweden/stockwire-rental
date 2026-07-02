@@ -2418,6 +2418,12 @@ def process_scan(
                 db.commit()
                 return response
 
+            return_zone = None
+            if payload.zone_id is not None:
+                return_zone = db.get(Zone, payload.zone_id)
+                if return_zone is None:
+                    raise HTTPException(status_code=404, detail="Zone not found")
+
             if job is not None:
                 decremented_by_product: dict[int, int] = defaultdict(int)
                 for target in target_devices:
@@ -2433,11 +2439,6 @@ def process_scan(
                     if req is not None and req.quantity_picked > 0:
                         req.quantity_picked = max(int(req.quantity_picked or 0) - int(decrement), 0)
 
-            return_zone = None
-            if payload.zone_id is not None:
-                return_zone = db.get(Zone, payload.zone_id)
-                if return_zone is None:
-                    raise HTTPException(status_code=404, detail="Zone not found")
             for target in target_devices:
                 target.status = "available"
                 if return_zone is not None:
