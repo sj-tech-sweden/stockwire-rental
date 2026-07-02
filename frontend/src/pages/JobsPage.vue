@@ -63,7 +63,7 @@
               flat
               dense
               round
-              icon="external_link"
+              icon="open_in_new"
               color="positive"
               :aria-label="t('jobs.openInProductionPlanner')"
               @click="openProductionPlanner(props.row.productionplanner_project_id)"
@@ -128,7 +128,7 @@
             flat
             round
             dense
-            icon="external_link"
+            icon="open_in_new"
             color="primary"
             class="q-mr-xs"
             @click="openProductionPlanner(props.row.productionplanner_project_id)"
@@ -185,7 +185,7 @@
                 flat
                 dense
                 round
-                icon="external_link"
+                icon="open_in_new"
                 color="primary"
                 :aria-label="t('jobs.openInProductionPlanner')"
                 @click="openProductionPlanner(props.row.productionplanner_project_id)"
