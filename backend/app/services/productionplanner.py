@@ -14,6 +14,8 @@ def batch_task_labels(labels: List[str], max_items: int = 10, max_chars: int = 4
         label = str(raw_label or "").strip()
         if not label:
             continue
+        if len(label) > max_chars:
+            label = label[:max_chars]
         next_length = current_length + (len(separator) if current else 0) + len(label)
         if current and (len(current) >= max_items or next_length > max_chars):
             batches.append(separator.join(current))
@@ -42,6 +44,7 @@ class ProductionPlannerClient:
                 base_url=self.base_url,
                 headers={
                     "Authorization": f"Bearer {self.api_key}",
+                    "X-API-Key": self.api_key,
                     "Content-Type": "application/json",
                 },
                 timeout=30.0,
