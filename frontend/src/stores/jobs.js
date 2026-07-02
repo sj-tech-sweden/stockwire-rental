@@ -162,13 +162,18 @@ export const useJobsStore = defineStore('jobs', () => {
   }
 
   async function syncJobToProductionPlanner(jobId) {
-    const { data } = await api.post(`/api/v1/jobs/${jobId}/sync-productionplanner`)
-    const job = jobs.value.find(j => j.id === jobId)
-    if (job && data.success && data.productionplanner_project_id) {
-      job.productionplanner_project_id = data.productionplanner_project_id
-      await persistSnapshot()
+    loading.value = true
+    try {
+      const { data } = await api.post(`/api/v1/jobs/${jobId}/sync-productionplanner`)
+      const job = jobs.value.find(j => j.id === jobId)
+      if (job && data.success && data.productionplanner_project_id) {
+        job.productionplanner_project_id = data.productionplanner_project_id
+        await persistSnapshot()
+      }
+      return data
+    } finally {
+      loading.value = false
     }
-    return data
   }
 
   async function getJobProductionPlannerInfo(jobId) {

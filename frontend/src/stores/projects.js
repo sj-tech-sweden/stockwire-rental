@@ -68,13 +68,18 @@ export const useProjectsStore = defineStore('projects', () => {
   }
 
   async function syncProjectToProductionPlanner(projectId) {
-    const { data } = await api.post(`/api/v1/projects/${projectId}/sync-productionplanner`)
-    const project = projects.value.find(p => p.id === projectId)
-    if (project && data.success && data.productionplanner_project_id) {
-      project.productionplanner_project_id = data.productionplanner_project_id
-      await cacheSnapshot('projects.fetchAll', projects.value)
+    loading.value = true
+    try {
+      const { data } = await api.post(`/api/v1/projects/${projectId}/sync-productionplanner`)
+      const project = projects.value.find(p => p.id === projectId)
+      if (project && data.success && data.productionplanner_project_id) {
+        project.productionplanner_project_id = data.productionplanner_project_id
+        await cacheSnapshot('projects.fetchAll', projects.value)
+      }
+      return data
+    } finally {
+      loading.value = false
     }
-    return data
   }
 
   async function getProjectProductionPlannerInfo(projectId) {
