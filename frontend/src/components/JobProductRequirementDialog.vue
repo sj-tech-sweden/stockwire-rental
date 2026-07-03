@@ -236,6 +236,7 @@ import { useI18n } from 'vue-i18n'
 
 import { useJobsStore } from '../stores/jobs'
 import { useInventoryStore } from '../stores/inventory'
+import { filterRequirementSourceProducts } from '../utils/job-requirements'
 
 const props = defineProps({
   modelValue: Boolean,
@@ -313,13 +314,9 @@ function normalizeDate(value) {
   return null
 }
 
-function isRentalProduct(product) {
-  return Boolean(product?.is_rental_product) || String(product?.product_type || '').toLowerCase() === 'rental'
-}
-
 const requirementSourceProducts = computed(() => {
   const source = props.products?.length ? props.products : (inventoryStore.products || [])
-  return source.filter(product => props.includeRentalProducts || !isRentalProduct(product))
+  return filterRequirementSourceProducts(source, { includeRentalProducts: props.includeRentalProducts })
 })
 
 const requirementBrandFilterOptions = computed(() => {

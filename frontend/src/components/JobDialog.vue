@@ -428,6 +428,7 @@ import EntityAttachmentsPanel from './EntityAttachmentsPanel.vue'
 import CustomerCreateInline from './CustomerCreateInline.vue'
 import VenueCreateInline from './VenueCreateInline.vue'
 import JobProductRequirementDialog from './JobProductRequirementDialog.vue'
+import { isVisibleRequirementRow } from '../utils/job-requirements'
 import { translateMaybePrefillCustomFieldLabel, translateMaybePrefillCustomFieldOption } from '../i18n/prefillContent'
 import { normalizeCurrencyCode } from '../constants/currencies'
 import { googleMapsEmbedUrl, googleMapsSearchUrl, locationQueryFromParts } from '../utils/maps'
@@ -743,7 +744,7 @@ const requirementRows = ref([])
 const requirementDraft = ref({ product_id: null, quantity_required: 1 })
 
 const visibleRequirementRows = computed(() => (
-  requirementRows.value.filter(row => Number(row.quantity_required || 0) > 0 || Number(row.quantity_picked || 0) > 0)
+  requirementRows.value.filter(isVisibleRequirementRow)
 ))
 
 const filteredRequirementProducts = computed(() => {
