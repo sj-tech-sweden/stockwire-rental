@@ -649,7 +649,15 @@ function setRequirementQty(productId, value) {
 }
 
 function removeRequirementRow(productId) {
-  requirementRows.value = requirementRows.value.filter(item => item.product_id !== productId)
+  const row = requirementRows.value.find(item => item.product_id === productId)
+  if (!row) return
+  
+  // Preserve rows with quantity_picked > 0 by setting quantity_required to 0
+  if (Number(row.quantity_picked || 0) > 0) {
+    row.quantity_required = 0
+  } else {
+    requirementRows.value = requirementRows.value.filter(item => item.product_id !== productId)
+  }
 }
 
 async function loadData() {
