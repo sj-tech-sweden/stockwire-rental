@@ -178,6 +178,11 @@
               class="q-mb-sm"
               @update:model-value="onGlobalCheckinChanged"
             />
+            <q-toggle
+              v-model="scanToLocationMode"
+              :label="t('scan.scanToLocationMode')"
+              class="q-mb-sm"
+            />
           </div>
           <div class="col-12 col-md-4" v-if="scanAction === 'rental_job_in' && !activeJobCode">
             <q-select
@@ -599,11 +604,6 @@
           </div>
           <q-linear-progress rounded size="12px" color="positive" track-color="grey-4" :value="globalCheckinProgress.percent / 100" />
         </div>
-        <q-toggle
-          v-model="scanToLocationMode"
-          :label="t('scan.scanToLocationMode')"
-          class="q-mb-sm"
-        />
         <q-banner v-if="scanToLocationMode && pendingLocationForDevice" dense rounded class="bg-orange-1 text-orange-9 q-mb-sm">
           {{ t('scan.awaitingLocationScan', { assetTag: pendingLocationForDevice.assetTag }) }}
           <template #action>
