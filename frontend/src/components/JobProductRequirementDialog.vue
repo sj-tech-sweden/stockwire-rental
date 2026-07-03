@@ -580,10 +580,7 @@ function setProductRequirementQty(productId, value) {
 
 function removeRequirementRow(productId) {
   const row = localRows.value.find(item => item.product_id === productId)
-  if (!row) {
-    syncRows()
-    return
-  }
+  if (!row) return
   
   // Preserve rows with quantity_picked > 0 by setting quantity_required to 0
   if (Number(row.quantity_picked || 0) > 0) {
