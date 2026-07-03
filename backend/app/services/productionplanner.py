@@ -72,7 +72,7 @@ class ProductionPlannerClient:
             try:
                 raw_text = response.text[:500]
             except UnicodeDecodeError:
-                pass
+                logger.debug("ProductionPlanner API error body could not be decoded as text")
             logger.debug(
                 "ProductionPlanner API error: status=%d body=%r",
                 response.status_code,
