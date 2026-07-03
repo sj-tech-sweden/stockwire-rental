@@ -4,7 +4,14 @@
       <q-card-section class="row items-center q-pb-none">
         <div class="text-h6">{{ t('jobs.addProductRequirements') }}</div>
         <q-space />
-        <q-btn flat round dense icon="close" @click="emit('update:modelValue', false)" />
+        <q-btn
+          flat
+          round
+          dense
+          icon="close"
+          :aria-label="t('app.actions.close')"
+          @click="emit('update:modelValue', false)"
+        />
       </q-card-section>
 
       <q-card-section class="col overflow-auto q-pt-sm">
@@ -622,11 +629,11 @@ watch(() => props.modelValue, (open) => {
   }
 })
 
-watch(() => props.requirementRows, () => {
-  if (props.modelValue) {
+watch(() => props.jobId, (jobId, previousJobId) => {
+  if (props.modelValue && jobId !== previousJobId) {
     resetLocalRows()
   }
-}, { deep: true })
+})
 </script>
 
 <style scoped>
