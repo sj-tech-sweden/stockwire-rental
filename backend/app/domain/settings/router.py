@@ -888,6 +888,13 @@ def test_integration_connection(
     if plugin_key == "productionplanner" and not api_key:
         api_key = str(persisted_config.get("api_key") or "").strip()
 
+    if plugin_key == "productionplanner" and not api_key:
+        return IntegrationConnectionTestRead(
+            ok=False,
+            plugin=plugin_key,
+            message="ProductionPlanner API key is required. Please enter and save your API key first.",
+        )
+
     if not api_url:
         return IntegrationConnectionTestRead(
             ok=False,
@@ -975,10 +982,32 @@ def test_integration_connection(
                     plugin=plugin_key,
                     message=f"Connected to ProductionPlanner (status {pp_response.status_code})",
                 )
+            body_snippet = ""
+            try:
+                body_snippet = pp_response.text[:200].strip()
+            except Exception:
+                pass
+            error_detail = f"status {pp_response.status_code}"
+            try:
+                body_json = pp_response.json()
+                if isinstance(body_json, dict):
+                    api_msg = (
+                        body_json.get("message")
+                        or body_json.get("detail")
+                        or body_json.get("error")
+                        or body_json.get("msg")
+                    )
+                    if api_msg:
+                        error_detail = str(api_msg)
+                    elif body_snippet:
+                        error_detail = f"status {pp_response.status_code}: {body_snippet}"
+            except Exception:
+                if body_snippet:
+                    error_detail = f"status {pp_response.status_code}: {body_snippet}"
             return IntegrationConnectionTestRead(
                 ok=False,
                 plugin=plugin_key,
-                message=f"ProductionPlanner returned status {pp_response.status_code}",
+                message=f"ProductionPlanner returned {error_detail}",
             )
         except httpx.HTTPError as exc:
             return IntegrationConnectionTestRead(
