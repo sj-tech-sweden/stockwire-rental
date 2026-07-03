@@ -985,7 +985,7 @@ def test_integration_connection(
             body_snippet = ""
             try:
                 body_snippet = pp_response.text[:200].strip()
-            except Exception:
+            except UnicodeDecodeError:
                 pass
             error_detail = f"status {pp_response.status_code}"
             try:
@@ -1001,7 +1001,7 @@ def test_integration_connection(
                         error_detail = str(api_msg)
                     elif body_snippet:
                         error_detail = f"status {pp_response.status_code}: {body_snippet}"
-            except Exception:
+            except ValueError:
                 if body_snippet:
                     error_detail = f"status {pp_response.status_code}: {body_snippet}"
             return IntegrationConnectionTestRead(
