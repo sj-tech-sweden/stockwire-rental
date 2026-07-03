@@ -630,7 +630,7 @@
                     size="sm"
                     color="primary"
                     :label="t('scan.checkInDevice')"
-                    :disable="checkInLoadingDeviceId !== null"
+:disable="checkInLoadingDeviceId !== null || (scanToLocationMode && pendingLocationForDevice)"
                     :loading="checkInLoadingDeviceId === row.id"
                     @click="checkInCheckedOutDevice(row)"
                   />
