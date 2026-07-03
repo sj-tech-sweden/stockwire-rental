@@ -363,6 +363,7 @@ class ProductionPlannerConfig(BaseModel):
 class ProductionPlannerReadConfig(BaseModel):
     enabled: bool = False
     base_url: str = "https://api.productionplanner.io/v1"
+    has_api_key: bool = False
 
 
 class IntegrationsRead(BaseModel):

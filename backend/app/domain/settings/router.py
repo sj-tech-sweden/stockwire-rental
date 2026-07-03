@@ -14,6 +14,7 @@ from urllib.request import Request, build_opener, HTTPRedirectHandler, HTTPHandl
 import os
 from pathlib import Path
 
+import httpx
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 from pydantic import BaseModel
 import redis
@@ -411,7 +412,7 @@ def update_integrations(
     }
     setting.value_json = json.dumps(data)
     db.commit()
-    return IntegrationsRead(**data)
+    return IntegrationsRead(**{**data, "productionplanner": {**productionplanner, "has_api_key": bool(pp_api_key)}})
 
 
 @router.get("/auth-sso", response_model=AuthSSOSettingsRead)
@@ -954,6 +955,37 @@ def test_integration_connection(
         headers["X-API-Key"] = api_key
         headers["Authorization"] = f"Bearer {api_key}"
 
+
+    if plugin_key == "productionplanner":
+        info_url = api_url.rstrip("/") + "/info"
+        try:
+            pp_response = httpx.get(
+                info_url,
+                headers={
+                    "Authorization": f"Bearer {api_key}",
+                    "X-API-Key": api_key,
+                    "Accept": "application/json",
+                },
+                timeout=8.0,
+                follow_redirects=False,
+            )
+            if pp_response.status_code < 400:
+                return IntegrationConnectionTestRead(
+                    ok=True,
+                    plugin=plugin_key,
+                    message=f"Connected to ProductionPlanner (status {pp_response.status_code})",
+                )
+            return IntegrationConnectionTestRead(
+                ok=False,
+                plugin=plugin_key,
+                message=f"ProductionPlanner returned status {pp_response.status_code}",
+            )
+        except httpx.HTTPError as exc:
+            return IntegrationConnectionTestRead(
+                ok=False,
+                plugin=plugin_key,
+                message=f"Connection error: {exc}",
+            )
     req = Request(api_url, headers=headers, method="HEAD")
     try:
         with _open_outbound_integration_request(req, timeout=5) as response:
@@ -1514,9 +1546,11 @@ def _parse_integrations(raw: str | None) -> dict[str, object]:
     if isinstance(data, dict) and isinstance(data.get("productionplanner"), dict):
         productionplanner_raw = data.get("productionplanner") or {}
 
+    productionplanner_merged = {**DEFAULT_INTEGRATIONS.get("productionplanner", {}), **productionplanner_raw}
+    productionplanner_merged["has_api_key"] = bool(productionplanner_merged.get("api_key"))
     return {
         "eventory_instances": normalized_instances,
-        "productionplanner": {**DEFAULT_INTEGRATIONS.get("productionplanner", {}), **productionplanner_raw},
+        "productionplanner": productionplanner_merged,
     }
 
 

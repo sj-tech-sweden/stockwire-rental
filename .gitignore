@@ -2,6 +2,7 @@
 __pycache__/
 *.pyc
 .venv/
+.venv312/
 *.egg-info/
 backend/build/
 
@@ -11,9 +12,7 @@ frontend/node_modules/
 
 # Frontend build artifacts
 frontend/dist/
-frontend/.quasar/prod-spa/
-frontend/.quasar/prod-pwa/
-frontend/.quasar/dev-pwa/
+frontend/.quasar/
 
 # Local storage uploads
 backend/data/uploads/

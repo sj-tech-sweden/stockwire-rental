@@ -1013,6 +1013,7 @@ export const useSettingsStore = defineStore('settings', () => {
         enabled: Boolean(productionplanner.enabled),
         api_key: String(productionplanner.api_key || ''),
         base_url: String(productionplanner.base_url || DEFAULT_INTEGRATIONS.productionplanner.base_url),
+        has_api_key: Boolean(productionplanner.has_api_key || productionplanner.api_key),
       },
     }
   }

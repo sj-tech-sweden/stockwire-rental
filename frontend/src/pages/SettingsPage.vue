@@ -937,8 +937,8 @@
                 <q-input
                   v-model="integrationsDraft.productionplanner.api_key"
                   :label="t('settings.integrations.productionplanner.apiKey')"
-                  :placeholder="t('settings.integrations.productionplanner.apiKeyPlaceholder')"
-                  :hint="t('settings.integrations.productionplanner.apiKeyHint')"
+                  :placeholder="integrationsDraft.productionplanner.has_api_key && !integrationsDraft.productionplanner.api_key ? t('settings.integrations.productionplanner.apiKeySaved') : t('settings.integrations.productionplanner.apiKeyPlaceholder')"
+                  :hint="integrationsDraft.productionplanner.has_api_key && !integrationsDraft.productionplanner.api_key ? t('settings.integrations.productionplanner.apiKeySavedHint') : t('settings.integrations.productionplanner.apiKeyHint')"
                   outlined
                   dense
                   type="password"

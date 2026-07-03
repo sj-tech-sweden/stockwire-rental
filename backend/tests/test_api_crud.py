@@ -712,6 +712,7 @@ def test_settings_modules_crud(client):
     assert productionplanner_integrations.json()["productionplanner"] == {
         "enabled": True,
         "base_url": "https://api.productionplanner.io/v1",
+        "has_api_key": True,
     }
 
     persisted_integrations = client.get("/api/v1/settings/integrations")
@@ -719,6 +720,7 @@ def test_settings_modules_crud(client):
     assert persisted_integrations.json()["productionplanner"] == {
         "enabled": True,
         "base_url": "https://api.productionplanner.io/v1",
+        "has_api_key": True,
     }
 
     preserved_productionplanner_integrations = client.put(
@@ -732,6 +734,34 @@ def test_settings_modules_crud(client):
         },
     )
     assert preserved_productionplanner_integrations.status_code == 200
+
+    seen_headers = {}
+
+    class FakeHttpxResponse:
+        status_code = 200
+
+    def fake_httpx_get(url, headers=None, timeout=None, follow_redirects=None):
+        if headers:
+            seen_headers["authorization"] = headers.get("Authorization")
+            seen_headers["x_api_key"] = headers.get("X-API-Key")
+        return FakeHttpxResponse()
+
+    with patch("app.domain.settings.router.socket.getaddrinfo") as mock_getaddrinfo, patch(
+        "app.domain.settings.router.httpx.get", side_effect=fake_httpx_get
+    ):
+        mock_getaddrinfo.return_value = [
+            (socket.AF_INET, socket.SOCK_STREAM, 0, "", ("1.1.1.1", 443)),
+        ]
+        productionplanner_test = client.post(
+            "/api/v1/settings/integrations/productionplanner/test",
+            json={"config": {"api_url": "https://api.productionplanner.io/v1"}},
+        )
+
+    assert productionplanner_test.status_code == 200
+    assert productionplanner_test.json()["ok"] is True
+    assert seen_headers["authorization"].startswith("Bearer ")
+    assert seen_headers["authorization"].endswith("pp-secret")
+    assert seen_headers["x_api_key"] == "pp-secret"
 
     class FakeSocket:
         def getpeername(self):
@@ -748,30 +778,6 @@ def test_settings_modules_crud(client):
 
         def __exit__(self, exc_type, exc, tb):
             return False
-
-    seen_headers = {}
-
-    def fake_open(req, timeout=0):
-        seen_headers["authorization"] = req.headers.get("Authorization")
-        seen_headers["x_api_key"] = req.headers.get("X-api-key")
-        return FakeResponse()
-
-    with patch("app.domain.settings.router.socket.getaddrinfo") as mock_getaddrinfo, patch(
-        "app.domain.settings.router._open_outbound_integration_request", side_effect=fake_open
-    ):
-        mock_getaddrinfo.return_value = [
-            (socket.AF_INET, socket.SOCK_STREAM, 0, "", ("1.1.1.1", 443)),
-        ]
-        productionplanner_test = client.post(
-            "/api/v1/settings/integrations/productionplanner/test",
-            json={"config": {"api_url": "https://api.productionplanner.io/v1"}},
-        )
-
-    assert productionplanner_test.status_code == 200
-    assert productionplanner_test.json()["ok"] is True
-    assert seen_headers["authorization"].startswith("Bearer ")
-    assert seen_headers["authorization"].endswith("pp-secret")
-    assert seen_headers["x_api_key"] == "pp-secret"
 
     with patch("app.domain.settings.router.socket.getaddrinfo") as mock_getaddrinfo:
         mock_getaddrinfo.return_value = [
