@@ -661,7 +661,7 @@
                 size="sm"
                 color="primary"
                 :label="t('scan.checkInDevice')"
-                :disable="checkInLoadingDeviceId !== null"
+:disable="checkInLoadingDeviceId !== null || (scanToLocationMode && pendingLocationForDevice)"
                 :loading="checkInLoadingDeviceId === props.row.id"
                 @click="checkInCheckedOutDevice(props.row)"
               />
