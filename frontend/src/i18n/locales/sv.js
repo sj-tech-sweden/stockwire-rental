@@ -857,6 +857,7 @@ export default {
     addProductRequirements: 'Lägg till produktkrav',
     manageRequirements: 'Hantera krav',
     pickList: 'Plocklista',
+    productName: 'Produkt',
   },
   projects: {
     title: 'Projekt',

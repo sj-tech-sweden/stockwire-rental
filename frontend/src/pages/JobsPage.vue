@@ -89,9 +89,12 @@
       </template>
 
       <template #body-cell-actions="props">
-        <q-td v-if="authStore.canEdit" :props="props" auto-width>
-          <q-btn flat round dense icon="edit" color="primary" class="q-mr-xs" @click="openEdit(props.row)" />
-          <q-btn flat round dense icon="delete" color="negative" @click="confirmDelete(props.row)" />
+        <q-td :props="props" auto-width>
+          <q-btn flat round dense icon="visibility" color="grey-7" class="q-mr-xs" :to="`/jobs/${props.row.id}`" />
+          <template v-if="authStore.canEdit">
+            <q-btn flat round dense icon="edit" color="primary" class="q-mr-xs" @click="openEdit(props.row)" />
+            <q-btn flat round dense icon="delete" color="negative" @click="confirmDelete(props.row)" />
+          </template>
         </q-td>
       </template>
 
@@ -123,9 +126,12 @@
               <div class="text-caption">{{ t('jobs.invoiceLabel') }}: {{ props.row.invoice_paid ? t('jobs.paid') : t('jobs.unpaid') }}</div>
               <div class="text-caption">{{ props.row.start_date || '-' }} {{ t('jobs.to') }} {{ props.row.end_date || '-' }}</div>
             </q-card-section>
-            <q-card-actions v-if="authStore.canEdit" align="right">
-              <q-btn flat dense icon="edit" color="primary" @click="openEdit(props.row)" />
-              <q-btn flat dense icon="delete" color="negative" @click="confirmDelete(props.row)" />
+            <q-card-actions align="right">
+              <q-btn flat dense icon="visibility" color="grey-7" :to="`/jobs/${props.row.id}`" />
+              <template v-if="authStore.canEdit">
+                <q-btn flat dense icon="edit" color="primary" @click="openEdit(props.row)" />
+                <q-btn flat dense icon="delete" color="negative" @click="confirmDelete(props.row)" />
+              </template>
             </q-card-actions>
           </q-card>
         </div>

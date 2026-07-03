@@ -857,6 +857,7 @@ export default {
     addProductRequirements: 'Add product requirements',
     manageRequirements: 'Manage requirements',
     pickList: 'Pick list',
+    productName: 'Product',
   },
   projects: {
     title: 'Projects',
