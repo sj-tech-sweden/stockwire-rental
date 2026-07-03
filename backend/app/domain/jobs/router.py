@@ -337,7 +337,9 @@ async def sync_job_to_productionplanner(
             )
         return result
     except ProductionPlannerError as e:
-        raise HTTPException(status_code=e.status_code, detail=e.message)
+        return ProductionPlannerSyncResponse(success=False, message=e.message)
+    except Exception:
+        raise
 
 
 @router.get("/{job_id}/productionplanner", response_model=ProductionPlannerSyncResponse)
