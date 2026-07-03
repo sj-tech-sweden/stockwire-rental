@@ -305,42 +305,6 @@
           <q-banner v-else class="bg-grey-2 text-grey-8 rounded-borders">
             {{ t('jobs.noRequirements') }}
           </q-banner>
-
-          <div class="text-subtitle2 q-mt-lg q-mb-sm">{{ t('jobs.requirementsSummary') }}</div>
-          <div class="row q-col-gutter-sm">
-            <div class="col-12 col-sm-6 col-lg-3">
-              <q-card flat bordered>
-                <q-card-section>
-                  <div class="text-caption text-grey-7">{{ t('jobs.totalWeight') }}</div>
-                  <div class="text-subtitle1">{{ t('jobs.weightKg', { value: formatDecimal(summaryTotals.weightKg) }) }}</div>
-                </q-card-section>
-              </q-card>
-            </div>
-            <div class="col-12 col-sm-6 col-lg-3">
-              <q-card flat bordered>
-                <q-card-section>
-                  <div class="text-caption text-grey-7">{{ t('jobs.totalVolume') }}</div>
-                  <div class="text-subtitle1">{{ t('jobs.volumeM3', { value: formatDecimal(summaryTotals.volumeM3) }) }}</div>
-                </q-card-section>
-              </q-card>
-            </div>
-            <div class="col-12 col-sm-6 col-lg-3">
-              <q-card flat bordered>
-                <q-card-section>
-                  <div class="text-caption text-grey-7">{{ t('jobs.totalReplacementCost') }}</div>
-                  <div class="text-subtitle1">{{ formatMoney(summaryTotals.replacementCost) }}</div>
-                </q-card-section>
-              </q-card>
-            </div>
-            <div class="col-12 col-sm-6 col-lg-3">
-              <q-card flat bordered>
-                <q-card-section>
-                  <div class="text-caption text-grey-7">{{ t('jobs.projectedPriceFromRequirements') }}</div>
-                  <div class="text-subtitle1">{{ formatMoney(summaryTotals.projectedPrice) }}</div>
-                </q-card-section>
-              </q-card>
-            </div>
-          </div>
         </q-card-section>
       </q-card>
     </div>
