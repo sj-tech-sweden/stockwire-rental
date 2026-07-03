@@ -187,7 +187,7 @@
 </template>
 
 <script setup>
-import { computed, nextTick, ref, watch } from 'vue'
+import { computed, nextTick, onUnmounted, ref, watch } from 'vue'
 import { useQuasar } from 'quasar'
 import { useI18n } from 'vue-i18n'
 import { DEVICE_STATUSES, useInventoryStore } from '../stores/inventory'
@@ -242,6 +242,8 @@ const deviceFieldCaptureNfcController = ref(null)
 const deviceFieldCaptureOcrLoading = ref(false)
 const deviceFieldCaptureOcrCandidates = ref([])
 let ocrWorkerInstance = null
+const OCR_MIN_CONFIDENCE = 30
+const OCR_MAX_CANDIDATES = 6
 const deviceCaptureSupportsCamera = computed(() => {
   if (typeof window === 'undefined') return false
   return typeof window.BarcodeDetector === 'function' && !!navigator.mediaDevices?.getUserMedia
@@ -777,17 +779,18 @@ async function captureOcrFrame() {
     const { data } = await ocrWorkerInstance.recognize(imageDataUrl)
 
     const candidates = (data.lines || [])
-      .filter(line => line.confidence > 30)
+      .filter(line => line.confidence > OCR_MIN_CONFIDENCE)
       .map(line => line.text.replace(/\s+/g, ' ').trim())
       .filter(text => text.length > 1)
-      .slice(0, 6)
+      .slice(0, OCR_MAX_CANDIDATES)
 
     deviceFieldCaptureOcrCandidates.value = candidates
 
     if (!candidates.length) {
       deviceFieldCaptureError.value = t('inventory.deviceDialog.ocrNoTextFound')
     }
-  } catch {
+  } catch (err) {
+    console.error('[DeviceDialog] OCR capture failed:', err)
     deviceFieldCaptureError.value = t('inventory.deviceDialog.ocrFailed')
   } finally {
     deviceFieldCaptureOcrLoading.value = false
@@ -840,6 +843,17 @@ watch(() => props.modelValue, (open) => {
     } else {
       openCreateDevice()
     }
+  }
+})
+
+onUnmounted(async () => {
+  if (ocrWorkerInstance) {
+    try {
+      await ocrWorkerInstance.terminate()
+    } catch {
+      // Ignore termination errors on unmount.
+    }
+    ocrWorkerInstance = null
   }
 })
 </script>
