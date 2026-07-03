@@ -186,6 +186,7 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
+import { useQuasar } from 'quasar'
 
 import { JOB_STATUSES, useJobsStore } from '../stores/jobs'
 import { useCustomersStore } from '../stores/customers'
@@ -211,6 +212,7 @@ const projectsStore = useProjectsStore()
 const route = useRoute()
 const router = useRouter()
 const { t, locale } = useI18n()
+const $q = useQuasar()
 
 const pageLoading = ref(false)
 const search = ref('')
@@ -416,11 +418,14 @@ async function syncToProductionPlanner(job) {
     const result = await jobsStore.syncJobToProductionPlanner(job.id)
     if (result?.success !== true) {
       console.error('ProductionPlanner sync failed:', result?.message || 'Unknown error')
+      $q.notify({ type: 'negative', message: result?.message || t('jobs.syncPPFailed') })
       return
     }
     await jobsStore.fetchAll()
+    $q.notify({ type: 'positive', message: t('jobs.syncPPSuccess') })
   } catch (error) {
     console.error('Failed to sync to ProductionPlanner:', error)
+    $q.notify({ type: 'negative', message: t('jobs.syncPPFailed') })
   }
 }
 
