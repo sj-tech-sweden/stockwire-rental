@@ -957,10 +957,10 @@ def test_integration_connection(
 
 
     if plugin_key == "productionplanner":
-        info_url = api_url.rstrip("/") + "/info"
+        projects_url = api_url.rstrip("/") + "/projects"
         try:
             pp_response = httpx.get(
-                info_url,
+                projects_url,
                 headers={
                     "Authorization": f"Bearer {api_key}",
                     "X-API-Key": api_key,

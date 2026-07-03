@@ -860,6 +860,8 @@ export default {
     syncToPP: 'Synka till ProductionPlanner',
     openInPP: 'Öppna i ProductionPlanner',
     openInProductionPlanner: 'Öppna i ProductionPlanner',
+    syncPPSuccess: 'Jobb synkat till ProductionPlanner',
+    syncPPFailed: 'Misslyckades att synka jobb till ProductionPlanner',
   },
   projects: {
     title: 'Projekt',

@@ -860,6 +860,8 @@ export default {
     syncToPP: 'Sync to ProductionPlanner',
     openInPP: 'Open in ProductionPlanner',
     openInProductionPlanner: 'Open in ProductionPlanner',
+    syncPPSuccess: 'Job synced to ProductionPlanner',
+    syncPPFailed: 'Failed to sync job to ProductionPlanner',
   },
   projects: {
     title: 'Projects',
