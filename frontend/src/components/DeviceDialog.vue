@@ -149,7 +149,24 @@
             <div class="device-capture-camera-wrap">
               <video ref="deviceCaptureVideoRef" class="device-capture-video" autoplay muted playsinline />
             </div>
-            <div class="text-caption text-grey-5 q-mt-xs">{{ t('inventory.pointCameraToBarcode') }}</div>
+            <canvas ref="deviceCaptureOcrCanvasRef" style="display: none" />
+            <div class="text-caption text-grey-5 q-mt-xs">
+              {{ deviceFieldCaptureMode === 'ocr' ? t('inventory.pointCameraToText') : t('inventory.pointCameraToBarcode') }}
+            </div>
+            <div v-if="deviceFieldCaptureMode === 'ocr'" class="row q-mt-sm">
+              <q-btn color="primary" unelevated icon="document_scanner" :label="t('inventory.captureText')" :loading="deviceFieldCaptureOcrLoading" @click="captureOcrFrame" />
+            </div>
+            <div v-if="deviceFieldCaptureOcrCandidates.length" class="q-mt-sm">
+              <div class="text-caption text-grey-4 q-mb-xs">{{ t('inventory.ocrSelectText') }}</div>
+              <q-list dense bordered class="rounded-borders">
+                <q-item v-for="(candidate, idx) in deviceFieldCaptureOcrCandidates" :key="idx" clickable v-ripple @click="applyOcrCandidate(candidate)">
+                  <q-item-section>{{ candidate }}</q-item-section>
+                  <q-item-section side>
+                    <q-icon name="check_circle" color="primary" />
+                  </q-item-section>
+                </q-item>
+              </q-list>
+            </div>
           </div>
           <div class="col-12" v-if="deviceFieldCaptureMode === 'nfc'">
             <div class="device-capture-nfc-wrap text-center">
@@ -170,7 +187,7 @@
 </template>
 
 <script setup>
-import { computed, nextTick, ref, watch } from 'vue'
+import { computed, nextTick, onUnmounted, ref, watch } from 'vue'
 import { useQuasar } from 'quasar'
 import { useI18n } from 'vue-i18n'
 import { DEVICE_STATUSES, useInventoryStore } from '../stores/inventory'
@@ -208,6 +225,7 @@ const deviceBarcodeInputRef = ref(null)
 const deviceQrCodeInputRef = ref(null)
 const deviceRfidInputRef = ref(null)
 const deviceCaptureVideoRef = ref(null)
+const deviceCaptureOcrCanvasRef = ref(null)
 const deviceFieldCaptureInputRef = ref(null)
 const warrantyManuallyEdited = ref(false)
 const deviceFieldCaptureDialogOpen = ref(false)
@@ -221,6 +239,11 @@ const deviceFieldCaptureNfcActive = ref(false)
 const deviceFieldCaptureStream = ref(null)
 const deviceFieldCaptureRaf = ref(null)
 const deviceFieldCaptureNfcController = ref(null)
+const deviceFieldCaptureOcrLoading = ref(false)
+const deviceFieldCaptureOcrCandidates = ref([])
+let ocrWorkerInstance = null
+const OCR_MIN_CONFIDENCE = 30
+const OCR_MAX_CANDIDATES = 6
 const deviceCaptureSupportsCamera = computed(() => {
   if (typeof window === 'undefined') return false
   return typeof window.BarcodeDetector === 'function' && !!navigator.mediaDevices?.getUserMedia
@@ -229,10 +252,15 @@ const deviceCaptureSupportsNfc = computed(() => {
   if (typeof window === 'undefined') return false
   return !!window.isSecureContext && typeof window.NDEFReader === 'function'
 })
+const deviceCaptureSupportsOcr = computed(() => {
+  if (typeof window === 'undefined') return false
+  return !!navigator.mediaDevices?.getUserMedia
+})
 const deviceFieldCaptureModeButtons = computed(() => {
   const buttons = [{ label: t('inventory.deviceDialog.keyboard'), value: 'keyboard', icon: 'keyboard' }]
   if (deviceCaptureSupportsCamera.value) buttons.push({ label: t('inventory.deviceDialog.camera'), value: 'camera', icon: 'photo_camera' })
   if (deviceCaptureSupportsNfc.value) buttons.push({ label: t('inventory.deviceDialog.nfc'), value: 'nfc', icon: 'nfc' })
+  if (deviceCaptureSupportsOcr.value) buttons.push({ label: t('inventory.deviceDialog.ocr'), value: 'ocr', icon: 'document_scanner' })
   return buttons
 })
 
@@ -587,6 +615,8 @@ function stopDeviceFieldCapture() {
   }
   deviceFieldCaptureCameraActive.value = false
   deviceFieldCaptureNfcActive.value = false
+  deviceFieldCaptureOcrCandidates.value = []
+  deviceFieldCaptureOcrLoading.value = false
 }
 
 async function startDeviceCameraCapture() {
@@ -694,6 +724,87 @@ async function startDeviceNfcCapture() {
   }
 }
 
+async function startDeviceOcrCapture() {
+  deviceFieldCaptureError.value = ''
+  deviceFieldCaptureOcrCandidates.value = []
+  if (!deviceCaptureSupportsOcr.value) {
+    deviceFieldCaptureError.value = t('inventory.deviceDialog.ocrNotSupported')
+    return
+  }
+  if (!navigator.mediaDevices?.getUserMedia) {
+    deviceFieldCaptureError.value = t('inventory.deviceDialog.cameraNotAvailable')
+    return
+  }
+
+  stopDeviceFieldCapture()
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } } })
+    deviceFieldCaptureStream.value = stream
+    deviceFieldCaptureCameraActive.value = true
+    await nextTick()
+
+    const videoEl = deviceCaptureVideoRef.value
+    if (!videoEl) {
+      deviceFieldCaptureError.value = t('inventory.deviceDialog.cameraPreviewUnavailable')
+      stopDeviceFieldCapture()
+      return
+    }
+    videoEl.srcObject = stream
+    await videoEl.play()
+  } catch (error) {
+    deviceFieldCaptureError.value = error?.message || t('inventory.deviceDialog.unableToStartCamera')
+    stopDeviceFieldCapture()
+  }
+}
+
+async function captureOcrFrame() {
+  const videoEl = deviceCaptureVideoRef.value
+  if (!videoEl || !deviceFieldCaptureCameraActive.value) return
+
+  deviceFieldCaptureOcrLoading.value = true
+  deviceFieldCaptureOcrCandidates.value = []
+  deviceFieldCaptureError.value = ''
+
+  try {
+    const canvas = deviceCaptureOcrCanvasRef.value
+    canvas.width = videoEl.videoWidth || 640
+    canvas.height = videoEl.videoHeight || 480
+    const ctx = canvas.getContext('2d')
+    ctx.drawImage(videoEl, 0, 0)
+    const imageDataUrl = canvas.toDataURL('image/png')
+
+    if (!ocrWorkerInstance) {
+      const { createWorker } = await import('tesseract.js')
+      ocrWorkerInstance = await createWorker()
+      await ocrWorkerInstance.loadLanguage('eng')
+      await ocrWorkerInstance.initialize('eng')
+    }
+    const { data } = await ocrWorkerInstance.recognize(imageDataUrl)
+
+    const candidates = (data.lines || [])
+      .filter(line => line.confidence > OCR_MIN_CONFIDENCE)
+      .map(line => line.text.replace(/\s+/g, ' ').trim())
+      .filter(text => text.length > 1)
+      .slice(0, OCR_MAX_CANDIDATES)
+
+    deviceFieldCaptureOcrCandidates.value = candidates
+
+    if (!candidates.length) {
+      deviceFieldCaptureError.value = t('inventory.deviceDialog.ocrNoTextFound')
+    }
+  } catch (err) {
+    console.error('[DeviceDialog] OCR capture failed:', err)
+    deviceFieldCaptureError.value = t('inventory.deviceDialog.ocrFailed')
+  } finally {
+    deviceFieldCaptureOcrLoading.value = false
+  }
+}
+
+function applyOcrCandidate(text) {
+  setCapturedDeviceFieldValue(deviceFieldCaptureTarget.value, text)
+  deviceFieldCaptureDialogOpen.value = false
+}
+
 watch(deviceFieldCaptureMode, (mode) => {
   if (!deviceFieldCaptureDialogOpen.value) return
   if (mode === 'keyboard') {
@@ -707,6 +818,10 @@ watch(deviceFieldCaptureMode, (mode) => {
   }
   if (mode === 'nfc') {
     void startDeviceNfcCapture()
+    return
+  }
+  if (mode === 'ocr') {
+    void startDeviceOcrCapture()
   }
 })
 
@@ -731,6 +846,17 @@ watch(() => props.modelValue, (open) => {
     } else {
       openCreateDevice()
     }
+  }
+})
+
+onUnmounted(async () => {
+  if (ocrWorkerInstance) {
+    try {
+      await ocrWorkerInstance.terminate()
+    } catch {
+      // Ignore termination errors on unmount.
+    }
+    ocrWorkerInstance = null
   }
 })
 </script>
