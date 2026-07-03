@@ -3282,7 +3282,7 @@ def _ensure_job_requirement(db: Session, job_id: int, product_id: int) -> None:
         .where(JobRequirement.product_id == product_id)
     )
     if existing is None:
-        db.add(JobRequirement(job_id=job_id, product_id=product_id, quantity_required=1, quantity_picked=0))
+        db.add(JobRequirement(job_id=job_id, product_id=product_id, quantity_required=0, quantity_picked=0))
         db.flush()
 
 

@@ -1286,7 +1286,13 @@ const workflowRequirements = computed(() => {
   const job = activeWorkflowJob.value
   if (!job) return []
 
-  const reqs = jobsStore.requirements.filter(item => item.job_id === job.id)
+  // Only include requirements that are planned (quantity_required > 0) or have been scanned
+  // (quantity_picked > 0). This hides ghost requirements that were auto-created during scan
+  // but never actually set, and also hides requirements that were removed from the job.
+  const reqs = jobsStore.requirements.filter(item =>
+    item.job_id === job.id &&
+    (Number(item.quantity_required || 0) > 0 || Number(item.quantity_picked || 0) > 0)
+  )
   return reqs.map((item) => {
     const product = productById.value.get(item.product_id)
     const isRental = Boolean(product?.is_rental_product) || String(product?.product_type || '') === 'rental'
