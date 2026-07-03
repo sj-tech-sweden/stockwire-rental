@@ -993,8 +993,6 @@ def test_integration_connection(
                     break
                 if index == 0 and pp_response.status_code not in {401, 403, 500}:
                     break
-            if pp_response is None:
-                raise httpx.HTTPError("No response from ProductionPlanner")
             if pp_response.status_code < 400:
                 return IntegrationConnectionTestRead(
                     ok=True,

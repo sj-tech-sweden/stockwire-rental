@@ -118,6 +118,7 @@ class ProductionPlannerClient:
                 if response.status_code < 400:
                     return self._handle_response(response)
                 last_response = response
+                # Retry only likely auth/header compatibility failures.
                 if index == 0 and response.status_code not in {401, 403, 500}:
                     break
         except httpx.HTTPError as exc:
