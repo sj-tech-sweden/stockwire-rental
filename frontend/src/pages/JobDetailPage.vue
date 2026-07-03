@@ -547,6 +547,14 @@ const jobRequirementRows = computed(() => (
 ))
 
 const summaryTotals = computed(() => {
+  const startDate = normalizeDate(form.value.start_date || currentJob.value?.start_date)
+  const endDate = normalizeDate(form.value.end_date || currentJob.value?.end_date)
+  const startKey = dateSortKey(startDate)
+  const endKey = dateSortKey(endDate)
+  const rentalDays = startKey && endKey && endKey >= startKey
+    ? Math.max(1, Math.floor((new Date(endDate).getTime() - new Date(startDate).getTime()) / 86400000) + 1)
+    : 1
+
   return jobRequirementRows.value.reduce((totals, row) => {
     const qty = Math.max(0, Number(row.quantity_required || 0))
     const product = row.product
@@ -557,12 +565,12 @@ const summaryTotals = computed(() => {
     const width = Number(product.width_cm || 0)
     const depth = Number(product.depth_cm || 0)
     const replaceCost = Number(product.replace_cost || 0)
-    const dailyRate = Number(product.daily_rate || 0)
+    const unitRate = Number(product.rental_price || product.daily_rate || 0)
 
     totals.weightKg += weight * qty
     totals.volumeM3 += ((height * width * depth) / 1000000) * qty
     totals.replacementCost += replaceCost * qty
-    totals.projectedPrice += dailyRate * qty
+    totals.projectedPrice += unitRate * qty * rentalDays
     return totals
   }, {
     weightKg: 0,
@@ -614,7 +622,10 @@ function syncFromJob(job) {
   }
 
   requirementRows.value = jobsStore.requirements
-    .filter(req => req.job_id === job.id)
+    .filter(req => (
+      req.job_id === job.id
+      && (Number(req.quantity_required || 0) > 0 || Number(req.quantity_picked || 0) > 0)
+    ))
     .map(req => ({
       product_id: req.product_id,
       quantity_required: req.quantity_required,
