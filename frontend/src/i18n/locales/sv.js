@@ -1126,7 +1126,7 @@ export default {
     captureField: 'Las in {field}',
     scanWithKeyboardCameraNfc: 'Skanna med tangentbord, kamera, NFC eller OCR när tillgängligt',
     scannerKeyboardInput: 'Skannerinmatning från tangentbord',
-    captureModeHelpText: 'Tangentbord: USB-skannerinmatning. Kamera: QR/streckkod via kamera. NFC: tagglasare nar det stods. OCR: läs tryckt text med kamera.',
+    captureModeHelpText: 'Tangentbord: USB-skannerinmatning. Kamera: QR/streckkod via kamera. NFC: taggläsare när det stöds. OCR: läs tryckt text med kamera.',
     focusTargetField: 'Fokusera målfält',
     pointCameraToBarcode: 'Rikta kameran mot en streckkod eller QR-kod.',
     pointCameraToText: 'Rikta kameran mot tryckt text och tryck sedan på Hämta.',

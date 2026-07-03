@@ -746,6 +746,7 @@ async function startDeviceOcrCapture() {
     const videoEl = deviceCaptureVideoRef.value
     if (!videoEl) {
       deviceFieldCaptureError.value = t('inventory.deviceDialog.cameraPreviewUnavailable')
+      stopDeviceFieldCapture()
       return
     }
     videoEl.srcObject = stream
@@ -774,7 +775,9 @@ async function captureOcrFrame() {
 
     if (!ocrWorkerInstance) {
       const { createWorker } = await import('tesseract.js')
-      ocrWorkerInstance = await createWorker('eng')
+      ocrWorkerInstance = await createWorker()
+      await ocrWorkerInstance.loadLanguage('eng')
+      await ocrWorkerInstance.initialize('eng')
     }
     const { data } = await ocrWorkerInstance.recognize(imageDataUrl)
 
