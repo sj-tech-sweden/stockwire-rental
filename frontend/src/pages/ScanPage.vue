@@ -761,7 +761,7 @@ const applyingRouteContext = ref(false)
 const checkInLoadingDeviceId = ref(null)
 const scanToLocationMode = ref(false)
 const pendingLocationForDevice = ref(null) // { scanCode, assetTag, deviceId } | null
-const globalCheckinInitialCount = ref(0)
+const globalCheckinInitialCount = ref(null)
 
 const inputMode = ref('keyboard')
 const scanCodeInputRef = ref(null)
@@ -1316,7 +1316,7 @@ const completedWorkflowRequirements = computed(() => workflowSections.value.comp
 const workflowSummary = computed(() => summarizeWorkflowRequirements(workflowRequirements.value))
 
 const globalCheckinProgress = computed(() => {
-  if (!globalCheckin.value || globalCheckinInitialCount.value === 0) return null
+  if (!globalCheckin.value || globalCheckinInitialCount.value === null) return null
   const total = globalCheckinInitialCount.value
   const remaining = checkedOutDeviceRows.value.length
   const checkedIn = Math.max(0, total - remaining)
@@ -1622,10 +1622,10 @@ function onActionChanged() {
 
 function onGlobalCheckinChanged(value) {
   if (!value) {
-    globalCheckinInitialCount.value = 0
+    globalCheckinInitialCount.value = null
     return
   }
-  globalCheckinInitialCount.value = 0 // set by refreshCheckedOutForIntake() watcher after fetch completes
+  globalCheckinInitialCount.value = null // set by refreshCheckedOutForIntake() watcher after fetch completes
   resetActiveJobSelection()
 }
 
@@ -1666,7 +1666,7 @@ async function refreshCheckedOutForIntake() {
     if (globalCheckin.value) {
       await store.fetchCheckedOutDevices()
       // Record initial count on first global check-in fetch so progress can be shown
-      if (globalCheckinInitialCount.value === 0) {
+      if (globalCheckinInitialCount.value === null) {
         globalCheckinInitialCount.value = (store.checkedOutDevices || []).length
       }
       return
