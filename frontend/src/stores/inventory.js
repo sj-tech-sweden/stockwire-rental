@@ -508,9 +508,16 @@ export const useInventoryStore = defineStore('inventory', () => {
       }
     }
     const { data } = await api.post('/api/v1/inventory/scan/process', payload)
-    await fetchAll()
-    await fetchCheckedOutDevices()
-    await fetchAuditLogs(100)
+    const JOB_ACTIONS = ['job_in', 'job_out', 'rental_job_in', 'rental_job_out']
+    if (JOB_ACTIONS.includes(payload?.action)) {
+      await Promise.all([
+        fetchAll(),
+        fetchCheckedOutDevices(payload?.job_code || null),
+        fetchAuditLogs(100),
+      ])
+    } else {
+      await Promise.all([fetchAll(), fetchAuditLogs(100)])
+    }
     return data
   }
 

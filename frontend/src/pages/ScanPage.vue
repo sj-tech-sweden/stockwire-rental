@@ -178,6 +178,11 @@
               class="q-mb-sm"
               @update:model-value="onGlobalCheckinChanged"
             />
+            <q-toggle
+              v-model="scanToLocationMode"
+              :label="t('scan.scanToLocationMode')"
+              class="q-mb-sm"
+            />
           </div>
           <div class="col-12 col-md-4" v-if="scanAction === 'rental_job_in' && !activeJobCode">
             <q-select
@@ -376,14 +381,68 @@
       </q-card>
 
       <q-card class="ec-card q-pa-md" v-if="activeWorkflowJob">
-        <div class="text-subtitle1 q-mb-sm">
-          {{ (scanAction === 'job_in' || scanAction === 'rental_job_in') ? t('scan.checkInReturnList') : t('scan.checkOutPickList') }} {{ t('scan.forJob', { jobCode: activeWorkflowJob.job_code }) }}
+        <div class="row items-start justify-between q-col-gutter-sm q-mb-sm">
+          <div class="col-12 col-md">
+            <div class="text-subtitle1">
+              {{ (scanAction === 'job_in' || scanAction === 'rental_job_in') ? t('scan.checkInReturnList') : t('scan.checkOutPickList') }} {{ t('scan.forJob', { jobCode: activeWorkflowJob.job_code }) }}
+            </div>
+            <div v-if="activeWorkflowJob.description" class="text-caption text-grey-6 q-mt-xs">
+              {{ activeWorkflowJob.description }}
+            </div>
+          </div>
+          <div class="col-12 col-md-auto">
+            <div class="row q-gutter-xs justify-end">
+              <q-btn
+                flat
+                dense
+                no-caps
+                color="primary"
+                icon="shopping_cart_checkout"
+                :label="t('scan.scanOutJob')"
+                :to="scanJobLink(RENTAL_SCAN_ACTIONS.includes(scanAction) ? 'rental_job_out' : 'job_out', activeWorkflowJob)"
+              />
+              <q-btn
+                flat
+                dense
+                no-caps
+                color="primary"
+                icon="assignment_return"
+                :label="t('scan.scanInJob')"
+                :to="scanJobLink(RENTAL_SCAN_ACTIONS.includes(scanAction) ? 'rental_job_in' : 'job_in', activeWorkflowJob)"
+              />
+            </div>
+          </div>
+        </div>
+        <div class="row q-col-gutter-sm q-mb-md">
+          <div class="col-12 col-md-3">
+            <q-badge color="primary" text-color="white" :label="`${t('jobs.status')}: ${activeWorkflowJob.status || '-'}`" />
+          </div>
+          <div class="col-12 col-md-3 text-caption">
+            {{ t('jobs.customerLabel') }}: {{ activeWorkflowJob.customer_name || t('jobs.unassigned') }}
+          </div>
+          <div class="col-12 col-md-3 text-caption">
+            {{ t('jobs.venueLabel') }}: {{ activeWorkflowJob.venue_name || t('jobs.unassigned') }}
+          </div>
+          <div class="col-12 col-md-3 text-caption">
+            {{ activeWorkflowJob.start_date || '-' }} → {{ activeWorkflowJob.end_date || '-' }}
+          </div>
+        </div>
+        <div class="q-mb-md">
+          <div class="row items-center justify-between q-mb-xs">
+            <div class="text-caption text-grey-7">
+              {{ t(workflowProgressSummaryKey, { packed: workflowSummary.totalPacked, required: workflowSummary.totalRequired, percent: workflowSummary.percent }) }}
+            </div>
+            <div class="text-caption text-grey-7">
+              {{ t('scan.finishedProductsCount', { count: workflowSummary.completedCount, total: workflowSummary.totalCount }) }}
+            </div>
+          </div>
+          <q-linear-progress rounded size="12px" color="positive" track-color="grey-4" :value="workflowSummary.percent / 100" />
         </div>
         <div class="text-caption text-grey-5 q-mb-sm">
-          {{ t('scan.pickedVsCheckedOutHelp') }}
+          {{ t(workflowHelpKey) }}
         </div>
         <q-table
-          :rows="workflowRequirements"
+          :rows="pendingWorkflowRequirements"
           :columns="workflowColumns"
           row-key="product_id"
           flat
@@ -393,6 +452,7 @@
           :hide-header="compactGrid"
           :pagination="{ rowsPerPage: 15 }"
           :rows-per-page-options="[15, 30, 50]"
+          :no-data-label="workflowSummary.totalCount ? t(workflowAllDoneKey) : t('scan.noWorkflowRequirements')"
         >
           <template #item="props">
             <div class="q-pa-xs col-12 col-sm-6 col-md-4">
@@ -406,7 +466,7 @@
                       <q-badge color="grey-8" text-color="white" :label="t('scan.requiredCount', { count: props.row.quantity_required })" />
                     </div>
                     <div class="col-6">
-                      <q-badge color="blue-8" text-color="white" :label="t('scan.pickedCount', { count: props.row.quantity_picked })" />
+                      <q-badge color="blue-8" text-color="white" :label="t(workflowIntakeMode ? 'scan.checkedInCount' : 'scan.pickedCount', { count: props.row.quantity_picked })" />
                     </div>
                     <div class="col-6">
                       <q-badge color="info" text-color="white" :label="t('scan.checkedOutCount', { count: props.row.checked_out })" />
@@ -417,10 +477,49 @@
                     <div class="col-12">
                       <q-badge :color="props.row.available > 0 ? 'primary' : 'grey-7'" text-color="white" :label="t('scan.availableInStoreCount', { count: props.row.available })" />
                     </div>
+                    <div class="col-12">
+                      <div class="text-caption text-grey-7 q-mb-xs">
+                        {{ t(workflowProductProgressKey, workflowRowProgress(props.row)) }}
+                      </div>
+                      <q-linear-progress rounded size="10px" color="positive" track-color="grey-4" :value="workflowRowProgress(props.row).percent / 100" />
+                    </div>
+                    <div v-if="showWorkflowDeviceSelector(props.row)" class="col-12">
+                      <q-select
+                        :model-value="workflowDeviceSelections[props.row.product_id] || null"
+                        :options="workflowDeviceOptions(props.row)"
+                        :label="t('scan.selectDeviceToAdd')"
+                        outlined
+                        dense
+                        clearable
+                        emit-value
+                        map-options
+                        @update:model-value="value => updateWorkflowDeviceSelection(props.row.product_id, value)"
+                      />
+                    </div>
+                    <div v-if="showWorkflowDeviceSelector(props.row)" class="col-12">
+                      <q-btn
+                        color="primary"
+                        unelevated
+                        no-caps
+                        icon="add_circle"
+                        :label="scanAction === 'job_in' ? t('scan.scanInSelectedDevice') : t('scan.addSelectedDevice')"
+:disable="workflowActionLoadingProductId !== null || !workflowDeviceSelections[props.row.product_id] || (scanToLocationMode && pendingLocationForDevice)"
+                        :loading="workflowActionLoadingProductId === props.row.product_id"
+                        @click="scanSelectedWorkflowDevice(props.row)"
+                      />
+                    </div>
                   </div>
                 </q-card-section>
               </q-card>
             </div>
+          </template>
+          <template #body-cell-progress="props">
+            <q-td :props="props">
+              <div class="text-caption q-mb-xs">
+                {{ t(workflowProductProgressKey, workflowRowProgress(props.row)) }}
+              </div>
+              <q-linear-progress rounded size="10px" color="positive" track-color="grey-4" :value="workflowRowProgress(props.row).percent / 100" />
+            </q-td>
           </template>
           <template #body-cell-checked_out="props">
             <q-td :props="props">
@@ -441,11 +540,76 @@
               <q-badge :color="props.value > 0 ? 'primary' : 'grey-7'" :label="String(props.value)" />
             </q-td>
           </template>
+          <template #body-cell-add_device="props">
+            <q-td :props="props">
+              <div v-if="showWorkflowDeviceSelector(props.row)" class="row q-col-gutter-sm items-center">
+                <div class="col">
+                  <q-select
+                    :model-value="workflowDeviceSelections[props.row.product_id] || null"
+                    :options="workflowDeviceOptions(props.row)"
+                    :label="t('scan.selectDeviceToAdd')"
+                    outlined
+                    dense
+                    clearable
+                    emit-value
+                    map-options
+                    @update:model-value="value => updateWorkflowDeviceSelection(props.row.product_id, value)"
+                  />
+                </div>
+                <div class="col-auto">
+                  <q-btn
+                    color="primary"
+                    unelevated
+                    no-caps
+                    icon="add_circle"
+                    :label="scanAction === 'job_in' ? t('scan.scanInSelectedDevice') : t('scan.addSelectedDevice')"
+:disable="workflowActionLoadingProductId !== null || !workflowDeviceSelections[props.row.product_id] || (scanToLocationMode && pendingLocationForDevice)"
+                    :loading="workflowActionLoadingProductId === props.row.product_id"
+                    @click="scanSelectedWorkflowDevice(props.row)"
+                  />
+                </div>
+              </div>
+            </q-td>
+          </template>
         </q-table>
+
+        <div v-if="completedWorkflowRequirements.length" class="q-mt-md">
+          <div class="text-subtitle2 q-mb-sm">{{ t('scan.finishedProducts') }}</div>
+          <q-list bordered separator class="rounded-borders">
+            <q-item v-for="row in completedWorkflowRequirements" :key="`completed-${row.product_id}`">
+              <q-item-section>
+                <q-item-label class="text-weight-medium">{{ row.product_name }}</q-item-label>
+                <q-item-label caption>
+                  {{ t(workflowProductProgressKey, workflowRowProgress(row)) }} · {{ t('scan.checkedOutCount', { count: row.checked_out }) }}
+                </q-item-label>
+              </q-item-section>
+              <q-item-section side>
+                <q-badge color="positive" text-color="white" :label="t(workflowDoneBadgeKey)" />
+              </q-item-section>
+            </q-item>
+          </q-list>
+        </div>
       </q-card>
 
       <q-card class="ec-card q-pa-md" v-if="scanAction === 'job_in'">
         <div class="text-subtitle1 q-mb-sm">{{ t('scan.currentlyCheckedOutDevices', { count: checkedOutDeviceRows.length }) }}</div>
+        <div v-if="globalCheckin && globalCheckinProgress" class="q-mb-md">
+          <div class="row items-center justify-between q-mb-xs">
+            <div class="text-caption text-grey-7">
+              {{ t('scan.checkedInProgressSummary', { packed: globalCheckinProgress.checkedIn, required: globalCheckinProgress.total, percent: globalCheckinProgress.percent }) }}
+            </div>
+            <div class="text-caption text-grey-7">
+              {{ t('scan.devicesRemainingCount', { count: globalCheckinProgress.remaining }) }}
+            </div>
+          </div>
+          <q-linear-progress rounded size="12px" color="positive" track-color="grey-4" :value="globalCheckinProgress.percent / 100" />
+        </div>
+        <q-banner v-if="scanToLocationMode && pendingLocationForDevice" dense rounded class="bg-orange-1 text-orange-9 q-mb-sm">
+          {{ t('scan.awaitingLocationScan', { assetTag: pendingLocationForDevice.assetTag }) }}
+          <template #action>
+            <q-btn flat dense :label="t('scan.skipLocationScan')" @click="pendingLocationForDevice = null" />
+          </template>
+        </q-banner>
         <div v-if="isTightScreen" class="checked-out-grid">
           <q-card v-for="row in checkedOutDeviceRows" :key="row.id" flat bordered class="checked-out-card">
             <q-card-section class="q-pb-sm">
@@ -455,10 +619,21 @@
             <q-card-section class="q-pt-none">
               <div class="row q-col-gutter-xs">
                 <div class="col-12">
-                  <q-badge color="blue-8" text-color="white" :label="t('scan.locationValue', { value: row.location_name })" />
+                  <q-badge color="blue-8" text-color="white" :label="t('scan.returnToValue', { value: row.location_name })" />
                 </div>
                 <div class="col-12">
                   <q-badge color="grey-8" text-color="white" :label="t('scan.conditionValue', { value: row.condition })" />
+                </div>
+                <div class="col-12 q-mt-xs">
+                  <q-btn
+                    unelevated
+                    size="sm"
+                    color="primary"
+                    :label="t('scan.checkInDevice')"
+:disable="checkInLoadingDeviceId !== null || (scanToLocationMode && pendingLocationForDevice)"
+                    :loading="checkInLoadingDeviceId === row.id"
+                    @click="checkInCheckedOutDevice(row)"
+                  />
                 </div>
               </div>
             </q-card-section>
@@ -478,7 +653,21 @@
           :pagination="{ rowsPerPage: 15 }"
           :rows-per-page-options="[15, 30, 50]"
           :no-data-label="t('scan.noDevicesCurrentlyCheckedOut')"
-        />
+        >
+          <template #body-cell-action="props">
+            <q-td :props="props">
+              <q-btn
+                unelevated
+                size="sm"
+                color="primary"
+                :label="t('scan.checkInDevice')"
+:disable="checkInLoadingDeviceId !== null || (scanToLocationMode && pendingLocationForDevice)"
+                :loading="checkInLoadingDeviceId === props.row.id"
+                @click="checkInCheckedOutDevice(props.row)"
+              />
+            </q-td>
+          </template>
+        </q-table>
       </q-card>
 
       <q-card class="ec-card q-pa-md" v-if="isRentalScanMode">
@@ -520,6 +709,7 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useQuasar } from 'quasar'
 import { useI18n } from 'vue-i18n'
+import { useRoute, useRouter } from 'vue-router'
 
 import { api } from '../boot/axios'
 import { useInventoryStore } from '../stores/inventory'
@@ -528,11 +718,22 @@ import { useCompactGrid } from '../composables/useCompactGrid'
 import { shouldSuppressDuplicateCameraScan } from '../utils/scan-camera'
 import ShortcutHelpDialog from '../components/ShortcutHelpDialog.vue'
 import DefectReportDialog from '../components/DefectReportDialog.vue'
+import {
+  buildScanJobLink,
+  isWorkflowIntakeMode,
+  normalizeWorkflowRequirement,
+  resolveDeviceScanCode,
+  splitWorkflowRequirements,
+  summarizeWorkflowRequirements,
+  workflowRequirementProgress,
+} from '../utils/scan-workflow'
 
 const store = useInventoryStore()
 const jobsStore = useJobsStore()
 const $q = useQuasar()
 const { t } = useI18n()
+const route = useRoute()
+const router = useRouter()
 const compactGrid = useCompactGrid(1024)
 const saving = ref(false)
 
@@ -554,6 +755,13 @@ const lastLookupCode = ref('')
 const lastLookupResult = ref(null)
 const lastIntakeResult = ref(null)
 const recentMovedDevices = ref([])
+const workflowDeviceSelections = ref({})
+const workflowActionLoadingProductId = ref(null)
+const applyingRouteContext = ref(false)
+const checkInLoadingDeviceId = ref(null)
+const scanToLocationMode = ref(false)
+const pendingLocationForDevice = ref(null) // { scanCode, assetTag, deviceId } | null
+const globalCheckinInitialCount = ref(null)
 
 const inputMode = ref('keyboard')
 const scanCodeInputRef = ref(null)
@@ -727,14 +935,27 @@ const inputModeButtons = computed(() => {
   return buttons
 })
 
-const workflowColumns = computed(() => [
-  { name: 'product', label: t('scan.product'), field: 'product_name', align: 'left', sortable: true },
-  { name: 'required', label: t('scan.required'), field: 'quantity_required', align: 'left', sortable: true },
-  { name: 'picked', label: t('scan.picked'), field: 'quantity_picked', align: 'left', sortable: true },
-  { name: 'checked_out', label: t('scan.checkedOut'), field: 'checked_out', align: 'left', sortable: true },
-  { name: 'remaining', label: t('scan.remaining'), field: 'remaining', align: 'left', sortable: true },
-  { name: 'available', label: t('scan.availableInStore'), field: 'available', align: 'left', sortable: true },
-])
+const shouldShowWorkflowDeviceColumn = computed(() => {
+  return (scanAction.value === 'job_out' || scanAction.value === 'job_in') && workflowDeviceOptionsByProduct.value.size > 0
+})
+
+const workflowIntakeMode = computed(() => isWorkflowIntakeMode(scanAction.value))
+
+const workflowColumns = computed(() => {
+  const columns = [
+    { name: 'product', label: t('scan.product'), field: 'product_name', align: 'left', sortable: true },
+    { name: 'required', label: t('scan.required'), field: 'quantity_required', align: 'left', sortable: true },
+    { name: 'picked', label: workflowIntakeMode.value ? t('scan.checkedIn') : t('scan.picked'), field: 'quantity_picked', align: 'left', sortable: true },
+    { name: 'checked_out', label: t('scan.checkedOut'), field: 'checked_out', align: 'left', sortable: true },
+    { name: 'remaining', label: t('scan.remaining'), field: 'remaining', align: 'left', sortable: true },
+    { name: 'available', label: t('scan.availableInStore'), field: 'available', align: 'left', sortable: true },
+    { name: 'progress', label: workflowIntakeMode.value ? t('scan.checkedInProgress') : t('scan.packedProgress'), field: 'quantity_picked', align: 'left' },
+  ]
+  if (shouldShowWorkflowDeviceColumn.value) {
+    columns.push({ name: 'add_device', label: t('scan.selectDevice'), field: 'product_id', align: 'left' })
+  }
+  return columns
+})
 
 const scanSubmitLabel = computed(() => {
   if (scanAction.value === 'move') {
@@ -865,8 +1086,9 @@ const canShowMaintenanceActions = computed(() => {
 const checkedOutColumns = computed(() => [
   { name: 'asset_tag', label: t('scan.assetTag'), field: 'asset_tag', align: 'left', sortable: true },
   { name: 'product_name', label: t('scan.product'), field: 'product_name', align: 'left', sortable: true },
-  { name: 'location_name', label: t('scan.location'), field: 'location_name', align: 'left', sortable: true },
+  { name: 'location_name', label: t('scan.returnTo'), field: 'location_name', align: 'left', sortable: true },
   { name: 'condition', label: t('scan.condition'), field: 'condition', align: 'left', sortable: true },
+  { name: 'action', label: '', field: 'id', align: 'right', sortable: false },
 ])
 
 const caseMoveSelectOptions = computed(() => {
@@ -1007,6 +1229,10 @@ const checkedOutDeviceRows = computed(() => {
   return (store.checkedOutDevices || []).map((device) => ({
     id: device.device_id,
     asset_tag: device.asset_tag,
+    serial_number: device.serial_number,
+    barcode: device.barcode,
+    qr_code: device.qr_code,
+    rfid: device.rfid,
     product_id: device.product_id,
     product_name: device.product_name || productById.value.get(device.product_id)?.name || `Product #${device.product_id}`,
     location_name: device.location_name || zoneById.value.get(device.location_zone_id)?.name || t('scan.unassigned'),
@@ -1070,21 +1296,124 @@ const workflowRequirements = computed(() => {
       : store.devices.filter(device => device.product_id === item.product_id && device.status === 'available').length
     const required = Number(item.quantity_required || 0)
     const picked = Number(item.quantity_picked || 0)
-    const remaining = Math.max(required - picked, 0)
     const checkedOut = isRental
       ? Math.max(rentalFlow.job_out - rentalFlow.job_in, 0)
       : Number(checkedOutCountByProduct.value.get(item.product_id) || 0)
-    return {
+    return normalizeWorkflowRequirement({
       product_id: item.product_id,
       product_name: product?.name || `Product #${item.product_id}`,
       quantity_required: required,
       quantity_picked: picked,
       checked_out: checkedOut,
-      remaining,
       available,
-    }
+    }, { mode: scanAction.value })
   })
 })
+
+const workflowSections = computed(() => splitWorkflowRequirements(workflowRequirements.value))
+const pendingWorkflowRequirements = computed(() => workflowSections.value.pending)
+const completedWorkflowRequirements = computed(() => workflowSections.value.completed)
+const workflowSummary = computed(() => summarizeWorkflowRequirements(workflowRequirements.value))
+
+const globalCheckinProgress = computed(() => {
+  if (!globalCheckin.value || globalCheckinInitialCount.value === null) return null
+  const total = globalCheckinInitialCount.value
+  const remaining = checkedOutDeviceRows.value.length
+  const checkedIn = Math.max(0, total - remaining)
+  const percent = total > 0 ? Math.round((checkedIn / total) * 100) : 100
+  return { total, remaining, checkedIn, percent }
+})
+
+const availableWorkflowDevicesByProduct = computed(() => {
+  const map = new Map()
+  for (const device of store.devices || []) {
+    if (device.status !== 'available') continue
+    if (!map.has(device.product_id)) map.set(device.product_id, [])
+    map.get(device.product_id).push(device)
+  }
+  for (const devices of map.values()) {
+    devices.sort((a, b) => String(a.asset_tag || '').localeCompare(String(b.asset_tag || '')))
+  }
+  return map
+})
+
+const checkedOutWorkflowDevicesByProduct = computed(() => {
+  const map = new Map()
+  for (const device of checkedOutDeviceRows.value) {
+    if (!map.has(device.product_id)) map.set(device.product_id, [])
+    map.get(device.product_id).push(device)
+  }
+  for (const devices of map.values()) {
+    devices.sort((a, b) => String(a.asset_tag || '').localeCompare(String(b.asset_tag || '')))
+  }
+  return map
+})
+
+const workflowDeviceOptionsByProduct = computed(() => {
+  const map = new Map()
+  if (scanAction.value !== 'job_out' && scanAction.value !== 'job_in') return map
+
+  for (const row of pendingWorkflowRequirements.value) {
+    const product = productById.value.get(row.product_id)
+    const isRental = Boolean(product?.is_rental_product) || String(product?.product_type || '') === 'rental'
+    if (isRental) continue
+
+    if (scanAction.value === 'job_out') {
+      const options = (availableWorkflowDevicesByProduct.value.get(row.product_id) || [])
+        .map((device) => {
+          const zoneName = zoneById.value.get(device.location_zone_id)?.name || t('scan.unassigned')
+          const scanCode = resolveDeviceScanCode(device)
+          return {
+            label: `${device.asset_tag || device.serial_number || `#${device.id}`} · ${zoneName}`,
+            value: device.id,
+            scan_code: scanCode || null,
+          }
+        })
+        .filter(option => !!option.scan_code)
+      if (options.length) map.set(row.product_id, options)
+      continue
+    }
+
+    const options = (checkedOutWorkflowDevicesByProduct.value.get(row.product_id) || [])
+      .map((device) => {
+        const scanCode = resolveDeviceScanCode(device)
+        return {
+          label: `${device.asset_tag || device.serial_number || t('scan.unknownAsset')} · ${device.location_name || t('scan.unassigned')}`,
+          value: device.id,
+          scan_code: scanCode || null,
+        }
+      })
+      .filter(option => !!option.scan_code)
+    if (options.length) map.set(row.product_id, options)
+  }
+
+  return map
+})
+
+function workflowRowProgress(row) {
+  return workflowRequirementProgress(row)
+}
+
+const workflowProgressSummaryKey = computed(() => (workflowIntakeMode.value ? 'scan.checkedInProgressSummary' : 'scan.packedProgressSummary'))
+const workflowProductProgressKey = computed(() => (workflowIntakeMode.value ? 'scan.productCheckedInProgress' : 'scan.productPackedProgress'))
+const workflowHelpKey = computed(() => (workflowIntakeMode.value ? 'scan.checkedInVsCheckedOutHelp' : 'scan.pickedVsCheckedOutHelp'))
+const workflowDoneBadgeKey = computed(() => (workflowIntakeMode.value ? 'scan.checkedInDone' : 'scan.packedDone'))
+const workflowAllDoneKey = computed(() => (workflowIntakeMode.value ? 'scan.allRequirementsCheckedIn' : 'scan.allRequirementsPacked'))
+
+function workflowDeviceOptions(row) {
+  return workflowDeviceOptionsByProduct.value.get(row.product_id) || []
+}
+
+function showWorkflowDeviceSelector(row) {
+  return (scanAction.value === 'job_out' || scanAction.value === 'job_in') && workflowDeviceOptions(row).length > 0
+}
+
+function updateWorkflowDeviceSelection(productId, value) {
+  workflowDeviceSelections.value = {
+    ...workflowDeviceSelections.value,
+    [productId]: value,
+  }
+}
 
 const lookupDeviceEntries = computed(() => detailEntries(lastLookupResult.value?.device_details, [
   ['asset_tag', 'Asset tag'],
@@ -1159,9 +1488,9 @@ async function loadData() {
     await Promise.all([
       store.fetchAll(),
       jobsStore.fetchAll(),
-      store.fetchCheckedOutDevices(),
       store.fetchAuditLogs(200),
     ])
+    await refreshCheckedOutForIntake()
   } catch (error) {
     if (error?.response?.status === 401) {
       scanResultMessage.value = t('scan.sessionExpiredRedirecting')
@@ -1174,9 +1503,38 @@ async function loadData() {
 }
 
 function clearActiveJob() {
+  resetActiveJobSelection()
+}
+
+function resetActiveJobSelection() {
   activeJobCode.value = ''
   activeJobId.value = null
+  scanCode.value = ''
+  scanJobCode.value = ''
   scanJobId.value = null
+}
+
+function setActiveJob(job, { showMessage = true } = {}) {
+  if (!job) return
+  const itemLabel = scanAction.value === 'rental_job_out' || scanAction.value === 'rental_job_in'
+    ? t('scan.rental').toLowerCase()
+    : t('scan.device').toLowerCase()
+  activeJobCode.value = job.job_code
+  activeJobId.value = job.id
+  scanJobId.value = job.id
+  scanJobCode.value = job.job_code
+  globalCheckin.value = false
+  scanCode.value = ''
+  workflowDeviceSelections.value = {}
+  pendingLocationForDevice.value = null
+  if (showMessage) {
+    scanResultMessage.value = t('scan.jobSelectedScanCodesNow', { jobCode: job.job_code, item: itemLabel })
+    scanResultSuccess.value = true
+  }
+}
+
+function scanJobLink(action, job = activeWorkflowJob.value) {
+  return buildScanJobLink(action, job)
 }
 
 function clearMoveDestination() {
@@ -1198,12 +1556,17 @@ function clearComponentDestination() {
 }
 
 function focusScanCodeInput() {
+  if (inputMode.value !== 'keyboard') return
   nextTick(() => {
     const input = scanCodeInputRef.value
     if (input && typeof input.focus === 'function') {
       input.focus()
     }
   })
+}
+
+function firstQueryValue(value) {
+  return Array.isArray(value) ? value[0] : value
 }
 
 function formatScanTime(value) {
@@ -1233,6 +1596,8 @@ function onActionChanged() {
   scanCode.value = ''
   scanResultMessage.value = ''
   scanResultSuccess.value = false
+  workflowDeviceSelections.value = {}
+  pendingLocationForDevice.value = null
   scanJobCode.value = ''
   scanJobId.value = null
   globalCheckin.value = false
@@ -1256,11 +1621,12 @@ function onActionChanged() {
 }
 
 function onGlobalCheckinChanged(value) {
-  if (!value) return
-  scanJobCode.value = ''
-  scanJobId.value = null
-  activeJobCode.value = ''
-  activeJobId.value = null
+  if (!value) {
+    globalCheckinInitialCount.value = null
+    return
+  }
+  globalCheckinInitialCount.value = null // set by refreshCheckedOutForIntake() watcher after fetch completes
+  resetActiveJobSelection()
 }
 
 function resolveZoneIdFromCode(value) {
@@ -1296,24 +1662,142 @@ function selectedOrTypedJobCode() {
 }
 
 async function refreshCheckedOutForIntake() {
-  if (scanAction.value !== 'job_in') {
+  if (scanAction.value === 'job_in') {
+    if (globalCheckin.value) {
+      await store.fetchCheckedOutDevices()
+      // Record initial count on first global check-in fetch so progress can be shown
+      if (globalCheckinInitialCount.value === null) {
+        globalCheckinInitialCount.value = (store.checkedOutDevices || []).length
+      }
+      return
+    }
+    const jobCode = selectedOrTypedJobCode()
+    if (jobCode) {
+      await store.fetchCheckedOutDevices(jobCode)
+      return
+    }
+    // In job_in with global check-in disabled and no job selected yet, show all checked-out devices.
     await store.fetchCheckedOutDevices()
     return
   }
-
-  if (globalCheckin.value) {
-    await store.fetchCheckedOutDevices()
+  if (scanAction.value === 'rental_job_in') {
+    const jobCode = selectedOrTypedJobCode()
+    if (jobCode) {
+      await store.fetchCheckedOutDevices(jobCode)
+    }
+    // No jobCode yet and rental_job_in has no useful unscoped list; skip.
     return
   }
-
-  const jobCode = selectedOrTypedJobCode()
-  if (jobCode) {
-    await store.fetchCheckedOutDevices(jobCode)
+  if (scanAction.value === 'job_out' || scanAction.value === 'rental_job_out') {
+    const jobCode = activeJobCode.value || selectedOrTypedJobCode()
+    if (jobCode) {
+      await store.fetchCheckedOutDevices(jobCode)
+    }
+    // No jobCode known yet: skip unscoped fetch to avoid large response.
     return
   }
-
-  await store.fetchCheckedOutDevices()
+  // All other scan actions (lookup, move, assign_component, rental flows, etc.)
+  // do not use the checked-out list — return early to avoid unnecessary traffic.
 }
+
+async function scanSelectedWorkflowDevice(row) {
+  if (workflowActionLoadingProductId.value !== null) return
+  if (scanToLocationMode.value && pendingLocationForDevice.value) return
+  const selectedDeviceId = workflowDeviceSelections.value[row.product_id]
+  const jobCode = activeJobCode.value || selectedOrTypedJobCode()
+  if (!selectedDeviceId) {
+    scanResultMessage.value = t('scan.selectDeviceToAdd')
+    scanResultSuccess.value = false
+    return
+  }
+  if (!jobCode) {
+    scanResultMessage.value = t('scan.selectJob')
+    scanResultSuccess.value = false
+    return
+  }
+
+  const selectedOption = (workflowDeviceOptionsByProduct.value.get(row.product_id) || []).find(option => option.value === selectedDeviceId)
+  const scanCodeValue = String(selectedOption?.scan_code || '').trim()
+  if (!scanCodeValue) {
+    scanResultMessage.value = t('scan.unableUseSelectedDevice')
+    scanResultSuccess.value = false
+    return
+  }
+
+  workflowActionLoadingProductId.value = row.product_id
+  scanResultMessage.value = ''
+  scanResultSuccess.value = false
+  try {
+    const response = await store.processScan({
+      scan_code: scanCodeValue,
+      action: scanAction.value,
+      job_code: jobCode,
+    })
+    if (scanAction.value === 'job_in') {
+      lastIntakeResult.value = response.success && Number(response.device_id || 0) > 0 ? response : null
+      maybeSetPendingLocation(response, scanCodeValue, response.asset_tag || scanCodeValue)
+    }
+    await jobsStore.fetchAll()
+    scanResultMessage.value = response.message || t('scan.scanProcessed')
+    scanResultSuccess.value = !!response.success
+    updateWorkflowDeviceSelection(row.product_id, null)
+  } catch (error) {
+    scanResultMessage.value = error?.response?.data?.detail || t('scan.scanFailed')
+    scanResultSuccess.value = false
+  } finally {
+    workflowActionLoadingProductId.value = null
+    focusScanCodeInput()
+  }
+}
+
+function maybeSetPendingLocation(response, scanCodeValue, assetTagFallback) {
+  if (response.success && scanToLocationMode.value && Number(response.device_id || 0) > 0) {
+    pendingLocationForDevice.value = {
+      scanCode: scanCodeValue,
+      assetTag: assetTagFallback || scanCodeValue,
+      deviceId: response.device_id,
+    }
+  }
+}
+
+async function checkInCheckedOutDevice(row) {
+  if (checkInLoadingDeviceId.value !== null) return
+  if (scanToLocationMode.value && pendingLocationForDevice.value) return
+  const scanCodeValue = resolveDeviceScanCode(row)
+  if (!scanCodeValue) {
+    scanResultMessage.value = t('scan.unableUseSelectedDevice')
+    scanResultSuccess.value = false
+    return
+  }
+  const jobCode = activeJobCode.value || selectedOrTypedJobCode()
+  if (!globalCheckin.value && !jobCode) {
+    scanResultMessage.value = t('scan.selectValidJobForIntakeOrGlobal')
+    scanResultSuccess.value = false
+    return
+  }
+  checkInLoadingDeviceId.value = row.id
+  scanResultMessage.value = ''
+  scanResultSuccess.value = false
+  try {
+    const response = await store.processScan({
+      scan_code: scanCodeValue,
+      action: 'job_in',
+      job_code: jobCode || null,
+    })
+    lastIntakeResult.value = response.success && Number(response.device_id || 0) > 0 ? response : null
+    maybeSetPendingLocation(response, scanCodeValue, row.asset_tag)
+    await jobsStore.fetchAll()
+    scanResultMessage.value = response.message || t('scan.scanProcessed')
+    scanResultSuccess.value = !!response.success
+  } catch (error) {
+    scanResultMessage.value = error?.response?.data?.detail || t('scan.scanFailed')
+    scanResultSuccess.value = false
+  } finally {
+    checkInLoadingDeviceId.value = null
+    focusScanCodeInput()
+  }
+}
+
 
 async function scheduleMaintenanceFromLookup() {
   const lookupCode = maintenanceTargetCode.value
@@ -1344,6 +1828,45 @@ async function scheduleMaintenanceFromLookup() {
 async function runScanAction() {
   if (saving.value) return
   const code = String(scanCode.value || '').trim()
+
+  // Intercept: if waiting for a location scan after a job_in check-in, match against zone scan codes
+  if (scanToLocationMode.value && pendingLocationForDevice.value && code) {
+    const zone = zoneByCode.value.get(String(code).trim().toUpperCase())
+    if (!zone) {
+      scanResultMessage.value = t('scan.locationScanNotFound')
+      scanResultSuccess.value = false
+      scanCode.value = ''
+      focusScanCodeInput()
+      return
+    }
+    saving.value = true
+    scanResultMessage.value = ''
+    try {
+      await store.processScan({
+        scan_code: pendingLocationForDevice.value.scanCode,
+        action: 'move',
+        zone_id: zone.id,
+      })
+      const jobCode = activeJobCode.value || selectedOrTypedJobCode()
+      if (jobCode) {
+        await store.fetchCheckedOutDevices(jobCode)
+      } else {
+        // Global check-in: refresh the unscoped list since processScan skips this for move actions
+        await store.fetchCheckedOutDevices()
+      }
+      scanResultMessage.value = t('scan.deviceMovedToZone', { zone: zone.name })
+      scanResultSuccess.value = true
+    } catch (error) {
+      scanResultMessage.value = error?.response?.data?.detail || t('scan.scanFailed')
+      scanResultSuccess.value = false
+    } finally {
+      pendingLocationForDevice.value = null
+      saving.value = false
+      scanCode.value = ''
+      focusScanCodeInput()
+    }
+    return
+  }
 
   if (scanAction.value === 'move' && !moveDestinationReady.value) {
     const destinationCode = String(scanZoneCode.value || code || '').trim()
@@ -1405,13 +1928,10 @@ async function runScanAction() {
       scanResultSuccess.value = false
       return
     }
-    activeJobCode.value = job.job_code
-    activeJobId.value = job.id
-    scanJobId.value = job.id
-    scanJobCode.value = job.job_code
+    setActiveJob(job, { showMessage: false })
+    scanCode.value = ''
 
     if (!code || code.toUpperCase() === String(job.job_code || '').toUpperCase()) {
-      scanCode.value = ''
       scanResultMessage.value = t('scan.jobSelectedScanCodesNow', { jobCode: job.job_code, item: scanAction.value === 'rental_job_out' ? t('scan.rental').toLowerCase() : t('scan.device').toLowerCase() })
       scanResultSuccess.value = true
       focusScanCodeInput()
@@ -1430,13 +1950,10 @@ async function runScanAction() {
       scanResultSuccess.value = false
       return
     }
-    activeJobCode.value = job.job_code
-    activeJobId.value = job.id
-    scanJobId.value = job.id
-    scanJobCode.value = job.job_code
+    setActiveJob(job, { showMessage: false })
+    scanCode.value = ''
 
     if (!code || code.toUpperCase() === String(job.job_code || '').toUpperCase()) {
-      scanCode.value = ''
       scanResultMessage.value = t('scan.jobSelectedScanCodesNow', { jobCode: job.job_code, item: t('scan.device').toLowerCase() })
       scanResultSuccess.value = true
       focusScanCodeInput()
@@ -1455,13 +1972,10 @@ async function runScanAction() {
       scanResultSuccess.value = false
       return
     }
-    activeJobCode.value = job.job_code
-    activeJobId.value = job.id
-    scanJobId.value = job.id
-    scanJobCode.value = job.job_code
+    setActiveJob(job, { showMessage: false })
+    scanCode.value = ''
 
     if (!code || code.toUpperCase() === String(job.job_code || '').toUpperCase()) {
-      scanCode.value = ''
       scanResultMessage.value = t('scan.jobSelectedScanCodesNow', { jobCode: job.job_code, item: t('scan.rental').toLowerCase() })
       scanResultSuccess.value = true
       focusScanCodeInput()
@@ -1498,12 +2012,10 @@ async function runScanAction() {
     }
     if (scanAction.value === 'job_in') {
       lastIntakeResult.value = response.success && Number(response.device_id || 0) > 0 ? response : null
+      maybeSetPendingLocation(response, code, response.asset_tag)
     }
     if (scanAction.value === 'job_out' || scanAction.value === 'rental_job_out' || scanAction.value === 'job_in' || scanAction.value === 'rental_job_in') {
       await jobsStore.fetchAll()
-    }
-    if (scanAction.value === 'job_out' || scanAction.value === 'job_in') {
-      await refreshCheckedOutForIntake()
     }
     const knownScanErrors = {
       'Device not found': t('scan.deviceNotFound'),
@@ -1663,6 +2175,7 @@ function onInputModeChanged() {
   if (inputMode.value === 'keyboard') {
     stopCameraScan()
     stopNfcScan()
+    focusScanCodeInput()
     return
   }
   if (inputMode.value === 'camera') {
@@ -1672,6 +2185,35 @@ function onInputModeChanged() {
   }
   stopCameraScan()
   startNfcScan()
+}
+
+async function applyRouteContext() {
+  const nextAction = String(firstQueryValue(route.query.action) || '').trim()
+  const nextJobId = Number(firstQueryValue(route.query.jobId) || 0)
+  const nextJobCode = String(firstQueryValue(route.query.jobCode) || '').trim().toUpperCase()
+  if (!nextAction && !nextJobId && !nextJobCode) return
+  if (applyingRouteContext.value) return
+
+  applyingRouteContext.value = true
+  try {
+    if (['job_out', 'job_in', 'rental_job_out', 'rental_job_in'].includes(nextAction) && scanAction.value !== nextAction) {
+      onScanVariantChanged(nextAction)
+    }
+
+    if (['job_out', 'job_in', 'rental_job_out', 'rental_job_in'].includes(scanAction.value)) {
+      const job = nextJobId > 0
+        ? (jobsStore.jobs.find(item => item.id === nextJobId) || null)
+        : jobsStore.jobs.find(item => String(item.job_code || '').toUpperCase() === nextJobCode) || null
+      if (job) {
+        setActiveJob(job, { showMessage: false })
+      }
+    }
+
+    const { action, jobId, jobCode, ...nextQuery } = route.query
+    await router.replace({ path: '/scan', query: nextQuery })
+  } finally {
+    applyingRouteContext.value = false
+  }
 }
 
 onMounted(async () => {
@@ -1685,11 +2227,17 @@ onMounted(async () => {
   if (typeof window !== 'undefined') {
     window.addEventListener('keydown', onGlobalScanHotkey)
   }
+  await applyRouteContext()
   focusScanCodeInput()
 })
 
 watch([scanAction, globalCheckin, scanJobId, scanJobCode], async () => {
   await refreshCheckedOutForIntake()
+})
+
+watch(scanToLocationMode, (enabled) => {
+  if (enabled) return
+  pendingLocationForDevice.value = null
 })
 
 watch(scanZoneId, (value) => {
@@ -1712,16 +2260,18 @@ watch([scanAction, scanJobId], () => {
 
   const job = jobsStore.jobs.find(item => item.id === scanJobId.value)
   if (!job) return
-
-  const itemLabel = scanAction.value === 'rental_job_out' || scanAction.value === 'rental_job_in' ? t('scan.rental').toLowerCase() : t('scan.device').toLowerCase()
-  activeJobCode.value = job.job_code
-  activeJobId.value = job.id
-  scanJobCode.value = job.job_code
-  scanResultMessage.value = t('scan.jobSelectedScanCodesNow', { jobCode: job.job_code, item: itemLabel })
-  scanResultSuccess.value = true
-  scanCode.value = ''
+  setActiveJob(job)
   focusScanCodeInput()
 })
+
+watch(
+  () => [route.query.action, route.query.jobId, route.query.jobCode],
+  async ([nextAction, nextJobId, nextJobCode]) => {
+    if (applyingRouteContext.value) return
+    if (!nextAction && !nextJobId && !nextJobCode) return
+    await applyRouteContext()
+  }
+)
 
 onBeforeUnmount(() => {
   if (typeof window !== 'undefined') {

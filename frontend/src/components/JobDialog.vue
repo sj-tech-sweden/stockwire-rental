@@ -6,6 +6,38 @@
       </q-card-section>
 
       <q-card-section class="q-pt-none">
+        <q-banner v-if="editing?.id" class="bg-blue-1 text-primary rounded-borders q-mb-md">
+          <div class="row q-col-gutter-sm items-center">
+            <div class="col-12 col-md">
+              <div class="text-subtitle2">{{ editing?.job_code }}</div>
+              <div class="text-caption">
+                {{ editing?.customer_name || t('jobs.unassigned') }} · {{ editing?.venue_name || t('jobs.unassigned') }} · {{ editing?.start_date || '-' }} → {{ editing?.end_date || '-' }}
+              </div>
+            </div>
+            <div class="col-12 col-md-auto">
+              <div class="row q-gutter-xs">
+                <q-btn
+                  flat
+                  dense
+                  no-caps
+                  color="primary"
+                  icon="shopping_cart_checkout"
+                  :label="t('scan.scanOutJob')"
+                  :to="scanJobLink('job_out')"
+                />
+                <q-btn
+                  flat
+                  dense
+                  no-caps
+                  color="primary"
+                  icon="assignment_return"
+                  :label="t('scan.scanInJob')"
+                  :to="scanJobLink('job_in')"
+                />
+              </div>
+            </div>
+          </div>
+        </q-banner>
         <q-form ref="formRef" @submit.prevent="saveJob">
           <div class="row q-col-gutter-sm">
             <div class="col-12 col-md-6">
@@ -508,6 +540,7 @@ import VenueCreateInline from './VenueCreateInline.vue'
 import { translateMaybePrefillCustomFieldLabel, translateMaybePrefillCustomFieldOption } from '../i18n/prefillContent'
 import { normalizeCurrencyCode } from '../constants/currencies'
 import { googleMapsEmbedUrl, googleMapsSearchUrl, locationQueryFromParts } from '../utils/maps'
+import { buildScanJobLink } from '../utils/scan-workflow'
 
 const props = defineProps({
   modelValue: Boolean,
@@ -543,6 +576,10 @@ const saving = ref(false)
 const generatingJobCode = ref(false)
 const dialogError = ref('')
 const formRef = ref(null)
+
+function scanJobLink(action) {
+  return buildScanJobLink(action, editing.value)
+}
 
 function customFieldLabel(label) {
   return translateMaybePrefillCustomFieldLabel(label, t)

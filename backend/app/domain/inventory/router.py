@@ -1199,6 +1199,10 @@ def list_checked_out_devices(
             InventoryCheckedOutDeviceRead(
                 device_id=device.id,
                 asset_tag=device.asset_tag,
+                serial_number=device.serial_number,
+                barcode=device.barcode,
+                qr_code=device.qr_code,
+                rfid=device.rfid,
                 product_id=device.product_id,
                 product_name=product.name if product else None,
                 location_zone_id=device.location_zone_id,
@@ -1236,6 +1240,10 @@ def list_checked_out_devices(
             InventoryCheckedOutDeviceRead(
                 device_id=device.id,
                 asset_tag=device.asset_tag,
+                serial_number=device.serial_number,
+                barcode=device.barcode,
+                qr_code=device.qr_code,
+                rfid=device.rfid,
                 product_id=device.product_id,
                 product_name=product.name if product else None,
                 location_zone_id=device.location_zone_id,
@@ -2410,6 +2418,12 @@ def process_scan(
                 db.commit()
                 return response
 
+            return_zone = None
+            if payload.zone_id is not None:
+                return_zone = db.get(Zone, payload.zone_id)
+                if return_zone is None:
+                    raise HTTPException(status_code=404, detail="Location not found")
+
             if job is not None:
                 decremented_by_product: dict[int, int] = defaultdict(int)
                 for target in target_devices:
@@ -2427,6 +2441,8 @@ def process_scan(
 
             for target in target_devices:
                 target.status = "available"
+                if return_zone is not None:
+                    target.location_zone_id = return_zone.id
             db.flush()
             db.refresh(device)
             affected_count = len(target_devices)

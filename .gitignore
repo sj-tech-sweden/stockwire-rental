@@ -28,3 +28,4 @@ infra/env/.env
 
 # OS
 .DS_Store
+frontend/package-lock.json

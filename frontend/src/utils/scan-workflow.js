@@ -1,0 +1,106 @@
+export function isWorkflowIntakeMode(mode) {
+  return mode === 'job_in' || mode === 'rental_job_in'
+}
+
+export function normalizeWorkflowRequirement(row, { mode } = {}) {
+  const required = Number(row?.quantity_required || 0)
+  const picked = Number(row?.quantity_picked || 0)
+  const checkedOut = Number(row?.checked_out || 0)
+
+  if (!isWorkflowIntakeMode(mode)) {
+    return {
+      ...row,
+      quantity_required: required,
+      quantity_picked: picked,
+      checked_out: checkedOut,
+      remaining: Math.max(required - picked, 0),
+    }
+  }
+
+  const normalizedCheckedOut = Math.max(checkedOut, 0)
+  const checkedInCountCapped = Math.min(Math.max(required - normalizedCheckedOut, 0), required)
+  return {
+    ...row,
+    quantity_required: required,
+    quantity_picked: checkedInCountCapped,
+    checked_out: normalizedCheckedOut,
+    remaining: normalizedCheckedOut,
+  }
+}
+
+export function workflowRequirementProgress(row) {
+  const required = Number(row?.quantity_required || 0)
+  const picked = Number(row?.quantity_picked || 0)
+  const remaining = Number(row?.remaining || 0)
+  if (required <= 0) {
+    // In intake mode a row can have remaining > 0 (devices still checked out)
+    // even when required is 0 — treat it as incomplete in that case.
+    return {
+      required,
+      picked,
+      packed: 0,
+      percent: remaining > 0 ? 0 : 100,
+    }
+  }
+
+  const packed = Math.min(Math.max(picked, 0), required)
+  return {
+    required,
+    picked,
+    packed,
+    percent: Math.min(Math.round((packed / required) * 100), 100),
+  }
+}
+
+export function resolveDeviceScanCode(device) {
+  return [device?.asset_tag, device?.barcode, device?.qr_code, device?.rfid, device?.serial_number]
+    .map(value => String(value || '').trim())
+    .find(Boolean) || ''
+}
+
+export function buildScanJobLink(action, job) {
+  if (!job?.id) return { path: '/scan' }
+  return {
+    path: '/scan',
+    query: {
+      action,
+      jobId: String(job.id),
+      jobCode: String(job.job_code || ''),
+    },
+  }
+}
+
+export function isWorkflowRequirementComplete(row) {
+  return Number(row?.remaining || 0) <= 0
+}
+
+export function splitWorkflowRequirements(rows = []) {
+  const pending = []
+  const completed = []
+  for (const row of rows) {
+    if (isWorkflowRequirementComplete(row)) completed.push(row)
+    else pending.push(row)
+  }
+  return { pending, completed }
+}
+
+export function summarizeWorkflowRequirements(rows = []) {
+  const totalRequired = rows.reduce((sum, row) => sum + Number(row?.quantity_required || 0), 0)
+  const totalPacked = rows.reduce((sum, row) => sum + workflowRequirementProgress(row).packed, 0)
+  const completedCount = rows.filter(isWorkflowRequirementComplete).length
+  let percent
+  if (totalRequired > 0) {
+    percent = Math.min(Math.round((totalPacked / totalRequired) * 100), 100)
+  } else {
+    // When totalRequired is 0 (e.g. intake with all required=0), derive percent
+    // from whether every row is fully complete so pending rows don't show 100%.
+    percent = rows.length === 0 || rows.every(isWorkflowRequirementComplete) ? 100 : 0
+  }
+  return {
+    totalRequired,
+    totalPacked,
+    completedCount,
+    totalCount: rows.length,
+    percent,
+  }
+}
