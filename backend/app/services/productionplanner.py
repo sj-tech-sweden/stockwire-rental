@@ -47,8 +47,6 @@ class ProductionPlannerClient:
             self._client = httpx.AsyncClient(
                 base_url=self.base_url,
                 headers={
-                    "Authorization": f"Bearer {self.api_key}",
-                    "X-API-Key": self.api_key,
                     "Accept": "application/json",
                 },
                 timeout=30.0,
@@ -103,11 +101,30 @@ class ProductionPlannerClient:
             return {}
 
     async def _request(self, method: str, path: str, **kwargs: Any) -> Dict[str, Any]:
+        request_kwargs = dict(kwargs)
+        extra_headers = request_kwargs.pop("headers", None) or {}
+        auth_variants: List[Dict[str, str]] = [{}]
+        if self.api_key:
+            auth_variants = [
+                {"Authorization": f"Bearer {self.api_key}", "X-API-Key": self.api_key},
+                {"X-API-Key": self.api_key},
+                {"Authorization": f"Bearer {self.api_key}"},
+            ]
+        last_response: Optional[httpx.Response] = None
         try:
-            response = await self.client.request(method, path, **kwargs)
+            for index, auth_headers in enumerate(auth_variants):
+                headers = {**auth_headers, **extra_headers} if (auth_headers or extra_headers) else None
+                response = await self.client.request(method, path, headers=headers, **request_kwargs)
+                if response.status_code < 400:
+                    return self._handle_response(response)
+                last_response = response
+                if index == 0 and response.status_code not in {401, 403, 500}:
+                    break
         except httpx.HTTPError as exc:
             raise ProductionPlannerError(f"Failed to communicate with ProductionPlanner: {exc}", 502) from exc
-        return self._handle_response(response)
+        if last_response is None:
+            raise ProductionPlannerError("Failed to communicate with ProductionPlanner", 502)
+        return self._handle_response(last_response)
 
     async def get_info(self) -> Dict[str, Any]:
         return await self._request("GET", "info")

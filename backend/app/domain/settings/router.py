@@ -965,17 +965,36 @@ def test_integration_connection(
 
     if plugin_key == "productionplanner":
         projects_url = api_url.rstrip("/") + "/projects"
+        auth_variants = [
+            {
+                "Authorization": f"Bearer {api_key}",
+                "X-API-Key": api_key,
+                "Accept": "application/json",
+            },
+            {
+                "X-API-Key": api_key,
+                "Accept": "application/json",
+            },
+            {
+                "Authorization": f"Bearer {api_key}",
+                "Accept": "application/json",
+            },
+        ]
         try:
-            pp_response = httpx.get(
-                projects_url,
-                headers={
-                    "Authorization": f"Bearer {api_key}",
-                    "X-API-Key": api_key,
-                    "Accept": "application/json",
-                },
-                timeout=8.0,
-                follow_redirects=False,
-            )
+            pp_response = None
+            for index, test_headers in enumerate(auth_variants):
+                pp_response = httpx.get(
+                    projects_url,
+                    headers=test_headers,
+                    timeout=8.0,
+                    follow_redirects=False,
+                )
+                if pp_response.status_code < 400:
+                    break
+                if index == 0 and pp_response.status_code not in {401, 403, 500}:
+                    break
+            if pp_response is None:
+                raise httpx.HTTPError("No response from ProductionPlanner")
             if pp_response.status_code < 400:
                 return IntegrationConnectionTestRead(
                     ok=True,
