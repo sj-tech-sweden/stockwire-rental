@@ -57,6 +57,10 @@ export const useJobsStore = defineStore('jobs', () => {
         fetchSource.value = 'snapshot'
         return
       }
+      if (!isOnline()) {
+        // Offline with no cached snapshot: keep current in-memory state and skip
+        return
+      }
       throw error
     } finally {
       loading.value = false

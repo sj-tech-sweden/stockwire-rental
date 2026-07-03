@@ -245,23 +245,39 @@
           </div>
         </q-form>
 
-        <div v-if="canShowMaintenanceActions" class="row q-gutter-sm q-mt-md">
-          <q-btn
-            color="primary"
-            unelevated
-            icon="build_circle"
-            :label="t('scan.markNeedsMaintenance')"
-            :loading="saving"
-            @click="scheduleMaintenanceFromLookup"
-          />
-          <q-btn
-            color="warning"
-            unelevated
-            icon="warning"
-            :label="t('scan.markAsDefective')"
-            :loading="saving"
-            @click="defectDialogOpen = true"
-          />
+        <div v-if="canShowMaintenanceActions" class="q-mt-md">
+          <div class="row q-gutter-sm q-mb-sm">
+            <div class="col-12 col-sm-auto">
+              <q-select
+                v-model="scanMaintenanceType"
+                :options="maintenanceTypeOptions"
+                :label="t('scan.maintenanceType')"
+                emit-value
+                map-options
+                outlined
+                dense
+                style="min-width: 180px"
+              />
+            </div>
+          </div>
+          <div class="row q-gutter-sm">
+            <q-btn
+              color="primary"
+              unelevated
+              icon="build_circle"
+              :label="t('scan.markNeedsMaintenance')"
+              :loading="saving"
+              @click="scheduleMaintenanceFromLookup"
+            />
+            <q-btn
+              color="warning"
+              unelevated
+              icon="warning"
+              :label="t('scan.markAsDefective')"
+              :loading="saving"
+              @click="defectDialogOpen = true"
+            />
+          </div>
         </div>
 
         <q-card v-if="scanAction === 'lookup' && lastLookupResult" flat bordered class="q-mt-md lookup-details-card">
@@ -780,6 +796,9 @@ let nfcReader = null
 const showShortcutHelp = ref(false)
 
 const defectDialogOpen = ref(false)
+const scanMaintenanceType = ref('inspection')
+const scanIntervalMode = ref('calendar')
+const scanIntervalValue = ref(null)
 
 const supportsCamera = computed(() => {
   return typeof navigator !== 'undefined'
@@ -1082,6 +1101,16 @@ const canShowMaintenanceActions = computed(() => {
   }
   return false
 })
+
+const maintenanceTypeOptions = computed(() => [
+  { label: t('scan.maintenanceInspection'), value: 'inspection' },
+  { label: t('scan.maintenanceCleaning'), value: 'cleaning' },
+  { label: t('scan.maintenanceRepair'), value: 'repair' },
+  { label: t('scan.maintenanceCalibration'), value: 'calibration' },
+  { label: t('scan.maintenancePatTest'), value: 'pat_test' },
+  { label: t('scan.maintenanceScheduled'), value: 'scheduled' },
+  { label: t('scan.maintenanceModification'), value: 'modification' },
+])
 
 const checkedOutColumns = computed(() => [
   { name: 'asset_tag', label: t('scan.assetTag'), field: 'asset_tag', align: 'left', sortable: true },
