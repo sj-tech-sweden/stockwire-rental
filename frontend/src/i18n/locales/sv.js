@@ -532,6 +532,8 @@ export default {
         apiKey: 'API-nyckel',
         apiKeyPlaceholder: 'pp_...',
         apiKeyHint: 'Hämta din API-nyckel från ProductionPlanner.io Integrations-sidan',
+        apiKeySaved: '(API-nyckel sparad)',
+        apiKeySavedHint: 'En API-nyckel är lagrad. Ange en ny nyckel för att ersätta den.',
         baseUrl: 'API-basURL',
         baseUrlDefault: 'https://api.productionplanner.io/v1',
         connectionTest: 'Testa anslutning',

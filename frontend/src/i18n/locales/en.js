@@ -532,6 +532,8 @@ export default {
         apiKey: 'API Key',
         apiKeyPlaceholder: 'pp_...',
         apiKeyHint: 'Get your API key from ProductionPlanner.io Integrations page',
+        apiKeySaved: '(API key saved)',
+        apiKeySavedHint: 'An API key is stored. Enter a new key to replace it.',
         baseUrl: 'API Base URL',
         baseUrlDefault: 'https://api.productionplanner.io/v1',
         connectionTest: 'Test connection',
