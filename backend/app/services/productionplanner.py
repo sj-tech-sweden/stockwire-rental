@@ -49,7 +49,7 @@ class ProductionPlannerClient:
                 headers={
                     "Authorization": f"Bearer {self.api_key}",
                     "X-API-Key": self.api_key,
-                    "Content-Type": "application/json",
+                    "Accept": "application/json",
                 },
                 timeout=30.0,
             )
@@ -68,16 +68,32 @@ class ProductionPlannerClient:
 
     def _handle_response(self, response: httpx.Response) -> Dict[str, Any]:
         if response.status_code >= 400:
+            raw_text = ""
+            try:
+                raw_text = response.text[:500]
+            except Exception:
+                pass
+            logger.debug(
+                "ProductionPlanner API error: status=%d body=%r",
+                response.status_code,
+                raw_text,
+            )
             try:
                 error_data = response.json()
             except ValueError:
                 error_data = None
             if isinstance(error_data, dict):
-                message = error_data.get("message") or error_data.get("detail")
+                message = (
+                    error_data.get("message")
+                    or error_data.get("detail")
+                    or error_data.get("error")
+                    or error_data.get("errorMessage")
+                    or error_data.get("msg")
+                )
             elif isinstance(error_data, str):
                 message = error_data
             else:
-                message = None
+                message = raw_text.strip() or None
             raise ProductionPlannerError(message or f"API error: {response.status_code}", response.status_code)
         if response.status_code == 204 or not response.content:
             return {}
