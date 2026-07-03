@@ -563,7 +563,7 @@
                     no-caps
                     icon="add_circle"
                     :label="scanAction === 'job_in' ? t('scan.scanInSelectedDevice') : t('scan.addSelectedDevice')"
-                    :disable="workflowActionLoadingProductId !== null || !workflowDeviceSelections[props.row.product_id]"
+:disable="workflowActionLoadingProductId !== null || !workflowDeviceSelections[props.row.product_id] || (scanToLocationMode && pendingLocationForDevice)"
                     :loading="workflowActionLoadingProductId === props.row.product_id"
                     @click="scanSelectedWorkflowDevice(props.row)"
                   />
