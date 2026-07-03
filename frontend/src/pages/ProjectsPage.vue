@@ -323,14 +323,14 @@ async function syncToProductionPlanner(project) {
     const result = await projectsStore.syncProjectToProductionPlanner(project.id)
     if (result?.success !== true) {
       console.error('ProductionPlanner sync failed:', result?.message || 'Unknown error')
-      $q.notify({ type: 'negative', message: result?.message || t('jobs.syncPPFailed') })
+      $q.notify({ type: 'negative', message: result?.message || t('projects.syncPPFailed') })
       return
     }
     await projectsStore.fetchAll()
-    $q.notify({ type: 'positive', message: t('jobs.syncPPSuccess') })
+    $q.notify({ type: 'positive', message: t('projects.syncPPSuccess') })
   } catch (error) {
     console.error('Failed to sync to ProductionPlanner:', error)
-    $q.notify({ type: 'negative', message: t('jobs.syncPPFailed') })
+    $q.notify({ type: 'negative', message: t('projects.syncPPFailed') })
   }
 }
 

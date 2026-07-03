@@ -888,6 +888,8 @@ export default {
     projectUpdated: 'Projekt uppdaterat',
     projectCreated: 'Projekt skapat',
     projectDeleted: 'Projekt borttaget',
+    syncPPSuccess: 'Projekt synkat till ProductionPlanner',
+    syncPPFailed: 'Misslyckades att synka projekt till ProductionPlanner',
   },
   inventory: {
     importJson: 'Importera JSON',
