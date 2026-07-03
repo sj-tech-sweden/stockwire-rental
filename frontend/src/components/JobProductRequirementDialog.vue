@@ -244,6 +244,7 @@ const props = defineProps({
   startDate: { type: String, default: null },
   endDate: { type: String, default: null },
   jobId: { type: Number, default: null },
+  includeRentalProducts: Boolean,
 })
 
 const emit = defineEmits([
@@ -318,7 +319,7 @@ function isRentalProduct(product) {
 
 const requirementSourceProducts = computed(() => {
   const source = props.products?.length ? props.products : (inventoryStore.products || [])
-  return source.filter(product => !isRentalProduct(product))
+  return source.filter(product => props.includeRentalProducts || !isRentalProduct(product))
 })
 
 const requirementBrandFilterOptions = computed(() => {

@@ -287,12 +287,12 @@
             <div class="q-pt-sm">
               <div class="row items-center justify-between q-mb-sm">
                 <div class="text-caption text-grey-7">
-                  {{ requirementRows.length ? t('jobs.addedRequirements') : t('jobs.noRequirements') }}
+                  {{ visibleRequirementRows.length ? t('jobs.addedRequirements') : t('jobs.noRequirements') }}
                 </div>
                 <q-btn unelevated color="primary" icon="add" :label="t('jobs.manageRequirements')" no-caps size="sm" @click="requirementDialogOpen = true" />
               </div>
-              <q-list v-if="requirementRows.length" bordered separator dense class="rounded-borders q-mb-sm">
-                <q-item v-for="row in requirementRows" :key="row.product_id" dense>
+              <q-list v-if="visibleRequirementRows.length" bordered separator dense class="rounded-borders q-mb-sm">
+                <q-item v-for="row in visibleRequirementRows" :key="row.product_id" dense>
                   <q-item-section>
                     <q-item-label>{{ requirementProductName(row.product_id) }}</q-item-label>
                   </q-item-section>
@@ -741,6 +741,10 @@ const emptyForm = () => ({
 const form = ref(emptyForm())
 const requirementRows = ref([])
 const requirementDraft = ref({ product_id: null, quantity_required: 1 })
+
+const visibleRequirementRows = computed(() => (
+  requirementRows.value.filter(row => Number(row.quantity_required || 0) > 0 || Number(row.quantity_picked || 0) > 0)
+))
 
 const filteredRequirementProducts = computed(() => {
   const term = requirementProductSearch.value.trim().toLowerCase()

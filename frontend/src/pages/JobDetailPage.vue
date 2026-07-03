@@ -316,6 +316,7 @@
       :start-date="form.start_date"
       :end-date="form.end_date"
       :job-id="currentJob?.id || null"
+      :include-rental-products="true"
     />
   </q-page>
 </template>
