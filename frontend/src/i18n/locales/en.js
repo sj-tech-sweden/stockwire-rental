@@ -906,6 +906,8 @@ export default {
     projectUpdated: 'Project updated',
     projectCreated: 'Project created',
     projectDeleted: 'Project deleted',
+    syncPPSuccess: 'Project synced to ProductionPlanner',
+    syncPPFailed: 'Failed to sync project to ProductionPlanner',
   },
   inventory: {
     importJson: 'Import JSON',
