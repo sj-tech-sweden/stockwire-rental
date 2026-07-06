@@ -68,7 +68,7 @@
 
 <script setup>
 import { computed, ref } from 'vue'
-import { api } from 'boot/axios'
+import { api } from '../boot/axios'
 import { useI18n } from 'vue-i18n'
 import { Notify } from 'quasar'
 
