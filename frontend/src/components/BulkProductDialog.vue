@@ -77,9 +77,9 @@
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useQuasar } from 'quasar'
-import { useInventoryStore } from 'src/stores/inventory'
-import { useSettingsStore } from 'src/stores/settings'
-import { normalizeCurrencyCode } from 'src/constants/currencies'
+import { useInventoryStore } from '../stores/inventory'
+import { useSettingsStore } from '../stores/settings'
+import { normalizeCurrencyCode } from '../constants/currencies'
 
 const { t } = useI18n()
 const $q = useQuasar()

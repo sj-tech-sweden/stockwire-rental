@@ -1,7 +1,5 @@
 import { configure } from 'quasar/wrappers'
 import { createRequire } from 'module'
-import { fileURLToPath } from 'url'
-import path from 'path'
 
 const require = createRequire(import.meta.url)
 const pkg = require('./package.json')
@@ -68,15 +66,6 @@ export default configure(function () {
               stabilityThreshold: 200,
               pollInterval: 100
             }
-          }
-        }
-
-        const srcDir = path.resolve(fileURLToPath(new URL('.', import.meta.url)), 'src')
-        viteConf.resolve = {
-          ...(viteConf.resolve || {}),
-          alias: {
-            ...((viteConf.resolve?.alias) || {}),
-            src: srcDir
           }
         }
       }

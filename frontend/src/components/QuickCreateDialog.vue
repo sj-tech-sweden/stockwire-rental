@@ -43,7 +43,7 @@
 import { computed, ref, watch } from 'vue'
 import { useQuasar } from 'quasar'
 import { useI18n } from 'vue-i18n'
-import { DEVICE_STATUSES, useInventoryStore } from 'src/stores/inventory'
+import { DEVICE_STATUSES, useInventoryStore } from '../stores/inventory'
 
 const props = defineProps({
   modelValue: { type: Boolean, required: true },

@@ -17,8 +17,8 @@
 import { ref } from 'vue'
 import { useQuasar } from 'quasar'
 import { useI18n } from 'vue-i18n'
-import { useCustomersStore } from 'src/stores/customers'
-import { useAuthStore } from 'src/stores/auth'
+import { useCustomersStore } from '../stores/customers'
+import { useAuthStore } from '../stores/auth'
 
 const props = defineProps({
   modelValue: Boolean,
