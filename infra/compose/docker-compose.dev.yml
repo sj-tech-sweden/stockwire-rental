@@ -57,16 +57,17 @@ services:
     build:
       context: ../../frontend
       dockerfile: Dockerfile
-      target: dev
+      target: production
     environment:
       VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:8000}
-      CHOKIDAR_USEPOLLING: 'true'
     ports:
       - "9000:9000"
-    volumes:
-      - ../../frontend:/app:delegated
-      - /app/node_modules
-    command: sh -c "npm install --no-audit --no-fund && npm run dev -- --host 0.0.0.0 --port 9000"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:9000/healthz"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
     depends_on:
       - backend
 
