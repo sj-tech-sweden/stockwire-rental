@@ -49,7 +49,7 @@
 import { ref, computed, watch } from 'vue'
 import { useQuasar } from 'quasar'
 import { useI18n } from 'vue-i18n'
-import { useCustomFieldsStore, CUSTOM_FIELD_ENTITY_TYPES, CUSTOM_FIELD_VALUE_TYPES } from 'src/stores/customFields'
+import { useCustomFieldsStore, CUSTOM_FIELD_ENTITY_TYPES, CUSTOM_FIELD_VALUE_TYPES } from '../stores/customFields'
 
 const props = defineProps({
   modelValue: Boolean,

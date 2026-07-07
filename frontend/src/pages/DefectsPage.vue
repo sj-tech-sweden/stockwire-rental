@@ -241,7 +241,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useQuasar } from 'quasar'
-import { api } from 'boot/axios'
+import { api } from '../boot/axios'
 import { useInventoryStore } from '../stores/inventory'
 import { useCompactGrid } from '../composables/useCompactGrid'
 import ProductDialog from '../components/ProductDialog.vue'

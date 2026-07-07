@@ -823,7 +823,7 @@ import {
   isRentalProduct
 } from '../utils/inventory-overview'
 import { api } from '../boot/axios'
-import DefectReportDialog from 'components/DefectReportDialog.vue'
+import DefectReportDialog from '../components/DefectReportDialog.vue'
 import RentalProductDialog from '../components/RentalProductDialog.vue'
 import RentalProductInfoDialog from '../components/RentalProductInfoDialog.vue'
 import ProductAvailabilityDialog from '../components/ProductAvailabilityDialog.vue'

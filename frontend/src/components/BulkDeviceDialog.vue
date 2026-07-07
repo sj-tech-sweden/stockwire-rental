@@ -23,7 +23,7 @@
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useQuasar } from 'quasar'
-import { DEVICE_STATUSES, useInventoryStore } from 'src/stores/inventory'
+import { DEVICE_STATUSES, useInventoryStore } from '../stores/inventory'
 
 const { t } = useI18n()
 const $q = useQuasar()

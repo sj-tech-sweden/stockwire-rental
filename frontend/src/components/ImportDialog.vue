@@ -117,10 +117,10 @@
 import { computed, ref, watch } from 'vue'
 import { useQuasar } from 'quasar'
 import { useI18n } from 'vue-i18n'
-import { useInventoryStore } from 'src/stores/inventory'
-import { useSettingsStore } from 'src/stores/settings'
-import { api } from 'src/boot/axios'
-import { collectImportSourceKeys, convertDimensionValueToCm, getImportValueBySourceKey, parseImportRows, resolveImportEntityType } from 'src/utils/import-data'
+import { useInventoryStore } from '../stores/inventory'
+import { useSettingsStore } from '../stores/settings'
+import { api } from '../boot/axios'
+import { collectImportSourceKeys, convertDimensionValueToCm, getImportValueBySourceKey, parseImportRows, resolveImportEntityType } from '../utils/import-data'
 
 const props = defineProps({
   modelValue: { type: Boolean, required: true },

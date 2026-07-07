@@ -101,12 +101,12 @@
 import { ref, watch } from 'vue'
 import { useQuasar } from 'quasar'
 import { useI18n } from 'vue-i18n'
-import { useCustomersStore } from 'src/stores/customers'
-import { useCustomFieldsStore } from 'src/stores/customFields'
-import { useAuthStore } from 'src/stores/auth'
-import { useSettingsStore } from 'src/stores/settings'
-import { COUNTRIES } from 'src/constants/countries'
-import { translateMaybePrefillCustomFieldLabel, translateMaybePrefillCustomFieldOption } from 'src/i18n/prefillContent'
+import { useCustomersStore } from '../stores/customers'
+import { useCustomFieldsStore } from '../stores/customFields'
+import { useAuthStore } from '../stores/auth'
+import { useSettingsStore } from '../stores/settings'
+import { COUNTRIES } from '../constants/countries'
+import { translateMaybePrefillCustomFieldLabel, translateMaybePrefillCustomFieldOption } from '../i18n/prefillContent'
 
 const props = defineProps({
   modelValue: Boolean,
