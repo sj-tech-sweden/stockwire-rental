@@ -285,151 +285,32 @@
 
           <q-expansion-item class="q-mt-md" icon="inventory_2" :label="t('jobs.requiredProductsAndQuantities')" dense>
             <div class="q-pt-sm">
-              <div class="row q-col-gutter-sm q-mb-sm">
-                <div class="col-12 col-md-3">
-                  <q-input
-                    v-model="requirementProductSearch"
-                    :label="t('jobs.searchProducts')"
-                    outlined
-                    dense
-                    clearable
-                  >
-                    <template #prepend>
-                      <q-icon name="search" />
-                    </template>
-                  </q-input>
+              <div class="row items-center justify-between q-mb-sm">
+                <div class="text-caption text-grey-7">
+                  {{ visibleRequirementRows.length ? t('jobs.addedRequirements') : t('jobs.noRequirements') }}
                 </div>
-                <div class="col-12 col-md-2">
-                  <q-select
-                    v-model="requirementCategoryFilter"
-                    :options="requirementCategoryFilterOptions"
-                    :label="t('jobs.categoryFilter')"
-                    outlined
-                    dense
-                    clearable
-                    emit-value
-                    map-options
-                  />
-                </div>
-                <div class="col-12 col-md-2">
-                  <q-select
-                    v-model="requirementBrandFilter"
-                    :options="requirementBrandFilterOptions"
-                    :label="t('jobs.brandFilter')"
-                    outlined
-                    dense
-                    clearable
-                    emit-value
-                    map-options
-                  />
-                </div>
-                <div class="col-12 col-md-2">
-                  <q-select
-                    v-model="requirementManufacturerFilter"
-                    :options="requirementManufacturerFilterOptions"
-                    :label="t('jobs.manufacturerFilter')"
-                    outlined
-                    dense
-                    clearable
-                    emit-value
-                    map-options
-                  />
-                </div>
-                <div class="col-12 col-md-1">
-                  <q-select
-                    v-model="requirementTypeFilter"
-                    :options="requirementTypeFilterOptions"
-                    :label="t('jobs.typeFilter')"
-                    outlined
-                    dense
-                    clearable
-                    emit-value
-                    map-options
-                  />
-                </div>
-                <div class="col-12 col-md-2">
-                  <q-select
-                    v-model="requirementSort"
-                    :options="requirementSortOptions"
-                    :label="t('jobs.sort')"
-                    outlined
-                    dense
-                    emit-value
-                    map-options
-                  />
-                </div>
+                <q-btn unelevated color="primary" icon="add" :label="t('jobs.manageRequirements')" no-caps size="sm" @click="requirementDialogOpen = true" />
               </div>
-
-              <div class="text-caption text-grey-7 q-mb-sm">
-                {{ t('jobs.requirementsHelp') }}
-              </div>
-
-              <q-list bordered separator class="rounded-borders jobs-category-list">
-                <q-expansion-item
-                  v-for="group in requirementCategoryGroups"
-                  :key="group.key"
-                  :label="`${group.label} (${group.subtreeCount})`"
-                  :default-opened="group.depth === 0"
-                  expand-separator
-                  dense
-                  :header-style="{ paddingLeft: `${Math.min(group.depth * 14, 56)}px` }"
-                >
-                  <div class="q-pa-sm">
-                    <div v-if="!group.products.length" class="text-caption text-grey-6 q-mb-sm">
-                      {{ t('jobs.noProductsInCategory') }}
+              <q-list v-if="visibleRequirementRows.length" bordered separator dense class="rounded-borders q-mb-sm">
+                <q-item v-for="row in visibleRequirementRows" :key="row.product_id" dense>
+                  <q-item-section>
+                    <q-item-label>{{ requirementProductName(row.product_id) }}</q-item-label>
+                  </q-item-section>
+                  <q-item-section side>
+                    <div class="row items-center q-gutter-xs">
+                      <q-input
+                        :model-value="row.quantity_required"
+                        type="number"
+                        min="0"
+                        dense
+                        outlined
+                        style="width: 80px"
+                        @update:model-value="value => setProductRequirementQty(row.product_id, value)"
+                      />
+                      <q-btn flat round dense icon="delete" color="negative" size="sm" @click="removeRequirementRow(row.product_id)" />
                     </div>
-                    <q-card
-                      v-for="product in group.products"
-                      :key="product.id"
-                      flat
-                      bordered
-                      class="q-mb-sm"
-                    >
-                      <q-card-section class="q-pb-xs">
-                        <div class="text-subtitle2">{{ product.sku }} · {{ product.name }}</div>
-                        <div class="text-caption text-grey-7">
-                          {{ product.brand || t('jobs.noBrand') }} · {{ product.manufacturer || t('jobs.noManufacturer') }} · {{ product.product_type || t('jobs.typeEquipment') }}
-                        </div>
-                      </q-card-section>
-
-                      <q-card-section class="q-pt-none">
-                        <div class="row q-col-gutter-sm items-end">
-                          <div class="col-6 col-md-3">
-                            <q-badge color="grey-8" text-color="white" :label="`${t('jobs.total')}: ${productTotalCount(product)}`" />
-                          </div>
-                          <div class="col-6 col-md-3">
-                            <q-badge color="info" text-color="white" :label="`${t('jobs.availableConfirmed')}: ${productAvailableConfirmedOnly(product)}`" />
-                          </div>
-                          <div class="col-6 col-md-3">
-                            <q-badge color="primary" text-color="white" :label="`${t('jobs.availableWithDrafts')}: ${productAvailableIncludingDrafts(product)}`" />
-                          </div>
-                          <div class="col-12 col-md-2">
-                            <q-input
-                              :model-value="productRequirementQty(product.id)"
-                              type="number"
-                              min="0"
-                              :label="t('jobs.requiredQty')"
-                              outlined
-                              dense
-                              @update:model-value="value => setProductRequirementQty(product.id, value)"
-                            />
-                          </div>
-                          <div class="col-12 col-md-1">
-                            <q-btn
-                              flat
-                              dense
-                              no-caps
-                              color="negative"
-                              icon="delete"
-                              :label="t('scan.clear')"
-                              @click="removeRequirementRow(product.id)"
-                            />
-                          </div>
-                        </div>
-                      </q-card-section>
-                    </q-card>
-                  </div>
-                </q-expansion-item>
+                  </q-item-section>
+                </q-item>
               </q-list>
             </div>
           </q-expansion-item>
@@ -518,6 +399,15 @@
         <q-btn color="primary" unelevated :class="isPhone ? 'full-width' : ''" :label="editing ? t('app.actions.save') : t('jobs.create')" :loading="saving" @click="saveJob" />
       </q-card-actions>
     </q-card>
+
+    <JobProductRequirementDialog
+      v-model="requirementDialogOpen"
+      v-model:requirementRows="requirementRows"
+      :products="inventoryStore.products"
+      :start-date="form.start_date"
+      :end-date="form.end_date"
+      :job-id="editing?.id || null"
+    />
   </q-dialog>
 </template>
 
@@ -537,6 +427,8 @@ import { useProjectsStore } from '../stores/projects'
 import EntityAttachmentsPanel from './EntityAttachmentsPanel.vue'
 import CustomerCreateInline from './CustomerCreateInline.vue'
 import VenueCreateInline from './VenueCreateInline.vue'
+import JobProductRequirementDialog from './JobProductRequirementDialog.vue'
+import { isVisibleRequirementRow } from '../utils/job-requirements'
 import { translateMaybePrefillCustomFieldLabel, translateMaybePrefillCustomFieldOption } from '../i18n/prefillContent'
 import { normalizeCurrencyCode } from '../constants/currencies'
 import { googleMapsEmbedUrl, googleMapsSearchUrl, locationQueryFromParts } from '../utils/maps'
@@ -576,6 +468,7 @@ const saving = ref(false)
 const generatingJobCode = ref(false)
 const dialogError = ref('')
 const formRef = ref(null)
+const requirementDialogOpen = ref(false)
 
 function scanJobLink(action) {
   return buildScanJobLink(action, editing.value)
@@ -850,6 +743,10 @@ const form = ref(emptyForm())
 const requirementRows = ref([])
 const requirementDraft = ref({ product_id: null, quantity_required: 1 })
 
+const visibleRequirementRows = computed(() => (
+  requirementRows.value.filter(isVisibleRequirementRow)
+))
+
 const filteredRequirementProducts = computed(() => {
   const term = requirementProductSearch.value.trim().toLowerCase()
   const categoryFilter = requirementCategoryFilter.value
@@ -1052,6 +949,11 @@ const availableNowCountsByProduct = computed(() => {
 
 function productRequirementQty(productId) {
   return Number(requirementRows.value.find(item => item.product_id === productId)?.quantity_required || 0)
+}
+
+function requirementProductName(productId) {
+  const product = inventoryStore.products.find(p => p.id === productId)
+  return product ? (product.sku ? `${product.sku} · ${product.name}` : product.name) : `#${productId}`
 }
 
 function setProductRequirementQty(productId, value) {
