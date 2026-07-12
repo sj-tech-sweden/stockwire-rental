@@ -33,7 +33,7 @@
     "fake-indexeddb": "^6.0.0",
     "jsdom": "^29.0.0",
     "playwright": "^1.60.0",
-    "typescript": "^6.0.0",
+    "typescript": "^7.0.0",
     "vitest": "^4.1.7",
     "workbox-build": "^7.4.1",
     "workbox-cacheable-response": "^7.4.1",
