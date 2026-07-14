@@ -154,6 +154,12 @@ async def _sync_project_to_productionplanner(project: Project, db: Session) -> P
                 description=description,
             )
             pp_project_id = project.productionplanner_project_id
+            date_entries: list[tuple[str, str]] = []
+            if project.start_date:
+                date_entries.append((project.start_date.isoformat(), "Project Start"))
+            if project.end_date and project.end_date != project.start_date:
+                date_entries.append((project.end_date.isoformat(), "Project End"))
+            await client.sync_project_dates(pp_project_id, date_entries)
         else:
             pp_project = await client.create_project(
                 name=project_name,
