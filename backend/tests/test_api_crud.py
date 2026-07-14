@@ -2095,6 +2095,13 @@ def test_sync_job_to_productionplanner(client):
     # Second sync should call update_project, not create_project
     mock_client.create_project.reset_mock()
     mock_client.update_project = AsyncMock(return_value={})
+    mock_client.sync_project_dates = AsyncMock(return_value=None)
+
+    update_job = client.put(
+        f"/api/v1/jobs/{job_id}",
+        json={"start_date": "2026-08-01", "end_date": "2026-08-03"},
+    )
+    assert update_job.status_code == 200
 
     with mock_patch(
         "app.domain.jobs.router._get_productionplanner_client",
@@ -2107,6 +2114,10 @@ def test_sync_job_to_productionplanner(client):
     assert data2["productionplanner_project_id"] == "pp-abc-123"
     mock_client.create_project.assert_not_called()
     mock_client.update_project.assert_called_once()
+    mock_client.sync_project_dates.assert_called_once_with(
+        "pp-abc-123",
+        [("2026-08-01", "Job Start"), ("2026-08-03", "Job End")],
+    )
 
 
 def test_sync_job_to_productionplanner_no_api_key(client):
@@ -2252,6 +2263,13 @@ def test_sync_project_to_productionplanner(client):
 
     mock_client.create_project.reset_mock()
     mock_client.update_project = AsyncMock(return_value={})
+    mock_client.sync_project_dates = AsyncMock(return_value=None)
+
+    update_project = client.put(
+        f"/api/v1/projects/{project_id}",
+        json={"start_date": "2026-09-10", "end_date": "2026-09-12"},
+    )
+    assert update_project.status_code == 200
 
     with mock_patch(
         "app.domain.projects.router._get_productionplanner_client",
@@ -2264,6 +2282,10 @@ def test_sync_project_to_productionplanner(client):
     assert data2["productionplanner_project_id"] == "pp-project-abc-123"
     mock_client.create_project.assert_not_called()
     mock_client.update_project.assert_called_once()
+    mock_client.sync_project_dates.assert_called_once_with(
+        "pp-project-abc-123",
+        [("2026-09-10", "Project Start"), ("2026-09-12", "Project End")],
+    )
 
 
 def test_get_project_productionplanner_info_not_synced(client):

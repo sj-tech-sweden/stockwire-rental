@@ -1,6 +1,6 @@
 import logging
 import httpx
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Tuple
 
 from app.config import settings
 
@@ -147,6 +147,50 @@ class ProductionPlannerClient:
     async def add_date(self, project_id: str, date_str: str, label: str = "") -> Dict[str, Any]:
         payload = {"date": date_str, "label": label}
         return await self._request("POST", f"projects/{project_id}/dates", json=payload)
+
+    @staticmethod
+    def _extract_existing_date_keys(project_payload: Dict[str, Any]) -> set[Tuple[str, str]]:
+        existing_dates = project_payload.get("dates")
+        if not isinstance(existing_dates, list):
+            return set()
+        existing_keys: set[Tuple[str, str]] = set()
+        for entry in existing_dates:
+            if not isinstance(entry, dict):
+                continue
+            raw_date = str(entry.get("date") or "").strip()
+            normalized_date = raw_date.split("T", 1)[0] if raw_date else ""
+            if not normalized_date:
+                continue
+            label = str(entry.get("label") or "").strip().lower()
+            existing_keys.add((normalized_date, label))
+        return existing_keys
+
+    async def sync_project_dates(self, project_id: str, date_entries: List[Tuple[str, str]]) -> None:
+        if not date_entries:
+            return
+        existing_keys: set[Tuple[str, str]] = set()
+        try:
+            project = await self.get_project(project_id)
+            if isinstance(project, dict):
+                project_payload = project.get("data")
+                if isinstance(project_payload, dict):
+                    existing_keys = self._extract_existing_date_keys(project_payload)
+        except ProductionPlannerError:
+            logger.debug("Could not fetch ProductionPlanner project dates before sync", exc_info=True)
+
+        for date_str, label in date_entries:
+            key = (date_str, label.strip().lower())
+            if key in existing_keys:
+                continue
+            try:
+                await self.add_date(project_id, date_str, label)
+                existing_keys.add(key)
+            except ProductionPlannerError as exc:
+                message = str(exc.message or "").lower()
+                if exc.status_code in {400, 409} and ("already" in message or "exist" in message or "duplicate" in message):
+                    existing_keys.add(key)
+                    continue
+                raise
 
     async def add_schedule_item(
         self,
