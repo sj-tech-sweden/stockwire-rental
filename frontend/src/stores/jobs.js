@@ -165,6 +165,30 @@ export const useJobsStore = defineStore('jobs', () => {
     return data
   }
 
+  async function syncJobToProductionPlanner(jobId) {
+    loading.value = true
+    try {
+      const { data } = await api.post(`/api/v1/jobs/${jobId}/sync-productionplanner`)
+      const job = jobs.value.find(j => j.id === jobId)
+      if (job && data.success && data.productionplanner_project_id) {
+        job.productionplanner_project_id = data.productionplanner_project_id
+        await persistSnapshot()
+      }
+      return data
+    } finally {
+      loading.value = false
+    }
+  }
+
+  async function getJobProductionPlannerInfo(jobId) {
+    const { data } = await api.get(`/api/v1/jobs/${jobId}/productionplanner`)
+    return data
+  }
+
+  function getProductionPlannerUrl(productionPlannerProjectId) {
+    return `https://app.productionplanner.io/projects/${productionPlannerProjectId}`
+  }
+
   return {
     jobs,
     requirements,
@@ -178,5 +202,8 @@ export const useJobsStore = defineStore('jobs', () => {
     createRequirement,
     updateRequirement,
     bulkUpsertRequirements,
+    syncJobToProductionPlanner,
+    getJobProductionPlannerInfo,
+    getProductionPlannerUrl,
   }
 })

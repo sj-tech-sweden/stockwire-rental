@@ -15,6 +15,7 @@ import { useAuthStore } from '../src/stores/auth'
 import { useFinanceStore } from '../src/stores/finance'
 import { useInventoryStore } from '../src/stores/inventory'
 import { useJobsStore } from '../src/stores/jobs'
+import { useProjectsStore } from '../src/stores/projects'
 
 describe('stores smoke', () => {
   beforeEach(() => {
@@ -91,5 +92,45 @@ describe('stores smoke', () => {
     expect(store.summary.warehouse_products_value).toBe('2500.00')
     expect(store.summary.warehouse_devices_value).toBe('5000.00')
     expect(store.summary.warehouse_total_value).toBe('7500.00')
+  })
+
+  it('jobs store marks loading during ProductionPlanner sync', async () => {
+    let resolveRequest
+    postMock.mockImplementationOnce(() => new Promise(resolve => {
+      resolveRequest = resolve
+    }))
+
+    const store = useJobsStore()
+    store.jobs = [{ id: 10 }]
+
+    const syncPromise = store.syncJobToProductionPlanner(10)
+
+    expect(store.loading).toBe(true)
+
+    resolveRequest({ data: { success: true, productionplanner_project_id: 'pp-job-10' } })
+    await syncPromise
+
+    expect(store.loading).toBe(false)
+    expect(store.jobs[0].productionplanner_project_id).toBe('pp-job-10')
+  })
+
+  it('projects store marks loading during ProductionPlanner sync', async () => {
+    let resolveRequest
+    postMock.mockImplementationOnce(() => new Promise(resolve => {
+      resolveRequest = resolve
+    }))
+
+    const store = useProjectsStore()
+    store.projects = [{ id: 20 }]
+
+    const syncPromise = store.syncProjectToProductionPlanner(20)
+
+    expect(store.loading).toBe(true)
+
+    resolveRequest({ data: { success: true, productionplanner_project_id: 'pp-project-20' } })
+    await syncPromise
+
+    expect(store.loading).toBe(false)
+    expect(store.projects[0].productionplanner_project_id).toBe('pp-project-20')
   })
 })

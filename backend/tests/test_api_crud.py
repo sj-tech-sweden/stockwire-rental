@@ -683,6 +683,102 @@ def test_settings_modules_crud(client):
     assert invalid_port_integrations.status_code == 422
     assert invalid_port_integrations.json() == {"detail": "API URL contains an invalid port"}
 
+    insecure_productionplanner_url = client.put(
+        "/api/v1/settings/integrations",
+        json={
+            "productionplanner": {
+                "enabled": True,
+                "api_key": "pp-secret",
+                "base_url": "http://api.productionplanner.io/v1",
+            }
+        },
+    )
+    assert insecure_productionplanner_url.status_code == 422
+    assert insecure_productionplanner_url.json() == {
+        "detail": "ProductionPlanner Base URL must use HTTPS"
+    }
+
+    productionplanner_integrations = client.put(
+        "/api/v1/settings/integrations",
+        json={
+            "productionplanner": {
+                "enabled": True,
+                "api_key": "pp-secret",
+                "base_url": "https://api.productionplanner.io/v1",
+            }
+        },
+    )
+    assert productionplanner_integrations.status_code == 200
+    assert productionplanner_integrations.json()["productionplanner"] == {
+        "enabled": True,
+        "base_url": "https://api.productionplanner.io/v1",
+        "has_api_key": True,
+    }
+
+    persisted_integrations = client.get("/api/v1/settings/integrations")
+    assert persisted_integrations.status_code == 200
+    assert persisted_integrations.json()["productionplanner"] == {
+        "enabled": True,
+        "base_url": "https://api.productionplanner.io/v1",
+        "has_api_key": True,
+    }
+
+    preserved_productionplanner_integrations = client.put(
+        "/api/v1/settings/integrations",
+        json={
+            "productionplanner": {
+                "enabled": True,
+                "api_key": "",
+                "base_url": "https://api.productionplanner.io/v1",
+            }
+        },
+    )
+    assert preserved_productionplanner_integrations.status_code == 200
+
+    seen_headers = {}
+
+    class FakeHttpxResponse:
+        status_code = 200
+
+    def fake_httpx_get(url, headers=None, timeout=None, follow_redirects=None):
+        if headers:
+            seen_headers["authorization"] = headers.get("Authorization")
+            seen_headers["x_api_key"] = headers.get("X-API-Key")
+        return FakeHttpxResponse()
+
+    with patch("app.domain.settings.router.socket.getaddrinfo") as mock_getaddrinfo, patch(
+        "app.domain.settings.router.httpx.get", side_effect=fake_httpx_get
+    ):
+        mock_getaddrinfo.return_value = [
+            (socket.AF_INET, socket.SOCK_STREAM, 0, "", ("1.1.1.1", 443)),
+        ]
+        productionplanner_test = client.post(
+            "/api/v1/settings/integrations/productionplanner/test",
+            json={"config": {"api_url": "https://api.productionplanner.io/v1"}},
+        )
+
+    assert productionplanner_test.status_code == 200
+    assert productionplanner_test.json()["ok"] is True
+    assert seen_headers["authorization"].startswith("Bearer ")
+    assert seen_headers["authorization"].endswith("pp-secret")
+    assert seen_headers["x_api_key"] == "pp-secret"
+
+    class FakeSocket:
+        def getpeername(self):
+            return ("1.1.1.1", 443)
+
+    class FakeResponse:
+        status = 200
+
+        def __init__(self):
+            self._sock = FakeSocket()
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
     with patch("app.domain.settings.router.socket.getaddrinfo") as mock_getaddrinfo:
         mock_getaddrinfo.return_value = [
             (socket.AF_INET, socket.SOCK_STREAM, 0, "", ("1.1.1.1", 443)),
@@ -1985,3 +2081,317 @@ def test_import_inventory_rejects_oversized_file(client):
         )
     assert result.status_code == 413
     assert "File exceeds 1MB limit" in result.json()["detail"]
+
+
+def test_sync_job_to_productionplanner(client):
+    from unittest.mock import AsyncMock, patch as mock_patch
+
+    job = client.post(
+        "/api/v1/jobs",
+        json={"job_code": "PP-TEST-01", "status": "draft"},
+    )
+    assert job.status_code == 200
+    job_id = job.json()["id"]
+    assert job.json()["productionplanner_project_id"] is None
+
+    mock_client = AsyncMock()
+    mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+    mock_client.__aexit__ = AsyncMock(return_value=False)
+    mock_client.api_key = "test-api-key"
+    mock_client.create_project = AsyncMock(return_value={"data": {"id": "pp-abc-123"}})
+
+    with mock_patch(
+        "app.domain.jobs.router._get_productionplanner_client",
+        return_value=mock_client,
+    ):
+        result = client.post(f"/api/v1/jobs/{job_id}/sync-productionplanner")
+    assert result.status_code == 200
+    data = result.json()
+    assert data["success"] is True
+    assert data["productionplanner_project_id"] == "pp-abc-123"
+    assert "productionplanner_url" in data
+    mock_client.create_project.assert_called_once()
+
+    # Second sync should call update_project, not create_project
+    mock_client.create_project.reset_mock()
+    mock_client.update_project = AsyncMock(return_value={})
+    mock_client.sync_project_dates = AsyncMock(return_value=None)
+
+    update_job = client.put(
+        f"/api/v1/jobs/{job_id}",
+        json={"start_date": "2026-08-01", "end_date": "2026-08-03"},
+    )
+    assert update_job.status_code == 200
+
+    with mock_patch(
+        "app.domain.jobs.router._get_productionplanner_client",
+        return_value=mock_client,
+    ):
+        result2 = client.post(f"/api/v1/jobs/{job_id}/sync-productionplanner")
+    assert result2.status_code == 200
+    data2 = result2.json()
+    assert data2["success"] is True
+    assert data2["productionplanner_project_id"] == "pp-abc-123"
+    mock_client.create_project.assert_not_called()
+    mock_client.update_project.assert_called_once()
+    mock_client.sync_project_dates.assert_called_once_with(
+        "pp-abc-123",
+        [("2026-08-01", "Job Start"), ("2026-08-03", "Job End")],
+    )
+
+
+def test_sync_job_to_productionplanner_no_api_key(client):
+    from unittest.mock import AsyncMock, patch as mock_patch
+
+    job = client.post(
+        "/api/v1/jobs",
+        json={"job_code": "PP-TEST-02", "status": "draft"},
+    )
+    assert job.status_code == 200
+    job_id = job.json()["id"]
+
+    mock_client = AsyncMock()
+    mock_client.api_key = ""
+
+    with mock_patch(
+        "app.domain.jobs.router._get_productionplanner_client",
+        return_value=mock_client,
+    ):
+        result = client.post(f"/api/v1/jobs/{job_id}/sync-productionplanner")
+    assert result.status_code == 200
+    assert result.json()["success"] is False
+    assert "API key" in result.json()["message"]
+
+
+def test_get_job_productionplanner_info_not_synced(client):
+    job = client.post(
+        "/api/v1/jobs",
+        json={"job_code": "PP-TEST-03", "status": "draft"},
+    )
+    assert job.status_code == 200
+    job_id = job.json()["id"]
+
+    result = client.get(f"/api/v1/jobs/{job_id}/productionplanner")
+    assert result.status_code == 200
+    data = result.json()
+    assert data["success"] is False
+    assert "not yet synced" in data["message"]
+
+
+def test_get_job_productionplanner_info_synced(client):
+    from unittest.mock import AsyncMock, patch as mock_patch
+
+    job = client.post(
+        "/api/v1/jobs",
+        json={"job_code": "PP-TEST-04", "status": "draft"},
+    )
+    assert job.status_code == 200
+    job_id = job.json()["id"]
+
+    mock_create_client = AsyncMock()
+    mock_create_client.__aenter__ = AsyncMock(return_value=mock_create_client)
+    mock_create_client.__aexit__ = AsyncMock(return_value=False)
+    mock_create_client.api_key = "test-api-key"
+    mock_create_client.create_project = AsyncMock(return_value={"data": {"id": "pp-info-456"}})
+
+    with mock_patch(
+        "app.domain.jobs.router._get_productionplanner_client",
+        return_value=mock_create_client,
+    ):
+        client.post(f"/api/v1/jobs/{job_id}/sync-productionplanner")
+
+    mock_info_client = AsyncMock()
+    mock_info_client.__aenter__ = AsyncMock(return_value=mock_info_client)
+    mock_info_client.__aexit__ = AsyncMock(return_value=False)
+    mock_info_client.api_key = "test-api-key"
+    mock_info_client.get_project = AsyncMock(return_value={"data": {"id": "pp-info-456", "name": "Test Project"}})
+
+    with mock_patch(
+        "app.domain.jobs.router._get_productionplanner_client",
+        return_value=mock_info_client,
+    ):
+        result = client.get(f"/api/v1/jobs/{job_id}/productionplanner")
+    assert result.status_code == 200
+    data = result.json()
+    assert data["success"] is True
+    assert data["productionplanner_project_id"] == "pp-info-456"
+    assert "Test Project" in data["message"]
+
+
+def test_get_job_productionplanner_info_disabled_integration(client):
+    from unittest.mock import AsyncMock, patch as mock_patch
+
+    job = client.post(
+        "/api/v1/jobs",
+        json={"job_code": "PP-TEST-05", "status": "draft"},
+    )
+    assert job.status_code == 200
+    job_id = job.json()["id"]
+
+    mock_create_client = AsyncMock()
+    mock_create_client.__aenter__ = AsyncMock(return_value=mock_create_client)
+    mock_create_client.__aexit__ = AsyncMock(return_value=False)
+    mock_create_client.api_key = "test-api-key"
+    mock_create_client.create_project = AsyncMock(return_value={"data": {"id": "pp-disabled-001"}})
+
+    with mock_patch(
+        "app.domain.jobs.router._get_productionplanner_client",
+        return_value=mock_create_client,
+    ):
+        client.post(f"/api/v1/jobs/{job_id}/sync-productionplanner")
+
+    with mock_patch(
+        "app.domain.jobs.router._get_productionplanner_client",
+        return_value=None,
+    ):
+        result = client.get(f"/api/v1/jobs/{job_id}/productionplanner")
+    assert result.status_code == 200
+    data = result.json()
+    assert data["success"] is False
+    assert "disabled" in data["message"].lower()
+    assert data["productionplanner_project_id"] == "pp-disabled-001"
+
+
+def test_sync_project_to_productionplanner(client):
+    from unittest.mock import AsyncMock, patch as mock_patch
+
+    project = client.post(
+        "/api/v1/projects",
+        json={"name": "PP Project Test 01", "status": "active"},
+    )
+    assert project.status_code == 200
+    project_id = project.json()["id"]
+    assert project.json()["productionplanner_project_id"] is None
+
+    mock_client = AsyncMock()
+    mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+    mock_client.__aexit__ = AsyncMock(return_value=False)
+    mock_client.api_key = "test-api-key"
+    mock_client.create_project = AsyncMock(return_value={"data": {"id": "pp-project-abc-123"}})
+
+    with mock_patch(
+        "app.domain.projects.router._get_productionplanner_client",
+        return_value=mock_client,
+    ):
+        result = client.post(f"/api/v1/projects/{project_id}/sync-productionplanner")
+    assert result.status_code == 200
+    data = result.json()
+    assert data["success"] is True
+    assert data["productionplanner_project_id"] == "pp-project-abc-123"
+    assert "productionplanner_url" in data
+    mock_client.create_project.assert_called_once()
+
+    mock_client.create_project.reset_mock()
+    mock_client.update_project = AsyncMock(return_value={})
+    mock_client.sync_project_dates = AsyncMock(return_value=None)
+
+    update_project = client.put(
+        f"/api/v1/projects/{project_id}",
+        json={"start_date": "2026-09-10", "end_date": "2026-09-12"},
+    )
+    assert update_project.status_code == 200
+
+    with mock_patch(
+        "app.domain.projects.router._get_productionplanner_client",
+        return_value=mock_client,
+    ):
+        result2 = client.post(f"/api/v1/projects/{project_id}/sync-productionplanner")
+    assert result2.status_code == 200
+    data2 = result2.json()
+    assert data2["success"] is True
+    assert data2["productionplanner_project_id"] == "pp-project-abc-123"
+    mock_client.create_project.assert_not_called()
+    mock_client.update_project.assert_called_once()
+    mock_client.sync_project_dates.assert_called_once_with(
+        "pp-project-abc-123",
+        [("2026-09-10", "Project Start"), ("2026-09-12", "Project End")],
+    )
+
+
+def test_get_project_productionplanner_info_not_synced(client):
+    project = client.post(
+        "/api/v1/projects",
+        json={"name": "PP Project Test 02", "status": "active"},
+    )
+    assert project.status_code == 200
+    project_id = project.json()["id"]
+
+    result = client.get(f"/api/v1/projects/{project_id}/productionplanner")
+    assert result.status_code == 200
+    data = result.json()
+    assert data["success"] is False
+    assert "not yet synced" in data["message"]
+
+
+def test_get_project_productionplanner_info_synced(client):
+    from unittest.mock import AsyncMock, patch as mock_patch
+
+    project = client.post(
+        "/api/v1/projects",
+        json={"name": "PP Project Test 03", "status": "active"},
+    )
+    assert project.status_code == 200
+    project_id = project.json()["id"]
+
+    mock_create_client = AsyncMock()
+    mock_create_client.__aenter__ = AsyncMock(return_value=mock_create_client)
+    mock_create_client.__aexit__ = AsyncMock(return_value=False)
+    mock_create_client.api_key = "test-api-key"
+    mock_create_client.create_project = AsyncMock(return_value={"data": {"id": "pp-project-info-456"}})
+
+    with mock_patch(
+        "app.domain.projects.router._get_productionplanner_client",
+        return_value=mock_create_client,
+    ):
+        client.post(f"/api/v1/projects/{project_id}/sync-productionplanner")
+
+    mock_info_client = AsyncMock()
+    mock_info_client.__aenter__ = AsyncMock(return_value=mock_info_client)
+    mock_info_client.__aexit__ = AsyncMock(return_value=False)
+    mock_info_client.api_key = "test-api-key"
+    mock_info_client.get_project = AsyncMock(return_value={"data": {"id": "pp-project-info-456", "name": "Project Test"}})
+
+    with mock_patch(
+        "app.domain.projects.router._get_productionplanner_client",
+        return_value=mock_info_client,
+    ):
+        result = client.get(f"/api/v1/projects/{project_id}/productionplanner")
+    assert result.status_code == 200
+    data = result.json()
+    assert data["success"] is True
+    assert data["productionplanner_project_id"] == "pp-project-info-456"
+    assert "Project Test" in data["message"]
+
+
+def test_get_project_productionplanner_info_disabled_integration(client):
+    from unittest.mock import AsyncMock, patch as mock_patch
+
+    project = client.post(
+        "/api/v1/projects",
+        json={"name": "PP Project Test 04", "status": "active"},
+    )
+    assert project.status_code == 200
+    project_id = project.json()["id"]
+
+    mock_create_client = AsyncMock()
+    mock_create_client.__aenter__ = AsyncMock(return_value=mock_create_client)
+    mock_create_client.__aexit__ = AsyncMock(return_value=False)
+    mock_create_client.api_key = "test-api-key"
+    mock_create_client.create_project = AsyncMock(return_value={"data": {"id": "pp-project-disabled-001"}})
+
+    with mock_patch(
+        "app.domain.projects.router._get_productionplanner_client",
+        return_value=mock_create_client,
+    ):
+        client.post(f"/api/v1/projects/{project_id}/sync-productionplanner")
+
+    with mock_patch(
+        "app.domain.projects.router._get_productionplanner_client",
+        return_value=None,
+    ):
+        result = client.get(f"/api/v1/projects/{project_id}/productionplanner")
+    assert result.status_code == 200
+    data = result.json()
+    assert data["success"] is False
+    assert "disabled" in data["message"].lower()
+    assert data["productionplanner_project_id"] == "pp-project-disabled-001"

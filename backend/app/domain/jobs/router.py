@@ -3,7 +3,7 @@ from datetime import date
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 from app.db.session import get_db
 from app.domain.auth.deps import get_current_user, require_editor
@@ -24,7 +24,15 @@ from app.domain.jobs.schemas import (
     JobUpdate,
 )
 from app.domain.projects.models import Project
+from app.domain.shared_schemas import ProductionPlannerSyncResponse
 from app.domain.venues.models import Venue
+from app.services.productionplanner import (
+    ProductionPlannerClient,
+    ProductionPlannerError,
+    batch_task_labels,
+)
+from app.domain.settings.router import _parse_integrations, INTEGRATIONS_KEY
+from app.config import settings
 
 router = APIRouter(prefix="/jobs", tags=["jobs"], dependencies=[Depends(get_current_user)])
 
@@ -195,6 +203,202 @@ def _prepare_job_payload(data: dict, db: Session) -> dict:
             prepared["venue_name"] = None
 
     return prepared
+
+
+async def _get_productionplanner_client(db: Session) -> ProductionPlannerClient | None:
+    """Get ProductionPlanner client configured from database settings."""
+    from app.domain.settings.router import _get_or_create_setting, DEFAULT_INTEGRATIONS
+    setting = _get_or_create_setting(db, INTEGRATIONS_KEY, DEFAULT_INTEGRATIONS)
+    parsed = _parse_integrations(setting.value_json)
+    pp_config = parsed.get("productionplanner", {}) if isinstance(parsed, dict) else {}
+    if not pp_config.get("enabled"):
+        return None
+    api_key = pp_config.get("api_key") or settings.productionplanner_api_key
+    base_url = pp_config.get("base_url") or settings.productionplanner_base_url
+    return ProductionPlannerClient(api_key=api_key, base_url=base_url)
+
+
+async def _sync_job_to_productionplanner(job: Job, db: Session) -> ProductionPlannerSyncResponse:
+    """Sync a job to ProductionPlanner as a project."""
+    client = await _get_productionplanner_client(db)
+    if client is None:
+        return ProductionPlannerSyncResponse(
+            success=False,
+            message="ProductionPlanner integration is disabled",
+        )
+    if not client.api_key:
+        return ProductionPlannerSyncResponse(
+            success=False,
+            message="ProductionPlanner API key not configured",
+        )
+    project_name = f"{job.job_code} - {job.customer_name or job.venue_name or 'Job'}"
+    description_parts = []
+    if job.description:
+        description_parts.append(job.description)
+    if job.venue_name:
+        description_parts.append(f"Venue: {job.venue_name}")
+    if job.location_in_venue:
+        description_parts.append(f"Location: {job.location_in_venue}")
+    if job.project_id:
+        linked_project = db.get(Project, job.project_id)
+        if linked_project:
+            description_parts.append(f"Project: {linked_project.name}")
+
+    description = "\n\n".join(description_parts) if description_parts else ""
+
+    async with client:
+        if job.productionplanner_project_id:
+            await client.update_project(
+                job.productionplanner_project_id,
+                name=project_name,
+                description=description,
+            )
+            pp_project_id = job.productionplanner_project_id
+            date_entries: list[tuple[str, str]] = []
+            if job.start_date:
+                date_entries.append((job.start_date.isoformat(), "Job Start"))
+            if job.end_date and job.end_date != job.start_date:
+                date_entries.append((job.end_date.isoformat(), "Job End"))
+            await client.sync_project_dates(pp_project_id, date_entries)
+        else:
+            pp_project = await client.create_project(
+                name=project_name,
+                description=description,
+                timezone="UTC",
+            )
+            pp_project_id = pp_project.get("data", {}).get("id")
+            if not pp_project_id:
+                return ProductionPlannerSyncResponse(
+                    success=False,
+                    message="Failed to create project in ProductionPlanner",
+                )
+
+            if job.start_date:
+                await client.add_date(
+                    pp_project_id, job.start_date.isoformat(), "Job Start"
+                )
+            if job.end_date and job.end_date != job.start_date:
+                await client.add_date(
+                    pp_project_id, job.end_date.isoformat(), "Job End"
+                )
+
+            if job.venue_id:
+                venue = db.get(Venue, job.venue_id)
+                if venue:
+                    details = []
+                    if venue.address:
+                        details.append(venue.address)
+                    if venue.city:
+                        details.append(venue.city)
+                    if venue.country:
+                        details.append(venue.country)
+                    await client.add_location(
+                        pp_project_id, venue.name, "physical", ", ".join(details)
+                    )
+
+            task_labels = [
+                f"{req.product.name} x{req.quantity_required}"
+                for req in job.requirements
+                if req.quantity_required > 0 and req.product
+            ]
+            for task_label in batch_task_labels(task_labels):
+                await client.add_task(pp_project_id, task_label)
+
+    job.productionplanner_project_id = pp_project_id
+    db.commit()
+
+    return ProductionPlannerSyncResponse(
+        success=True,
+        message="Successfully synced to ProductionPlanner",
+        productionplanner_project_id=pp_project_id,
+        productionplanner_url=f"https://app.productionplanner.io/projects/{pp_project_id}",
+    )
+
+
+@router.post("/{job_id}/sync-productionplanner", response_model=ProductionPlannerSyncResponse)
+async def sync_job_to_productionplanner(
+    job_id: int, db: Session = Depends(get_db), current_user: User = Depends(require_editor)
+) -> ProductionPlannerSyncResponse:
+    """Create or update a ProductionPlanner project from this job."""
+    job = db.scalar(
+        select(Job)
+        .where(Job.id == job_id)
+        .options(selectinload(Job.requirements).selectinload(JobRequirement.product))
+    )
+    if job is None:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    try:
+        result = await _sync_job_to_productionplanner(job, db)
+        if result.success:
+            record_activity(
+                db,
+                user_id=current_user.id,
+                entity_type="job",
+                entity_id=job.id,
+                action="sync_productionplanner",
+                message_format="job_synced_productionplanner",
+                message_params={"jobCode": job.job_code},
+                details={"productionplanner_project_id": result.productionplanner_project_id},
+            )
+        return result
+    except ProductionPlannerError as e:
+        return ProductionPlannerSyncResponse(success=False, message=e.message)
+    except Exception:
+        raise
+
+
+@router.get("/{job_id}/productionplanner", response_model=ProductionPlannerSyncResponse)
+async def get_job_productionplanner_info(
+    job_id: int, db: Session = Depends(get_db), _: User = Depends(get_current_user)
+) -> ProductionPlannerSyncResponse:
+    """Get ProductionPlanner project info for this job (overview at a glance)."""
+    job = db.get(Job, job_id)
+    if job is None:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    if not job.productionplanner_project_id:
+        return ProductionPlannerSyncResponse(
+            success=False,
+            message="Job not yet synced to ProductionPlanner",
+        )
+
+    pp_project_id = job.productionplanner_project_id
+    pp_project_url = f"https://app.productionplanner.io/projects/{pp_project_id}" if pp_project_id else None
+
+    client = await _get_productionplanner_client(db)
+    if client is None:
+        return ProductionPlannerSyncResponse(
+            success=False,
+            message="ProductionPlanner integration is disabled",
+            productionplanner_project_id=pp_project_id,
+            productionplanner_url=pp_project_url,
+        )
+    if not client.api_key:
+        return ProductionPlannerSyncResponse(
+            success=False,
+            message="ProductionPlanner API key not configured",
+            productionplanner_project_id=pp_project_id,
+            productionplanner_url=pp_project_url,
+        )
+
+    async with client:
+        try:
+            project = await client.get_project(job.productionplanner_project_id)
+            data = project.get("data", {})
+            return ProductionPlannerSyncResponse(
+                success=True,
+                message=f"Project: {data.get('name', 'Unknown')}",
+                productionplanner_project_id=pp_project_id,
+                productionplanner_url=pp_project_url,
+            )
+        except ProductionPlannerError as e:
+            return ProductionPlannerSyncResponse(
+                success=False,
+                message=f"Failed to fetch project: {e.message}",
+                productionplanner_project_id=pp_project_id,
+                productionplanner_url=pp_project_url,
+            )
 
 
 @router.get("/requirements", response_model=list[JobRequirementRead])

@@ -302,6 +302,11 @@ export const DEFAULT_INTEGRATIONS = {
       sync_message: null,
     },
   ],
+  productionplanner: {
+    enabled: false,
+    api_key: '',
+    base_url: 'https://api.productionplanner.io/v1',
+  },
 }
 
 export const DEFAULT_SMTP_SETTINGS = {
@@ -1000,14 +1005,23 @@ export const useSettingsStore = defineStore('settings', () => {
       .map((instance, index) => normalizeEventoryInstance(instance, index))
       .filter(instance => instance.id)
 
+    const productionplanner = value?.productionplanner || DEFAULT_INTEGRATIONS.productionplanner
+
     return {
       eventory_instances: eventoryInstances.length ? eventoryInstances : [normalizeEventoryInstance(DEFAULT_INTEGRATIONS.eventory_instances[0], 0)],
+      productionplanner: {
+        enabled: Boolean(productionplanner.enabled),
+        api_key: String(productionplanner.api_key || ''),
+        base_url: String(productionplanner.base_url || DEFAULT_INTEGRATIONS.productionplanner.base_url),
+        has_api_key: Boolean(productionplanner.has_api_key ?? productionplanner.api_key),
+      },
     }
   }
 
   function cloneIntegrations(value) {
     return {
       eventory_instances: (value.eventory_instances || []).map(instance => ({ ...instance })),
+      productionplanner: value.productionplanner ? { ...value.productionplanner } : { ...DEFAULT_INTEGRATIONS.productionplanner },
     }
   }
 
