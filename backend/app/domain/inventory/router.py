@@ -85,10 +85,14 @@ from app.domain.inventory.schemas import (
     MAINTENANCE_INTERVAL_MODES,
     MAINTENANCE_TYPES,
     ZoneCreate,
+    ZoneLayoutBulkUpdate,
+    ZoneLayoutUpdate,
     ZoneMove,
     ZoneRead,
     ZoneTreeRead,
     ZoneUpdate,
+    ZoneBulkUpdate,
+    GenerateShelvesRequest,
 )
  
 
@@ -2632,6 +2636,116 @@ def move_zone(
     db.commit()
     db.refresh(zone)
     return zone
+
+
+@router.put("/zones/{zone_id}/layout", response_model=ZoneRead)
+def update_zone_layout(
+    zone_id: int,
+    payload: ZoneLayoutUpdate,
+    db: Session = Depends(get_db),
+    _: User = Depends(require_editor),
+) -> Zone:
+    zone = db.get(Zone, zone_id)
+    if zone is None:
+        raise HTTPException(status_code=404, detail="Zone not found")
+
+    updates = payload.model_dump(exclude_unset=True)
+    for key, value in updates.items():
+        setattr(zone, key, value)
+    db.commit()
+    db.refresh(zone)
+    emit_realtime_event("inventory.updated", {"entity": "zone", "action": "layout_update", "id": zone.id})
+    return zone
+
+
+@router.put("/zones/layout/bulk", response_model=list[ZoneRead])
+def bulk_update_zone_layout(
+    payload: ZoneLayoutBulkUpdate,
+    db: Session = Depends(get_db),
+    _: User = Depends(require_editor),
+) -> list[Zone]:
+    ids = [item.id for item in payload.items]
+    rows = list(db.scalars(select(Zone).where(Zone.id.in_(ids))).all())
+    rows_by_id = {row.id: row for row in rows}
+
+    for item in payload.items:
+        zone = rows_by_id.get(item.id)
+        if zone is None:
+            continue
+        layout_data = item.model_dump(exclude_unset=True)
+        for key, value in layout_data.items():
+            if key != "id":
+                setattr(zone, key, value)
+
+    db.commit()
+    for zone in rows:
+        db.refresh(zone)
+    if rows:
+        emit_realtime_event("inventory.updated", {"entity": "zone", "action": "layout_bulk_update", "count": len(rows)})
+    return rows
+
+
+@router.put("/zones/bulk", response_model=list[ZoneRead])
+def bulk_update_zones(
+    payload: ZoneBulkUpdate,
+    db: Session = Depends(get_db),
+    _: User = Depends(require_editor),
+) -> list[Zone]:
+    if not payload.ids:
+        return []
+    rows = list(db.scalars(select(Zone).where(Zone.id.in_(payload.ids))).all())
+    patch = payload.model_dump(exclude_unset=True, exclude={"ids"})
+    for zone in rows:
+        for key, value in patch.items():
+            setattr(zone, key, value)
+    db.commit()
+    for zone in rows:
+        db.refresh(zone)
+    if rows:
+        emit_realtime_event("inventory.updated", {"entity": "zone", "action": "bulk_update", "count": len(rows)})
+    return rows
+
+
+@router.post("/zones/generate-shelves", response_model=list[ZoneRead])
+def generate_shelves(
+    payload: GenerateShelvesRequest,
+    db: Session = Depends(get_db),
+    _: User = Depends(require_editor),
+) -> list[Zone]:
+    if not payload.rack_ids:
+        return []
+    racks = list(db.scalars(select(Zone).where(Zone.id.in_(payload.rack_ids))).all())
+    created = []
+    for rack in racks:
+        rack_height = rack.map_height or 200
+        shelf_total = payload.count * payload.shelf_height
+        available = max(0, rack_height - shelf_total)
+        gap = available / max(1, payload.count - 1) if payload.count > 1 else available / 2
+        for i in range(payload.count):
+            pos_z = round(rack.pos_z or 0) + round(i * (payload.shelf_height + gap))
+            code = f"{rack.code}-{payload.prefix.upper()}-{i + 1}"
+            name = f"{payload.prefix} {i + 1}"
+            shelf = Zone(
+                code=code,
+                name=name,
+                zone_type="shelf",
+                parent_id=rack.id,
+                is_active=True,
+                pos_x=rack.pos_x,
+                pos_y=rack.pos_y,
+                pos_z=pos_z,
+                map_width=payload.shelf_width,
+                map_depth=payload.shelf_depth,
+                map_height=payload.shelf_height,
+            )
+            db.add(shelf)
+            created.append(shelf)
+    db.commit()
+    for shelf in created:
+        db.refresh(shelf)
+    if created:
+        emit_realtime_event("inventory.updated", {"entity": "zone", "action": "shelves_generated", "count": len(created)})
+    return created
 
 
 @router.get("/locations", response_model=list[ZoneRead])

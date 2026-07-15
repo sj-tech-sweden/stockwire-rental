@@ -23,6 +23,7 @@
       <q-tab name="schedules" icon="event_repeat" :label="t('inventory.tabs.schedules')" />
       <q-tab name="categories" icon="account_tree" :label="t('inventory.tabs.categories')" />
       <q-tab name="locations" icon="warehouse" :label="t('inventory.tabs.locations')" />
+      <q-tab name="map" icon="map" :label="t('inventory.tabs.map')" />
     </q-tabs>
 
     <q-tab-panels v-model="tab" animated>
@@ -642,6 +643,11 @@
         </div>
         <div v-if="selectedLocationIds.length" class="row items-center q-gutter-sm q-mb-sm">
           <q-badge color="primary" :label="t('inventory.selectedCount', { count: selectedLocationIds.length })" />
+          <q-btn color="secondary" icon="edit" :label="t('inventory.bulkEditZones')" unelevated @click="openBulkEditFromTree" />
+          <q-btn
+            v-if="selectedLocationIds.length >= 1 && selectedLocationZones.every(z => z.zone_type === 'rack')"
+            color="secondary" icon="auto_awesome" :label="t('inventory.generateShelves')" unelevated @click="openGenerateShelvesFromTree"
+          />
           <q-btn :color="bulkPrintActionColor" :text-color="bulkPrintActionTextColor" icon="print" :label="t('inventory.bulkPrintLabels')" unelevated @click="openBulkPrintLabels('location', selectedLocationIds)" />
           <q-btn color="negative" icon="delete" :label="t('inventory.bulkDelete')" unelevated @click="bulkDeleteDialogOpen = true" />
           <q-btn flat :label="t('scan.clear')" @click="selectedLocationIds = []" />
@@ -693,6 +699,80 @@
             </template>
           </q-tree>
         </q-card>
+      </q-tab-panel>
+
+      <q-tab-panel name="map" class="q-pa-none">
+        <WarehouseMap
+          :zones="store.zones"
+          :zone-tree="store.zoneTree"
+          :devices="store.devices"
+          :highlight-zone-ids="mapHighlightZoneIds"
+          :selected-zone-ids="mapSelectedZoneIds"
+          :focus-zone-id="mapFocusZoneId"
+          :breadcrumb="mapBreadcrumb"
+          @zone-click="onMapZoneClick"
+          @zone-dblclick="onMapZoneDblClick"
+          @zone-move="onMapZoneMove"
+          @zone-resize="onMapZoneResize"
+          @drill-down="onMapDrillDown"
+          @drill-up="onMapDrillUp"
+          @zone-properties="openZoneProperties"
+          @align-zones="onAlignZones"
+          @distribute-zones="onDistributeZones"
+          @selection-change="onMapSelectionChange"
+        />
+        <div class="row items-center q-mt-sm q-gutter-sm">
+          <q-input
+            v-model="mapSearchQuery"
+            dense
+            outlined
+            clearable
+            :placeholder="t('inventory.searchZones')"
+            class="col"
+          >
+            <template #prepend><q-icon name="search" /></template>
+          </q-input>
+          <q-btn
+            v-if="mapHighlightZoneIds.length > 0"
+            flat
+            dense
+            icon="clear_all"
+            :label="t('inventory.clearHighlight')"
+            @click="mapHighlightZoneIds = []"
+          />
+          <template v-if="mapSelectedZoneIds.length > 0">
+            <q-separator vertical />
+            <q-btn flat dense icon="edit" :label="t('inventory.bulkEditZones')" @click="openBulkEditFromMap" />
+            <q-btn
+              v-if="mapSelectedZoneIds.length >= 1 && mapSelectedZones.every(z => z.zone_type === 'rack')"
+              flat dense icon="auto_awesome" :label="t('inventory.generateShelves')" @click="openGenerateShelvesFromMap"
+            />
+            <div class="text-caption text-grey-6">{{ mapSelectedZoneIds.length }} selected</div>
+          </template>
+        </div>
+        <div v-if="filteredMapZones.length > 0 && mapSearchQuery" class="q-mt-sm">
+          <div class="text-caption text-grey-7 q-mb-xs">{{ filteredMapZones.length }} zone{{ filteredMapZones.length !== 1 ? 's' : '' }}</div>
+          <q-list dense bordered separator class="rounded-borders">
+            <q-item
+              v-for="zone in filteredMapZones"
+              :key="zone.id"
+              clickable
+              v-ripple
+              @click="highlightMapZone(zone)"
+            >
+              <q-item-section avatar>
+                <q-badge :label="zone.zone_type" color="primary" />
+              </q-item-section>
+              <q-item-section>
+                <q-item-label>{{ zone.name }}</q-item-label>
+                <q-item-label caption>{{ zone.code }}</q-item-label>
+              </q-item-section>
+              <q-item-section side>
+                <q-btn flat dense round icon="visibility" size="sm" @click.stop="highlightMapZone(zone)" />
+              </q-item-section>
+            </q-item>
+          </q-list>
+        </div>
       </q-tab-panel>
     </q-tab-panels>
 
@@ -793,6 +873,23 @@
       v-model="defectDialogOpen"
       :device-id="selectedDeviceId"
     />
+    <ZonePropertiesDialog
+      v-model="zonePropertiesOpen"
+      :zone="zonePropertiesTarget"
+      @saved="onZonePropertiesSaved"
+    />
+
+    <BulkZoneDialog
+      v-model="bulkZoneDialogOpen"
+      :selected-zones="bulkEditTargetZones"
+      @saved="onBulkZonesSaved"
+    />
+
+    <GenerateShelvesDialog
+      v-model="generateShelvesDialogOpen"
+      :selected-racks="generateShelvesTargetRacks"
+      @saved="onGenerateShelvesSaved"
+    />
   </q-page>
 </template>
 
@@ -841,6 +938,10 @@ import BulkCreateDialog from '../components/BulkCreateDialog.vue'
 import QuickCreateDialog from '../components/QuickCreateDialog.vue'
 import ImportDialog from '../components/ImportDialog.vue'
 import BulkDeleteDialog from '../components/BulkDeleteDialog.vue'
+import WarehouseMap from '../components/WarehouseMap.vue'
+import ZonePropertiesDialog from '../components/ZonePropertiesDialog.vue'
+import BulkZoneDialog from '../components/BulkZoneDialog.vue'
+import GenerateShelvesDialog from '../components/GenerateShelvesDialog.vue'
 
 const $q = useQuasar()
 const { t } = useI18n()
@@ -899,6 +1000,19 @@ const rentalProductSyncFilter = ref('all')
 const rentalProductSort = ref('name_asc')
 const rentalProductDialogOpen = ref(false)
 const rentalProductEditing = ref(null)
+
+const mapHighlightZoneIds = ref([])
+const mapSelectedZoneId = ref(null)
+const mapSelectedZoneIds = ref([])
+const mapSearchQuery = ref('')
+const mapFocusZoneId = ref(null)
+const mapBreadcrumb = ref([])
+const zonePropertiesOpen = ref(false)
+const zonePropertiesTarget = ref(null)
+const bulkZoneDialogOpen = ref(false)
+const generateShelvesDialogOpen = ref(false)
+const bulkEditTargetZones = ref([])
+const generateShelvesTargetRacks = ref([])
 
 const bulkProductDialogOpen = ref(false)
 const bulkDeviceDialogOpen = ref(false)
@@ -2109,6 +2223,185 @@ function openCreateLocation() {
 function openEditLocation(zone) {
   locationEditing.value = zone
   locationDialogOpen.value = true
+}
+
+const filteredMapZones = computed(() => {
+  if (!mapSearchQuery.value) return []
+  const query = mapSearchQuery.value.toLowerCase()
+  const results = []
+  function walk(nodes) {
+    for (const node of nodes || []) {
+      if (
+        (node.name && node.name.toLowerCase().includes(query)) ||
+        (node.code && node.code.toLowerCase().includes(query))
+      ) {
+        results.push(node)
+      }
+      if (node.children && node.children.length) {
+        walk(node.children)
+      }
+    }
+  }
+  walk(store.zoneTree)
+  return results
+})
+
+function onMapZoneClick(zone) {
+  mapSelectedZoneId.value = zone.id
+  mapSelectedZoneIds.value = [zone.id]
+}
+
+function onMapZoneDblClick(zone) {
+  if (zone._tree?.children?.length) {
+    onMapDrillDown(zone._tree)
+  }
+}
+
+function onMapDrillDown(zone) {
+  mapBreadcrumb.value = [...mapBreadcrumb.value, { id: zone.id, name: zone.name }]
+  mapFocusZoneId.value = zone.id
+  mapSelectedZoneId.value = null
+  mapSelectedZoneIds.value = []
+}
+
+function onMapDrillUp(targetId) {
+  if (targetId === null) {
+    mapFocusZoneId.value = null
+    mapBreadcrumb.value = []
+  } else {
+    const idx = mapBreadcrumb.value.findIndex(c => c.id === targetId)
+    if (idx >= 0) {
+      mapBreadcrumb.value = mapBreadcrumb.value.slice(0, idx + 1)
+      mapFocusZoneId.value = targetId
+    }
+  }
+  mapSelectedZoneId.value = null
+  mapSelectedZoneIds.value = []
+}
+
+function onMapSelectionChange(ids) {
+  mapSelectedZoneIds.value = ids
+}
+
+const mapSelectedZones = computed(() => {
+  return mapSelectedZoneIds.value.map(id => store.zones.find(z => z.id === id)).filter(Boolean)
+})
+
+const selectedLocationZones = computed(() => {
+  return selectedLocationIds.value.map(id => store.zones.find(z => z.id === id)).filter(Boolean)
+})
+
+function openZoneProperties(zone) {
+  zonePropertiesTarget.value = zone._tree || zone
+  zonePropertiesOpen.value = true
+}
+
+function onAlignZones(alignment) {
+  const ids = mapHighlightZoneIds.value.length ? mapHighlightZoneIds.value : mapSelectedZoneIds.value
+  if (ids.length < 2) {
+    $q.notify({ type: 'warning', message: 'Select 2 or more zones to align' })
+    return
+  }
+  const zones = ids.map(id => store.zones.find(z => z.id === id)).filter(Boolean)
+  if (zones.length < 2) return
+  const axes = { 'left': 'pos_x', 'center-h': 'pos_x', 'right': 'pos_x', 'top': 'pos_y', 'center-v': 'pos_y', 'bottom': 'pos_y' }
+  const axis = axes[alignment]
+  if (!axis) return
+  const vals = zones.map(z => z[axis] ?? 0)
+  let target
+  if (alignment === 'left') target = Math.min(...vals)
+  else if (alignment === 'right') target = Math.max(...vals)
+  else if (alignment === 'top') target = Math.min(...vals)
+  else if (alignment === 'bottom') target = Math.max(...vals)
+  else target = Math.round(vals.reduce((a, b) => a + b, 0) / vals.length)
+  for (const z of zones) {
+    store.updateZoneLayout(z.id, { [axis]: target })
+  }
+  $q.notify({ type: 'positive', message: `Aligned ${zones.length} zones` })
+}
+
+function onDistributeZones(direction) {
+  const ids = mapHighlightZoneIds.value.length ? mapHighlightZoneIds.value : mapSelectedZoneIds.value
+  if (ids.length < 3) {
+    $q.notify({ type: 'warning', message: 'Select 3 or more zones to distribute' })
+    return
+  }
+  const zones = ids.map(id => store.zones.find(z => z.id === id)).filter(Boolean)
+  if (zones.length < 3) return
+  const axis = direction === 'horizontal' ? 'pos_x' : 'pos_y'
+  const sizeKey = direction === 'horizontal' ? 'map_width' : 'map_depth'
+  const sorted = [...zones].sort((a, b) => (a[axis] ?? 0) - (b[axis] ?? 0))
+  const first = sorted[0][axis] ?? 0
+  const last = sorted[sorted.length - 1][axis] ?? 0
+  const totalSize = sorted.reduce((sum, z) => sum + (z[sizeKey] ?? 100), 0)
+  const gap = ((last - first) - totalSize) / (sorted.length - 1)
+  let pos = first
+  for (const z of sorted) {
+    store.updateZoneLayout(z.id, { [axis]: Math.round(pos) })
+    pos += (z[sizeKey] ?? 100) + gap
+  }
+  $q.notify({ type: 'positive', message: `Distributed ${zones.length} zones` })
+}
+
+async function onMapZoneMove(layout) {
+  try {
+    const payload = { id: layout.id }
+    for (const key of ['pos_x', 'pos_y', 'pos_z', 'map_width', 'map_depth', 'map_height']) {
+      if (layout[key] != null) payload[key] = layout[key]
+    }
+    await store.updateZoneLayout(layout.id, payload)
+  } catch (err) {
+    $q.notify({ type: 'negative', message: 'Failed to save zone position' })
+  }
+}
+
+async function onMapZoneResize(layout) {
+  try {
+    const payload = { id: layout.id }
+    for (const key of ['pos_x', 'pos_y', 'pos_z', 'map_width', 'map_depth', 'map_height']) {
+      if (layout[key] != null) payload[key] = layout[key]
+    }
+    await store.updateZoneLayout(layout.id, payload)
+  } catch (err) {
+    $q.notify({ type: 'negative', message: 'Failed to save zone size' })
+  }
+}
+
+function highlightMapZone(zone) {
+  if (!mapHighlightZoneIds.value.includes(zone.id)) {
+    mapHighlightZoneIds.value = [...mapHighlightZoneIds.value, zone.id]
+  }
+  mapSelectedZoneId.value = zone.id
+}
+
+function onBulkZonesSaved() {
+  mapSelectedZoneIds.value = []
+  selectedLocationIds.value = []
+}
+
+function onGenerateShelvesSaved() {
+  mapSelectedZoneIds.value = []
+  selectedLocationIds.value = []
+}
+
+function openBulkEditFromMap() {
+  bulkEditTargetZones.value = mapSelectedZones.value
+  bulkZoneDialogOpen.value = true
+}
+
+function openBulkEditFromTree() {
+  bulkEditTargetZones.value = selectedLocationZones.value
+  bulkZoneDialogOpen.value = true
+}
+
+function openGenerateShelvesFromMap() {
+  generateShelvesTargetRacks.value = mapSelectedZones.value
+  generateShelvesDialogOpen.value = true
+}
+
+function openGenerateShelvesFromTree() {
+  generateShelvesTargetRacks.value = selectedLocationZones.value
+  generateShelvesDialogOpen.value = true
 }
 
 const bulkCreateDialogOpen = ref(false)

@@ -109,81 +109,12 @@
     </q-card>
   </q-dialog>
 
-  <q-dialog :model-value="deviceFieldCaptureDialogOpen" persistent @hide="stopDeviceFieldCapture" @update:model-value="deviceFieldCaptureDialogOpen = $event">
-    <q-card style="width: 560px; max-width: 95vw" class="ec-card device-capture-card">
-      <q-card-section class="text-center">
-        <div class="device-capture-icon-wrap q-mb-sm">
-          <q-icon name="qr_code_scanner" size="34px" color="white" />
-        </div>
-        <div class="text-h6 text-white">{{ t('inventory.captureField', { field: deviceFieldCaptureLabel }) }}</div>
-        <div class="text-caption text-grey-4">{{ t('inventory.scanWithKeyboardCameraNfc') }}</div>
-      </q-card-section>
-      <q-card-section class="q-pt-none">
-        <div class="row q-gutter-sm q-mb-md justify-center">
-          <q-btn-toggle
-            v-model="deviceFieldCaptureMode"
-            toggle-color="primary"
-            color="grey-9"
-            text-color="grey-3"
-            unelevated
-            no-caps
-            :options="deviceFieldCaptureModeButtons"
-          />
-        </div>
-
-        <div class="row q-col-gutter-sm">
-          <div class="col-12">
-            <q-input ref="deviceFieldCaptureInputRef" v-model="deviceFieldCaptureValue" :label="t('inventory.scannerKeyboardInput')" outlined dense @keyup.enter="applyDeviceFieldCaptureValue">
-              <template #append>
-                <q-btn flat dense round color="primary" icon="check" @click="applyDeviceFieldCaptureValue" />
-              </template>
-            </q-input>
-          </div>
-          <div class="col-12 text-caption text-grey-5">
-            {{ t('inventory.captureModeHelpText') }}
-          </div>
-          <div class="col-12 row q-gutter-sm" v-if="deviceFieldCaptureMode === 'keyboard'">
-            <q-btn color="secondary" outline icon="keyboard" :label="t('inventory.focusTargetField')" @click="focusDeviceCaptureTargetField" />
-          </div>
-          <div class="col-12" v-if="deviceFieldCaptureCameraActive">
-            <div class="device-capture-camera-wrap">
-              <video ref="deviceCaptureVideoRef" class="device-capture-video" autoplay muted playsinline />
-            </div>
-            <canvas ref="deviceCaptureOcrCanvasRef" style="display: none" />
-            <div class="text-caption text-grey-5 q-mt-xs">
-              {{ deviceFieldCaptureMode === 'ocr' ? t('inventory.pointCameraToText') : t('inventory.pointCameraToBarcode') }}
-            </div>
-            <div v-if="deviceFieldCaptureMode === 'ocr'" class="row q-mt-sm">
-              <q-btn color="primary" unelevated icon="document_scanner" :label="t('inventory.captureText')" :loading="deviceFieldCaptureOcrLoading" @click="captureOcrFrame" />
-            </div>
-            <div v-if="deviceFieldCaptureOcrCandidates.length" class="q-mt-sm">
-              <div class="text-caption text-grey-4 q-mb-xs">{{ t('inventory.ocrSelectText') }}</div>
-              <q-list dense bordered class="rounded-borders">
-                <q-item v-for="(candidate, idx) in deviceFieldCaptureOcrCandidates" :key="idx" clickable v-ripple @click="applyOcrCandidate(candidate)">
-                  <q-item-section>{{ candidate }}</q-item-section>
-                  <q-item-section side>
-                    <q-icon name="check_circle" color="primary" />
-                  </q-item-section>
-                </q-item>
-              </q-list>
-            </div>
-          </div>
-          <div class="col-12" v-if="deviceFieldCaptureMode === 'nfc'">
-            <div class="device-capture-nfc-wrap text-center">
-              <q-icon name="nfc" size="40px" :color="deviceFieldCaptureNfcActive ? 'primary' : 'grey-5'" />
-              <div class="text-caption q-mt-sm" :class="deviceFieldCaptureNfcActive ? 'text-primary' : 'text-grey-5'">
-                {{ deviceFieldCaptureNfcActive ? t('inventory.nfcReadyHoldTag') : t('inventory.startingNfcReader') }}
-              </div>
-            </div>
-          </div>
-        </div>
-        <q-banner v-if="deviceFieldCaptureError" class="bg-negative text-white q-mt-sm rounded-borders" dense>{{ deviceFieldCaptureError }}</q-banner>
-      </q-card-section>
-      <q-card-actions align="right">
-        <q-btn flat :label="t('app.actions.close')" @click="deviceFieldCaptureDialogOpen = false" />
-      </q-card-actions>
-    </q-card>
-  </q-dialog>
+  <FieldScanDialog
+    v-model="deviceFieldCaptureDialogOpen"
+    :field-label="deviceFieldCaptureLabel"
+    :initial-value="deviceFieldCaptureInitialValue"
+    @captured="onFieldCaptured"
+  />
 </template>
 
 <script setup>
@@ -195,6 +126,7 @@ import { useSettingsStore } from '../stores/settings'
 import { isRentalProduct } from '../utils/inventory-overview'
 import { api } from '../boot/axios'
 import EntityAttachmentsPanel from './EntityAttachmentsPanel.vue'
+import FieldScanDialog from './FieldScanDialog.vue'
 
 const props = defineProps({
   modelValue: { type: Boolean, default: false },
@@ -224,45 +156,11 @@ const deviceSerialInputRef = ref(null)
 const deviceBarcodeInputRef = ref(null)
 const deviceQrCodeInputRef = ref(null)
 const deviceRfidInputRef = ref(null)
-const deviceCaptureVideoRef = ref(null)
-const deviceCaptureOcrCanvasRef = ref(null)
-const deviceFieldCaptureInputRef = ref(null)
 const warrantyManuallyEdited = ref(false)
 const deviceFieldCaptureDialogOpen = ref(false)
 const deviceFieldCaptureTarget = ref('')
 const deviceFieldCaptureLabel = ref('')
-const deviceFieldCaptureValue = ref('')
-const deviceFieldCaptureError = ref('')
-const deviceFieldCaptureMode = ref('keyboard')
-const deviceFieldCaptureCameraActive = ref(false)
-const deviceFieldCaptureNfcActive = ref(false)
-const deviceFieldCaptureStream = ref(null)
-const deviceFieldCaptureRaf = ref(null)
-const deviceFieldCaptureNfcController = ref(null)
-const deviceFieldCaptureOcrLoading = ref(false)
-const deviceFieldCaptureOcrCandidates = ref([])
-let ocrWorkerInstance = null
-const OCR_MIN_CONFIDENCE = 30
-const OCR_MAX_CANDIDATES = 6
-const deviceCaptureSupportsCamera = computed(() => {
-  if (typeof window === 'undefined') return false
-  return typeof window.BarcodeDetector === 'function' && !!navigator.mediaDevices?.getUserMedia
-})
-const deviceCaptureSupportsNfc = computed(() => {
-  if (typeof window === 'undefined') return false
-  return !!window.isSecureContext && typeof window.NDEFReader === 'function'
-})
-const deviceCaptureSupportsOcr = computed(() => {
-  if (typeof window === 'undefined') return false
-  return !!navigator.mediaDevices?.getUserMedia
-})
-const deviceFieldCaptureModeButtons = computed(() => {
-  const buttons = [{ label: t('inventory.deviceDialog.keyboard'), value: 'keyboard', icon: 'keyboard' }]
-  if (deviceCaptureSupportsCamera.value) buttons.push({ label: t('inventory.deviceDialog.camera'), value: 'camera', icon: 'photo_camera' })
-  if (deviceCaptureSupportsNfc.value) buttons.push({ label: t('inventory.deviceDialog.nfc'), value: 'nfc', icon: 'nfc' })
-  if (deviceCaptureSupportsOcr.value) buttons.push({ label: t('inventory.deviceDialog.ocr'), value: 'ocr', icon: 'document_scanner' })
-  return buttons
-})
+const deviceFieldCaptureInitialValue = ref('')
 
 const emptyDeviceForm = () => ({
   product_id: null, asset_tag: '', serial_number: '', barcode: '', qr_code: '', rfid: '',
@@ -570,268 +468,18 @@ function setCapturedDeviceFieldValue(field, value) {
 function openDeviceFieldCapture(field, label) {
   deviceFieldCaptureTarget.value = field
   deviceFieldCaptureLabel.value = label
-  deviceFieldCaptureValue.value = ''
-  deviceFieldCaptureError.value = ''
-  deviceFieldCaptureMode.value = 'keyboard'
+  deviceFieldCaptureInitialValue.value = deviceForm.value[field] || ''
   deviceFieldCaptureDialogOpen.value = true
 }
 
-function focusCaptureInput() {
-  if (!deviceFieldCaptureDialogOpen.value) return
-  if (deviceFieldCaptureMode.value !== 'keyboard') return
-  nextTick(() => {
-    deviceFieldCaptureInputRef.value?.focus?.()
-  })
-}
-
-function applyDeviceFieldCaptureValue() {
-  setCapturedDeviceFieldValue(deviceFieldCaptureTarget.value, deviceFieldCaptureValue.value)
-  if (!deviceFieldCaptureValue.value) return
-  deviceFieldCaptureDialogOpen.value = false
+function onFieldCaptured(value) {
+  setCapturedDeviceFieldValue(deviceFieldCaptureTarget.value, value)
 }
 
 function focusDeviceCaptureTargetField() {
   focusDeviceField(deviceFieldCaptureTarget.value)
   $q.notify({ type: 'info', message: `Target ${deviceFieldCaptureLabel.value} focused for keyboard scanner input` })
 }
-
-function stopDeviceFieldCapture() {
-  if (deviceFieldCaptureRaf.value) {
-    cancelAnimationFrame(deviceFieldCaptureRaf.value)
-    deviceFieldCaptureRaf.value = null
-  }
-  if (deviceFieldCaptureNfcController.value) {
-    deviceFieldCaptureNfcController.value.abort()
-    deviceFieldCaptureNfcController.value = null
-  }
-  if (deviceFieldCaptureStream.value) {
-    for (const track of deviceFieldCaptureStream.value.getTracks()) {
-      track.stop()
-    }
-    deviceFieldCaptureStream.value = null
-  }
-  if (deviceCaptureVideoRef.value) {
-    deviceCaptureVideoRef.value.srcObject = null
-  }
-  deviceFieldCaptureCameraActive.value = false
-  deviceFieldCaptureNfcActive.value = false
-  deviceFieldCaptureOcrCandidates.value = []
-  deviceFieldCaptureOcrLoading.value = false
-}
-
-async function startDeviceCameraCapture() {
-  deviceFieldCaptureError.value = ''
-  if (!deviceCaptureSupportsCamera.value) {
-    deviceFieldCaptureError.value = t('inventory.deviceDialog.cameraNotSupported')
-    return
-  }
-  if (!navigator.mediaDevices?.getUserMedia) {
-    deviceFieldCaptureError.value = t('inventory.deviceDialog.cameraNotAvailable')
-    return
-  }
-
-  stopDeviceFieldCapture()
-  try {
-    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } } })
-    deviceFieldCaptureStream.value = stream
-    deviceFieldCaptureCameraActive.value = true
-    await nextTick()
-
-    const videoEl = deviceCaptureVideoRef.value
-    if (!videoEl) {
-      deviceFieldCaptureError.value = t('inventory.deviceDialog.cameraPreviewUnavailable')
-      return
-    }
-    videoEl.srcObject = stream
-    await videoEl.play()
-
-    const detector = new window.BarcodeDetector({
-      formats: ['qr_code', 'code_128', 'code_39', 'ean_13', 'ean_8', 'upc_a', 'upc_e'],
-    })
-
-    const detectLoop = async () => {
-      if (!deviceFieldCaptureDialogOpen.value || !deviceFieldCaptureCameraActive.value) return
-      try {
-        const codes = await detector.detect(videoEl)
-        const first = Array.isArray(codes) && codes.length ? codes[0] : null
-        const value = String(first?.rawValue || '').trim()
-        if (value) {
-          setCapturedDeviceFieldValue(deviceFieldCaptureTarget.value, value)
-          deviceFieldCaptureDialogOpen.value = false
-          stopDeviceFieldCapture()
-          return
-        }
-      } catch {
-        // Continue scanning until a value is found or the dialog closes.
-      }
-      deviceFieldCaptureRaf.value = requestAnimationFrame(detectLoop)
-    }
-
-    deviceFieldCaptureRaf.value = requestAnimationFrame(detectLoop)
-  } catch (error) {
-    deviceFieldCaptureError.value = error?.message || t('inventory.deviceDialog.unableToStartCamera')
-    stopDeviceFieldCapture()
-  }
-}
-
-function parseNfcRecordValue(record) {
-  try {
-    if (!record?.data) return ''
-    const decoder = new TextDecoder(record.encoding || 'utf-8')
-    const decoded = decoder.decode(record.data).trim()
-    return decoded
-  } catch {
-    return ''
-  }
-}
-
-async function startDeviceNfcCapture() {
-  deviceFieldCaptureError.value = ''
-  if (!deviceCaptureSupportsNfc.value) {
-    deviceFieldCaptureError.value = t('inventory.deviceDialog.nfcNotSupported')
-    return
-  }
-
-  stopDeviceFieldCapture()
-  try {
-    const ndef = new window.NDEFReader()
-    const controller = new AbortController()
-    deviceFieldCaptureNfcController.value = controller
-    await ndef.scan({ signal: controller.signal })
-    deviceFieldCaptureNfcActive.value = true
-    $q.notify({ type: 'info', message: t('inventory.deviceDialog.nfcScanStarted') })
-
-    ndef.onreadingerror = () => {
-      deviceFieldCaptureError.value = t('inventory.deviceDialog.nfcReadError')
-    }
-
-    ndef.onreading = (event) => {
-      const records = event?.message?.records || []
-      for (const record of records) {
-        const value = parseNfcRecordValue(record)
-        if (value) {
-          setCapturedDeviceFieldValue(deviceFieldCaptureTarget.value, value)
-          deviceFieldCaptureDialogOpen.value = false
-          stopDeviceFieldCapture()
-          return
-        }
-      }
-      deviceFieldCaptureError.value = t('inventory.deviceDialog.nfcNoTextPayload')
-    }
-  } catch (error) {
-    deviceFieldCaptureError.value = error?.message || t('inventory.deviceDialog.unableToStartNfc')
-    stopDeviceFieldCapture()
-  }
-}
-
-async function startDeviceOcrCapture() {
-  deviceFieldCaptureError.value = ''
-  deviceFieldCaptureOcrCandidates.value = []
-  if (!deviceCaptureSupportsOcr.value) {
-    deviceFieldCaptureError.value = t('inventory.deviceDialog.ocrNotSupported')
-    return
-  }
-  if (!navigator.mediaDevices?.getUserMedia) {
-    deviceFieldCaptureError.value = t('inventory.deviceDialog.cameraNotAvailable')
-    return
-  }
-
-  stopDeviceFieldCapture()
-  try {
-    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } } })
-    deviceFieldCaptureStream.value = stream
-    deviceFieldCaptureCameraActive.value = true
-    await nextTick()
-
-    const videoEl = deviceCaptureVideoRef.value
-    if (!videoEl) {
-      deviceFieldCaptureError.value = t('inventory.deviceDialog.cameraPreviewUnavailable')
-      stopDeviceFieldCapture()
-      return
-    }
-    videoEl.srcObject = stream
-    await videoEl.play()
-  } catch (error) {
-    deviceFieldCaptureError.value = error?.message || t('inventory.deviceDialog.unableToStartCamera')
-    stopDeviceFieldCapture()
-  }
-}
-
-async function captureOcrFrame() {
-  const videoEl = deviceCaptureVideoRef.value
-  if (!videoEl || !deviceFieldCaptureCameraActive.value) return
-
-  deviceFieldCaptureOcrLoading.value = true
-  deviceFieldCaptureOcrCandidates.value = []
-  deviceFieldCaptureError.value = ''
-
-  try {
-    const canvas = deviceCaptureOcrCanvasRef.value
-    canvas.width = videoEl.videoWidth || 640
-    canvas.height = videoEl.videoHeight || 480
-    const ctx = canvas.getContext('2d')
-    ctx.drawImage(videoEl, 0, 0)
-    const imageDataUrl = canvas.toDataURL('image/png')
-
-    if (!ocrWorkerInstance) {
-      const { createWorker } = await import('tesseract.js')
-      ocrWorkerInstance = await createWorker()
-      await ocrWorkerInstance.loadLanguage('eng')
-      await ocrWorkerInstance.initialize('eng')
-    }
-    const { data } = await ocrWorkerInstance.recognize(imageDataUrl)
-
-    const candidates = (data.lines || [])
-      .filter(line => line.confidence > OCR_MIN_CONFIDENCE)
-      .map(line => line.text.replace(/\s+/g, ' ').trim())
-      .filter(text => text.length > 1)
-      .slice(0, OCR_MAX_CANDIDATES)
-
-    deviceFieldCaptureOcrCandidates.value = candidates
-
-    if (!candidates.length) {
-      deviceFieldCaptureError.value = t('inventory.deviceDialog.ocrNoTextFound')
-    }
-  } catch (err) {
-    console.error('[DeviceDialog] OCR capture failed:', err)
-    deviceFieldCaptureError.value = t('inventory.deviceDialog.ocrFailed')
-  } finally {
-    deviceFieldCaptureOcrLoading.value = false
-  }
-}
-
-function applyOcrCandidate(text) {
-  setCapturedDeviceFieldValue(deviceFieldCaptureTarget.value, text)
-  deviceFieldCaptureDialogOpen.value = false
-}
-
-watch(deviceFieldCaptureMode, (mode) => {
-  if (!deviceFieldCaptureDialogOpen.value) return
-  if (mode === 'keyboard') {
-    stopDeviceFieldCapture()
-    focusCaptureInput()
-    return
-  }
-  if (mode === 'camera') {
-    void startDeviceCameraCapture()
-    return
-  }
-  if (mode === 'nfc') {
-    void startDeviceNfcCapture()
-    return
-  }
-  if (mode === 'ocr') {
-    void startDeviceOcrCapture()
-  }
-})
-
-watch(deviceFieldCaptureDialogOpen, (open) => {
-  if (open) {
-    focusCaptureInput()
-    return
-  }
-  stopDeviceFieldCapture()
-})
 
 watch(() => deviceForm.value.product_id, (nextProductId) => {
   if (!props.modelValue) return

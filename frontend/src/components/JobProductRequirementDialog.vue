@@ -272,6 +272,7 @@ const requirementSortOptions = computed(() => [
   { label: t('jobs.sortName'), value: 'name' },
   { label: t('jobs.sortSku'), value: 'sku' },
   { label: t('jobs.sortInStoreFirst'), value: 'in_store' },
+  { label: t('jobs.sortByLocation'), value: 'location' },
 ])
 
 const requirementTypeFilterOptions = computed(() => [
@@ -352,6 +353,24 @@ function productCategoryPath(product) {
   return product.category || t('jobs.uncategorized')
 }
 
+function productLocationPath(product) {
+  const devices = (inventoryStore.devices || []).filter(d => d.product_id === product.id && d.location_zone_id)
+  if (devices.length === 0) return ''
+  const zoneIds = [...new Set(devices.map(d => d.location_zone_id))]
+  const zones = (inventoryStore.zones || []).filter(z => zoneIds.includes(z.id))
+  if (zones.length === 0) return ''
+  const zonePaths = zones.map(zone => {
+    const parts = []
+    let current = zone
+    while (current) {
+      parts.unshift(current.code || current.name || '')
+      current = (inventoryStore.zones || []).find(z => z.id === current.parent_id)
+    }
+    return parts.join('/')
+  })
+  return [...new Set(zonePaths)].sort()[0] || ''
+}
+
 function compareProducts(a, b, sortMode) {
   const categoryA = productCategoryPath(a)
   const categoryB = productCategoryPath(b)
@@ -365,6 +384,13 @@ function compareProducts(a, b, sortMode) {
   if (sortMode === 'in_store') {
     const inStoreDiff = Number(b.in_store_devices || 0) - Number(a.in_store_devices || 0)
     if (inStoreDiff !== 0) return inStoreDiff
+    return nameA.localeCompare(nameB)
+  }
+  if (sortMode === 'location') {
+    const locA = productLocationPath(a)
+    const locB = productLocationPath(b)
+    const locCompare = locA.localeCompare(locB)
+    if (locCompare !== 0) return locCompare
     return nameA.localeCompare(nameB)
   }
 

@@ -557,6 +557,13 @@ class ZoneBase(BaseModel):
     parent_id: int | None = None
     sort_order: int = 0
     is_active: bool = True
+    pos_x: int | None = None
+    pos_y: int | None = None
+    pos_z: int | None = None
+    map_width: int | None = None
+    map_depth: int | None = None
+    map_height: int | None = None
+    color: str | None = None
 
 
 class ZoneCreate(ZoneBase):
@@ -573,6 +580,13 @@ class ZoneUpdate(BaseModel):
     parent_id: int | None = None
     sort_order: int | None = None
     is_active: bool | None = None
+    pos_x: int | None = None
+    pos_y: int | None = None
+    pos_z: int | None = None
+    map_width: int | None = None
+    map_depth: int | None = None
+    map_height: int | None = None
+    color: str | None = None
 
 
 class ZoneMove(BaseModel):
@@ -597,9 +611,61 @@ class ZoneTreeRead(BaseModel):
     parent_id: int | None = None
     sort_order: int = 0
     is_active: bool = True
+    pos_x: int | None = None
+    pos_y: int | None = None
+    pos_z: int | None = None
+    map_width: int | None = None
+    map_depth: int | None = None
+    map_height: int | None = None
+    color: str | None = None
     children: list["ZoneTreeRead"] = Field(default_factory=list)
 
     model_config = {"from_attributes": True}
+
+
+class ZoneLayoutUpdate(BaseModel):
+    pos_x: int | None = None
+    pos_y: int | None = None
+    pos_z: int | None = None
+    map_width: int | None = None
+    map_depth: int | None = None
+    map_height: int | None = None
+    color: str | None = None
+
+
+class ZoneLayoutBulkItem(BaseModel):
+    id: int
+    pos_x: int | None = None
+    pos_y: int | None = None
+    pos_z: int | None = None
+    map_width: int | None = None
+    map_depth: int | None = None
+    map_height: int | None = None
+    color: str | None = None
+
+
+class ZoneLayoutBulkUpdate(BaseModel):
+    items: list[ZoneLayoutBulkItem] = Field(default_factory=list)
+
+
+class ZoneBulkUpdate(BaseModel):
+    ids: list[int] = Field(default_factory=list)
+    zone_type: str | None = None
+    parent_id: int | None = None
+    is_active: bool | None = None
+    map_width: int | None = None
+    map_depth: int | None = None
+    map_height: int | None = None
+    color: str | None = None
+
+
+class GenerateShelvesRequest(BaseModel):
+    rack_ids: list[int] = Field(default_factory=list)
+    count: int = Field(default=5, ge=1, le=50)
+    shelf_width: int = Field(default=115, ge=1)
+    shelf_depth: int = Field(default=75, ge=1)
+    shelf_height: int = Field(default=3, ge=1)
+    prefix: str = Field(default="Shelf")
 
 
 ProductRead.model_rebuild()
