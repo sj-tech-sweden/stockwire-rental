@@ -79,7 +79,7 @@
                   outlined
                   dense
                   :disable="!authStore.canEdit"
-                  :rules="[v => !!v || t('login.required')]"
+                  :rules="[v => !!v || t('common.required')]"
                 />
               </div>
               <div class="col-12 col-md-6">
@@ -92,7 +92,7 @@
                   emit-value
                   map-options
                   :disable="!authStore.canEdit"
-                  :rules="[v => !!v || t('login.required')]"
+                  :rules="[v => !!v || t('common.required')]"
                 />
               </div>
             </div>
@@ -353,6 +353,7 @@ const settingsStore = useSettingsStore()
 
 const pageLoading = ref(false)
 const saving = ref(false)
+const isDirty = ref(false)
 const formRef = ref(null)
 const requirementDialogOpen = ref(false)
 const filteredCustomerOptions = ref([])
@@ -507,6 +508,8 @@ watch(venueOptions, (options) => {
   filteredVenueOptions.value = options
 }, { immediate: true })
 
+watch(() => form.value, () => { isDirty.value = true }, { deep: true })
+
 watch(() => form.value.invoice_paid, (paid) => {
   if (paid && !form.value.invoice_paid_at) {
     form.value.invoice_paid_at = normalizeDate(new Date())
@@ -601,6 +604,7 @@ function syncFromJob(job) {
   if (!job) {
     form.value = emptyForm()
     requirementRows.value = []
+    isDirty.value = false
     return
   }
 
@@ -633,6 +637,8 @@ function syncFromJob(job) {
       quantity_picked: req.quantity_picked,
       notes: req.notes || null,
     }))
+
+  isDirty.value = false
 }
 
 function setRequirementQty(productId, value) {
@@ -726,7 +732,7 @@ onMounted(async () => {
 })
 
 watch(currentJob, (job) => {
-  syncFromJob(job)
+  if (!isDirty.value) syncFromJob(job)
 })
 
 watch(() => route.params.jobId, async (next, prev) => {

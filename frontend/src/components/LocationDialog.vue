@@ -1,6 +1,6 @@
 <template>
   <q-dialog :model-value="modelValue" persistent @update:model-value="$emit('update:modelValue', $event)">
-    <q-card style="width: 560px; max-width: 95vw" class="ec-card">
+    <q-card style="width: 600px; max-width: 95vw" class="ec-card">
       <q-card-section><div class="text-h6">{{ zone ? t('inventory.editLocation') : t('inventory.newLocation') }}</div></q-card-section>
       <q-card-section class="q-pt-none">
         <q-form ref="formRef" @submit.prevent="save">
@@ -17,34 +17,122 @@
             </div>
           </div>
           <div class="row q-col-gutter-sm q-mb-sm">
-            <div class="col-12 col-md-6">
+            <div class="col-12">
               <q-toggle v-model="autoGenerateCode" :label="t('inventory.autoGenerateCode')" color="primary" />
             </div>
           </div>
+
+          <div class="text-subtitle2 q-mb-xs">Dimensions (cm)</div>
           <div class="row q-col-gutter-sm q-mb-sm">
-            <div class="col-12 col-md-4">
-              <q-input v-model="form.barcode" label="Barcode" outlined dense />
+            <div class="col-4">
+              <q-input v-model.number="form.map_width" type="number" label="Width" outlined dense :min="1" />
             </div>
-            <div class="col-12 col-md-4">
-              <q-input v-model="form.qr_code" label="QR code" outlined dense />
+            <div class="col-4">
+              <q-input v-model.number="form.map_depth" type="number" label="Depth" outlined dense :min="1" />
             </div>
-            <div class="col-12 col-md-4">
-              <q-input v-model="form.rfid" label="RFID" outlined dense />
+            <div class="col-4">
+              <q-input v-model.number="form.map_height" type="number" label="Height" outlined dense :min="1" />
             </div>
           </div>
-          <q-select
-            v-model="form.zone_type"
-            :options="locationTypeOptions"
-            :label="t('inventory.type')"
-            outlined
-            dense
-            emit-value
-            map-options
-            class="q-mb-sm"
-          />
-          <q-select v-model="form.parent_id" :options="parentLocationOptions" :label="t('inventory.parentLocation')" outlined dense clearable emit-value map-options class="q-mb-sm" />
-          <q-input v-model.number="form.sort_order" type="number" :label="t('inventory.sortOrder')" outlined dense class="q-mb-sm" />
-          <q-toggle v-model="form.is_active" :label="t('settings.auth.active')" color="primary" />
+
+          <div class="text-subtitle2 q-mb-xs">Position (cm)</div>
+          <div class="row q-col-gutter-sm q-mb-sm">
+            <div class="col-4">
+              <q-input v-model.number="form.pos_x" type="number" label="X (left/right)" outlined dense>
+                <q-tooltip>{{ t('inventory.tooltipPosX') }}</q-tooltip>
+              </q-input>
+            </div>
+            <div class="col-4">
+              <q-input v-model.number="form.pos_y" type="number" label="Y (front/back)" outlined dense>
+                <q-tooltip>{{ t('inventory.tooltipPosY') }}</q-tooltip>
+              </q-input>
+            </div>
+            <div class="col-4">
+              <q-input v-model.number="form.pos_z" type="number" label="Z (height)" outlined dense>
+                <q-tooltip>{{ t('inventory.tooltipPosZ') }}</q-tooltip>
+              </q-input>
+            </div>
+          </div>
+
+          <div class="text-subtitle2 q-mb-xs">Rotation (°)</div>
+          <div class="row q-col-gutter-sm q-mb-sm items-center">
+            <div class="col-4">
+              <q-input v-model.number="form.rotation" type="number" label="Rotation" outlined dense :min="0" :max="360" />
+            </div>
+            <div class="col-auto">
+              <div class="row q-col-gutter-xs">
+                <q-btn flat dense no-caps size="sm" label="0°" @click="form.rotation = 0" :color="form.rotation === 0 ? 'primary' : undefined" />
+                <q-btn flat dense no-caps size="sm" label="90°" @click="form.rotation = 90" :color="form.rotation === 90 ? 'primary' : undefined" />
+                <q-btn flat dense no-caps size="sm" label="180°" @click="form.rotation = 180" :color="form.rotation === 180 ? 'primary' : undefined" />
+                <q-btn flat dense no-caps size="sm" label="270°" @click="form.rotation = 270" :color="form.rotation === 270 ? 'primary' : undefined" />
+              </div>
+            </div>
+          </div>
+
+          <div class="text-subtitle2 q-mb-xs">Identifiers</div>
+          <div class="row q-col-gutter-sm q-mb-sm">
+            <div class="col-12 col-md-4">
+              <q-input ref="barcodeInputRef" v-model="form.barcode" label="Barcode" outlined dense>
+                <template #append>
+                  <q-btn flat dense round color="positive" icon="qr_code_scanner" @click="openScanDialog('barcode', 'Barcode')">
+                    <q-tooltip>Scan barcode</q-tooltip>
+                  </q-btn>
+                </template>
+              </q-input>
+            </div>
+            <div class="col-12 col-md-4">
+              <q-input ref="qrCodeInputRef" v-model="form.qr_code" label="QR code" outlined dense>
+                <template #append>
+                  <q-btn flat dense round color="positive" icon="qr_code_scanner" @click="openScanDialog('qr_code', 'QR code')">
+                    <q-tooltip>Scan QR code</q-tooltip>
+                  </q-btn>
+                </template>
+              </q-input>
+            </div>
+            <div class="col-12 col-md-4">
+              <q-input ref="rfidInputRef" v-model="form.rfid" label="RFID" outlined dense>
+                <template #append>
+                  <q-btn flat dense round color="positive" icon="nfc" @click="openScanDialog('rfid', 'RFID')">
+                    <q-tooltip>Scan RFID tag</q-tooltip>
+                  </q-btn>
+                </template>
+              </q-input>
+            </div>
+          </div>
+
+          <div class="row q-col-gutter-sm q-mb-sm">
+            <div class="col-12 col-md-6">
+              <q-select
+                v-model="form.zone_type"
+                :options="locationTypeOptions"
+                :label="t('inventory.type')"
+                outlined
+                dense
+                emit-value
+                map-options
+              />
+            </div>
+            <div class="col-12 col-md-6">
+              <q-select v-model="form.parent_id" :options="parentLocationOptions" :label="t('inventory.parentLocation')" outlined dense clearable emit-value map-options />
+            </div>
+          </div>
+          <div class="row q-col-gutter-sm q-mb-sm">
+            <div class="col-6">
+              <q-input v-model.number="form.sort_order" type="number" :label="t('inventory.sortOrder')" outlined dense />
+            </div>
+            <div class="col-6">
+              <q-toggle v-model="form.is_active" :label="t('settings.auth.active')" color="primary" />
+            </div>
+          </div>
+          <q-expansion-item label="Quick presets" class="q-mb-sm" dense v-if="zone">
+            <div class="row q-col-gutter-xs q-pa-sm">
+              <q-btn
+                v-for="p in filteredPresets" :key="p.label"
+                flat dense no-caps size="sm" :label="t(p.label)"
+                @click="applyPreset(p.width, p.depth, p.height)"
+              />
+            </div>
+          </q-expansion-item>
           <q-banner v-if="error" class="bg-negative text-white q-mt-sm rounded-borders" dense>{{ error }}</q-banner>
         </q-form>
       </q-card-section>
@@ -54,6 +142,13 @@
       </q-card-actions>
     </q-card>
   </q-dialog>
+
+  <FieldScanDialog
+    v-model="scanDialogOpen"
+    :field-label="scanFieldLabel"
+    :initial-value="scanInitialValue"
+    @captured="onScanCaptured"
+  />
 </template>
 
 <script setup>
@@ -62,6 +157,8 @@ import { useI18n } from 'vue-i18n'
 import { useQuasar } from 'quasar'
 import { useInventoryStore } from '../stores/inventory'
 import { slugify } from '../utils/slugify'
+import { ZONE_PRESETS } from '../utils/zone-presets'
+import FieldScanDialog from './FieldScanDialog.vue'
 
 const props = defineProps({
   modelValue: { type: Boolean, required: true },
@@ -90,6 +187,13 @@ const emptyForm = () => ({
   parent_id: null,
   sort_order: 0,
   is_active: true,
+  pos_x: 0,
+  pos_y: 0,
+  pos_z: 0,
+  map_width: 120,
+  map_depth: 80,
+  map_height: 230,
+  rotation: 0,
 })
 
 const form = ref(emptyForm())
@@ -108,6 +212,13 @@ watch(() => props.modelValue, (open) => {
         parent_id: props.zone.parent_id ?? null,
         sort_order: Number(props.zone.sort_order ?? 0),
         is_active: !!props.zone.is_active,
+        pos_x: props.zone.pos_x ?? 0,
+        pos_y: props.zone.pos_y ?? 0,
+        pos_z: props.zone.pos_z ?? 0,
+        map_width: props.zone.map_width ?? 120,
+        map_depth: props.zone.map_depth ?? 80,
+        map_height: props.zone.map_height ?? 230,
+        rotation: props.zone.rotation ?? 0,
       }
       codeEdited.value = true
       autoGenerateCode.value = false
@@ -145,6 +256,36 @@ const parentLocationOptions = computed(() => {
   return flat
 })
 
+const filteredPresets = computed(() => {
+  const type = form.value.zone_type
+  if (!type) return ZONE_PRESETS
+  return ZONE_PRESETS.filter(p => p.types.includes(type))
+})
+
+function applyPreset(w, d, h) {
+  form.value.map_width = w
+  form.value.map_depth = d
+  form.value.map_height = h
+}
+
+const scanDialogOpen = ref(false)
+const scanFieldKey = ref('')
+const scanFieldLabel = ref('')
+const scanInitialValue = ref('')
+
+function openScanDialog(fieldKey, label) {
+  scanFieldKey.value = fieldKey
+  scanFieldLabel.value = label
+  scanInitialValue.value = form.value[fieldKey] || ''
+  scanDialogOpen.value = true
+}
+
+function onScanCaptured(value) {
+  if (scanFieldKey.value) {
+    form.value[scanFieldKey.value] = value
+  }
+}
+
 async function save() {
   const valid = await formRef.value?.validate()
   if (!valid) return
@@ -162,6 +303,13 @@ async function save() {
       parent_id: form.value.parent_id,
       sort_order: Number(form.value.sort_order || 0),
       is_active: !!form.value.is_active,
+      pos_x: Number(form.value.pos_x) || 0,
+      pos_y: Number(form.value.pos_y) || 0,
+      pos_z: Number(form.value.pos_z) || 0,
+      map_width: Number(form.value.map_width) || 120,
+      map_depth: Number(form.value.map_depth) || 80,
+      map_height: Number(form.value.map_height) || 230,
+      rotation: Number(form.value.rotation) || 0,
     }
 
     if (props.zone) {

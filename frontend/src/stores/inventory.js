@@ -588,9 +588,71 @@ export const useInventoryStore = defineStore('inventory', () => {
     return data
   }
 
+  async function updateZoneLayout(id, layout) {
+    if (!isOnline()) {
+      zones.value = zones.value.map(item => (item.id === id ? { ...item, ...layout, _offline_queued: true } : item))
+      zoneTree.value = updateLayoutInTree(zoneTree.value, id, layout)
+      await queueMutation({ method: 'put', url: `/api/v1/inventory/zones/${id}/layout`, data: layout })
+      await persistFetchAllSnapshot()
+      return zones.value.find(item => item.id === id) || { id, ...layout, _offline_queued: true }
+    }
+    const { data } = await api.put(`/api/v1/inventory/zones/${id}/layout`, layout)
+    await fetchZones()
+    return data
+  }
+
+  async function bulkUpdateZoneLayout(items) {
+    if (!isOnline()) {
+      for (const item of items) {
+        zones.value = zones.value.map(z => (z.id === item.id ? { ...z, ...item, _offline_queued: true } : z))
+      }
+      await queueMutation({ method: 'put', url: '/api/v1/inventory/zones/layout/bulk', data: { items } })
+      await persistFetchAllSnapshot()
+      return items
+    }
+    const { data } = await api.put('/api/v1/inventory/zones/layout/bulk', { items })
+    await fetchZones()
+    return data
+  }
+
+  function updateLayoutInTree(nodes, zoneId, layout) {
+    return nodes.map(node => {
+      if (node.id === zoneId) {
+        return { ...node, ...layout }
+      }
+      if (node.children && node.children.length) {
+        return { ...node, children: updateLayoutInTree(node.children, zoneId, layout) }
+      }
+      return node
+    })
+  }
+
   async function deleteZonesBulk(ids) {
     if (!Array.isArray(ids) || !ids.length) return { deleted: 0, skipped: 0 }
     const { data } = await api.post('/api/v1/inventory/locations/bulk-delete', { ids })
+    await fetchZones()
+    return data
+  }
+
+  async function bulkUpdateZones(ids, patch) {
+    if (!isOnline()) {
+      for (const id of ids) {
+        zones.value = zones.value.map(z => (z.id === id ? { ...z, ...patch, _offline_queued: true } : z))
+      }
+      await queueMutation({ method: 'put', url: '/api/v1/inventory/zones/bulk', data: { ids, ...patch } })
+      await persistFetchAllSnapshot()
+      return ids
+    }
+    const { data } = await api.put('/api/v1/inventory/zones/bulk', { ids, ...patch })
+    await fetchZones()
+    return data
+  }
+
+  async function generateShelves(config) {
+    if (!isOnline()) {
+      throw new Error('Shelf generation requires online mode')
+    }
+    const { data } = await api.post('/api/v1/inventory/zones/generate-shelves', config)
     await fetchZones()
     return data
   }
@@ -695,6 +757,10 @@ export const useInventoryStore = defineStore('inventory', () => {
     deleteZonesBulk,
     updateZone,
     moveZone,
+    updateZoneLayout,
+    bulkUpdateZoneLayout,
+    bulkUpdateZones,
+    generateShelves,
     generateProductSku,
     generateDeviceAssetTag,
   }

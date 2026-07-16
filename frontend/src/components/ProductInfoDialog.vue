@@ -64,6 +64,29 @@
           </q-item>
         </q-list>
 
+        <div v-if="productDeviceZoneIds.length" class="q-mb-md">
+          <q-expansion-item
+            v-model="mapExpanded"
+            :label="t('inventory.infoDialogs.deviceLocations') || 'Device Locations'"
+            header-class="text-subtitle2"
+            @after-show="fitMapToView"
+          >
+            <div style="height: 320px; border: 1px solid rgba(128,128,128,0.2); border-radius: 4px; overflow: hidden">
+              <WarehouseMap
+                ref="warehouseMapRef"
+                :zones="store.zones"
+                :zone-tree="store.zoneTree"
+                :devices="store.devices"
+                :highlight-zone-ids="productDeviceZoneIds"
+                :focus-zone-id="drillDownFocusId"
+                :breadcrumb="currentBreadcrumb"
+                @drill-down="onDrillDown"
+                @drill-up="onDrillUp"
+              />
+            </div>
+          </q-expansion-item>
+        </div>
+
         <div class="text-subtitle2 q-mb-sm">{{ t('inventory.infoDialogs.linkedDevices') }}</div>
         <q-list bordered separator class="rounded-borders q-mb-md">
           <q-item v-for="row in linkedDevices" :key="row.id">
@@ -75,12 +98,15 @@
                   condition: row.condition || t('inventory.infoDialogs.notAvailable'),
                   location: row.case_asset_tag
                     ? t('inventory.infoDialogs.caseLocation', { assetTag: row.case_asset_tag })
-                    : (zoneNameById(row.location_zone_id) || t('inventory.infoDialogs.unassigned')),
+                    : (zonePathById(row.location_zone_id) || t('inventory.infoDialogs.unassigned')),
                 }) }}
               </q-item-label>
             </q-item-section>
             <q-item-section side top>
               <div class="row no-wrap items-center q-gutter-xs">
+                <q-btn v-if="row.location_zone_id" flat dense round color="primary" icon="place" size="sm" @click="openDeviceLocate(row)">
+                  <q-tooltip>{{ t('inventory.deviceDialog.locateOnMap') }}</q-tooltip>
+                </q-btn>
                 <q-btn
                   flat
                   dense
@@ -181,10 +207,15 @@
       </q-card-actions>
     </q-card>
   </q-dialog>
+
+  <LocateDeviceMapDialog
+    v-model="deviceLocateOpen"
+    :device="deviceLocateTarget"
+  />
 </template>
 
 <script setup>
-import { computed, ref, watch } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 import { useQuasar } from 'quasar'
 import { useI18n } from 'vue-i18n'
 import { useInventoryStore } from '../stores/inventory'
@@ -193,6 +224,8 @@ import { useSettingsStore } from '../stores/settings'
 import { useCustomFieldsStore } from '../stores/customFields'
 import { normalizeCurrencyCode } from '../constants/currencies'
 import EntityAttachmentsPanel from './EntityAttachmentsPanel.vue'
+import LocateDeviceMapDialog from './LocateDeviceMapDialog.vue'
+import WarehouseMap from './WarehouseMap.vue'
 
 const props = defineProps({
   modelValue: Boolean,
@@ -216,16 +249,58 @@ const customFieldsStore = useCustomFieldsStore()
 
 const infoCustomFieldValues = ref([])
 
+const mapExpanded = ref(false)
+const warehouseMapRef = ref(null)
+const drillDownFocusId = ref(null)
+
+function onDrillDown(treeNode) {
+  drillDownFocusId.value = treeNode?.id ?? null
+}
+
+function onDrillUp(treeNode) {
+  drillDownFocusId.value = treeNode?.id ?? null
+}
+
+const currentBreadcrumb = computed(() => {
+  const focusId = drillDownFocusId.value
+  if (!focusId) return []
+  const parts = []
+  let current = store.zones.find(z => z.id === focusId)
+  while (current) {
+    parts.unshift({ id: current.id, name: current.name || '' })
+    current = store.zones.find(z => z.id === current.parent_id)
+  }
+  return parts
+})
+
+function fitMapToView() {
+  setTimeout(() => {
+    warehouseMapRef.value?.fitToView()
+  }, 300)
+}
+
+const deviceLocateOpen = ref(false)
+const deviceLocateTarget = ref(null)
+
+function openDeviceLocate(row) {
+  deviceLocateTarget.value = { location_zone_id: row.location_zone_id, asset_tag: row.asset_tag, serial_number: row.serial_number, id: row.id }
+  deviceLocateOpen.value = true
+}
+
 watch(() => props.modelValue, async (open) => {
-  if (open && props.product?.id) {
-    if (!customFieldsStore.definitions.length) {
-      await customFieldsStore.fetchDefinitions('product')
-    }
-    try {
-      const data = await customFieldsStore.fetchEntityValues('product', props.product.id)
-      infoCustomFieldValues.value = Array.isArray(data?.values) ? data.values : []
-    } catch {
-      infoCustomFieldValues.value = []
+  if (open) {
+    drillDownFocusId.value = null
+    mapExpanded.value = false
+    if (props.product?.id) {
+      if (!customFieldsStore.definitions.length) {
+        await customFieldsStore.fetchDefinitions('product')
+      }
+      try {
+        const data = await customFieldsStore.fetchEntityValues('product', props.product.id)
+        infoCustomFieldValues.value = Array.isArray(data?.values) ? data.values : []
+      } catch {
+        infoCustomFieldValues.value = []
+      }
     }
   }
 })
@@ -242,6 +317,19 @@ const zoneById = computed(() => {
 function zoneNameById(id) {
   if (!id) return null
   return zoneById.value.get(id)?.name ?? null
+}
+
+function zonePathById(id) {
+  if (!id) return ''
+  const zone = zoneById.value.get(id)
+  if (!zone) return ''
+  const parts = []
+  let current = zone
+  while (current) {
+    parts.unshift(current.name || '')
+    current = store.zones.find(z => z.id === current.parent_id)
+  }
+  return parts.join(' / ')
 }
 
 function formatMoney(value) {
@@ -262,6 +350,21 @@ function formatMoney(value) {
     }).format(amount)
   }
 }
+
+const productDeviceZoneIds = computed(() => {
+  if (!props.product?.id) return []
+  const devices = (store.devices || []).filter(d => d.product_id === props.product.id && d.location_zone_id)
+  const ids = new Set()
+  for (const d of devices) {
+    ids.add(d.location_zone_id)
+    let current = store.zones.find(z => z.id === d.location_zone_id)
+    while (current?.parent_id) {
+      ids.add(current.parent_id)
+      current = store.zones.find(z => z.id === current.parent_id)
+    }
+  }
+  return [...ids]
+})
 
 const linkedDevices = computed(() => {
   if (!props.product?.id) return []

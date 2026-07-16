@@ -23,6 +23,7 @@
       <q-tab name="schedules" icon="event_repeat" :label="t('inventory.tabs.schedules')" />
       <q-tab name="categories" icon="account_tree" :label="t('inventory.tabs.categories')" />
       <q-tab name="locations" icon="warehouse" :label="t('inventory.tabs.locations')" />
+      <q-tab name="map" icon="map" :label="t('inventory.tabs.map')" />
     </q-tabs>
 
     <q-tab-panels v-model="tab" animated>
@@ -106,6 +107,7 @@
             }"
           :rows-per-page-options="[10, 25, 50, 100, 200, 0]"
           class="ec-card inventory-products-table"
+          @row-dblclick="(evt, row) => openProductInfo(row)"
         >
           <template #body-cell-sku="props">
             <q-td :props="props">
@@ -352,6 +354,11 @@
           </q-btn-dropdown>
           <q-btn class="q-ml-sm" color="primary" icon="add" :label="t('inventory.newDevice')" unelevated @click="openCreateDevice" />
         </div>
+        <div v-if="deviceZoneFilter" class="row items-center q-mb-sm">
+          <q-chip removable icon="filter_list" color="primary" text-color="white" @remove="deviceZoneFilter = null">
+            {{ t('inventory.filteringByZone') }}: {{ deviceZoneFilter.length }} {{ deviceZoneFilter.length === 1 ? t('inventory.zoneCount') : t('inventory.zoneCountPlural') }}
+          </q-chip>
+        </div>
 
         <div class="row q-col-gutter-sm q-mb-sm">
           <div class="col-12 col-md-3">
@@ -390,6 +397,7 @@
           :pagination="{ rowsPerPage: 50 }"
           :rows-per-page-options="[10, 25, 50, 100, 200]"
           class="ec-card"
+          @row-dblclick="(evt, row) => { deviceInfoTarget = row; deviceInfoDialogOpen = true }"
         >
           <template #body-cell-status="props">
             <q-td :props="props"><q-badge :label="statusLabel(props.value)" :color="deviceStatusColor(props.value)" /></q-td>
@@ -404,7 +412,7 @@
             </q-td>
           </template>
           <template #body-cell-location_zone_id="props">
-            <q-td :props="props">{{ props.row.case_asset_tag ? t('inventory.infoDialogs.caseLocation', { assetTag: props.row.case_asset_tag }) : (zoneNameById(props.value) || t('inventory.infoDialogs.unassigned')) }}</q-td>
+            <q-td :props="props">{{ props.row.case_asset_tag ? t('inventory.infoDialogs.caseLocation', { assetTag: props.row.case_asset_tag }) : (zonePathById(props.value) || t('inventory.infoDialogs.unassigned')) }}</q-td>
           </template>
           <template #body-cell-actions="props">
             <q-td :props="props" auto-width>
@@ -425,7 +433,7 @@
                     <div class="col-6"><q-badge color="grey-7" :label="conditionLabel(props.row.condition)" /></div>
                     <div class="col-12" v-if="props.row.serial_number"><div class="text-caption">{{ t('inventory.infoDialogs.serialNumber') }}: {{ props.row.serial_number }}</div></div>
                     <div class="col-12" v-if="props.row.current_job_code"><div class="text-caption">{{ t('inventory.infoDialogs.currentJob') }}: {{ props.row.current_job_code }}</div></div>
-                    <div class="col-12"><div class="text-caption">{{ t('inventory.infoDialogs.location') }}: {{ props.row.case_asset_tag ? t('inventory.infoDialogs.caseLocation', { assetTag: props.row.case_asset_tag }) : (zoneNameById(props.row.location_zone_id) || t('inventory.infoDialogs.unassigned')) }}</div></div>
+                    <div class="col-12"><div class="text-caption">{{ t('inventory.infoDialogs.location') }}: {{ props.row.case_asset_tag ? t('inventory.infoDialogs.caseLocation', { assetTag: props.row.case_asset_tag }) : (zonePathById(props.row.location_zone_id) || t('inventory.infoDialogs.unassigned')) }}</div></div>
                   </div>
                 </q-card-section>
                 <q-card-actions align="right">
@@ -642,6 +650,11 @@
         </div>
         <div v-if="selectedLocationIds.length" class="row items-center q-gutter-sm q-mb-sm">
           <q-badge color="primary" :label="t('inventory.selectedCount', { count: selectedLocationIds.length })" />
+          <q-btn color="secondary" icon="edit" :label="t('inventory.bulkEditZones')" unelevated @click="openBulkEditFromTree" />
+          <q-btn
+            v-if="selectedLocationIds.length >= 1 && selectedLocationZones.every(z => z.zone_type === 'rack' || z.zone_type === 'shelf')"
+            color="secondary" icon="auto_awesome" :label="t('inventory.generateShelves')" unelevated @click="openGenerateShelvesFromTree"
+          />
           <q-btn :color="bulkPrintActionColor" :text-color="bulkPrintActionTextColor" icon="print" :label="t('inventory.bulkPrintLabels')" unelevated @click="openBulkPrintLabels('location', selectedLocationIds)" />
           <q-btn color="negative" icon="delete" :label="t('inventory.bulkDelete')" unelevated @click="bulkDeleteDialogOpen = true" />
           <q-btn flat :label="t('scan.clear')" @click="selectedLocationIds = []" />
@@ -693,6 +706,89 @@
             </template>
           </q-tree>
         </q-card>
+      </q-tab-panel>
+
+      <q-tab-panel name="map" class="q-pa-none">
+        <WarehouseMap
+          :zones="store.zones"
+          :zone-tree="store.zoneTree"
+          :devices="store.devices"
+          :highlight-zone-ids="mapHighlightZoneIds"
+          :selected-zone-ids="mapSelectedZoneIds"
+          :focus-zone-id="mapFocusZoneId"
+          :breadcrumb="mapBreadcrumb"
+          @zone-click="onMapZoneClick"
+          @zone-dblclick="onMapZoneDblClick"
+          @zone-move="onMapZoneMove"
+          @zone-resize="onMapZoneResize"
+          @drill-down="onMapDrillDown"
+          @drill-up="onMapDrillUp"
+          @zone-properties="openZoneProperties"
+          @align-zones="onAlignZones"
+          @distribute-zones="onDistributeZones"
+          @selection-change="onMapSelectionChange"
+          @search-devices-in-zone="onSearchDevicesInZone"
+        />
+        <div class="row items-center q-mt-sm q-gutter-sm">
+          <q-input
+            v-model="mapSearchQuery"
+            dense
+            outlined
+            clearable
+            :placeholder="t('inventory.searchZones')"
+            class="col"
+          >
+            <template #prepend><q-icon name="search" /></template>
+          </q-input>
+          <q-btn
+            v-if="mapHighlightZoneIds.length > 0"
+            flat
+            dense
+            icon="clear_all"
+            :label="t('inventory.clearHighlight')"
+            @click="mapHighlightZoneIds = []"
+          />
+          <template v-if="mapSelectedZoneIds.length > 0">
+            <q-separator vertical />
+            <q-btn flat dense icon="edit" :label="t('inventory.bulkEditZones')" @click="openBulkEditFromMap" />
+            <q-btn
+              v-if="mapSelectedZoneIds.length >= 1 && mapSelectedZones.every(z => z.zone_type === 'rack' || z.zone_type === 'shelf')"
+              flat dense icon="auto_awesome" :label="t('inventory.generateShelves')" @click="openGenerateShelvesFromMap"
+            />
+            <q-btn
+              v-if="mapSelectedZoneIds.length === 1 && mapSelectedZones[0]?.zone_type === 'shelf'"
+              flat dense icon="add_box" :label="t('inventory.addBin')" @click="addBinToShelf(mapSelectedZones[0])"
+            />
+            <q-btn
+              v-if="mapSelectedZoneIds.length === 1 && mapSelectedZones[0]?.zone_type === 'bin'"
+              flat dense icon="place" :label="t('inventory.placeOnShelf')" @click="placeBinOnShelf(mapSelectedZones[0])"
+            />
+            <div class="text-caption text-grey-6">{{ mapSelectedZoneIds.length }} selected</div>
+          </template>
+        </div>
+        <div v-if="filteredMapZones.length > 0 && mapSearchQuery" class="q-mt-sm">
+          <div class="text-caption text-grey-7 q-mb-xs">{{ filteredMapZones.length }} zone{{ filteredMapZones.length !== 1 ? 's' : '' }}</div>
+          <q-list dense bordered separator class="rounded-borders">
+            <q-item
+              v-for="zone in filteredMapZones"
+              :key="zone.id"
+              clickable
+              v-ripple
+              @click="highlightMapZone(zone)"
+            >
+              <q-item-section avatar>
+                <q-badge :label="zone.zone_type" color="primary" />
+              </q-item-section>
+              <q-item-section>
+                <q-item-label>{{ zone.name }}</q-item-label>
+                <q-item-label caption>{{ zone.code }}</q-item-label>
+              </q-item-section>
+              <q-item-section side>
+                <q-btn flat dense round icon="visibility" size="sm" @click.stop="highlightMapZone(zone)" />
+              </q-item-section>
+            </q-item>
+          </q-list>
+        </div>
       </q-tab-panel>
     </q-tab-panels>
 
@@ -793,6 +889,23 @@
       v-model="defectDialogOpen"
       :device-id="selectedDeviceId"
     />
+    <ZonePropertiesDialog
+      v-model="zonePropertiesOpen"
+      :zone="zonePropertiesTarget"
+      @saved="onZonePropertiesSaved"
+    />
+
+    <BulkZoneDialog
+      v-model="bulkZoneDialogOpen"
+      :selected-zones="bulkEditTargetZones"
+      @saved="onBulkZonesSaved"
+    />
+
+    <GenerateShelvesDialog
+      v-model="generateShelvesDialogOpen"
+      :selected-racks="generateShelvesTargetRacks"
+      @saved="onGenerateShelvesSaved"
+    />
   </q-page>
 </template>
 
@@ -841,6 +954,10 @@ import BulkCreateDialog from '../components/BulkCreateDialog.vue'
 import QuickCreateDialog from '../components/QuickCreateDialog.vue'
 import ImportDialog from '../components/ImportDialog.vue'
 import BulkDeleteDialog from '../components/BulkDeleteDialog.vue'
+import WarehouseMap from '../components/WarehouseMap.vue'
+import ZonePropertiesDialog from '../components/ZonePropertiesDialog.vue'
+import BulkZoneDialog from '../components/BulkZoneDialog.vue'
+import GenerateShelvesDialog from '../components/GenerateShelvesDialog.vue'
 
 const $q = useQuasar()
 const { t } = useI18n()
@@ -886,6 +1003,7 @@ const deviceProductFilter = ref(null)
 const deviceStatusFilter = ref(null)
 const deviceConditionFilter = ref(null)
 const deviceLocationFilter = ref(undefined)
+const deviceZoneFilter = ref(null)
 const maintenanceSearch = ref('')
 const scheduleSearch = ref('')
 const selectedProducts = ref([])
@@ -899,6 +1017,19 @@ const rentalProductSyncFilter = ref('all')
 const rentalProductSort = ref('name_asc')
 const rentalProductDialogOpen = ref(false)
 const rentalProductEditing = ref(null)
+
+const mapHighlightZoneIds = ref([])
+const mapSelectedZoneId = ref(null)
+const mapSelectedZoneIds = ref([])
+const mapSearchQuery = ref('')
+const mapFocusZoneId = ref(null)
+const mapBreadcrumb = ref([])
+const zonePropertiesOpen = ref(false)
+const zonePropertiesTarget = ref(null)
+const bulkZoneDialogOpen = ref(false)
+const generateShelvesDialogOpen = ref(false)
+const bulkEditTargetZones = ref([])
+const generateShelvesTargetRacks = ref([])
 
 const bulkProductDialogOpen = ref(false)
 const bulkDeviceDialogOpen = ref(false)
@@ -1221,11 +1352,13 @@ function openProductAvailabilityCalendar(product) {
 
 const filteredDevices = computed(() => {
   const needle = deviceSearch.value.trim().toLowerCase()
+  const zoneIds = deviceZoneFilter.value
   return store.devices.filter(device => {
     if (deviceProductFilter.value != null && device.product_id !== deviceProductFilter.value) return false
     if (deviceStatusFilter.value != null && device.status !== deviceStatusFilter.value) return false
     if (deviceConditionFilter.value != null && device.condition !== deviceConditionFilter.value) return false
     if (deviceLocationFilter.value !== undefined && device.location_zone_id !== deviceLocationFilter.value) return false
+    if (zoneIds && !zoneIds.includes(device.zone_id)) return false
     if (!needle) return true
     const productName = productById.value.get(device.product_id)?.name || ''
     return [device.asset_tag, device.serial_number, device.status, device.condition, device.barcode, device.rfid, device.current_job_code, productName]
@@ -1480,6 +1613,19 @@ function categoryNameById(id) {
 function zoneNameById(id) {
   if (!id) return null
   return zoneById.value.get(id)?.name ?? null
+}
+
+function zonePathById(id) {
+  if (!id) return ''
+  const zone = zoneById.value.get(id)
+  if (!zone) return ''
+  const parts = []
+  let current = zone
+  while (current) {
+    parts.unshift(current.name || '')
+    current = store.zones.find(z => z.id === current.parent_id)
+  }
+  return parts.join(' / ')
 }
 
 function treeToNodes(nodes, prefix = '') {
@@ -2109,6 +2255,287 @@ function openCreateLocation() {
 function openEditLocation(zone) {
   locationEditing.value = zone
   locationDialogOpen.value = true
+}
+
+const filteredMapZones = computed(() => {
+  if (!mapSearchQuery.value) return []
+  const query = mapSearchQuery.value.toLowerCase()
+  const results = []
+  function walk(nodes) {
+    for (const node of nodes || []) {
+      if (
+        (node.name && node.name.toLowerCase().includes(query)) ||
+        (node.code && node.code.toLowerCase().includes(query))
+      ) {
+        results.push(node)
+      }
+      if (node.children && node.children.length) {
+        walk(node.children)
+      }
+    }
+  }
+  walk(store.zoneTree)
+  return results
+})
+
+function onMapZoneClick(zone) {
+  mapSelectedZoneId.value = zone.id
+  mapSelectedZoneIds.value = [zone.id]
+}
+
+function onMapZoneDblClick(zone) {
+  if (zone._tree?.children?.length) {
+    onMapDrillDown(zone._tree)
+  }
+}
+
+function onMapDrillDown(zone) {
+  mapBreadcrumb.value = [...mapBreadcrumb.value, { id: zone.id, name: zone.name }]
+  mapFocusZoneId.value = zone.id
+  mapSelectedZoneId.value = null
+  mapSelectedZoneIds.value = []
+}
+
+function onMapDrillUp(targetId) {
+  if (targetId === null) {
+    mapFocusZoneId.value = null
+    mapBreadcrumb.value = []
+  } else {
+    const idx = mapBreadcrumb.value.findIndex(c => c.id === targetId)
+    if (idx >= 0) {
+      mapBreadcrumb.value = mapBreadcrumb.value.slice(0, idx + 1)
+      mapFocusZoneId.value = targetId
+    }
+  }
+  mapSelectedZoneId.value = null
+  mapSelectedZoneIds.value = []
+}
+
+function onSearchDevicesInZone(zone) {
+  const zoneId = zone.id
+  const zoneName = zone.name || zone.code || `#${zoneId}`
+  const allZoneIds = [zoneId]
+  const queue = [zoneId]
+  while (queue.length) {
+    const id = queue.shift()
+    const children = store.zones.filter(z => z.parent_id === id)
+    for (const ch of children) {
+      allZoneIds.push(ch.id)
+      queue.push(ch.id)
+    }
+  }
+  deviceZoneFilter.value = allZoneIds
+  mapHighlightZoneIds.value = []
+  tab.value = 'devices'
+  const count = store.devices.filter(d => allZoneIds.includes(d.zone_id)).length
+  $q.notify({ type: 'info', message: `${t('inventory.showingDevices')} ${count} ${t('inventory.devicesCount')} ${t('inventory.inZone')} "${zoneName}"` })
+}
+
+function onMapSelectionChange(ids) {
+  mapSelectedZoneIds.value = ids
+}
+
+const mapSelectedZones = computed(() => {
+  return mapSelectedZoneIds.value.map(id => store.zones.find(z => z.id === id)).filter(Boolean)
+})
+
+const selectedLocationZones = computed(() => {
+  return selectedLocationIds.value.map(id => store.zones.find(z => z.id === id)).filter(Boolean)
+})
+
+function openZoneProperties(zone) {
+  zonePropertiesTarget.value = zone._tree || zone
+  zonePropertiesOpen.value = true
+}
+
+function onAlignZones(alignment) {
+  const ids = mapHighlightZoneIds.value.length ? mapHighlightZoneIds.value : mapSelectedZoneIds.value
+  if (ids.length < 2) {
+    $q.notify({ type: 'warning', message: 'Select 2 or more zones to align' })
+    return
+  }
+  const zones = ids.map(id => store.zones.find(z => z.id === id)).filter(Boolean)
+  if (zones.length < 2) return
+  const axes = { 'left': 'pos_x', 'center-h': 'pos_x', 'right': 'pos_x', 'top': 'pos_y', 'center-v': 'pos_y', 'bottom': 'pos_y' }
+  const axis = axes[alignment]
+  if (!axis) return
+  const vals = zones.map(z => z[axis] ?? 0)
+  let target
+  if (alignment === 'left') target = Math.min(...vals)
+  else if (alignment === 'right') target = Math.max(...vals)
+  else if (alignment === 'top') target = Math.min(...vals)
+  else if (alignment === 'bottom') target = Math.max(...vals)
+  else target = Math.round(vals.reduce((a, b) => a + b, 0) / vals.length)
+  for (const z of zones) {
+    store.updateZoneLayout(z.id, { [axis]: target })
+  }
+  $q.notify({ type: 'positive', message: `Aligned ${zones.length} zones` })
+}
+
+function onDistributeZones(direction) {
+  const ids = mapHighlightZoneIds.value.length ? mapHighlightZoneIds.value : mapSelectedZoneIds.value
+  if (ids.length < 3) {
+    $q.notify({ type: 'warning', message: 'Select 3 or more zones to distribute' })
+    return
+  }
+  const zones = ids.map(id => store.zones.find(z => z.id === id)).filter(Boolean)
+  if (zones.length < 3) return
+  const axis = direction === 'horizontal' ? 'pos_x' : 'pos_y'
+  const sizeKey = direction === 'horizontal' ? 'map_width' : 'map_depth'
+  const sorted = [...zones].sort((a, b) => (a[axis] ?? 0) - (b[axis] ?? 0))
+  const first = sorted[0][axis] ?? 0
+  const last = sorted[sorted.length - 1][axis] ?? 0
+  const totalSize = sorted.reduce((sum, z) => sum + (z[sizeKey] ?? 100), 0)
+  const gap = ((last - first) - totalSize) / (sorted.length - 1)
+  let pos = first
+  for (const z of sorted) {
+    store.updateZoneLayout(z.id, { [axis]: Math.round(pos) })
+    pos += (z[sizeKey] ?? 100) + gap
+  }
+  $q.notify({ type: 'positive', message: `Distributed ${zones.length} zones` })
+}
+
+async function onMapZoneMove(layout) {
+  try {
+    const payload = { id: layout.id }
+    for (const key of ['pos_x', 'pos_y', 'pos_z', 'map_width', 'map_depth', 'map_height']) {
+      if (layout[key] != null) payload[key] = layout[key]
+    }
+    await store.updateZoneLayout(layout.id, payload)
+  } catch (err) {
+    $q.notify({ type: 'negative', message: 'Failed to save zone position' })
+  }
+}
+
+async function onMapZoneResize(layout) {
+  try {
+    const payload = { id: layout.id }
+    for (const key of ['pos_x', 'pos_y', 'pos_z', 'map_width', 'map_depth', 'map_height']) {
+      if (layout[key] != null) payload[key] = layout[key]
+    }
+    await store.updateZoneLayout(layout.id, payload)
+  } catch (err) {
+    $q.notify({ type: 'negative', message: 'Failed to save zone size' })
+  }
+}
+
+function highlightMapZone(zone) {
+  if (!mapHighlightZoneIds.value.includes(zone.id)) {
+    mapHighlightZoneIds.value = [...mapHighlightZoneIds.value, zone.id]
+  }
+  mapSelectedZoneId.value = zone.id
+}
+
+function onBulkZonesSaved() {
+  mapSelectedZoneIds.value = []
+  selectedLocationIds.value = []
+}
+
+function onGenerateShelvesSaved() {
+  mapSelectedZoneIds.value = []
+  selectedLocationIds.value = []
+}
+
+function openBulkEditFromMap() {
+  bulkEditTargetZones.value = mapSelectedZones.value
+  bulkZoneDialogOpen.value = true
+}
+
+function openBulkEditFromTree() {
+  bulkEditTargetZones.value = selectedLocationZones.value
+  bulkZoneDialogOpen.value = true
+}
+
+function openGenerateShelvesFromMap() {
+  generateShelvesTargetRacks.value = mapSelectedZones.value
+  generateShelvesDialogOpen.value = true
+}
+
+function openGenerateShelvesFromTree() {
+  generateShelvesTargetRacks.value = selectedLocationZones.value
+  generateShelvesDialogOpen.value = true
+}
+
+async function addBinToShelf(shelf) {
+  const shelfZone = shelf._tree || shelf
+  const shelfWidth = shelfZone.map_width || 115
+  const shelfDepth = shelfZone.map_depth || 75
+  const binWidth = Math.round(shelfWidth * 0.45)
+  const binDepth = Math.round(shelfDepth * 0.45)
+  const code = `${shelfZone.code}-BIN-1`
+  const name = `Bin 1`
+  const rot = shelfZone.rotation || 0
+  const rotated = rot === 90 || rot === 270
+  let pos_x, pos_y
+  if (rotated) {
+    pos_x = Math.round((shelfZone.pos_x ?? 0) + (shelfWidth - binWidth) / 2)
+    pos_y = Math.round((shelfZone.pos_y ?? 0) + (shelfDepth - binDepth) / 2)
+  } else {
+    pos_x = shelfZone.pos_x ?? 0
+    pos_y = shelfZone.pos_y ?? 0
+  }
+  try {
+    await store.createZone({
+      code,
+      name,
+      zone_type: 'bin',
+      parent_id: shelfZone.id,
+      is_active: true,
+      pos_x,
+      pos_y,
+      pos_z: Math.round((shelfZone.pos_z ?? 0) + (shelfZone.map_height || 0)),
+      map_width: binWidth,
+      map_depth: binDepth,
+      map_height: 12,
+      rotation: shelfZone.rotation ?? 0,
+    })
+    $q.notify({ type: 'positive', message: `Added ${name} to ${shelfZone.name}` })
+  } catch (err) {
+    $q.notify({ type: 'negative', message: err?.response?.data?.detail || 'Failed to add bin' })
+  }
+}
+
+async function placeBinOnShelf(bin) {
+  const binZone = bin._tree || bin
+  const parentId = binZone.parent_id
+  if (!parentId) {
+    $q.notify({ type: 'warning', message: 'Bin has no parent shelf' })
+    return
+  }
+  const parent = store.zones.find(z => z.id === parentId)
+  if (!parent || parent.zone_type !== 'shelf') {
+    $q.notify({ type: 'warning', message: 'Parent is not a shelf' })
+    return
+  }
+  const siblings = store.zones.filter(z => z.parent_id === parentId && z.id !== binZone.id)
+  const count = siblings.length + 1
+  const idx = siblings.length
+  const rot = parent.rotation || 0
+  const rotated = rot === 90 || rot === 270
+  let pos_x, pos_y
+  if (rotated) {
+    pos_x = Math.round((parent.pos_x ?? 0) + ((parent.map_width || 0) - (binZone.map_width || 0)) / 2)
+    const shelfCenterY = (parent.pos_y ?? 0) + (parent.map_depth || 0) / 2
+    const totalVisualH = count * (binZone.map_width || 0)
+    const binVisualCenterY = shelfCenterY - totalVisualH / 2 + idx * (binZone.map_width || 0) + (binZone.map_width || 0) / 2
+    pos_y = Math.round(binVisualCenterY - (binZone.map_depth || 0) / 2)
+  } else {
+    const totalW = count * (binZone.map_width || 0)
+    const startEdge = (parent.pos_x ?? 0) + ((parent.map_width || 0) - totalW) / 2
+    pos_x = Math.round(startEdge + idx * (binZone.map_width || 0))
+    pos_y = parent.pos_y ?? 0
+  }
+  try {
+    await store.updateZone(binZone.id, {
+      pos_x,
+      pos_y,
+      pos_z: Math.round((parent.pos_z ?? 0) + (parent.map_height || 0)),
+      rotation: parent.rotation ?? 0,
+    })
+    $q.notify({ type: 'positive', message: `Placed ${binZone.name} on ${parent.name}` })
+  } catch (err) {
+    $q.notify({ type: 'negative', message: err?.response?.data?.detail || 'Failed to place bin' })
+  }
 }
 
 const bulkCreateDialogOpen = ref(false)
