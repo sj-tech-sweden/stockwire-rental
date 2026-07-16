@@ -60,7 +60,15 @@
             <div class="col-12 col-md-3"><q-input v-model.number="deviceForm.usage_hours" type="number" step="0.01" :label="t('inventory.deviceDialog.usageHours')" outlined dense /></div>
             <div class="col-12 col-md-4"><q-select v-model="deviceForm.status" :options="statusOptions" :label="t('inventory.deviceDialog.status')" outlined dense emit-value map-options /></div>
             <div class="col-12 col-md-4"><q-select v-model="deviceForm.condition" :options="conditionOptions" :label="t('inventory.deviceDialog.condition')" outlined dense emit-value map-options /></div>
-            <div class="col-12 col-md-4"><q-select v-model="deviceForm.location_zone_id" :options="locationSelectOptions" :label="t('inventory.deviceDialog.location')" outlined dense emit-value map-options clearable /></div>
+            <div class="col-12 col-md-4">
+              <q-select v-model="deviceForm.location_zone_id" :options="locationSelectOptions" :label="t('inventory.deviceDialog.location')" outlined dense emit-value map-options clearable>
+                <template #after>
+                  <q-btn v-if="deviceEditing" flat dense round color="primary" icon="place" @click="locateDeviceMapOpen = true">
+                    <q-tooltip>{{ t('inventory.deviceDialog.locateOnMap') }}</q-tooltip>
+                  </q-btn>
+                </template>
+              </q-select>
+            </div>
             <div class="col-12 col-md-4"><q-select v-model="deviceForm.case_device_id" :options="caseDeviceOptions" :label="t('inventory.deviceDialog.insideCase')" outlined dense emit-value map-options clearable /></div>
             <div class="col-12 col-md-4">
               <q-select
@@ -115,6 +123,11 @@
     :initial-value="deviceFieldCaptureInitialValue"
     @captured="onFieldCaptured"
   />
+
+  <LocateDeviceMapDialog
+    v-model="locateDeviceMapOpen"
+    :device="deviceEditing"
+  />
 </template>
 
 <script setup>
@@ -127,6 +140,7 @@ import { isRentalProduct } from '../utils/inventory-overview'
 import { api } from '../boot/axios'
 import EntityAttachmentsPanel from './EntityAttachmentsPanel.vue'
 import FieldScanDialog from './FieldScanDialog.vue'
+import LocateDeviceMapDialog from './LocateDeviceMapDialog.vue'
 
 const props = defineProps({
   modelValue: { type: Boolean, default: false },
@@ -161,6 +175,7 @@ const deviceFieldCaptureDialogOpen = ref(false)
 const deviceFieldCaptureTarget = ref('')
 const deviceFieldCaptureLabel = ref('')
 const deviceFieldCaptureInitialValue = ref('')
+const locateDeviceMapOpen = ref(false)
 
 const emptyDeviceForm = () => ({
   product_id: null, asset_tag: '', serial_number: '', barcode: '', qr_code: '', rfid: '',

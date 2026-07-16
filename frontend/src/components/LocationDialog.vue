@@ -38,13 +38,34 @@
           <div class="text-subtitle2 q-mb-xs">Position (cm)</div>
           <div class="row q-col-gutter-sm q-mb-sm">
             <div class="col-4">
-              <q-input v-model.number="form.pos_x" type="number" label="X (left/right)" outlined dense />
+              <q-input v-model.number="form.pos_x" type="number" label="X (left/right)" outlined dense>
+                <q-tooltip>{{ t('inventory.tooltipPosX') }}</q-tooltip>
+              </q-input>
             </div>
             <div class="col-4">
-              <q-input v-model.number="form.pos_y" type="number" label="Y (front/back)" outlined dense />
+              <q-input v-model.number="form.pos_y" type="number" label="Y (front/back)" outlined dense>
+                <q-tooltip>{{ t('inventory.tooltipPosY') }}</q-tooltip>
+              </q-input>
             </div>
             <div class="col-4">
-              <q-input v-model.number="form.pos_z" type="number" label="Z (height)" outlined dense />
+              <q-input v-model.number="form.pos_z" type="number" label="Z (height)" outlined dense>
+                <q-tooltip>{{ t('inventory.tooltipPosZ') }}</q-tooltip>
+              </q-input>
+            </div>
+          </div>
+
+          <div class="text-subtitle2 q-mb-xs">Rotation (°)</div>
+          <div class="row q-col-gutter-sm q-mb-sm items-center">
+            <div class="col-4">
+              <q-input v-model.number="form.rotation" type="number" label="Rotation" outlined dense :min="0" :max="360" />
+            </div>
+            <div class="col-auto">
+              <div class="row q-col-gutter-xs">
+                <q-btn flat dense no-caps size="sm" label="0°" @click="form.rotation = 0" :color="form.rotation === 0 ? 'primary' : undefined" />
+                <q-btn flat dense no-caps size="sm" label="90°" @click="form.rotation = 90" :color="form.rotation === 90 ? 'primary' : undefined" />
+                <q-btn flat dense no-caps size="sm" label="180°" @click="form.rotation = 180" :color="form.rotation === 180 ? 'primary' : undefined" />
+                <q-btn flat dense no-caps size="sm" label="270°" @click="form.rotation = 270" :color="form.rotation === 270 ? 'primary' : undefined" />
+              </div>
             </div>
           </div>
 
@@ -106,8 +127,8 @@
           <q-expansion-item label="Quick presets" class="q-mb-sm" dense v-if="zone">
             <div class="row q-col-gutter-xs q-pa-sm">
               <q-btn
-                v-for="p in ZONE_PRESETS" :key="p.label"
-                flat dense no-caps size="sm" :label="p.label"
+                v-for="p in filteredPresets" :key="p.label"
+                flat dense no-caps size="sm" :label="t(p.label)"
                 @click="applyPreset(p.width, p.depth, p.height)"
               />
             </div>
@@ -172,6 +193,7 @@ const emptyForm = () => ({
   map_width: 120,
   map_depth: 80,
   map_height: 230,
+  rotation: 0,
 })
 
 const form = ref(emptyForm())
@@ -196,6 +218,7 @@ watch(() => props.modelValue, (open) => {
         map_width: props.zone.map_width ?? 120,
         map_depth: props.zone.map_depth ?? 80,
         map_height: props.zone.map_height ?? 230,
+        rotation: props.zone.rotation ?? 0,
       }
       codeEdited.value = true
       autoGenerateCode.value = false
@@ -231,6 +254,12 @@ const parentLocationOptions = computed(() => {
   }
   walk(store.zoneTree)
   return flat
+})
+
+const filteredPresets = computed(() => {
+  const type = form.value.zone_type
+  if (!type) return ZONE_PRESETS
+  return ZONE_PRESETS.filter(p => p.types.includes(type))
 })
 
 function applyPreset(w, d, h) {
@@ -280,6 +309,7 @@ async function save() {
       map_width: Number(form.value.map_width) || 120,
       map_depth: Number(form.value.map_depth) || 80,
       map_height: Number(form.value.map_height) || 230,
+      rotation: Number(form.value.rotation) || 0,
     }
 
     if (props.zone) {

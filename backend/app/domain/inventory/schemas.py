@@ -564,6 +564,7 @@ class ZoneBase(BaseModel):
     map_depth: int | None = None
     map_height: int | None = None
     color: str | None = None
+    rotation: int = 0
 
 
 class ZoneCreate(ZoneBase):
@@ -587,6 +588,7 @@ class ZoneUpdate(BaseModel):
     map_depth: int | None = None
     map_height: int | None = None
     color: str | None = None
+    rotation: int | None = None
 
 
 class ZoneMove(BaseModel):
@@ -618,6 +620,7 @@ class ZoneTreeRead(BaseModel):
     map_depth: int | None = None
     map_height: int | None = None
     color: str | None = None
+    rotation: int = 0
     children: list["ZoneTreeRead"] = Field(default_factory=list)
 
     model_config = {"from_attributes": True}
@@ -631,6 +634,7 @@ class ZoneLayoutUpdate(BaseModel):
     map_depth: int | None = None
     map_height: int | None = None
     color: str | None = None
+    rotation: int | None = None
 
 
 class ZoneLayoutBulkItem(BaseModel):
@@ -642,6 +646,7 @@ class ZoneLayoutBulkItem(BaseModel):
     map_depth: int | None = None
     map_height: int | None = None
     color: str | None = None
+    rotation: int | None = None
 
 
 class ZoneLayoutBulkUpdate(BaseModel):
@@ -657,6 +662,7 @@ class ZoneBulkUpdate(BaseModel):
     map_depth: int | None = None
     map_height: int | None = None
     color: str | None = None
+    rotation: int | None = None
 
 
 class GenerateShelvesRequest(BaseModel):
@@ -666,6 +672,7 @@ class GenerateShelvesRequest(BaseModel):
     shelf_depth: int = Field(default=75, ge=1)
     shelf_height: int = Field(default=3, ge=1)
     prefix: str = Field(default="Shelf")
+    child_type: str = Field(default="shelf")
 
 
 ProductRead.model_rebuild()

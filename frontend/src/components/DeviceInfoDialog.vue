@@ -57,7 +57,10 @@
             {{ t('inventory.infoDialogs.usageHours') }}: {{ device?.usage_hours || '-' }}
           </div>
           <div class="col-12 col-md-6 text-caption">
-            {{ t('inventory.infoDialogs.location') }}: {{ device?.location || '-' }}
+            {{ t('inventory.infoDialogs.location') }}: {{ deviceLocationPath || device?.location || '-' }}
+            <q-btn v-if="device?.location_zone_id" flat dense round color="primary" icon="place" size="sm" class="q-ml-xs" @click="locateDeviceMapOpen = true">
+              <q-tooltip>{{ t('inventory.deviceDialog.locateOnMap') }}</q-tooltip>
+            </q-btn>
           </div>
           <div class="col-12 col-md-6 text-caption">
             {{ t('inventory.infoDialogs.purchase') }}:
@@ -485,6 +488,11 @@
       </q-card-actions>
     </q-card>
   </q-dialog>
+
+  <LocateDeviceMapDialog
+    v-model="locateDeviceMapOpen"
+    :device="device"
+  />
 </template>
 
 <script setup>
@@ -497,6 +505,7 @@ import { useSettingsStore } from '../stores/settings'
 import { normalizeCurrencyCode } from '../constants/currencies'
 import { api } from '../boot/axios'
 import EntityAttachmentsPanel from './EntityAttachmentsPanel.vue'
+import LocateDeviceMapDialog from './LocateDeviceMapDialog.vue'
 
 const props = defineProps({
   modelValue: { type: Boolean, default: false },
@@ -519,6 +528,21 @@ const defectFieldTimers = {}
 
 const productActionColor = computed(() => ($q.dark.isActive ? 'green-4' : 'secondary'))
 const infoActionColor = computed(() => ($q.dark.isActive ? 'teal-4' : 'secondary'))
+
+const locateDeviceMapOpen = ref(false)
+
+const deviceLocationPath = computed(() => {
+  if (!props.device?.location_zone_id) return ''
+  const zone = store.zones.find(z => z.id === props.device.location_zone_id)
+  if (!zone) return ''
+  const parts = []
+  let current = zone
+  while (current) {
+    parts.unshift(current.name || '')
+    current = store.zones.find(z => z.id === current.parent_id)
+  }
+  return parts.join(' / ')
+})
 
 const defectStatusOptions = [
   { label: t('inventory.defectStatusOpen'), value: 'open' },

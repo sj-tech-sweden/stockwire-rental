@@ -18,8 +18,8 @@
         <q-expansion-item label="Quick presets" class="q-mb-sm" dense>
           <div class="row q-col-gutter-xs q-pa-sm">
             <q-btn
-              v-for="p in ZONE_PRESETS" :key="p.label"
-              flat dense no-caps size="sm" :label="p.label"
+              v-for="p in filteredPresets" :key="p.label"
+              flat dense no-caps size="sm" :label="t(p.label)"
               @click="applyPreset(p.width, p.depth, p.height)"
             />
           </div>
@@ -27,6 +27,21 @@
 
         <div class="text-subtitle2 q-mb-xs">Color</div>
         <q-input v-model="form.color" label="Hex color" outlined dense clearable class="q-mb-sm" />
+
+        <div class="text-subtitle2 q-mb-xs">Rotation (°)</div>
+        <div class="row q-col-gutter-sm q-mb-sm items-center">
+          <div class="col-4">
+            <q-input v-model.number="form.rotation" type="number" label="Rotation" outlined dense clearable :min="0" :max="360" />
+          </div>
+          <div class="col-auto">
+            <div class="row q-col-gutter-xs">
+              <q-btn flat dense no-caps size="sm" label="0°" @click="form.rotation = 0" :color="form.rotation === 0 ? 'primary' : undefined" />
+              <q-btn flat dense no-caps size="sm" label="90°" @click="form.rotation = 90" :color="form.rotation === 90 ? 'primary' : undefined" />
+              <q-btn flat dense no-caps size="sm" label="180°" @click="form.rotation = 180" :color="form.rotation === 180 ? 'primary' : undefined" />
+              <q-btn flat dense no-caps size="sm" label="270°" @click="form.rotation = 270" :color="form.rotation === 270 ? 'primary' : undefined" />
+            </div>
+          </div>
+        </div>
 
         <div class="text-subtitle2 q-mb-xs">{{ t('inventory.parentZone') }}</div>
         <q-select v-model="form.parent_id" :options="parentOptions" :label="t('inventory.parentZone')" outlined dense clearable emit-value map-options class="q-mb-sm" />
@@ -66,14 +81,17 @@ const dialog = computed({
   set: (value) => emit('update:modelValue', value),
 })
 
+const KEEP_VALUE = '__keep__'
+
 const emptyForm = () => ({
   zone_type: null,
   map_width: null,
   map_depth: null,
   map_height: null,
   color: null,
-  parent_id: null,
+  parent_id: KEEP_VALUE,
   is_active: true,
+  rotation: null,
 })
 
 const form = ref(emptyForm())
@@ -101,7 +119,10 @@ const zoneTypeOptions = computed(() => [
 ])
 
 const parentOptions = computed(() => {
-  const flat = [{ label: '— None (top level)', value: null }]
+  const flat = [
+    { label: '— No change', value: KEEP_VALUE },
+    { label: '— None (top level)', value: null },
+  ]
   const walk = (nodes, prefix) => {
     for (const node of nodes || []) {
       const label = prefix ? `${prefix} / ${node.name}` : node.name
@@ -119,6 +140,12 @@ function applyPreset(w, d, h) {
   form.value.map_height = h
 }
 
+const filteredPresets = computed(() => {
+  const type = form.value.zone_type
+  if (!type) return ZONE_PRESETS
+  return ZONE_PRESETS.filter(p => p.types.includes(type))
+})
+
 async function save() {
   if (!selectedIds.value.length) return
 
@@ -128,7 +155,8 @@ async function save() {
   if (form.value.map_depth != null) patch.map_depth = form.value.map_depth
   if (form.value.map_height != null) patch.map_height = form.value.map_height
   if (form.value.color) patch.color = form.value.color
-  if (form.value.parent_id !== undefined) patch.parent_id = form.value.parent_id
+  if (form.value.rotation != null) patch.rotation = form.value.rotation
+  if (form.value.parent_id !== KEEP_VALUE) patch.parent_id = form.value.parent_id
   patch.is_active = form.value.is_active
 
   if (!Object.keys(patch).length) {

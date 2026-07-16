@@ -189,6 +189,9 @@
                     <div class="col-6 col-md-3">
                       <q-badge color="primary" text-color="white" :label="`${t('jobs.availableWithDrafts')}: ${productAvailableIncludingDrafts(product)}`" />
                     </div>
+                    <div class="col-6 col-md-auto">
+                      <q-btn flat dense no-caps color="primary" icon="place" size="sm" :label="t('inventory.deviceDialog.locateOnMap')" @click.stop="openProductLocationMap(product)" />
+                    </div>
                     <div class="col-12 col-md-2">
                       <q-input
                         :model-value="productRequirementQty(product.id)"
@@ -227,6 +230,11 @@
       </q-card-actions>
     </q-card>
   </q-dialog>
+
+  <ProductLocationMapDialog
+    v-model="productLocationMapOpen"
+    :product="productLocationMapProduct"
+  />
 </template>
 
 <script setup>
@@ -237,6 +245,7 @@ import { useI18n } from 'vue-i18n'
 import { useJobsStore } from '../stores/jobs'
 import { useInventoryStore } from '../stores/inventory'
 import { filterRequirementSourceProducts } from '../utils/job-requirements'
+import ProductLocationMapDialog from './ProductLocationMapDialog.vue'
 
 const props = defineProps({
   modelValue: Boolean,
@@ -266,6 +275,13 @@ const requirementBrandFilter = ref(null)
 const requirementManufacturerFilter = ref(null)
 const requirementTypeFilter = ref(null)
 const requirementSort = ref('category_name')
+const productLocationMapOpen = ref(false)
+const productLocationMapProduct = ref(null)
+
+function openProductLocationMap(product) {
+  productLocationMapProduct.value = product
+  productLocationMapOpen.value = true
+}
 
 const requirementSortOptions = computed(() => [
   { label: t('jobs.sortCategoryThenName'), value: 'category_name' },

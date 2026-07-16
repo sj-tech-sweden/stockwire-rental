@@ -1,6 +1,6 @@
 <template>
   <div class="warehouse-map-container">
-    <div class="row items-center q-mb-sm q-gutter-sm">
+    <div class="row items-center q-mb-sm q-gutter-sm" style="flex-shrink: 0">
       <div class="text-subtitle2 col">{{ t('inventory.warehouseMap') }}</div>
       <q-btn-toggle
         v-model="viewMode"
@@ -23,6 +23,14 @@
         <q-btn flat dense icon="straighten" :color="measureMode ? 'positive' : undefined" @click="toggleMeasureMode" size="sm">
           <q-tooltip>Measure distance</q-tooltip>
         </q-btn>
+        <q-separator vertical class="q-mx-xs" />
+        <q-btn flat dense :icon="snapToGrid ? 'grid_on' : 'grid_off'" :color="snapToGrid ? 'warning' : undefined" @click="snapToGrid = !snapToGrid" size="sm">
+          <q-tooltip>{{ snapToGrid ? 'Snap to grid' : 'Grid snapping off' }}</q-tooltip>
+        </q-btn>
+        <q-input v-if="snapToGrid" v-model.number="gridSizeCm" type="number" min="1" max="100" dense outlined
+          :style="{ width: '70px' }" input-class="text-center text-caption" @update:model-value="v => gridSizeCm = Math.max(1, Number(v) || 10)">
+          <template #append><span class="text-caption text-grey-6">cm</span></template>
+        </q-input>
         <q-btn-dropdown flat dense icon="format_align_left" size="sm" label="Align" no-caps>
           <q-list dense>
             <q-item clickable v-ripple @click="$emit('align-zones', 'left')">
@@ -65,11 +73,11 @@
           </q-list>
         </q-btn-dropdown>
       </template>
-      <q-btn flat dense icon="zoom_in" @click="zoomIn" :disable="scale >= 3" />
-      <q-btn flat dense icon="zoom_out" @click="zoomOut" :disable="scale <= 0.3" />
-      <q-btn flat dense icon="restart_alt" @click="resetView" />
+      <q-btn flat dense icon="zoom_in" @click="zoomIn" :disable="scale >= 3"><q-tooltip>{{ t('inventory.zoomIn') }}</q-tooltip></q-btn>
+      <q-btn flat dense icon="zoom_out" @click="zoomOut" :disable="scale <= 0.3"><q-tooltip>{{ t('inventory.zoomOut') }}</q-tooltip></q-btn>
+      <q-btn flat dense icon="restart_alt" @click="resetView"><q-tooltip>{{ t('inventory.resetView') }}</q-tooltip></q-btn>
     </div>
-    <div v-if="breadcrumb.length > 0" class="breadcrumb-bar row items-center q-mb-xs q-gutter-xs">
+    <div v-if="breadcrumb.length > 0" class="breadcrumb-bar row items-center q-mb-xs q-gutter-xs" style="flex-shrink: 0">
       <q-btn flat dense no-caps icon="home" size="sm" color="primary" @click="$emit('drill-up', null)" />
       <template v-for="(crumb, idx) in breadcrumb" :key="crumb.id">
         <q-icon name="chevron_right" size="xs" class="text-grey-5" />
@@ -84,7 +92,6 @@
     <div
       class="warehouse-map-viewport"
       :class="{ 'edit-mode': editMode }"
-      :style="{ height: viewportHeight + 'px' }"
       ref="viewportRef"
       @mousedown="onViewportMouseDown"
       @touchstart.passive="onTouchStart"
@@ -99,78 +106,91 @@
         @click="onMeasureClick"
       >
         <defs>
-          <pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse">
-            <path d="M 20 0 L 0 0 0 20" fill="none" stroke="rgba(255,255,255,0.04)" stroke-width="0.5"/>
+          <pattern :id="`${mapId}-grid`" :width="snapToGrid ? gridSizeCm / CM_PER_PX : 20" :height="snapToGrid ? gridSizeCm / CM_PER_PX : 20" patternUnits="userSpaceOnUse">
+            <path :d="`M ${snapToGrid ? gridSizeCm / CM_PER_PX : 20} 0 L 0 0 0 ${snapToGrid ? gridSizeCm / CM_PER_PX : 20}`" fill="none" :stroke="snapToGrid ? 'rgba(255,200,0,0.08)' : 'rgba(255,255,255,0.04)'" stroke-width="0.5"/>
           </pattern>
         </defs>
-        <rect width="100%" height="100%" fill="url(#grid)" v-if="editMode" />
+        <rect width="100%" height="100%" :fill="`url(#${mapId}-grid)`" v-if="editMode" />
         <g :transform="`translate(${panX}, ${panY}) scale(${scale})`">
           <g v-for="zone in renderMappedZones" :key="'m-' + zone.id">
-            <rect
-              :x="zone.x"
-              :y="zone.y"
-              :width="zone.w"
-              :height="zone.h"
-              :fill="zone.fill"
-              :stroke="zone.stroke"
-              :stroke-width="zone.depth > 0 ? 1 : 1.5"
-              :stroke-dasharray="zone.strokeDasharray"
-              :class="[
-                'warehouse-zone-rect',
-                { 'highlighted': isHighlighted(zone.id) },
-                { 'selected': selectedZoneIds.includes(zone.id) },
-                { 'draggable': editMode },
-              ]"
-              @mousedown.stop="editMode ? onZoneDragStart($event, zone) : onZoneViewClick($event, zone)"
-              @click.stop="!editMode && onZoneViewClick($event, zone)"
-              @dblclick.stop="onZoneDblClick(zone)"
-              @contextmenu.prevent.stop="$emit('zone-properties', zone)"
-            />
+            <g :transform="zone.rotation && viewMode === 'top' ? `rotate(${zone.rotation}, ${zone.x + zone.w / 2}, ${zone.y + zone.h / 2})` : undefined">
+              <rect
+                :x="zone.x"
+                :y="zone.y"
+                :width="zone.w"
+                :height="zone.h"
+                :fill="zone.fill"
+                :stroke="zone.stroke"
+                :stroke-width="zone.depth > 0 ? 1 : 1.5"
+                :stroke-dasharray="zone.strokeDasharray"
+                :style="{ pointerEvents: zone.depth === 0 ? 'auto' : 'none' }"
+                :class="[
+                  'warehouse-zone-rect',
+                  { 'highlighted': isHighlighted(zone.id) },
+                  { 'selected': selectedZoneIds.includes(zone.id) },
+                  { 'draggable': editMode },
+                ]"
+                @mousedown.stop="editMode && zone.depth === 0 ? onZoneDragStart($event, zone) : (zone.depth === 0 ? onZoneViewClick($event, zone) : null)"
+                @click.stop="!editMode && zone.depth === 0 && onZoneViewClick($event, zone)"
+                @dblclick.stop="zone.depth === 0 && onZoneDblClick(zone)"
+                @contextmenu.prevent.stop="onZoneContextMenu($event, zone)"
+              />
+              <text
+                v-if="zone.depth > 0 && zone.depth < 2"
+                :x="zone.x + zone.w / 2"
+                :y="zone.y + 10"
+                text-anchor="middle"
+                dominant-baseline="middle"
+                class="warehouse-zone-label-sm"
+                style="pointer-events:none"
+              >{{ zone.name }}</text>
+              <text
+                v-if="zone.depth === 0"
+                :x="zone.x + zone.w / 2"
+                :y="zone.y + zone.h / 2 + (zone.childCount > 0 ? 8 : 10)"
+                text-anchor="middle"
+                dominant-baseline="middle"
+                class="warehouse-zone-count"
+                style="pointer-events:none"
+              >{{ zone.deviceCount }} device{{ zone.deviceCount !== 1 ? 's' : '' }}</text>
+              <text
+                v-if="zone.depth === 0 && zone.childCount > 0"
+                :x="zone.x + zone.w / 2"
+                :y="zone.y + zone.h / 2 + 22"
+                text-anchor="middle"
+                dominant-baseline="middle"
+                class="warehouse-zone-subcount"
+                style="pointer-events:none"
+              >{{ zone.childCount }} sub-zone{{ zone.childCount !== 1 ? 's' : '' }}</text>
+              <text
+                v-if="showDimensions"
+                :x="zone.x + zone.w / 2"
+                :y="zone.y + zone.h - 4"
+                text-anchor="middle"
+                dominant-baseline="middle"
+                class="warehouse-zone-dim"
+                style="pointer-events:none"
+              >{{ formatDim(zone.dimW) }}×{{ formatDim(zone.dimH) }}</text>
+              <template v-if="editMode && selectedZoneIds.includes(zone.id)">
+                <rect v-for="rh in resizeHandles(zone)" :key="rh.key"
+                  :x="rh.x" :y="rh.y" :width="rh.size" :height="rh.size"
+                  fill="#FFD700" stroke="#333" stroke-width="0.5"
+                  class="resize-handle"
+                  :style="{ cursor: rh.cursor }"
+                  @mousedown.stop="onZoneResizeStart($event, zone, rh.handle)"
+                />
+              </template>
+            </g>
+          </g>
+          <g v-for="zone in renderMappedZones.filter(z => z.depth === 0)" :key="'lbl-' + zone.id">
             <text
-              v-if="zone.depth < 2"
               :x="zone.x + zone.w / 2"
-              :y="zone.y + (zone.depth > 0 ? 10 : zone.h / 2 - (zone.childCount > 0 ? 8 : 4))"
+              :y="zone.y + zone.h / 2 - (zone.childCount > 0 ? 8 : 4)"
               text-anchor="middle"
               dominant-baseline="middle"
-              :class="zone.depth > 0 ? 'warehouse-zone-label-sm' : 'warehouse-zone-label'"
+              class="warehouse-zone-label"
               style="pointer-events:none"
             >{{ zone.name }}</text>
-            <text
-              v-if="zone.depth === 0"
-              :x="zone.x + zone.w / 2"
-              :y="zone.y + zone.h / 2 + (zone.childCount > 0 ? 8 : 10)"
-              text-anchor="middle"
-              dominant-baseline="middle"
-              class="warehouse-zone-count"
-              style="pointer-events:none"
-            >{{ zone.deviceCount }} device{{ zone.deviceCount !== 1 ? 's' : '' }}</text>
-            <text
-              v-if="zone.depth === 0 && zone.childCount > 0"
-              :x="zone.x + zone.w / 2"
-              :y="zone.y + zone.h / 2 + 22"
-              text-anchor="middle"
-              dominant-baseline="middle"
-              class="warehouse-zone-subcount"
-              style="pointer-events:none"
-            >{{ zone.childCount }} sub-zone{{ zone.childCount !== 1 ? 's' : '' }}</text>
-            <text
-              v-if="showDimensions"
-              :x="zone.x + zone.w / 2"
-              :y="zone.y + zone.h - 4"
-              text-anchor="middle"
-              dominant-baseline="middle"
-              class="warehouse-zone-dim"
-              style="pointer-events:none"
-            >{{ formatDim(zone.dimW) }}×{{ formatDim(zone.dimH) }}</text>
-            <template v-if="editMode && selectedZoneIds.includes(zone.id)">
-              <rect v-for="rh in resizeHandles(zone)" :key="rh.key"
-                :x="rh.x" :y="rh.y" :width="rh.size" :height="rh.size"
-                fill="#FFD700" stroke="#333" stroke-width="0.5"
-                class="resize-handle"
-                :style="{ cursor: rh.cursor }"
-                @mousedown.stop="onZoneResizeStart($event, zone, rh.handle)"
-              />
-            </template>
           </g>
           <g v-if="renderUnmappedZones.length > 0">
             <text
@@ -237,11 +257,27 @@
         </g>
       </svg>
     </div>
+    <div
+      v-if="contextMenu.show"
+      class="zone-context-menu"
+      :style="{ left: contextMenu.x + 'px', top: contextMenu.y + 'px' }"
+      @click.stop
+    >
+      <div class="zone-context-menu-item" @click="onContextMenuSearchDevices">
+        <q-icon name="search" size="16px" class="q-mr-sm" />{{ t('inventory.searchDevicesInZone') }}
+      </div>
+      <div class="zone-context-menu-item" @click="onContextMenuEditProperties">
+        <q-icon name="edit" size="16px" class="q-mr-sm" />{{ t('inventory.editZone') }}
+      </div>
+      <div v-if="getChildren(contextMenu.zone?.id).length" class="zone-context-menu-item" @click="onContextMenuDrillDown">
+        <q-icon name="open_in_new" size="16px" class="q-mr-sm" />{{ t('inventory.openZone') }}
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup>
-import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 const props = defineProps({
@@ -254,20 +290,22 @@ const props = defineProps({
   breadcrumb: { type: Array, default: () => [] },
 })
 
-const emit = defineEmits(['zone-click', 'zone-dblclick', 'zone-move', 'zone-resize', 'drill-down', 'drill-up', 'align-zones', 'distribute-zones', 'zone-properties', 'selection-change'])
+const emit = defineEmits(['zone-click', 'zone-dblclick', 'zone-move', 'zone-resize', 'drill-down', 'drill-up', 'align-zones', 'distribute-zones', 'zone-properties', 'selection-change', 'search-devices-in-zone'])
 
 const { t } = useI18n()
 
 const viewportRef = ref(null)
+const mapId = `whmap-${Math.random().toString(36).slice(2, 8)}`
 const svgRef = ref(null)
 const viewportWidth = ref(900)
-const storedHeight = Number(localStorage.getItem('warehouseMapHeight')) || 500
-const viewportHeight = ref(Math.max(200, storedHeight))
+const viewportHeight = ref(500)
 const scale = ref(1)
 const panX = ref(0)
 const panY = ref(0)
 const editMode = ref(false)
 const measureMode = ref(false)
+const snapToGrid = ref(false)
+const gridSizeCm = ref(10)
 const measureStart = ref(null)
 const measureEnd = ref(null)
 const viewMode = ref(localStorage.getItem('warehouseMapViewMode') || 'top')
@@ -291,10 +329,38 @@ const UNMAPPED_CELL_W = 100
 const UNMAPPED_CELL_H = 50
 const MIN_SIZE = 30
 
+function snap(v) {
+  if (!snapToGrid.value || !gridSizeCm.value) return v
+  return Math.round(v / gridSizeCm.value) * gridSizeCm.value
+}
+
 const overrides = reactive({})
+const contextMenu = reactive({ show: false, x: 0, y: 0, zone: null })
 const viewBox = computed(() => `0 0 ${viewportWidth.value} ${viewportHeight.value}`)
 
-watch(viewMode, (v) => localStorage.setItem('warehouseMapViewMode', v))
+const maxZExtent = computed(() => {
+  if (viewMode.value === 'top') return 0
+  let max = 0
+  for (const z of props.zones) {
+    const end = (z.pos_z || 0) + (z.map_height || 0)
+    if (end > max) max = end
+  }
+  return max
+})
+
+function flipY(pb, h) {
+  if (viewMode.value === 'top') return cmToPx(pb) || 0
+  return (cmToPx(maxZExtent.value) || 0) - (cmToPx(pb) || 0) - h
+}
+
+watch(viewMode, (v) => {
+  localStorage.setItem('warehouseMapViewMode', v)
+  nextTick(() => fitToView())
+})
+
+watch(() => props.focusZoneId, () => {
+  nextTick(() => fitToView())
+})
 
 watch(() => props.zones, () => {
   for (const key of Object.keys(overrides)) {
@@ -343,9 +409,46 @@ function getViewAxes() {
   }
 }
 
-function getZonePosA(z) { const ov = overrides[z.id] || {}; return ov[getViewAxes().posA] ?? z[getViewAxes().posA] }
-function getZonePosB(z) { const ov = overrides[z.id] || {}; return ov[getViewAxes().posB] ?? z[getViewAxes().posB] }
-function getZoneSizeA(z) { const ov = overrides[z.id] || {}; return ov[getViewAxes().sizeA] ?? z[getViewAxes().sizeA] }
+function getZonePosA(z) {
+  const ov = overrides[z.id] || {}
+  const axes = getViewAxes()
+  const val = ov[axes.posA] ?? z[axes.posA]
+  if (val == null) {
+    if (z.pos_x != null || z.pos_y != null || z.pos_z != null) return 0
+    return null
+  }
+  if (viewMode.value === 'top') return val
+  const rot = z.rotation || 0
+  if (rot === 90 || rot === 270) {
+    if (axes.sizeA === 'map_width') {
+      return val + ((z.map_width || 0) - (z.map_depth || 0)) / 2
+    }
+    if (axes.sizeA === 'map_depth') {
+      return val + ((z.map_depth || 0) - (z.map_width || 0)) / 2
+    }
+  }
+  return val
+}
+function getZonePosB(z) {
+  const ov = overrides[z.id] || {}
+  const axes = getViewAxes()
+  const val = ov[axes.posB] ?? z[axes.posB]
+  if (val != null) return val
+  if (z.pos_x != null || z.pos_y != null || z.pos_z != null) return 0
+  return null
+}
+function getZoneSizeA(z) {
+  const ov = overrides[z.id] || {}
+  const axes = getViewAxes()
+  const raw = ov[axes.sizeA] ?? z[axes.sizeA]
+  if (viewMode.value === 'top') return raw
+  const rot = z.rotation || 0
+  const swapped = rot === 90 || rot === 270
+  if (!swapped) return raw
+  if (axes.sizeA === 'map_width') return ov.map_depth ?? z.map_depth
+  if (axes.sizeA === 'map_depth') return ov.map_width ?? z.map_width
+  return raw
+}
 function getZoneSizeB(z) { const ov = overrides[z.id] || {}; return ov[getViewAxes().sizeB] ?? z[getViewAxes().sizeB] }
 
 function autoLayoutChildren(parent, children, parentXA, parentXB, parentWA, parentHB) {
@@ -356,12 +459,14 @@ function autoLayoutChildren(parent, children, parentXA, parentXB, parentWA, pare
     const cx = getZonePosA(ch)
     const cy = getZonePosB(ch)
     if (cx != null && cy != null) {
-      positioned.push({ node: ch, a: Number(cx), b: Number(cy) })
+      const chH = cmToPx(getZoneSizeB(ch)) || DEFAULT_H_CM / CM_PER_PX
+      const chA = cmToPx(getZoneSizeA(ch)) || DEFAULT_W_CM / CM_PER_PX
+      positioned.push({ node: ch, a: cmToPx(Number(cx)), b: flipY(Number(cy), chH), w: chA, h: chH })
     } else {
       unpadded.push(ch)
     }
   }
-  if (!unpadded.length) return []
+  if (!unpadded.length) return positioned
 
   const padPx = cmToPx(CHILD_PADDING_CM)
   const headerPx = cmToPx(CHILD_HEADER_CM)
@@ -369,20 +474,21 @@ function autoLayoutChildren(parent, children, parentXA, parentXB, parentWA, pare
   const innerXB = parentXB + headerPx
   const innerWA = parentWA - padPx * 2
   const innerHB = parentHB - headerPx - padPx
-  if (innerWA < 20 || innerHB < 20) return []
+  if (innerWA < 20 || innerHB < 20) return positioned
 
   const cols = Math.max(1, Math.ceil(Math.sqrt(unpadded.length * (innerWA / innerHB))))
   const rows = Math.ceil(unpadded.length / cols)
   const cellW = Math.floor(innerWA / cols)
   const cellH = Math.floor(innerHB / rows)
 
-  return unpadded.map((ch, i) => ({
+  const auto = unpadded.map((ch, i) => ({
     node: ch,
     a: innerX + (i % cols) * cellW,
     b: innerXB + Math.floor(i / cols) * cellH,
     w: cellW - 2,
     h: cellH - 2,
   }))
+  return [...positioned, ...auto]
 }
 
 const renderMappedZones = computed(() => {
@@ -402,7 +508,7 @@ const renderMappedZones = computed(() => {
         const h = cmToPx(sb) || DEFAULT_H_CM / CM_PER_PX
         result.push({
           id: n.id, name: n.name, zone_type: n.zone_type,
-          x: cmToPx(pa) || 0, y: cmToPx(pb) || 0, w, h,
+          x: cmToPx(pa) || 0, y: flipY(pb, h), w, h,
           dimW: sa || DEFAULT_W_CM, dimH: sb || DEFAULT_H_CM,
           fill: zoneColor(n),
           stroke: isHighlighted(n.id) ? '#FFD700' : (depth === 0 ? '#888' : 'rgba(255,255,255,0.2)'),
@@ -410,10 +516,11 @@ const renderMappedZones = computed(() => {
           deviceCount: deviceCounts.value[n.id] || 0,
           childCount: children.length,
           depth,
+          rotation: n.rotation || 0,
           _tree: n,
         })
         if (children.length) {
-          const laid = autoLayoutChildren(n, children, cmToPx(pa) || 0, cmToPx(pb) || 0, w, h)
+          const laid = autoLayoutChildren(n, children, cmToPx(pa) || 0, flipY(pb, h), w, h)
           for (const item of laid) {
             const chSA = getZoneSizeA(item.node)
             const chSB = getZoneSizeB(item.node)
@@ -428,6 +535,7 @@ const renderMappedZones = computed(() => {
               deviceCount: deviceCounts.value[item.node.id] || 0,
               childCount: chChildren.length,
               depth: depth + 1,
+              rotation: item.node.rotation || 0,
               _tree: item.node,
             })
             if (chChildren.length) {
@@ -458,6 +566,7 @@ const renderMappedZones = computed(() => {
         deviceCount: deviceCounts.value[item.node.id] || 0,
         childCount: chChildren.length,
         depth,
+        rotation: item.node.rotation || 0,
         _tree: item.node,
       })
       if (chChildren.length && depth < 4) {
@@ -585,6 +694,53 @@ function onZoneDblClick(zone) {
   emit('zone-dblclick', zone)
 }
 
+function onZoneContextMenu(e, zone) {
+  let target = zone
+  if (zone.depth !== 0 && zone._tree) {
+    let node = zone._tree
+    while (node.parent_id != null) {
+      const parent = props.zones.find(z => z.id === node.parent_id)
+      if (!parent) break
+      node = parent
+    }
+    const rendered = renderMappedZones.value.find(z => z.id === node.id)
+    if (rendered) target = rendered
+  }
+  contextMenu.x = e.clientX
+  contextMenu.y = e.clientY
+  contextMenu.zone = target
+  contextMenu.show = true
+}
+
+function closeContextMenu() {
+  contextMenu.show = false
+  contextMenu.zone = null
+}
+
+function onContextMenuSearchDevices() {
+  if (contextMenu.zone) {
+    emit('search-devices-in-zone', contextMenu.zone._tree || contextMenu.zone)
+  }
+  closeContextMenu()
+}
+
+function onContextMenuEditProperties() {
+  if (contextMenu.zone) {
+    emit('zone-properties', contextMenu.zone)
+  }
+  closeContextMenu()
+}
+
+function onContextMenuDrillDown() {
+  if (contextMenu.zone) {
+    const children = getChildren(contextMenu.zone.id)
+    if (children.length) {
+      emit('drill-down', contextMenu.zone._tree || contextMenu.zone)
+    }
+  }
+  closeContextMenu()
+}
+
 function resizeHandles(zone) {
   const s = 8
   const hs = s / 2
@@ -611,7 +767,32 @@ function clientToSvg(cx, cy) {
 
 function zoomIn() { scale.value = Math.min(3, scale.value * 1.2) }
 function zoomOut() { scale.value = Math.max(0.3, scale.value / 1.2) }
-function resetView() { scale.value = 1; panX.value = 0; panY.value = 0 }
+function resetView() { fitToView() }
+
+function fitToView() {
+  updateViewportSize()
+  const vh = viewportHeight.value
+  if (vh < 50) return
+  const zones = renderMappedZones.value.filter(z => z.depth === 0)
+  if (!zones.length) return resetView()
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity
+  for (const z of zones) {
+    minX = Math.min(minX, z.x)
+    minY = Math.min(minY, z.y)
+    maxX = Math.max(maxX, z.x + z.w)
+    maxY = Math.max(maxY, z.y + z.h)
+  }
+  const contentW = maxX - minX
+  const contentH = maxY - minY
+  if (contentW <= 0 || contentH <= 0) return resetView()
+  const pad = 40
+  const scaleX = (viewportWidth.value - pad * 2) / contentW
+  const scaleY = (viewportHeight.value - pad * 2) / contentH
+  const s = Math.min(scaleX, scaleY, 2)
+  scale.value = Math.max(0.1, s)
+  panX.value = (viewportWidth.value - contentW * s) / 2 - minX * s
+  panY.value = (viewportHeight.value - contentH * s) / 2 - minY * s
+}
 
 let _panCleanup = null
 function onViewportMouseDown(e) {
@@ -659,8 +840,8 @@ function onZoneDragStart(e, zone) {
       dragging = true
     }
     const cur = clientToSvg(ev.clientX, ev.clientY)
-    const nxA = Math.max(0, Math.round((origX + (cur.x - svg.x)) * CM_PER_PX))
-    const nxB = Math.max(0, Math.round((origY + (cur.y - svg.y)) * CM_PER_PX))
+    const nxA = Math.max(0, snap(Math.round((origX + (cur.x - svg.x)) * CM_PER_PX)))
+    const nxB = Math.max(0, snap(Math.round((origY + (cur.y - svg.y)) * CM_PER_PX)))
     overrides[zone.id] = { ...(overrides[zone.id] || {}), [axes.posA]: nxA, [axes.posB]: nxB }
   }
   function onUp() {
@@ -699,10 +880,13 @@ function onZoneResizeStart(e, zone, handle) {
     if (handle.includes('w')) { nw = Math.max(MIN_SIZE, Math.round(origW - dx)); nx = Math.max(0, Math.round(origX + origW - nw)) }
     if (handle.includes('s')) nh = Math.max(MIN_SIZE, Math.round(origH + dy))
     if (handle.includes('n')) { nh = Math.max(MIN_SIZE, Math.round(origH - dy)); ny = Math.max(0, Math.round(origY + origH - nh)) }
+    const snx = snap(nx * CM_PER_PX), sny = snap(ny * CM_PER_PX)
+    const snw = Math.max(MIN_SIZE * CM_PER_PX, snap(nw * CM_PER_PX))
+    const snh = Math.max(MIN_SIZE * CM_PER_PX, snap(nh * CM_PER_PX))
     overrides[zone.id] = {
       ...(overrides[zone.id] || {}),
-      [axes.posA]: Math.round(nx * CM_PER_PX), [axes.posB]: Math.round(ny * CM_PER_PX),
-      [axes.sizeA]: Math.round(nw * CM_PER_PX), [axes.sizeB]: Math.round(nh * CM_PER_PX),
+      [axes.posA]: snx, [axes.posB]: sny,
+      [axes.sizeA]: snw, [axes.sizeB]: snh,
     }
   }
   function onUp() {
@@ -746,8 +930,8 @@ function onUnmappedDragStart(e, zone) {
     const cur = clientToSvg(ev.clientX, ev.clientY)
     overrides[zone.id] = {
       ...(overrides[zone.id] || {}),
-      [axes.posA]: Math.max(0, Math.round((cur.x - UNMAPPED_CELL_W / 2) * CM_PER_PX)),
-      [axes.posB]: Math.max(0, Math.round((cur.y - UNMAPPED_CELL_H / 2) * CM_PER_PX)),
+      [axes.posA]: Math.max(0, snap(Math.round((cur.x - UNMAPPED_CELL_W / 2) * CM_PER_PX))),
+      [axes.posB]: Math.max(0, snap(Math.round((cur.y - UNMAPPED_CELL_H / 2) * CM_PER_PX))),
     }
   }
   function onUp() {
@@ -792,7 +976,10 @@ function onWheel(e) {
 
 function updateViewportSize() {
   if (viewportRef.value) {
-    viewportWidth.value = viewportRef.value.clientWidth || 900
+    const w = viewportRef.value.clientWidth
+    const h = viewportRef.value.clientHeight
+    if (w > 0) viewportWidth.value = w
+    if (h > 0) viewportHeight.value = h
   }
 }
 
@@ -808,7 +995,6 @@ function onResizeHandleStart(e) {
   function onUp() {
     document.removeEventListener('mousemove', onMove)
     document.removeEventListener('mouseup', onUp)
-    localStorage.setItem('warehouseMapHeight', String(viewportHeight.value))
   }
   document.addEventListener('mousemove', onMove)
   document.addEventListener('mouseup', onUp)
@@ -819,16 +1005,25 @@ onMounted(() => {
   updateViewportSize()
   viewportRef.value?.addEventListener('wheel', onWheel, { passive: false })
   window.addEventListener('resize', updateViewportSize)
+  document.addEventListener('click', closeContextMenu)
+  document.addEventListener('contextmenu', closeContextMenu)
+  if (viewportHeight.value > 50) {
+    nextTick(() => fitToView())
+  }
 })
 
 onUnmounted(() => {
   _panCleanup?.(); _dragCleanup?.(); _resizeCleanup?.(); _unmappedCleanup?.(); _resizeHeightCleanup?.()
   window.removeEventListener('resize', updateViewportSize)
+  document.removeEventListener('click', closeContextMenu)
+  document.removeEventListener('contextmenu', closeContextMenu)
 })
+
+defineExpose({ fitToView })
 </script>
 
 <style scoped>
-.warehouse-map-container { width: 100%; }
+.warehouse-map-container { width: 100%; height: 100%; display: flex; flex-direction: column; }
 
 .view-mode-toggle { border-radius: 6px; overflow: hidden; }
 
@@ -840,7 +1035,7 @@ onUnmounted(() => {
 }
 
 .warehouse-map-viewport {
-  width: 100%; overflow: hidden;
+  width: 100%; flex: 1; min-height: 0; overflow: hidden;
   border: 1px solid var(--q-separator-color, #ccc);
   border-radius: 8px; background: var(--q-dark-page, #1a1a2e);
   cursor: grab; position: relative;
@@ -882,4 +1077,18 @@ onUnmounted(() => {
 .warehouse-unmapped-title { fill: #888; font-size: 10px; font-weight: 600; font-family: inherit; }
 .unmapped-label { font-size: 9px; }
 .resize-handle { cursor: nwse-resize; }
+.zone-context-menu {
+  position: fixed; z-index: 9999;
+  background: var(--q-dark, #1a1a2e);
+  border: 1px solid var(--q-separator-color, #555);
+  border-radius: 6px; padding: 4px 0;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+  min-width: 180px;
+}
+.zone-context-menu-item {
+  padding: 6px 12px; cursor: pointer;
+  font-size: 13px; color: #fff;
+  display: flex; align-items: center;
+}
+.zone-context-menu-item:hover { background: rgba(255,255,255,0.1); }
 </style>

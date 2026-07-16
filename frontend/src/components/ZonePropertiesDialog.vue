@@ -13,13 +13,19 @@
         <div class="text-subtitle2 q-mb-xs">Position</div>
         <div class="row q-col-gutter-sm q-mb-md">
           <div class="col-4">
-            <q-input v-model.number="form.pos_x" type="number" label="X (left/right)" outlined dense />
+            <q-input v-model.number="form.pos_x" type="number" label="X (left/right)" outlined dense>
+              <q-tooltip>{{ t('inventory.tooltipPosX') }}</q-tooltip>
+            </q-input>
           </div>
           <div class="col-4">
-            <q-input v-model.number="form.pos_y" type="number" label="Y (front/back)" outlined dense />
+            <q-input v-model.number="form.pos_y" type="number" label="Y (front/back)" outlined dense>
+              <q-tooltip>{{ t('inventory.tooltipPosY') }}</q-tooltip>
+            </q-input>
           </div>
           <div class="col-4">
-            <q-input v-model.number="form.pos_z" type="number" label="Z (height)" outlined dense />
+            <q-input v-model.number="form.pos_z" type="number" label="Z (height)" outlined dense>
+              <q-tooltip>{{ t('inventory.tooltipPosZ') }}</q-tooltip>
+            </q-input>
           </div>
         </div>
 
@@ -45,6 +51,21 @@
           </div>
         </div>
 
+        <div class="text-subtitle2 q-mb-xs">Rotation (°)</div>
+        <div class="row q-col-gutter-sm q-mb-md items-center">
+          <div class="col-4">
+            <q-input v-model.number="form.rotation" type="number" label="Rotation" outlined dense :min="0" :max="360" />
+          </div>
+          <div class="col-auto">
+            <div class="row q-col-gutter-xs">
+              <q-btn flat dense no-caps size="sm" label="0°" @click="form.rotation = 0" :color="form.rotation === 0 ? 'primary' : undefined" />
+              <q-btn flat dense no-caps size="sm" label="90°" @click="form.rotation = 90" :color="form.rotation === 90 ? 'primary' : undefined" />
+              <q-btn flat dense no-caps size="sm" label="180°" @click="form.rotation = 180" :color="form.rotation === 180 ? 'primary' : undefined" />
+              <q-btn flat dense no-caps size="sm" label="270°" @click="form.rotation = 270" :color="form.rotation === 270 ? 'primary' : undefined" />
+            </div>
+          </div>
+        </div>
+
         <div class="row q-col-gutter-sm q-mb-md">
           <div class="col-6">
             <q-input v-model="form.color" label="Color" outlined dense>
@@ -61,8 +82,8 @@
         <q-expansion-item label="Quick presets" class="q-mb-sm" dense>
           <div class="row q-col-gutter-xs q-pa-sm">
             <q-btn
-              v-for="p in ZONE_PRESETS" :key="p.label"
-              flat dense no-caps size="sm" :label="p.label"
+              v-for="p in filteredPresets" :key="p.label"
+              flat dense no-caps size="sm" :label="t(p.label)"
               @click="applyPreset(p.width, p.depth, p.height)"
             />
           </div>
@@ -78,7 +99,7 @@
 </template>
 
 <script setup>
-import { ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useQuasar } from 'quasar'
 import { useInventoryStore } from '../stores/inventory'
@@ -100,6 +121,7 @@ const form = ref({
   pos_x: 0, pos_y: 0, pos_z: 0,
   map_width: 200, map_depth: 100, map_height: 150,
   name: '', zone_type: 'rack', color: '', is_active: true,
+  rotation: 0,
 })
 
 const typeOptions = [
@@ -112,6 +134,12 @@ const typeOptions = [
   { label: 'Truck', value: 'truck' },
   { label: 'Workshop', value: 'workshop' },
 ]
+
+const filteredPresets = computed(() => {
+  const type = form.value.zone_type
+  if (!type) return ZONE_PRESETS
+  return ZONE_PRESETS.filter(p => p.types.includes(type))
+})
 
 watch(() => props.modelValue, (open) => {
   if (open && props.zone) {
@@ -126,6 +154,7 @@ watch(() => props.modelValue, (open) => {
       zone_type: props.zone.zone_type ?? 'rack',
       color: props.zone.color ?? '',
       is_active: props.zone.is_active ?? true,
+      rotation: props.zone.rotation ?? 0,
     }
   }
 })
@@ -151,6 +180,7 @@ async function save() {
       zone_type: form.value.zone_type,
       color: form.value.color || null,
       is_active: form.value.is_active,
+      rotation: Number(form.value.rotation) || 0,
     })
     $q.notify({ type: 'positive', message: 'Zone updated' })
     emit('saved')

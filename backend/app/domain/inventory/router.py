@@ -2568,6 +2568,27 @@ def create_zone(payload: ZoneCreate, db: Session = Depends(get_db)) -> Zone:
     return zone
 
 
+@router.put("/zones/bulk", response_model=list[ZoneRead])
+def bulk_update_zones(
+    payload: ZoneBulkUpdate,
+    db: Session = Depends(get_db),
+    _: User = Depends(require_editor),
+) -> list[Zone]:
+    if not payload.ids:
+        return []
+    rows = list(db.scalars(select(Zone).where(Zone.id.in_(payload.ids))).all())
+    patch = payload.model_dump(exclude_unset=True, exclude={"ids"})
+    for zone in rows:
+        for key, value in patch.items():
+            setattr(zone, key, value)
+    db.commit()
+    for zone in rows:
+        db.refresh(zone)
+    if rows:
+        emit_realtime_event("inventory.updated", {"entity": "zone", "action": "bulk_update", "count": len(rows)})
+    return rows
+
+
 @router.put("/zones/{zone_id}", response_model=ZoneRead)
 def update_zone(zone_id: int, payload: ZoneUpdate, db: Session = Depends(get_db)) -> Zone:
     zone = db.get(Zone, zone_id)
@@ -2685,26 +2706,6 @@ def bulk_update_zone_layout(
     return rows
 
 
-@router.put("/zones/bulk", response_model=list[ZoneRead])
-def bulk_update_zones(
-    payload: ZoneBulkUpdate,
-    db: Session = Depends(get_db),
-    _: User = Depends(require_editor),
-) -> list[Zone]:
-    if not payload.ids:
-        return []
-    rows = list(db.scalars(select(Zone).where(Zone.id.in_(payload.ids))).all())
-    patch = payload.model_dump(exclude_unset=True, exclude={"ids"})
-    for zone in rows:
-        for key, value in patch.items():
-            setattr(zone, key, value)
-    db.commit()
-    for zone in rows:
-        db.refresh(zone)
-    if rows:
-        emit_realtime_event("inventory.updated", {"entity": "zone", "action": "bulk_update", "count": len(rows)})
-    return rows
-
 
 @router.post("/zones/generate-shelves", response_model=list[ZoneRead])
 def generate_shelves(
@@ -2714,37 +2715,61 @@ def generate_shelves(
 ) -> list[Zone]:
     if not payload.rack_ids:
         return []
-    racks = list(db.scalars(select(Zone).where(Zone.id.in_(payload.rack_ids))).all())
+    child_type = payload.child_type if payload.child_type in ("shelf", "bin") else "shelf"
+    parents = list(db.scalars(select(Zone).where(Zone.id.in_(payload.rack_ids))).all())
     created = []
-    for rack in racks:
-        rack_height = rack.map_height or 200
-        shelf_total = payload.count * payload.shelf_height
-        available = max(0, rack_height - shelf_total)
-        gap = available / max(1, payload.count - 1) if payload.count > 1 else available / 2
+    for parent in parents:
+        parent_type = parent.zone_type or "rack"
+        is_horizontal = child_type == "bin" and parent_type == "shelf"
+        prefix = (payload.prefix or "").strip()
+        code_prefix = f"{parent.code}-{prefix.upper()}" if prefix else parent.code
         for i in range(payload.count):
-            pos_z = round(rack.pos_z or 0) + round(i * (payload.shelf_height + gap))
-            code = f"{rack.code}-{payload.prefix.upper()}-{i + 1}"
-            name = f"{payload.prefix} {i + 1}"
-            shelf = Zone(
+            if is_horizontal:
+                rot = parent.rotation or 0
+                rotated = rot in (90, 270)
+                if rotated:
+                    pos_x = round((parent.pos_x or 0) + ((parent.map_width or 0) - (payload.shelf_width or 0)) / 2)
+                    shelf_center_y = (parent.pos_y or 0) + (parent.map_depth or 0) / 2
+                    total_visual_h = payload.count * (payload.shelf_width or 0)
+                    bin_visual_center_y = shelf_center_y - total_visual_h / 2 + i * (payload.shelf_width or 0) + (payload.shelf_width or 0) / 2
+                    pos_y = round(bin_visual_center_y - (payload.shelf_depth or 0) / 2)
+                else:
+                    total_w = payload.count * (payload.shelf_width or 0)
+                    start_edge = (parent.pos_x or 0) + ((parent.map_width or 0) - total_w) / 2
+                    pos_x = round(start_edge + i * (payload.shelf_width or 0))
+                    pos_y = parent.pos_y or 0
+                pos_z = round((parent.pos_z or 0) + (parent.map_height or 0))
+            else:
+                rack_height = parent.map_height or 200
+                child_total = payload.count * payload.shelf_height
+                available = max(0, rack_height - child_total)
+                gap = available / max(1, payload.count - 1) if payload.count > 1 else available / 2
+                pos_x = parent.pos_x
+                pos_y = parent.pos_y
+                pos_z = round(parent.pos_z or 0) + round(i * (payload.shelf_height + gap))
+            code = f"{code_prefix}-{i + 1}"
+            name = f"{prefix} {i + 1}".strip() if prefix else str(i + 1)
+            child = Zone(
                 code=code,
                 name=name,
-                zone_type="shelf",
-                parent_id=rack.id,
+                zone_type=child_type,
+                parent_id=parent.id,
                 is_active=True,
-                pos_x=rack.pos_x,
-                pos_y=rack.pos_y,
+                pos_x=pos_x,
+                pos_y=pos_y,
                 pos_z=pos_z,
                 map_width=payload.shelf_width,
                 map_depth=payload.shelf_depth,
                 map_height=payload.shelf_height,
+                rotation=parent.rotation or 0,
             )
-            db.add(shelf)
-            created.append(shelf)
+            db.add(child)
+            created.append(child)
     db.commit()
-    for shelf in created:
-        db.refresh(shelf)
+    for child in created:
+        db.refresh(child)
     if created:
-        emit_realtime_event("inventory.updated", {"entity": "zone", "action": "shelves_generated", "count": len(created)})
+        emit_realtime_event("inventory.updated", {"entity": "zone", "action": "children_generated", "child_type": child_type, "count": len(created)})
     return created
 
 

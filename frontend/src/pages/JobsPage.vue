@@ -48,6 +48,7 @@
       :pagination="{ rowsPerPage: 50, sortBy: 'start_date', descending: false }"
       :rows-per-page-options="[25, 50, 100, 0]"
       class="ec-card"
+      @row-dblclick="(evt, row) => router.push(`/jobs/${row.id}`)"
     >
       <template #body-cell-status="props">
         <q-td :props="props">

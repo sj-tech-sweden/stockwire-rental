@@ -107,6 +107,7 @@
             }"
           :rows-per-page-options="[10, 25, 50, 100, 200, 0]"
           class="ec-card inventory-products-table"
+          @row-dblclick="(evt, row) => openProductInfo(row)"
         >
           <template #body-cell-sku="props">
             <q-td :props="props">
@@ -353,6 +354,11 @@
           </q-btn-dropdown>
           <q-btn class="q-ml-sm" color="primary" icon="add" :label="t('inventory.newDevice')" unelevated @click="openCreateDevice" />
         </div>
+        <div v-if="deviceZoneFilter" class="row items-center q-mb-sm">
+          <q-chip removable icon="filter_list" color="primary" text-color="white" @remove="deviceZoneFilter = null">
+            {{ t('inventory.filteringByZone') }}: {{ deviceZoneFilter.length }} {{ deviceZoneFilter.length === 1 ? t('inventory.zoneCount') : t('inventory.zoneCountPlural') }}
+          </q-chip>
+        </div>
 
         <div class="row q-col-gutter-sm q-mb-sm">
           <div class="col-12 col-md-3">
@@ -391,6 +397,7 @@
           :pagination="{ rowsPerPage: 50 }"
           :rows-per-page-options="[10, 25, 50, 100, 200]"
           class="ec-card"
+          @row-dblclick="(evt, row) => { deviceInfoTarget = row; deviceInfoDialogOpen = true }"
         >
           <template #body-cell-status="props">
             <q-td :props="props"><q-badge :label="statusLabel(props.value)" :color="deviceStatusColor(props.value)" /></q-td>
@@ -405,7 +412,7 @@
             </q-td>
           </template>
           <template #body-cell-location_zone_id="props">
-            <q-td :props="props">{{ props.row.case_asset_tag ? t('inventory.infoDialogs.caseLocation', { assetTag: props.row.case_asset_tag }) : (zoneNameById(props.value) || t('inventory.infoDialogs.unassigned')) }}</q-td>
+            <q-td :props="props">{{ props.row.case_asset_tag ? t('inventory.infoDialogs.caseLocation', { assetTag: props.row.case_asset_tag }) : (zonePathById(props.value) || t('inventory.infoDialogs.unassigned')) }}</q-td>
           </template>
           <template #body-cell-actions="props">
             <q-td :props="props" auto-width>
@@ -426,7 +433,7 @@
                     <div class="col-6"><q-badge color="grey-7" :label="conditionLabel(props.row.condition)" /></div>
                     <div class="col-12" v-if="props.row.serial_number"><div class="text-caption">{{ t('inventory.infoDialogs.serialNumber') }}: {{ props.row.serial_number }}</div></div>
                     <div class="col-12" v-if="props.row.current_job_code"><div class="text-caption">{{ t('inventory.infoDialogs.currentJob') }}: {{ props.row.current_job_code }}</div></div>
-                    <div class="col-12"><div class="text-caption">{{ t('inventory.infoDialogs.location') }}: {{ props.row.case_asset_tag ? t('inventory.infoDialogs.caseLocation', { assetTag: props.row.case_asset_tag }) : (zoneNameById(props.row.location_zone_id) || t('inventory.infoDialogs.unassigned')) }}</div></div>
+                    <div class="col-12"><div class="text-caption">{{ t('inventory.infoDialogs.location') }}: {{ props.row.case_asset_tag ? t('inventory.infoDialogs.caseLocation', { assetTag: props.row.case_asset_tag }) : (zonePathById(props.row.location_zone_id) || t('inventory.infoDialogs.unassigned')) }}</div></div>
                   </div>
                 </q-card-section>
                 <q-card-actions align="right">
@@ -645,7 +652,7 @@
           <q-badge color="primary" :label="t('inventory.selectedCount', { count: selectedLocationIds.length })" />
           <q-btn color="secondary" icon="edit" :label="t('inventory.bulkEditZones')" unelevated @click="openBulkEditFromTree" />
           <q-btn
-            v-if="selectedLocationIds.length >= 1 && selectedLocationZones.every(z => z.zone_type === 'rack')"
+            v-if="selectedLocationIds.length >= 1 && selectedLocationZones.every(z => z.zone_type === 'rack' || z.zone_type === 'shelf')"
             color="secondary" icon="auto_awesome" :label="t('inventory.generateShelves')" unelevated @click="openGenerateShelvesFromTree"
           />
           <q-btn :color="bulkPrintActionColor" :text-color="bulkPrintActionTextColor" icon="print" :label="t('inventory.bulkPrintLabels')" unelevated @click="openBulkPrintLabels('location', selectedLocationIds)" />
@@ -720,6 +727,7 @@
           @align-zones="onAlignZones"
           @distribute-zones="onDistributeZones"
           @selection-change="onMapSelectionChange"
+          @search-devices-in-zone="onSearchDevicesInZone"
         />
         <div class="row items-center q-mt-sm q-gutter-sm">
           <q-input
@@ -744,8 +752,16 @@
             <q-separator vertical />
             <q-btn flat dense icon="edit" :label="t('inventory.bulkEditZones')" @click="openBulkEditFromMap" />
             <q-btn
-              v-if="mapSelectedZoneIds.length >= 1 && mapSelectedZones.every(z => z.zone_type === 'rack')"
+              v-if="mapSelectedZoneIds.length >= 1 && mapSelectedZones.every(z => z.zone_type === 'rack' || z.zone_type === 'shelf')"
               flat dense icon="auto_awesome" :label="t('inventory.generateShelves')" @click="openGenerateShelvesFromMap"
+            />
+            <q-btn
+              v-if="mapSelectedZoneIds.length === 1 && mapSelectedZones[0]?.zone_type === 'shelf'"
+              flat dense icon="add_box" :label="t('inventory.addBin')" @click="addBinToShelf(mapSelectedZones[0])"
+            />
+            <q-btn
+              v-if="mapSelectedZoneIds.length === 1 && mapSelectedZones[0]?.zone_type === 'bin'"
+              flat dense icon="place" :label="t('inventory.placeOnShelf')" @click="placeBinOnShelf(mapSelectedZones[0])"
             />
             <div class="text-caption text-grey-6">{{ mapSelectedZoneIds.length }} selected</div>
           </template>
@@ -987,6 +1003,7 @@ const deviceProductFilter = ref(null)
 const deviceStatusFilter = ref(null)
 const deviceConditionFilter = ref(null)
 const deviceLocationFilter = ref(undefined)
+const deviceZoneFilter = ref(null)
 const maintenanceSearch = ref('')
 const scheduleSearch = ref('')
 const selectedProducts = ref([])
@@ -1335,11 +1352,13 @@ function openProductAvailabilityCalendar(product) {
 
 const filteredDevices = computed(() => {
   const needle = deviceSearch.value.trim().toLowerCase()
+  const zoneIds = deviceZoneFilter.value
   return store.devices.filter(device => {
     if (deviceProductFilter.value != null && device.product_id !== deviceProductFilter.value) return false
     if (deviceStatusFilter.value != null && device.status !== deviceStatusFilter.value) return false
     if (deviceConditionFilter.value != null && device.condition !== deviceConditionFilter.value) return false
     if (deviceLocationFilter.value !== undefined && device.location_zone_id !== deviceLocationFilter.value) return false
+    if (zoneIds && !zoneIds.includes(device.zone_id)) return false
     if (!needle) return true
     const productName = productById.value.get(device.product_id)?.name || ''
     return [device.asset_tag, device.serial_number, device.status, device.condition, device.barcode, device.rfid, device.current_job_code, productName]
@@ -1594,6 +1613,19 @@ function categoryNameById(id) {
 function zoneNameById(id) {
   if (!id) return null
   return zoneById.value.get(id)?.name ?? null
+}
+
+function zonePathById(id) {
+  if (!id) return ''
+  const zone = zoneById.value.get(id)
+  if (!zone) return ''
+  const parts = []
+  let current = zone
+  while (current) {
+    parts.unshift(current.name || '')
+    current = store.zones.find(z => z.id === current.parent_id)
+  }
+  return parts.join(' / ')
 }
 
 function treeToNodes(nodes, prefix = '') {
@@ -2279,6 +2311,26 @@ function onMapDrillUp(targetId) {
   mapSelectedZoneIds.value = []
 }
 
+function onSearchDevicesInZone(zone) {
+  const zoneId = zone.id
+  const zoneName = zone.name || zone.code || `#${zoneId}`
+  const allZoneIds = [zoneId]
+  const queue = [zoneId]
+  while (queue.length) {
+    const id = queue.shift()
+    const children = store.zones.filter(z => z.parent_id === id)
+    for (const ch of children) {
+      allZoneIds.push(ch.id)
+      queue.push(ch.id)
+    }
+  }
+  deviceZoneFilter.value = allZoneIds
+  mapHighlightZoneIds.value = []
+  tab.value = 'devices'
+  const count = store.devices.filter(d => allZoneIds.includes(d.zone_id)).length
+  $q.notify({ type: 'info', message: `${t('inventory.showingDevices')} ${count} ${t('inventory.devicesCount')} ${t('inventory.inZone')} "${zoneName}"` })
+}
+
 function onMapSelectionChange(ids) {
   mapSelectedZoneIds.value = ids
 }
@@ -2402,6 +2454,88 @@ function openGenerateShelvesFromMap() {
 function openGenerateShelvesFromTree() {
   generateShelvesTargetRacks.value = selectedLocationZones.value
   generateShelvesDialogOpen.value = true
+}
+
+async function addBinToShelf(shelf) {
+  const shelfZone = shelf._tree || shelf
+  const shelfWidth = shelfZone.map_width || 115
+  const shelfDepth = shelfZone.map_depth || 75
+  const binWidth = Math.round(shelfWidth * 0.45)
+  const binDepth = Math.round(shelfDepth * 0.45)
+  const code = `${shelfZone.code}-BIN-1`
+  const name = `Bin 1`
+  const rot = shelfZone.rotation || 0
+  const rotated = rot === 90 || rot === 270
+  let pos_x, pos_y
+  if (rotated) {
+    pos_x = Math.round((shelfZone.pos_x ?? 0) + (shelfWidth - binWidth) / 2)
+    pos_y = Math.round((shelfZone.pos_y ?? 0) + (shelfDepth - binDepth) / 2)
+  } else {
+    pos_x = shelfZone.pos_x ?? 0
+    pos_y = shelfZone.pos_y ?? 0
+  }
+  try {
+    await store.createZone({
+      code,
+      name,
+      zone_type: 'bin',
+      parent_id: shelfZone.id,
+      is_active: true,
+      pos_x,
+      pos_y,
+      pos_z: Math.round((shelfZone.pos_z ?? 0) + (shelfZone.map_height || 0)),
+      map_width: binWidth,
+      map_depth: binDepth,
+      map_height: 12,
+      rotation: shelfZone.rotation ?? 0,
+    })
+    $q.notify({ type: 'positive', message: `Added ${name} to ${shelfZone.name}` })
+  } catch (err) {
+    $q.notify({ type: 'negative', message: err?.response?.data?.detail || 'Failed to add bin' })
+  }
+}
+
+async function placeBinOnShelf(bin) {
+  const binZone = bin._tree || bin
+  const parentId = binZone.parent_id
+  if (!parentId) {
+    $q.notify({ type: 'warning', message: 'Bin has no parent shelf' })
+    return
+  }
+  const parent = store.zones.find(z => z.id === parentId)
+  if (!parent || parent.zone_type !== 'shelf') {
+    $q.notify({ type: 'warning', message: 'Parent is not a shelf' })
+    return
+  }
+  const siblings = store.zones.filter(z => z.parent_id === parentId && z.id !== binZone.id)
+  const count = siblings.length + 1
+  const idx = siblings.length
+  const rot = parent.rotation || 0
+  const rotated = rot === 90 || rot === 270
+  let pos_x, pos_y
+  if (rotated) {
+    pos_x = Math.round((parent.pos_x ?? 0) + ((parent.map_width || 0) - (binZone.map_width || 0)) / 2)
+    const shelfCenterY = (parent.pos_y ?? 0) + (parent.map_depth || 0) / 2
+    const totalVisualH = count * (binZone.map_width || 0)
+    const binVisualCenterY = shelfCenterY - totalVisualH / 2 + idx * (binZone.map_width || 0) + (binZone.map_width || 0) / 2
+    pos_y = Math.round(binVisualCenterY - (binZone.map_depth || 0) / 2)
+  } else {
+    const totalW = count * (binZone.map_width || 0)
+    const startEdge = (parent.pos_x ?? 0) + ((parent.map_width || 0) - totalW) / 2
+    pos_x = Math.round(startEdge + idx * (binZone.map_width || 0))
+    pos_y = parent.pos_y ?? 0
+  }
+  try {
+    await store.updateZone(binZone.id, {
+      pos_x,
+      pos_y,
+      pos_z: Math.round((parent.pos_z ?? 0) + (parent.map_height || 0)),
+      rotation: parent.rotation ?? 0,
+    })
+    $q.notify({ type: 'positive', message: `Placed ${binZone.name} on ${parent.name}` })
+  } catch (err) {
+    $q.notify({ type: 'negative', message: err?.response?.data?.detail || 'Failed to place bin' })
+  }
 }
 
 const bulkCreateDialogOpen = ref(false)

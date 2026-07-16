@@ -323,6 +323,7 @@ class Zone(Base):
     map_depth: Mapped[int] = mapped_column(Integer, nullable=True)
     map_height: Mapped[int] = mapped_column(Integer, nullable=True)
     color: Mapped[str] = mapped_column(String(20), nullable=True)
+    rotation: Mapped[int] = mapped_column(Integer, default=0)
 
     parent: Mapped["Zone | None"] = relationship("Zone", remote_side="Zone.id", back_populates="children")
     children: Mapped[list["Zone"]] = relationship("Zone", back_populates="parent")

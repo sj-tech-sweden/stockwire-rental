@@ -457,8 +457,18 @@
         <div class="text-caption text-grey-5 q-mb-sm">
           {{ t(workflowHelpKey) }}
         </div>
+        <div class="row items-center q-mb-sm">
+          <q-select
+            v-model="workflowSortMode"
+            :options="workflowSortOptions"
+            :label="t('scan.sortBy')"
+            outlined dense emit-value map-options
+            class="col-auto"
+            style="min-width: 180px"
+          />
+        </div>
         <q-table
-          :rows="pendingWorkflowRequirements"
+          :rows="sortedPendingWorkflowRequirements"
           :columns="workflowColumns"
           row-key="product_id"
           flat
@@ -474,7 +484,20 @@
             <div class="q-pa-xs col-12 col-sm-6 col-md-4">
               <q-card flat bordered class="scan-workflow-card">
                 <q-card-section class="q-pb-sm">
-                  <div class="text-subtitle2">{{ props.row.product_name }}</div>
+                  <div class="row items-center">
+                    <div class="col text-subtitle2">{{ props.row.product_name }}</div>
+                    <div class="col-auto">
+                      <q-btn flat dense round color="primary" icon="place" size="sm" @click="openWorkflowProductLocationMap(props.row)">
+                        <q-tooltip>{{ t('inventory.deviceDialog.locateOnMap') }}</q-tooltip>
+                      </q-btn>
+                    </div>
+                  </div>
+                  <div v-if="productZonePath(props.row.product_id)" class="text-caption text-primary">
+                    <q-icon name="place" size="12px" class="q-mr-xs" />{{ productZonePath(props.row.product_id) }}
+                    <q-badge v-if="productLocationCount(props.row.product_id) > 1" color="orange" text-color="white" :label="productLocationCount(props.row.product_id)" class="q-ml-xs" style="font-size:10px">
+                      <q-tooltip>{{ t('scan.devicesInMultipleLocations', { count: productLocationCount(props.row.product_id) }) }}</q-tooltip>
+                    </q-badge>
+                  </div>
                 </q-card-section>
                 <q-card-section class="q-pt-none">
                   <div class="row q-col-gutter-xs">
@@ -535,6 +558,17 @@
                 {{ t(workflowProductProgressKey, workflowRowProgress(props.row)) }}
               </div>
               <q-linear-progress rounded size="10px" color="positive" track-color="grey-4" :value="workflowRowProgress(props.row).percent / 100" />
+            </q-td>
+          </template>
+          <template #body-cell-location="props">
+            <q-td :props="props">
+              <div v-if="productZonePath(props.row.product_id)" class="row items-center no-wrap">
+                <span class="text-caption">{{ productZonePath(props.row.product_id) }}</span>
+                <q-btn flat dense round color="primary" icon="place" size="xs" class="q-ml-xs" @click="openWorkflowProductLocationMap(props.row)">
+                  <q-tooltip>{{ t('inventory.deviceDialog.locateOnMap') }}</q-tooltip>
+                </q-btn>
+              </div>
+              <span v-else class="text-grey-5">-</span>
             </q-td>
           </template>
           <template #body-cell-checked_out="props">
@@ -626,64 +660,189 @@
             <q-btn flat dense :label="t('scan.skipLocationScan')" @click="pendingLocationForDevice = null" />
           </template>
         </q-banner>
-        <div v-if="isTightScreen" class="checked-out-grid">
-          <q-card v-for="row in checkedOutDeviceRows" :key="row.id" flat bordered class="checked-out-card">
-            <q-card-section class="q-pb-sm">
-              <div class="text-subtitle2">{{ row.asset_tag || t('scan.unknownAsset') }}</div>
-              <div class="text-caption text-grey-6">{{ row.product_name }}</div>
-            </q-card-section>
-            <q-card-section class="q-pt-none">
-              <div class="row q-col-gutter-xs">
-                <div class="col-12">
-                  <q-badge color="blue-8" text-color="white" :label="t('scan.returnToValue', { value: row.location_name })" />
-                </div>
-                <div class="col-12">
-                  <q-badge color="grey-8" text-color="white" :label="t('scan.conditionValue', { value: row.condition })" />
-                </div>
-                <div class="col-12 q-mt-xs">
-                  <q-btn
-                    unelevated
-                    size="sm"
-                    color="primary"
-                    :label="t('scan.checkInDevice')"
-:disable="checkInLoadingDeviceId !== null || (scanToLocationMode && pendingLocationForDevice)"
-                    :loading="checkInLoadingDeviceId === row.id"
-                    @click="checkInCheckedOutDevice(row)"
-                  />
-                </div>
-              </div>
-            </q-card-section>
-          </q-card>
-          <div v-if="!checkedOutDeviceRows.length" class="text-grey-5 text-caption">
+        <div v-if="globalCheckin">
+          <div v-if="!globalCheckinRequirements.length" class="text-grey-5 text-caption q-pa-md text-center">
             {{ t('scan.noDevicesCurrentlyCheckedOut') }}
           </div>
+          <div v-if="isTightScreen" class="checked-out-grid">
+            <q-card v-for="req in globalCheckinRequirements" :key="req.product_id" flat bordered class="checked-out-card">
+              <q-card-section class="q-pb-sm">
+                <div class="row items-center">
+                  <div class="col text-subtitle2">{{ req.product_name }}</div>
+                  <div class="col-auto">
+                    <q-btn flat dense round color="primary" icon="place" size="sm" @click="openGlobalCheckinProductLocationMap(req)">
+                      <q-tooltip>{{ t('inventory.deviceDialog.locateOnMap') }}</q-tooltip>
+                    </q-btn>
+                  </div>
+                </div>
+                <div v-if="productZonePath(req.product_id)" class="text-caption text-primary">
+                  <q-icon name="place" size="12px" class="q-mr-xs" />{{ productZonePath(req.product_id) }}
+                </div>
+              </q-card-section>
+              <q-card-section class="q-pt-none">
+                <div class="row q-col-gutter-xs">
+                  <div class="col-6">
+                    <q-badge color="grey-8" text-color="white" :label="t('scan.totalCount', { count: req.total })" />
+                  </div>
+                  <div class="col-6">
+                    <q-badge color="blue-8" text-color="white" :label="t('scan.checkedInCount', { count: req.checked_in })" />
+                  </div>
+                  <div class="col-6">
+                    <q-badge :color="req.remaining > 0 ? 'amber-7' : 'green-8'" text-color="black" :label="t('scan.remainingCount', { count: req.remaining })" />
+                  </div>
+                  <div class="col-12">
+                    <div class="text-caption text-grey-7 q-mb-xs">
+                      {{ t('scan.productCheckedInProgress', { packed: req.checked_in, required: req.total, percent: req.percent }) }}
+                    </div>
+                    <q-linear-progress rounded size="10px" color="positive" track-color="grey-4" :value="req.percent / 100" />
+                  </div>
+                </div>
+              </q-card-section>
+              <q-card-section class="q-pt-none">
+                <div class="text-caption text-grey-6 q-mb-xs">{{ t('scan.checkedOutDevices') }}</div>
+                <div v-for="device in checkedOutDeviceRows.filter(r => r.product_id === req.product_id)" :key="device.id" class="row items-center q-gutter-x-sm q-py-xs" style="border-top: 1px solid #eee">
+                  <div class="col">
+                    <div class="text-caption text-weight-medium">{{ device.asset_tag || t('scan.unknownAsset') }}</div>
+                    <div class="text-caption text-grey-6">{{ device.location_name || '' }}</div>
+                  </div>
+                  <div class="col-auto">
+                    <q-btn flat dense round color="primary" icon="place" size="xs" @click="openCheckedOutDeviceLocate(device)">
+                      <q-tooltip>{{ t('inventory.deviceDialog.locateOnMap') }}</q-tooltip>
+                    </q-btn>
+                  </div>
+                </div>
+                <div v-if="req.remaining > 0" class="q-mt-sm">
+                  <q-select
+                    :model-value="globalCheckinDeviceSelections[req.product_id] || null"
+                    :options="globalCheckinDeviceOptionsForProduct(req.product_id)"
+                    :label="t('scan.selectDeviceToAdd')"
+                    outlined
+                    dense
+                    clearable
+                    emit-value
+                    map-options
+                    @update:model-value="value => updateGlobalCheckinDeviceSelection(req.product_id, value)"
+                  />
+                  <q-btn
+                    class="q-mt-xs"
+                    color="primary"
+                    unelevated
+                    no-caps
+                    icon="add_circle"
+                    :label="t('scan.checkInSelectedDevice')"
+                    :disable="checkInLoadingDeviceId !== null || !globalCheckinDeviceSelections[req.product_id] || (scanToLocationMode && pendingLocationForDevice)"
+                    :loading="checkInLoadingDeviceId !== null"
+                    @click="checkInSelectedGlobalDevice(req)"
+                  />
+                </div>
+              </q-card-section>
+            </q-card>
+          </div>
+          <q-table
+            v-else
+            :rows="globalCheckinRequirements"
+            :columns="globalCheckinColumns"
+            row-key="product_id"
+            flat
+            bordered
+            dense
+            :grid="compactGrid"
+            :hide-header="compactGrid"
+            :pagination="{ rowsPerPage: 15 }"
+            :rows-per-page-options="[15, 30, 50]"
+            :no-data-label="t('scan.noDevicesCurrentlyCheckedOut')"
+          >
+            <template #item="props">
+              <div class="q-pa-xs col-12 col-sm-6 col-md-4">
+                <q-card flat bordered class="checked-out-card">
+                  <q-card-section class="q-pb-sm">
+                    <div class="row items-center">
+                      <div class="col text-subtitle2">{{ props.row.product_name }}</div>
+                      <div class="col-auto">
+                        <q-btn flat dense round color="primary" icon="place" size="sm" @click="openGlobalCheckinProductLocationMap(props.row)">
+                          <q-tooltip>{{ t('inventory.deviceDialog.locateOnMap') }}</q-tooltip>
+                        </q-btn>
+                      </div>
+                    </div>
+                    <div v-if="productZonePath(props.row.product_id)" class="text-caption text-primary">
+                      <q-icon name="place" size="12px" class="q-mr-xs" />{{ productZonePath(props.row.product_id) }}
+                    </div>
+                  </q-card-section>
+                  <q-card-section class="q-pt-none">
+                    <div class="row q-col-gutter-xs">
+                      <div class="col-6">
+                        <q-badge color="grey-8" text-color="white" :label="t('scan.totalCount', { count: props.row.total })" />
+                      </div>
+                      <div class="col-6">
+                        <q-badge color="blue-8" text-color="white" :label="t('scan.checkedInCount', { count: props.row.checked_in })" />
+                      </div>
+                      <div class="col-6">
+                        <q-badge :color="props.row.remaining > 0 ? 'amber-7' : 'green-8'" text-color="black" :label="t('scan.remainingCount', { count: props.row.remaining })" />
+                      </div>
+                      <div class="col-12">
+                        <div class="text-caption text-grey-7 q-mb-xs">
+                          {{ t('scan.productCheckedInProgress', { packed: props.row.checked_in, required: props.row.total, percent: props.row.percent }) }}
+                        </div>
+                        <q-linear-progress rounded size="10px" color="positive" track-color="grey-4" :value="props.row.percent / 100" />
+                      </div>
+                    </div>
+                  </q-card-section>
+                </q-card>
+              </div>
+            </template>
+            <template #body-cell-progress="props">
+              <q-td :props="props">
+                <div class="text-caption q-mb-xs">
+                  {{ t('scan.productCheckedInProgress', { packed: props.row.checked_in, required: props.row.total, percent: props.row.percent }) }}
+                </div>
+                <q-linear-progress rounded size="10px" color="positive" track-color="grey-4" :value="props.row.percent / 100" />
+              </q-td>
+            </template>
+            <template #body-cell-location="props">
+              <q-td :props="props">
+                <div v-if="productZonePath(props.row.product_id)" class="row items-center no-wrap">
+                  <span class="text-caption">{{ productZonePath(props.row.product_id) }}</span>
+                  <q-btn flat dense round color="primary" icon="place" size="xs" class="q-ml-xs" @click="openGlobalCheckinProductLocationMap(props.row)">
+                    <q-tooltip>{{ t('inventory.deviceDialog.locateOnMap') }}</q-tooltip>
+                  </q-btn>
+                </div>
+                <span v-else class="text-grey-5">-</span>
+              </q-td>
+            </template>
+            <template #body-cell-action="props">
+              <q-td :props="props">
+                <div v-if="props.row.remaining > 0" class="row q-col-gutter-xs items-center">
+                  <div class="col-12">
+                    <q-select
+                      :model-value="globalCheckinDeviceSelections[props.row.product_id] || null"
+                      :options="globalCheckinDeviceOptionsForProduct(props.row.product_id)"
+                      :label="t('scan.selectDeviceToAdd')"
+                      outlined
+                      dense
+                      clearable
+                      emit-value
+                      map-options
+                      @update:model-value="value => updateGlobalCheckinDeviceSelection(props.row.product_id, value)"
+                    />
+                  </div>
+                  <div class="col-12">
+                    <q-btn
+                      color="primary"
+                      unelevated
+                      no-caps
+                      icon="add_circle"
+                      :label="t('scan.checkInSelectedDevice')"
+                      :disable="checkInLoadingDeviceId !== null || !globalCheckinDeviceSelections[props.row.product_id] || (scanToLocationMode && pendingLocationForDevice)"
+                      :loading="checkInLoadingDeviceId !== null"
+                      @click="checkInSelectedGlobalDevice(props.row)"
+                    />
+                  </div>
+                </div>
+                <q-badge v-else color="green-8" text-color="white" :label="t('scan.done')" />
+              </q-td>
+            </template>
+          </q-table>
         </div>
-        <q-table
-          v-else
-          :rows="checkedOutDeviceRows"
-          :columns="checkedOutColumns"
-          row-key="id"
-          flat
-          bordered
-          dense
-          :pagination="{ rowsPerPage: 15 }"
-          :rows-per-page-options="[15, 30, 50]"
-          :no-data-label="t('scan.noDevicesCurrentlyCheckedOut')"
-        >
-          <template #body-cell-action="props">
-            <q-td :props="props">
-              <q-btn
-                unelevated
-                size="sm"
-                color="primary"
-                :label="t('scan.checkInDevice')"
-:disable="checkInLoadingDeviceId !== null || (scanToLocationMode && pendingLocationForDevice)"
-                :loading="checkInLoadingDeviceId === props.row.id"
-                @click="checkInCheckedOutDevice(props.row)"
-              />
-            </q-td>
-          </template>
-        </q-table>
       </q-card>
 
       <q-card class="ec-card q-pa-md" v-if="isRentalScanMode">
@@ -717,6 +876,14 @@
         v-model="defectDialogOpen"
         :device-id="maintenanceTargetDeviceId"
       />
+      <ProductLocationMapDialog
+        v-model="productLocationMapOpen"
+        :product="productLocationMapProduct"
+      />
+      <LocateDeviceMapDialog
+        v-model="checkedOutLocateOpen"
+        :device="checkedOutLocateDevice"
+      />
     </div>
   </q-page>
 </template>
@@ -734,6 +901,8 @@ import { useCompactGrid } from '../composables/useCompactGrid'
 import { shouldSuppressDuplicateCameraScan } from '../utils/scan-camera'
 import ShortcutHelpDialog from '../components/ShortcutHelpDialog.vue'
 import DefectReportDialog from '../components/DefectReportDialog.vue'
+import ProductLocationMapDialog from '../components/ProductLocationMapDialog.vue'
+import LocateDeviceMapDialog from '../components/LocateDeviceMapDialog.vue'
 import {
   buildScanJobLink,
   isWorkflowIntakeMode,
@@ -778,6 +947,8 @@ const checkInLoadingDeviceId = ref(null)
 const scanToLocationMode = ref(false)
 const pendingLocationForDevice = ref(null) // { scanCode, assetTag, deviceId } | null
 const globalCheckinInitialCount = ref(null)
+const globalCheckinInitialByProduct = ref(null)
+const globalCheckinDeviceSelections = ref({})
 
 const inputMode = ref('keyboard')
 const scanCodeInputRef = ref(null)
@@ -963,6 +1134,7 @@ const workflowIntakeMode = computed(() => isWorkflowIntakeMode(scanAction.value)
 const workflowColumns = computed(() => {
   const columns = [
     { name: 'product', label: t('scan.product'), field: 'product_name', align: 'left', sortable: true },
+    { name: 'location', label: t('scan.location'), field: 'product_id', align: 'left', sortable: true },
     { name: 'required', label: t('scan.required'), field: 'quantity_required', align: 'left', sortable: true },
     { name: 'picked', label: workflowIntakeMode.value ? t('scan.checkedIn') : t('scan.picked'), field: 'quantity_picked', align: 'left', sortable: true },
     { name: 'checked_out', label: t('scan.checkedOut'), field: 'checked_out', align: 'left', sortable: true },
@@ -975,6 +1147,16 @@ const workflowColumns = computed(() => {
   }
   return columns
 })
+
+const globalCheckinColumns = computed(() => [
+  { name: 'product', label: t('scan.product'), field: 'product_name', align: 'left', sortable: true },
+  { name: 'location', label: t('scan.location'), field: 'product_id', align: 'left', sortable: true },
+  { name: 'total', label: t('scan.total'), field: 'total', align: 'left', sortable: true },
+  { name: 'checked_in', label: t('scan.checkedIn'), field: 'checked_in', align: 'left', sortable: true },
+  { name: 'remaining', label: t('scan.remaining'), field: 'remaining', align: 'left', sortable: true },
+  { name: 'progress', label: t('scan.checkedInProgress'), field: 'checked_in', align: 'left' },
+  { name: 'action', label: '', field: 'product_id', align: 'left' },
+])
 
 const scanSubmitLabel = computed(() => {
   if (scanAction.value === 'move') {
@@ -1254,6 +1436,77 @@ const zoneById = computed(() => {
   return map
 })
 
+function buildProductZonePaths(productId) {
+  const devices = store.devices.filter(d => d.product_id === productId && d.location_zone_id)
+  if (!devices.length) return []
+  const zoneIds = [...new Set(devices.map(d => d.location_zone_id))]
+  const zones = store.zones.filter(z => zoneIds.includes(z.id))
+  if (!zones.length) return []
+  const paths = zones.map(zone => {
+    const parts = []
+    let current = zone
+    while (current) {
+      parts.unshift(current.name || '')
+      current = store.zones.find(z => z.id === current.parent_id)
+    }
+    return parts.join(' / ')
+  })
+  return [...new Set(paths)].sort()
+}
+
+function productZonePath(productId) {
+  return buildProductZonePaths(productId).join(', ')
+}
+
+function productLocationCount(productId) {
+  const devices = store.devices.filter(d => d.product_id === productId && d.location_zone_id)
+  return [...new Set(devices.map(d => d.location_zone_id))].length
+}
+
+function zonePathById(id) {
+  if (!id) return ''
+  const zone = zoneById.value.get(id)
+  if (!zone) return ''
+  const parts = []
+  let current = zone
+  while (current) {
+    parts.unshift(current.name || '')
+    current = store.zones.find(z => z.id === current.parent_id)
+  }
+  return parts.join(' / ')
+}
+
+const productLocationMapOpen = ref(false)
+const productLocationMapProduct = ref(null)
+
+function openWorkflowProductLocationMap(row) {
+  const prod = productById.value.get(row.product_id)
+  if (prod) {
+    productLocationMapProduct.value = prod
+    productLocationMapOpen.value = true
+  }
+}
+
+function openGlobalCheckinProductLocationMap(row) {
+  const prod = productById.value.get(row.product_id)
+  if (prod) {
+    productLocationMapProduct.value = prod
+    productLocationMapOpen.value = true
+  }
+}
+
+function nextDeviceForProduct(productId) {
+  return checkedOutDeviceRows.value.find(r => r.product_id === productId) || null
+}
+
+const checkedOutLocateOpen = ref(false)
+const checkedOutLocateDevice = ref(null)
+
+function openCheckedOutDeviceLocate(row) {
+  checkedOutLocateDevice.value = { location_zone_id: row.location_zone_id, asset_tag: row.asset_tag, serial_number: row.serial_number, id: row.id }
+  checkedOutLocateOpen.value = true
+}
+
 const checkedOutDeviceRows = computed(() => {
   return (store.checkedOutDevices || []).map((device) => ({
     id: device.device_id,
@@ -1264,7 +1517,8 @@ const checkedOutDeviceRows = computed(() => {
     rfid: device.rfid,
     product_id: device.product_id,
     product_name: device.product_name || productById.value.get(device.product_id)?.name || `Product #${device.product_id}`,
-    location_name: device.location_name || zoneById.value.get(device.location_zone_id)?.name || t('scan.unassigned'),
+    location_name: zonePathById(device.location_zone_id) || device.location_name || zoneById.value.get(device.location_zone_id)?.name || t('scan.unassigned'),
+    location_zone_id: device.location_zone_id,
     condition: device.condition || '-',
   }))
 })
@@ -1350,6 +1604,48 @@ const pendingWorkflowRequirements = computed(() => workflowSections.value.pendin
 const completedWorkflowRequirements = computed(() => workflowSections.value.completed)
 const workflowSummary = computed(() => summarizeWorkflowRequirements(workflowRequirements.value))
 
+const workflowSortMode = ref('warehouse')
+const workflowSortOptions = computed(() => [
+  { label: t('scan.sortWarehouseOrder'), value: 'warehouse' },
+  { label: t('scan.sortCategory'), value: 'category' },
+  { label: t('scan.sortRemaining'), value: 'remaining' },
+  { label: t('scan.sortAlpha'), value: 'alpha' },
+])
+
+function zonePathForProduct(productId) {
+  return buildProductZonePaths(productId)[0] || ''
+}
+
+function compareWorkflowRequirements(a, b, mode) {
+  if (mode === 'warehouse') {
+    const pathA = zonePathForProduct(a.product_id)
+    const pathB = zonePathForProduct(b.product_id)
+    const pathCmp = pathA.localeCompare(pathB)
+    if (pathCmp !== 0) return pathCmp
+  }
+  if (mode === 'category') {
+    const prodA = productById.value.get(a.product_id)
+    const prodB = productById.value.get(b.product_id)
+    const catA = String(prodA?.category || '').toLowerCase()
+    const catB = String(prodB?.category || '').toLowerCase()
+    const catCmp = catA.localeCompare(catB)
+    if (catCmp !== 0) return catCmp
+  }
+  if (mode === 'remaining') {
+    const remA = Number(a.remaining || 0)
+    const remB = Number(b.remaining || 0)
+    if (remA !== remB) return remB - remA
+  }
+  const nameA = String(a.product_name || '').toLowerCase()
+  const nameB = String(b.product_name || '').toLowerCase()
+  return nameA.localeCompare(nameB)
+}
+
+const sortedPendingWorkflowRequirements = computed(() => {
+  const items = [...pendingWorkflowRequirements.value]
+  return items.sort((a, b) => compareWorkflowRequirements(a, b, workflowSortMode.value))
+})
+
 const globalCheckinProgress = computed(() => {
   if (!globalCheckin.value || globalCheckinInitialCount.value === null) return null
   const total = globalCheckinInitialCount.value
@@ -1358,6 +1654,67 @@ const globalCheckinProgress = computed(() => {
   const percent = total > 0 ? Math.round((checkedIn / total) * 100) : 100
   return { total, remaining, checkedIn, percent }
 })
+
+const globalCheckinRequirements = computed(() => {
+  if (!globalCheckin.value || !globalCheckinInitialByProduct.value) return []
+  const initCounts = globalCheckinInitialByProduct.value
+  const currentCounts = {}
+  for (const row of checkedOutDeviceRows.value) {
+    currentCounts[row.product_id] = (currentCounts[row.product_id] || 0) + 1
+  }
+  return Object.entries(initCounts).map(([productId, total]) => {
+    const remaining = currentCounts[productId] || 0
+    const checkedIn = Math.max(0, total - remaining)
+    const percent = total > 0 ? Math.min(Math.round((checkedIn / total) * 100), 100) : 100
+    const firstDevice = checkedOutDeviceRows.value.find(r => String(r.product_id) === String(productId))
+    return {
+      product_id: Number(productId),
+      product_name: firstDevice?.product_name || '',
+      total,
+      remaining,
+      checked_in: checkedIn,
+      percent,
+    }
+  })
+})
+
+const globalCheckinDeviceOptions = computed(() => {
+  const map = new Map()
+  if (!globalCheckin.value) return map
+  for (const device of checkedOutDeviceRows.value) {
+    const pid = device.product_id
+    if (!map.has(pid)) map.set(pid, [])
+    const scanCode = resolveDeviceScanCode(device)
+    if (scanCode) {
+      map.get(pid).push({
+        label: `${device.asset_tag || device.serial_number || t('scan.unknownAsset')} · ${device.location_name || t('scan.unassigned')}`,
+        value: device.id,
+        scan_code: scanCode,
+      })
+    }
+  }
+  return map
+})
+
+function globalCheckinDeviceOptionsForProduct(productId) {
+  return globalCheckinDeviceOptions.value.get(productId) || []
+}
+
+function updateGlobalCheckinDeviceSelection(productId, deviceId) {
+  globalCheckinDeviceSelections.value = { ...globalCheckinDeviceSelections.value, [productId]: deviceId }
+}
+
+async function checkInSelectedGlobalDevice(req) {
+  const selectedDeviceId = globalCheckinDeviceSelections.value[req.product_id]
+  if (!selectedDeviceId) return
+  const options = globalCheckinDeviceOptionsForProduct(req.product_id)
+  const option = options.find(o => o.value === selectedDeviceId)
+  if (!option) return
+  const device = checkedOutDeviceRows.value.find(d => d.id === selectedDeviceId)
+  if (!device) return
+  await checkInCheckedOutDevice(device)
+  delete globalCheckinDeviceSelections.value[req.product_id]
+}
 
 const availableWorkflowDevicesByProduct = computed(() => {
   const map = new Map()
@@ -1658,9 +2015,13 @@ function onActionChanged() {
 function onGlobalCheckinChanged(value) {
   if (!value) {
     globalCheckinInitialCount.value = null
+    globalCheckinInitialByProduct.value = null
+    globalCheckinDeviceSelections.value = {}
     return
   }
-  globalCheckinInitialCount.value = null // set by refreshCheckedOutForIntake() watcher after fetch completes
+  globalCheckinInitialCount.value = null
+  globalCheckinInitialByProduct.value = null
+  globalCheckinDeviceSelections.value = {} // set by refreshCheckedOutForIntake() watcher after fetch completes
   resetActiveJobSelection()
 }
 
@@ -1703,6 +2064,11 @@ async function refreshCheckedOutForIntake() {
       // Record initial count on first global check-in fetch so progress can be shown
       if (globalCheckinInitialCount.value === null) {
         globalCheckinInitialCount.value = (store.checkedOutDevices || []).length
+        const byProduct = {}
+        for (const d of (store.checkedOutDevices || [])) {
+          byProduct[d.product_id] = (byProduct[d.product_id] || 0) + 1
+        }
+        globalCheckinInitialByProduct.value = byProduct
       }
       return
     }
@@ -2499,6 +2865,11 @@ onBeforeUnmount(() => {
   display: grid;
   grid-template-columns: 1fr;
   gap: 10px;
+}
+@media (min-width: 600px) {
+  .checked-out-grid {
+    grid-template-columns: 1fr 1fr;
+  }
 }
 
 .checked-out-card {
