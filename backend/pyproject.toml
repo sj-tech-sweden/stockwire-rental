@@ -9,7 +9,7 @@ description = "Stockwire Rental backend"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
-  "fastapi==0.139.0",
+  "fastapi==0.139.1",
   "uvicorn[standard]==0.51.0",
   "email-validator==2.3.0",
   "pydantic-settings==2.14.2",
@@ -24,7 +24,7 @@ dependencies = [
   "python3-saml==1.16.0",
   "python-multipart==0.0.32",
   "httpx==0.28.1",
-  "boto3==1.43.46",
+  "boto3==1.43.49",
   "prometheus-fastapi-instrumentator==8.0.2"
 ]
 

@@ -59,9 +59,52 @@
         </q-td>
       </template>
 
+      <template #body-cell-productionplanner="props">
+        <q-td :props="props">
+          <div class="row items-center q-gutter-xs">
+            <q-btn
+              v-if="productionplannerEnabled && props.row.productionplanner_project_id"
+              flat
+              dense
+              round
+              icon="open_in_new"
+              color="positive"
+              :aria-label="t('jobs.openInProductionPlanner')"
+              @click="openProductionPlanner(props.row.productionplanner_project_id)"
+            >
+              <q-tooltip>{{ t('jobs.openInProductionPlanner') }}</q-tooltip>
+            </q-btn>
+            <q-icon v-else name="link_off" color="grey" />
+          </div>
+        </q-td>
+      </template>
+
       <template #body-cell-actions="props">
         <q-td v-if="authStore.canEdit" :props="props" auto-width>
           <q-btn flat round dense icon="add" color="positive" class="q-mr-xs" @click="openNewJob(props.row)" />
+          <q-btn
+            v-if="productionplannerEnabled"
+            flat
+            round
+            dense
+            icon="sync"
+            color="info"
+            class="q-mr-xs"
+            @click="syncToProductionPlanner(props.row)"
+            :label="t('jobs.syncToPP')"
+            :disable="projectsStore.loading"
+          />
+          <q-btn
+            v-if="productionplannerEnabled && props.row.productionplanner_project_id"
+            flat
+            round
+            dense
+            icon="open_in_new"
+            color="primary"
+            class="q-mr-xs"
+            @click="openProductionPlanner(props.row.productionplanner_project_id)"
+            :label="t('jobs.openInPP')"
+          />
           <q-btn flat round dense icon="edit" color="primary" class="q-mr-xs" @click="openEdit(props.row)" />
           <q-btn flat round dense icon="delete" color="negative" @click="confirmDelete(props.row)" />
         </q-td>
@@ -85,6 +128,31 @@
             </q-card-section>
             <q-card-actions v-if="authStore.canEdit" align="right">
               <q-btn flat dense icon="add" color="positive" class="q-mr-xs" @click="openNewJob(props.row)" />
+              <q-btn
+                v-if="productionplannerEnabled"
+                flat
+                dense
+                round
+                icon="sync"
+                color="info"
+                :aria-label="t('jobs.syncToPP')"
+                :disable="projectsStore.loading"
+                @click="syncToProductionPlanner(props.row)"
+              >
+                <q-tooltip>{{ t('jobs.syncToPP') }}</q-tooltip>
+              </q-btn>
+              <q-btn
+                v-if="productionplannerEnabled && props.row.productionplanner_project_id"
+                flat
+                dense
+                round
+                icon="open_in_new"
+                color="primary"
+                :aria-label="t('jobs.openInProductionPlanner')"
+                @click="openProductionPlanner(props.row.productionplanner_project_id)"
+              >
+                <q-tooltip>{{ t('jobs.openInProductionPlanner') }}</q-tooltip>
+              </q-btn>
               <q-btn flat dense icon="edit" color="primary" @click="openEdit(props.row)" />
               <q-btn flat dense icon="delete" color="negative" @click="confirmDelete(props.row)" />
             </q-card-actions>
@@ -118,6 +186,7 @@ import { useProjectsStore } from '../stores/projects'
 import { useVenuesStore } from '../stores/venues'
 import { useInventoryStore } from '../stores/inventory'
 import { useJobsStore } from '../stores/jobs'
+import { useSettingsStore } from '../stores/settings'
 import ProjectDialog from '../components/ProjectDialog.vue'
 import ProjectDeleteDialog from '../components/ProjectDeleteDialog.vue'
 import JobDialog from '../components/JobDialog.vue'
@@ -131,6 +200,9 @@ const projectsStore = useProjectsStore()
 const venuesStore = useVenuesStore()
 const inventoryStore = useInventoryStore()
 const jobsStore = useJobsStore()
+const settingsStore = useSettingsStore()
+
+const productionplannerEnabled = computed(() => settingsStore.integrations?.productionplanner?.enabled === true)
 
 const search = ref('')
 const pageLoading = ref(false)
@@ -152,6 +224,7 @@ const columns = computed(() => [
   { name: 'start_date', label: t('projects.startDate'), field: 'start_date', sortable: true, align: 'left', format: formatDate },
   { name: 'end_date', label: t('projects.endDate'), field: 'end_date', sortable: true, align: 'left', format: formatDate },
   { name: 'job_count', label: t('projects.jobs'), field: 'job_count', sortable: true, align: 'left' },
+  { name: 'productionplanner', label: t('jobs.productionPlanner'), field: 'productionplanner_project_id', sortable: false, align: 'left' },
   { name: 'created_at', label: t('projects.created'), field: 'created_at', sortable: true, align: 'left', format: formatDate },
   { name: 'actions', label: '', field: 'actions', align: 'right' },
 ])
@@ -245,6 +318,28 @@ function navigateToJobs(project) {
   router.push({ path: '/jobs', query: { projectId: project.id } })
 }
 
+async function syncToProductionPlanner(project) {
+  try {
+    const result = await projectsStore.syncProjectToProductionPlanner(project.id)
+    if (result?.success !== true) {
+      console.error('ProductionPlanner sync failed:', result?.message || 'Unknown error')
+      $q.notify({ type: 'negative', message: result?.message || t('projects.syncPPFailed') })
+      return
+    }
+    await projectsStore.fetchAll()
+    $q.notify({ type: 'positive', message: t('projects.syncPPSuccess') })
+  } catch (error) {
+    console.error('Failed to sync to ProductionPlanner:', error)
+    $q.notify({ type: 'negative', message: t('projects.syncPPFailed') })
+  }
+}
+
+function openProductionPlanner(productionPlannerProjectId) {
+  if (productionPlannerProjectId) {
+    window.open(projectsStore.getProductionPlannerUrl(productionPlannerProjectId), '_blank', 'noopener,noreferrer')
+  }
+}
+
 async function loadData() {
   pageLoading.value = true
   try {
@@ -254,6 +349,7 @@ async function loadData() {
       venuesStore.fetchAll(),
       inventoryStore.fetchAll(),
       jobsStore.fetchAll(),
+      settingsStore.fetchIntegrations(),
     ])
   } finally {
     pageLoading.value = false

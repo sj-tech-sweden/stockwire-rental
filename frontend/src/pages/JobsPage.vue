@@ -56,6 +56,26 @@
         </q-td>
       </template>
 
+      <template #body-cell-productionplanner="props">
+        <q-td :props="props">
+          <div class="row items-center q-gutter-xs">
+            <q-btn
+              v-if="productionplannerEnabled && props.row.productionplanner_project_id"
+              flat
+              dense
+              round
+              icon="open_in_new"
+              color="positive"
+              :aria-label="t('jobs.openInProductionPlanner')"
+              @click="openProductionPlanner(props.row.productionplanner_project_id)"
+            >
+              <q-tooltip>{{ t('jobs.openInProductionPlanner') }}</q-tooltip>
+            </q-btn>
+            <q-icon v-else name="link_off" color="grey" />
+          </div>
+        </q-td>
+      </template>
+
       <template #body-cell-sales_price="props">
         <q-td :props="props">
           {{ formatMoney(props.value) }}
@@ -94,6 +114,8 @@
           <q-btn flat round dense icon="visibility" color="grey-7" class="q-mr-xs" :to="`/jobs/${props.row.id}`" />
           <template v-if="authStore.canEdit">
             <q-btn flat round dense icon="edit" color="primary" class="q-mr-xs" @click="openEdit(props.row)" />
+            <q-btn v-if="productionplannerEnabled" flat round dense icon="sync" color="info" class="q-mr-xs" @click="syncToProductionPlanner(props.row)" :label="t('jobs.syncToPP')" :disable="jobsStore.loading" />
+            <q-btn v-if="productionplannerEnabled && props.row.productionplanner_project_id" flat round dense icon="open_in_new" color="primary" class="q-mr-xs" @click="openProductionPlanner(props.row.productionplanner_project_id)" :label="t('jobs.openInPP')" />
             <q-btn flat round dense icon="delete" color="negative" @click="confirmDelete(props.row)" />
           </template>
         </q-td>
@@ -130,8 +152,14 @@
             <q-card-actions align="right">
               <q-btn flat dense icon="visibility" color="grey-7" :to="`/jobs/${props.row.id}`" />
               <template v-if="authStore.canEdit">
-                <q-btn flat dense icon="edit" color="primary" @click="openEdit(props.row)" />
-                <q-btn flat dense icon="delete" color="negative" @click="confirmDelete(props.row)" />
+              <q-btn v-if="productionplannerEnabled" flat dense round icon="sync" color="info" :aria-label="t('jobs.syncToPP')" :disable="jobsStore.loading" @click="syncToProductionPlanner(props.row)">
+                <q-tooltip>{{ t('jobs.syncToPP') }}</q-tooltip>
+              </q-btn>
+              <q-btn v-if="productionplannerEnabled && props.row.productionplanner_project_id" flat dense round icon="open_in_new" color="primary" :aria-label="t('jobs.openInProductionPlanner')" @click="openProductionPlanner(props.row.productionplanner_project_id)">
+                <q-tooltip>{{ t('jobs.openInProductionPlanner') }}</q-tooltip>
+              </q-btn>
+              <q-btn flat dense icon="edit" color="primary" @click="openEdit(props.row)" />
+              <q-btn flat dense icon="delete" color="negative" @click="confirmDelete(props.row)" />
               </template>
             </q-card-actions>
           </q-card>
@@ -159,6 +187,7 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
+import { useQuasar } from 'quasar'
 
 import { JOB_STATUSES, useJobsStore } from '../stores/jobs'
 import { useCustomersStore } from '../stores/customers'
@@ -184,6 +213,7 @@ const projectsStore = useProjectsStore()
 const route = useRoute()
 const router = useRouter()
 const { t, locale } = useI18n()
+const $q = useQuasar()
 
 const pageLoading = ref(false)
 const search = ref('')
@@ -196,6 +226,8 @@ const dialogOpen = ref(false)
 const editing = ref(null)
 const deleteDialogOpen = ref(false)
 const deleteTarget = ref(null)
+
+const productionplannerEnabled = computed(() => settingsStore.integrations?.productionplanner?.enabled === true)
 
 const statusFilters = computed(() => JOB_STATUSES.map(status => ({
   ...status,
@@ -266,6 +298,7 @@ const columns = computed(() => [
   { name: 'venue_name', label: t('jobs.venue'), field: 'venue_name', sortable: true, align: 'left' },
   { name: 'project_name', label: t('jobs.project'), field: 'project_name', sortable: true, align: 'left' },
   { name: 'status', label: t('jobs.status'), field: 'status', sortable: true, align: 'left' },
+  { name: 'productionplanner', label: t('jobs.productionPlanner'), field: 'productionplanner_project_id', sortable: false, align: 'left' },
   { name: 'sales_price', label: t('jobs.salesLabel'), field: 'sales_price', sortable: true, align: 'right' },
   { name: 'invoice_paid', label: t('jobs.invoiceLabel'), field: 'invoice_paid', sortable: true, align: 'left' },
   { name: 'start_date', label: t('jobs.start'), field: 'start_date', sortable: true, align: 'left', format: formatDate },
@@ -306,6 +339,7 @@ async function loadData() {
       customersStore.fetchAll(),
       venuesStore.fetchAll(),
       inventoryStore.fetchAll(),
+      settingsStore.fetchIntegrations(),
       settingsStore.fetchCompanyProfile(),
       projectsStore.fetchAll(),
     ])
@@ -378,6 +412,28 @@ function openEdit(job) {
 function confirmDelete(job) {
   deleteTarget.value = job
   deleteDialogOpen.value = true
+}
+
+async function syncToProductionPlanner(job) {
+  try {
+    const result = await jobsStore.syncJobToProductionPlanner(job.id)
+    if (result?.success !== true) {
+      console.error('ProductionPlanner sync failed:', result?.message || 'Unknown error')
+      $q.notify({ type: 'negative', message: result?.message || t('jobs.syncPPFailed') })
+      return
+    }
+    await jobsStore.fetchAll()
+    $q.notify({ type: 'positive', message: t('jobs.syncPPSuccess') })
+  } catch (error) {
+    console.error('Failed to sync to ProductionPlanner:', error)
+    $q.notify({ type: 'negative', message: t('jobs.syncPPFailed') })
+  }
+}
+
+function openProductionPlanner(productionPlannerProjectId) {
+  if (productionPlannerProjectId) {
+    window.open(jobsStore.getProductionPlannerUrl(productionPlannerProjectId), '_blank', 'noopener,noreferrer')
+  }
 }
 
 function onJobSaved() {

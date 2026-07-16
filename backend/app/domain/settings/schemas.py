@@ -354,12 +354,26 @@ class EventoryInstanceConfig(IntegrationPluginConfig):
     name: str
 
 
+class ProductionPlannerConfig(BaseModel):
+    enabled: bool = False
+    api_key: str | None = None
+    base_url: str = "https://api.productionplanner.io/v1"
+
+
+class ProductionPlannerReadConfig(BaseModel):
+    enabled: bool = False
+    base_url: str = "https://api.productionplanner.io/v1"
+    has_api_key: bool = False
+
+
 class IntegrationsRead(BaseModel):
     eventory_instances: list[EventoryInstanceConfig] = Field(default_factory=list)
+    productionplanner: ProductionPlannerReadConfig = Field(default_factory=ProductionPlannerReadConfig)
 
 
 class IntegrationsUpdate(BaseModel):
     eventory_instances: list[EventoryInstanceConfig] = Field(default_factory=list)
+    productionplanner: ProductionPlannerConfig | None = None
 
 
 class IntegrationConnectionTestRequest(BaseModel):

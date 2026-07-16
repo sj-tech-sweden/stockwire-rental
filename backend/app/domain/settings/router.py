@@ -14,6 +14,7 @@ from urllib.request import Request, build_opener, HTTPRedirectHandler, HTTPHandl
 import os
 from pathlib import Path
 
+import httpx
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 from pydantic import BaseModel
 import redis
@@ -63,6 +64,7 @@ from app.domain.settings.schemas import (
     ProductDefaultsUpdate,
     SmtpSettingsRead,
     SmtpSettingsUpdate,
+    ProductionPlannerConfig,
 )
 from app.domain.storage.models import AssetFile
 from app.domain.storage.schemas import CompanyProfileRead, CompanyProfileUpdate
@@ -74,6 +76,7 @@ router = APIRouter(prefix="/settings", tags=["settings"], dependencies=[Depends(
 ALLOWED_OUTBOUND_INTEGRATION_HOSTS = {
     "api.eventory.se",
     "api.eventory.cc",
+    "api.productionplanner.io",
 }
 
 LOCATION_TYPES_KEY = "inventory.location_types"
@@ -113,9 +116,14 @@ DEFAULT_INTEGRATIONS = {
             "sync_progress_percent": 0,
             "sync_message": None,
         }
-    ]
+    ],
+    "productionplanner": {
+        "enabled": False,
+        "api_key": None,
+        "base_url": "https://api.productionplanner.io/v1",
+    },
 }
-ALLOWED_INTEGRATION_PLUGINS = {"eventory"}
+ALLOWED_INTEGRATION_PLUGINS = {"eventory", "productionplanner"}
 ALLOWED_SYNC_INTERVALS = {0, 15, 30, 60, 120, 240, 480, 1440}
 EVENTORY_SYNC_LOCK = threading.Lock()
 EVENTORY_SYNC_RUNNING: set[str] = set()
@@ -373,12 +381,38 @@ def update_integrations(
                 persisted_by_id.get(str(instance.id or "").strip() or "eventory-main"),
             )
         )
+
+    persisted_pp = persisted.get("productionplanner") if isinstance(persisted, dict) else {}
+    if not isinstance(persisted_pp, dict):
+        persisted_pp = {}
+    pp_config = payload.productionplanner
+    if pp_config is None:
+        pp_config = ProductionPlannerConfig(**persisted_pp)
+    pp_base_url = str(pp_config.base_url or "https://api.productionplanner.io/v1").strip()
+    _validate_url_port(pp_base_url, "ProductionPlanner Base URL")
+    if urlparse(pp_base_url).scheme != "https":
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="ProductionPlanner Base URL must use HTTPS",
+        )
+    _ensure_allowed_integration_host("productionplanner", pp_base_url)
+    pp_base_url = _canonicalize_allowed_integration_url("productionplanner", pp_base_url)
+    incoming_pp_api_key = str(pp_config.api_key or "").strip() or None
+    persisted_pp_api_key = str(persisted_pp.get("api_key") or "").strip() or None
+    pp_api_key = incoming_pp_api_key if incoming_pp_api_key is not None else persisted_pp_api_key
+    productionplanner = {
+        "enabled": bool(pp_config.enabled),
+        "api_key": pp_api_key,
+        "base_url": pp_base_url,
+    }
+
     data = {
         "eventory_instances": normalized_instances,
+        "productionplanner": productionplanner,
     }
     setting.value_json = json.dumps(data)
     db.commit()
-    return IntegrationsRead(**data)
+    return IntegrationsRead(**{**data, "productionplanner": {**productionplanner, "has_api_key": bool(pp_api_key)}})
 
 
 @router.get("/auth-sso", response_model=AuthSSOSettingsRead)
@@ -839,12 +873,27 @@ def test_integration_connection(
         instances = persisted.get("eventory_instances") if isinstance(persisted, dict) else []
         if isinstance(instances, list) and instances:
             persisted_config = instances[0]
+    elif plugin_key == "productionplanner":
+        persisted_pp = persisted.get("productionplanner") if isinstance(persisted, dict) else {}
+        if isinstance(persisted_pp, dict):
+            persisted_config = persisted_pp
+            if "base_url" in persisted_config and not persisted_config.get("api_url"):
+                persisted_config = {**persisted_config, "api_url": persisted_config["base_url"]}
 
     incoming_config = payload.config or IntegrationPluginConfig(**persisted_config)
     normalized = _normalize_plugin_config(incoming_config)
 
     api_url = str(normalized.get("api_url") or "").strip()
     api_key = str(normalized.get("api_key") or "").strip()
+    if plugin_key == "productionplanner" and not api_key:
+        api_key = str(persisted_config.get("api_key") or "").strip()
+
+    if plugin_key == "productionplanner" and not api_key:
+        return IntegrationConnectionTestRead(
+            ok=False,
+            plugin=plugin_key,
+            message="ProductionPlanner API key is required. Please enter and save your API key first.",
+        )
 
     if not api_url:
         return IntegrationConnectionTestRead(
@@ -913,6 +962,76 @@ def test_integration_connection(
         headers["X-API-Key"] = api_key
         headers["Authorization"] = f"Bearer {api_key}"
 
+
+    if plugin_key == "productionplanner":
+        projects_url = api_url.rstrip("/") + "/projects"
+        auth_variants = [
+            {
+                "Authorization": f"Bearer {api_key}",
+                "X-API-Key": api_key,
+                "Accept": "application/json",
+            },
+            {
+                "X-API-Key": api_key,
+                "Accept": "application/json",
+            },
+            {
+                "Authorization": f"Bearer {api_key}",
+                "Accept": "application/json",
+            },
+        ]
+        try:
+            pp_response = None
+            for index, test_headers in enumerate(auth_variants):
+                pp_response = httpx.get(
+                    projects_url,
+                    headers=test_headers,
+                    timeout=8.0,
+                    follow_redirects=False,
+                )
+                if pp_response.status_code < 400:
+                    break
+                if index == 0 and pp_response.status_code not in {401, 403, 500}:
+                    break
+            if pp_response.status_code < 400:
+                return IntegrationConnectionTestRead(
+                    ok=True,
+                    plugin=plugin_key,
+                    message=f"Connected to ProductionPlanner (status {pp_response.status_code})",
+                )
+            body_snippet = ""
+            try:
+                body_snippet = pp_response.text[:200].strip()
+            except UnicodeDecodeError:
+                pass
+            error_detail = f"status {pp_response.status_code}"
+            try:
+                body_json = pp_response.json()
+                if isinstance(body_json, dict):
+                    api_msg = (
+                        body_json.get("message")
+                        or body_json.get("detail")
+                        or body_json.get("error")
+                        or body_json.get("msg")
+                    )
+                    if api_msg:
+                        error_detail = str(api_msg)
+                    elif body_snippet:
+                        error_detail = f"status {pp_response.status_code}: {body_snippet}"
+            except ValueError:
+                if body_snippet:
+                    error_detail = f"status {pp_response.status_code}: {body_snippet}"
+            return IntegrationConnectionTestRead(
+                ok=False,
+                plugin=plugin_key,
+                message=f"ProductionPlanner returned {error_detail}",
+            )
+        except httpx.HTTPError as exc:
+            return IntegrationConnectionTestRead(
+                ok=False,
+                plugin=plugin_key,
+                message=f"Connection error: {exc}",
+            )
     req = Request(api_url, headers=headers, method="HEAD")
     try:
         with _open_outbound_integration_request(req, timeout=5) as response:
@@ -1438,6 +1557,7 @@ def _parse_integrations(raw: str | None) -> dict[str, object]:
     if not raw:
         return {
             "eventory_instances": [_normalize_eventory_instance(EventoryInstanceConfig(**DEFAULT_INTEGRATIONS["eventory_instances"][0]))],
+            "productionplanner": DEFAULT_INTEGRATIONS.get("productionplanner", {}),
         }
     try:
         data = json.loads(raw)
@@ -1468,8 +1588,15 @@ def _parse_integrations(raw: str | None) -> dict[str, object]:
     if not normalized_instances:
         normalized_instances.append(_normalize_eventory_instance(EventoryInstanceConfig(**DEFAULT_INTEGRATIONS["eventory_instances"][0])))
 
+    productionplanner_raw = {}
+    if isinstance(data, dict) and isinstance(data.get("productionplanner"), dict):
+        productionplanner_raw = data.get("productionplanner") or {}
+
+    productionplanner_merged = {**DEFAULT_INTEGRATIONS.get("productionplanner", {}), **productionplanner_raw}
+    productionplanner_merged["has_api_key"] = bool(productionplanner_merged.get("api_key"))
     return {
         "eventory_instances": normalized_instances,
+        "productionplanner": productionplanner_merged,
     }
 
 
@@ -1595,6 +1722,7 @@ def _normalize_eventory_instance(config: EventoryInstanceConfig) -> dict[str, ob
 
 INTEGRATION_ALLOWED_HOSTS: dict[str, set[str]] = {
     "eventory": {"api.eventory.se", "api.eventory.cc"},
+    "productionplanner": {"api.productionplanner.io"},
 }
 
 
