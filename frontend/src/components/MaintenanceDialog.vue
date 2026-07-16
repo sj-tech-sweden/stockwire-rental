@@ -175,14 +175,18 @@ const maintenanceIntervalModeOptions = [
 ]
 
 const productOptions = computed(() =>
-  store.products.map(p => ({ label: `${p.sku} - ${p.name}`, value: p.id }))
+  store.products.filter(p => p.product_type !== 'rental' && !p.is_rental_product)
+    .map(p => ({ label: `${p.sku} - ${p.name}`, value: p.id }))
 )
 
 const zoneById = computed(() => new Map(store.zones.map(zone => [zone.id, zone])))
 const productById = computed(() => new Map(store.products.map(product => [product.id, product])))
 
 const deviceSelectOptions = computed(() =>
-  store.devices.map(d => {
+  store.devices.filter(d => {
+    const product = productById.value.get(d.product_id)
+    return product?.product_type !== 'rental' && !product?.is_rental_product
+  }).map(d => {
     const zone = zoneById.value.get(d.location_zone_id)
     const zoneName = zone?.name || 'Unassigned'
     const product = productById.value.get(d.product_id)

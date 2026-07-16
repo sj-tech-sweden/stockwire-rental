@@ -17,6 +17,20 @@
               :rules="[v => !!v?.trim() || t('scan.required')]"
               ref="defectTitleRef"
             />
+            <q-select
+              v-if="needsDeviceSelect"
+              v-model="selectedDeviceId"
+              :label="t('maintenance.columnDevice')"
+              :options="deviceOptions"
+              outlined
+              dense
+              emit-value
+              map-options
+              use-input
+              input-debounce="300"
+              class="q-mb-sm"
+              :rules="[v => !!v || t('scan.required')]"
+            />
             <q-input
               v-model="defectDescription"
               :label="t('scan.defectDescriptionLabel')"
@@ -67,19 +81,22 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { api } from '../boot/axios'
 import { useI18n } from 'vue-i18n'
 import { Notify } from 'quasar'
+import { useInventoryStore } from '../stores/inventory'
 
 const { t } = useI18n()
+const inventoryStore = useInventoryStore()
 
 
 const props = defineProps({
   modelValue: Boolean,
   deviceId: {
     type: [String, Number],
-    required: true,
+    required: false,
+    default: null,
   },
 })
 
@@ -92,6 +109,12 @@ const emit = defineEmits([
 const defectDialogOpen = computed({
   get: () => props.modelValue,
   set: (value) => emit('update:modelValue', value),
+})
+
+watch(defectDialogOpen, (open) => {
+  if (open && needsDeviceSelect.value && !inventoryStore.devices.length) {
+    inventoryStore.fetchAll()
+  }
 })
 
 const defectSeverityOptions = computed(() => [
@@ -107,9 +130,29 @@ const defectDescription = ref('')
 const defectSeverity = ref('medium')
 const defectFiles = ref(null)
 const defectSaving = ref(false)
+const selectedDeviceId = ref(null)
+
+const needsDeviceSelect = computed(() => !props.deviceId)
+const deviceOptions = computed(() => {
+  const productById = new Map(inventoryStore.products.map(p => [p.id, p]))
+  const zoneById = new Map(inventoryStore.zones.map(z => [z.id, z]))
+  return inventoryStore.devices.filter(d => {
+    const product = productById.get(d.product_id)
+    return product?.product_type !== 'rental' && !product?.is_rental_product
+  }).map(d => {
+    const product = productById.get(d.product_id)
+    const productName = product?.name || ''
+    const zone = zoneById.get(d.location_zone_id)
+    const zoneName = zone?.name || 'Unassigned'
+    return {
+      label: productName ? `${d.asset_tag} · ${productName} (${zoneName})` : `${d.asset_tag} (${zoneName})`,
+      value: d.id,
+    }
+  })
+})
 
 async function submitDefectReport() {
-  const deviceId = props.deviceId
+  const deviceId = props.deviceId || selectedDeviceId.value
   if (!deviceId) return
   const title = String(defectTitle.value || '').trim()
   if (!title) {

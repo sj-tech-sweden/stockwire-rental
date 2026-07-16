@@ -23,6 +23,7 @@ export const useInventoryStore = defineStore('inventory', () => {
   const zoneTree = ref([])
   const maintenances = ref([])
   const schedules = ref([])
+  const defectReports = ref([])
   const auditLogs = ref([])
   const checkedOutDevices = ref([])
   const locationTypes = ref(['rack', 'shelf', 'bin', 'pallet', 'stage', 'truck', 'warehouse', 'workshop'])
@@ -496,6 +497,58 @@ export const useInventoryStore = defineStore('inventory', () => {
     return data
   }
 
+  async function fetchDefectReports() {
+    const response = await api.get('/api/v1/inventory/defect-reports')
+    defectReports.value = response?.data || []
+    await persistFetchAllSnapshot()
+    return defectReports.value
+  }
+
+  async function createDefectReport(payload) {
+    const { data } = await api.post('/api/v1/inventory/defect-reports', payload)
+    defectReports.value = [...defectReports.value, data]
+    await persistFetchAllSnapshot()
+    return data
+  }
+
+  async function updateDefectReport(id, payload) {
+    const { data } = await api.put(`/api/v1/inventory/defect-reports/${id}`, payload)
+    defectReports.value = defectReports.value.map(item => (item.id === id ? data : item))
+    await persistFetchAllSnapshot()
+    return data
+  }
+
+  async function deleteDefectReport(id) {
+    await api.delete(`/api/v1/inventory/defect-reports/${id}`)
+    defectReports.value = defectReports.value.filter(item => item.id !== id)
+    await persistFetchAllSnapshot()
+  }
+
+  async function bulkDeleteDefectReports(ids) {
+    const results = []
+    for (const id of ids) {
+      try {
+        await api.delete(`/api/v1/inventory/defect-reports/${id}`)
+        results.push({ id, success: true })
+      } catch (e) {
+        results.push({ id, success: false, error: e })
+      }
+    }
+    defectReports.value = defectReports.value.filter(item => !ids.includes(item.id))
+    await persistFetchAllSnapshot()
+    return { deleted: results.filter(r => r.success).length, skipped: results.filter(r => !r.success).length }
+  }
+
+  async function fetchDefectComments(defectId) {
+    const { data } = await api.get(`/api/v1/inventory/defect-reports/${defectId}/comments`)
+    return data || []
+  }
+
+  async function createDefectComment(defectId, comment) {
+    const { data } = await api.post(`/api/v1/inventory/defect-reports/${defectId}/comments`, { comment })
+    return data
+  }
+
   async function processScan(payload) {
     if (!isOnline()) {
       await queueMutation({ method: 'post', url: '/api/v1/inventory/scan/process', data: payload })
@@ -708,6 +761,7 @@ export const useInventoryStore = defineStore('inventory', () => {
     zoneTree,
     maintenances,
     schedules,
+    defectReports,
     auditLogs,
     checkedOutDevices,
     locationTypes,
@@ -763,5 +817,12 @@ export const useInventoryStore = defineStore('inventory', () => {
     generateShelves,
     generateProductSku,
     generateDeviceAssetTag,
+    fetchDefectReports,
+    createDefectReport,
+    updateDefectReport,
+    deleteDefectReport,
+    bulkDeleteDefectReports,
+    fetchDefectComments,
+    createDefectComment,
   }
 })
