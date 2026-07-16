@@ -19,8 +19,6 @@
       <q-tab name="products" icon="inventory_2" :label="t('inventory.tabs.products')" />
       <q-tab name="rentals" icon="sell" :label="t('inventory.tabs.rentals')" />
       <q-tab name="devices" icon="memory" :label="t('inventory.tabs.devices')" />
-      <q-tab name="maintenance" icon="build_circle" :label="t('inventory.tabs.maintenance')" />
-      <q-tab name="schedules" icon="event_repeat" :label="t('inventory.tabs.schedules')" />
       <q-tab name="categories" icon="account_tree" :label="t('inventory.tabs.categories')" />
       <q-tab name="locations" icon="warehouse" :label="t('inventory.tabs.locations')" />
       <q-tab name="map" icon="map" :label="t('inventory.tabs.map')" />
@@ -446,167 +444,6 @@
         </q-table>
       </q-tab-panel>
 
-      <q-tab-panel name="maintenance" class="q-pa-none">
-        <div class="row items-center q-mb-sm">
-          <q-input v-model="maintenanceSearch" dense outlined clearable :placeholder="t('inventory.searchMaintenance')" class="col">
-            <template #prepend><q-icon name="search" /></template>
-          </q-input>
-          <q-btn class="q-ml-sm" color="secondary" icon="build" :label="t('inventory.createTask')" unelevated @click="openCreateMaintenance('task')" />
-          <q-btn class="q-ml-sm" color="positive" icon="event_repeat" :label="t('inventory.createSchedule')" unelevated @click="openCreateMaintenance('schedule')" />
-        </div>
-
-        <div v-if="selectedMaintenance.length" class="row items-center q-gutter-sm q-mb-sm">
-          <q-badge color="primary" :label="t('inventory.selectedCount', { count: selectedMaintenance.length })" />
-          <q-btn color="secondary" icon="edit" :label="t('inventory.bulkEdit')" unelevated @click="openBulkEditMaintenance" />
-          <q-btn color="negative" icon="delete" :label="t('inventory.bulkDelete')" unelevated @click="runBulkDeleteMaintenance" />
-          <q-btn flat :label="t('scan.clear')" @click="selectedMaintenance = []" />
-        </div>
-
-        <q-table
-          :rows="filteredMaintenance"
-          :columns="maintenanceColumns"
-          row-key="id"
-          selection="multiple"
-          v-model:selected="selectedMaintenance"
-          :grid="compactGrid"
-          :hide-header="compactGrid"
-          flat
-          bordered
-          :loading="store.loading"
-          :pagination="{ rowsPerPage: 50 }"
-          :rows-per-page-options="[10, 25, 50, 100, 200]"
-          class="ec-card"
-        >
-          <template #body-cell-source="props">
-            <q-td :props="props">
-              <q-badge :label="maintenanceSourceLabel(props.row)" :color="maintenanceSourceColor(props.row)" />
-            </q-td>
-          </template>
-          <template #body-cell-status="props">
-            <q-td :props="props"><q-badge :label="props.value" :color="maintenanceStatusColor(props.value)" /></q-td>
-          </template>
-          <template #body-cell-actions="props">
-            <q-td :props="props" auto-width>
-              <q-btn
-                v-if="props.row.status !== 'completed'"
-                flat dense round icon="task_alt" color="positive" class="q-mr-xs"
-                @click="completeMaintenanceRow(props.row)"
-              />
-              <q-btn
-                v-if="props.row.schedule_id"
-                flat dense round icon="event_repeat" color="positive" class="q-mr-xs"
-                @click="openEditMaintenanceSchedule(props.row)"
-              />
-              <q-btn flat dense round icon="edit" color="primary" @click="openEditMaintenance(props.row)" />
-            </q-td>
-          </template>
-          <template #item="props">
-            <div class="q-pa-xs col-12">
-              <q-card flat bordered>
-                <q-card-section class="q-pb-sm">
-                  <div class="text-subtitle2">{{ props.row.asset_tag || t('inventory.noAssetTag') }}</div>
-                  <div class="text-caption text-grey-7">{{ props.row.product_name || t('finance.unknown') }} · {{ props.row.maintenance_type }}</div>
-                  <div class="q-mt-xs">
-                    <q-badge :label="maintenanceSourceLabel(props.row)" :color="maintenanceSourceColor(props.row)" />
-                  </div>
-                </q-card-section>
-                <q-card-section class="q-pt-none q-pb-sm">
-                  <div class="row q-col-gutter-xs items-center">
-                    <div class="col-12"><q-badge :color="maintenanceStatusColor(props.row.status)" :label="props.row.status" /></div>
-                    <div class="col-12 text-caption">{{ t('inventory.scheduled') }}: {{ props.row.scheduled_date || '-' }}</div>
-                    <div class="col-12 text-caption" v-if="props.row.completed_date">{{ t('inventory.completed') }}: {{ props.row.completed_date }}</div>
-                    <div class="col-12 text-caption" v-if="props.row.notes">{{ props.row.notes }}</div>
-                  </div>
-                </q-card-section>
-                <q-card-actions align="right">
-                  <q-btn
-                    v-if="props.row.status !== 'completed'"
-                    flat dense icon="task_alt" color="positive"
-                    @click="completeMaintenanceRow(props.row)"
-                  />
-                  <q-btn
-                    v-if="props.row.schedule_id"
-                    flat dense icon="event_repeat" color="positive"
-                    @click="openEditMaintenanceSchedule(props.row)"
-                  />
-                  <q-btn flat dense icon="edit" color="primary" @click="openEditMaintenance(props.row)" />
-                </q-card-actions>
-              </q-card>
-            </div>
-          </template>
-        </q-table>
-      </q-tab-panel>
-
-      <q-tab-panel name="schedules" class="q-pa-none">
-        <div class="row items-center q-mb-sm">
-          <q-input v-model="scheduleSearch" dense outlined clearable :placeholder="t('inventory.searchSchedules')" class="col">
-            <template #prepend><q-icon name="search" /></template>
-          </q-input>
-          <q-btn class="q-ml-sm" color="positive" icon="event_repeat" :label="t('inventory.createSchedule')" unelevated @click="openCreateMaintenance('schedule')" />
-        </div>
-
-        <div v-if="selectedSchedules.length" class="row items-center q-gutter-sm q-mb-sm">
-          <q-badge color="primary" :label="t('inventory.selectedCount', { count: selectedSchedules.length })" />
-          <q-btn color="secondary" icon="edit" :label="t('inventory.bulkEdit')" unelevated @click="openBulkEditSchedules" />
-          <q-btn color="negative" icon="delete" :label="t('inventory.bulkDelete')" unelevated @click="runBulkDeleteSchedules" />
-          <q-btn flat :label="t('scan.clear')" @click="selectedSchedules = []" />
-        </div>
-
-        <q-table
-          :rows="filteredSchedules"
-          :columns="scheduleColumns"
-          row-key="id"
-          selection="multiple"
-          v-model:selected="selectedSchedules"
-          :grid="compactGrid"
-          :hide-header="compactGrid"
-          flat
-          bordered
-          :loading="store.loading"
-          :pagination="{ rowsPerPage: 50 }"
-          :rows-per-page-options="[10, 25, 50, 100, 200]"
-          class="ec-card"
-        >
-          <template #body-cell-id="props">
-            <q-td :props="props">#{{ props.row.id }}</q-td>
-          </template>
-          <template #body-cell-interval="props">
-            <q-td :props="props">{{ scheduleIntervalLabel(props.row) }}</q-td>
-          </template>
-          <template #body-cell-task_count="props">
-            <q-td :props="props">{{ scheduleTaskCount(props.row.id) }}</q-td>
-          </template>
-          <template #body-cell-updated_at="props">
-            <q-td :props="props">{{ formatDateTime(props.row.updated_at) }}</q-td>
-          </template>
-          <template #body-cell-actions="props">
-            <q-td :props="props" auto-width>
-              <q-btn flat dense round icon="edit" color="primary" @click="openEditMaintenanceSchedule(props.row)" />
-            </q-td>
-          </template>
-          <template #item="props">
-            <div class="q-pa-xs col-12">
-              <q-card flat bordered>
-                <q-card-section class="q-pb-sm">
-                  <div class="text-subtitle2">{{ t('inventory.scheduleLabel', { id: props.row.id }) }}</div>
-                  <div class="text-caption text-grey-7">{{ props.row.maintenance_type || '-' }} · {{ scheduleIntervalLabel(props.row) }}</div>
-                </q-card-section>
-                <q-card-section class="q-pt-none q-pb-sm">
-                  <div class="row q-col-gutter-xs items-center">
-                    <div class="col-12 text-caption">{{ t('inventory.tasks') }}: {{ scheduleTaskCount(props.row.id) }}</div>
-                    <div class="col-12 text-caption">{{ t('inventory.scheduled') }}: {{ props.row.scheduled_date || '-' }}</div>
-                    <div class="col-12 text-caption" v-if="props.row.notes">{{ props.row.notes }}</div>
-                  </div>
-                </q-card-section>
-                <q-card-actions align="right">
-                  <q-btn flat dense icon="edit" color="primary" @click="openEditMaintenanceSchedule(props.row)" />
-                </q-card-actions>
-              </q-card>
-            </div>
-          </template>
-        </q-table>
-      </q-tab-panel>
-
       <q-tab-panel name="categories" class="q-pa-none">
         <div class="row items-center q-mb-sm">
           <q-btn color="primary" icon="add" :label="t('inventory.newCategory')" unelevated @click="openCreateCategory" />
@@ -834,17 +671,9 @@
       @saved="onQuickCreateDone"
     />
 
-    <MaintenanceDialog v-model="maintenanceDialogOpen" :task="maintenanceEditing" :mode="maintenanceDialogMode" :initial-device-id="maintenanceInitialDeviceId" @saved="onMaintenanceSaved" />
-    <MaintenanceScheduleDialog v-model="maintenanceScheduleDialogOpen" :schedule="maintenanceScheduleEditing" @saved="onMaintenanceScheduleSaved" />
-    <MaintenanceCompleteDialog v-model="maintenanceCompleteDialogOpen" :task="maintenanceCompleteTarget" @saved="onMaintenanceCompleteSaved" />
-
     <BulkProductDialog v-model="bulkProductDialogOpen" :selected-products="selectedProducts" @saved="onBulkProductsSaved" />
 
     <BulkDeviceDialog v-model="bulkDeviceDialogOpen" :selected-devices="selectedDevices" @saved="onBulkDevicesSaved" />
-
-    <BulkMaintenanceDialog v-model="bulkMaintenanceDialogOpen" :selected-tasks="selectedMaintenance" @saved="onBulkMaintenanceSaved" />
-
-    <BulkScheduleDialog v-model="bulkScheduleDialogOpen" :selected-schedules="selectedSchedules" @saved="onBulkSchedulesSaved" />
 
     <DeviceInfoDialog
       v-model="deviceInfoDialogOpen"
@@ -855,9 +684,6 @@
       @view-device="openDeviceInfoFromLink"
       @open-job="openJobFromLink"
       @report-defect="(id) => openDefectDialog(id)"
-      @create-maintenance="(id) => openCreateMaintenance('task', id)"
-      @edit-maintenance="openEditMaintenance"
-      @complete-maintenance="completeMaintenanceRow"
     />
 
     <ProductInfoDialog
@@ -940,13 +766,8 @@ import DefectReportDialog from '../components/DefectReportDialog.vue'
 import RentalProductDialog from '../components/RentalProductDialog.vue'
 import RentalProductInfoDialog from '../components/RentalProductInfoDialog.vue'
 import ProductAvailabilityDialog from '../components/ProductAvailabilityDialog.vue'
-import MaintenanceDialog from '../components/MaintenanceDialog.vue'
-import MaintenanceScheduleDialog from '../components/MaintenanceScheduleDialog.vue'
-import MaintenanceCompleteDialog from '../components/MaintenanceCompleteDialog.vue'
 import BulkProductDialog from '../components/BulkProductDialog.vue'
 import BulkDeviceDialog from '../components/BulkDeviceDialog.vue'
-import BulkMaintenanceDialog from '../components/BulkMaintenanceDialog.vue'
-import BulkScheduleDialog from '../components/BulkScheduleDialog.vue'
 import CategoryDialog from '../components/CategoryDialog.vue'
 import DeleteCategoryDialog from '../components/DeleteCategoryDialog.vue'
 import LocationDialog from '../components/LocationDialog.vue'
@@ -1004,13 +825,9 @@ const deviceStatusFilter = ref(null)
 const deviceConditionFilter = ref(null)
 const deviceLocationFilter = ref(undefined)
 const deviceZoneFilter = ref(null)
-const maintenanceSearch = ref('')
-const scheduleSearch = ref('')
 const selectedProducts = ref([])
 const selectedDevices = ref([])
 const selectedLocationIds = ref([])
-const selectedMaintenance = ref([])
-const selectedSchedules = ref([])
 const rentalProductSearch = ref('')
 const rentalProductSupplierFilter = ref(null)
 const rentalProductSyncFilter = ref('all')
@@ -1033,8 +850,6 @@ const generateShelvesTargetRacks = ref([])
 
 const bulkProductDialogOpen = ref(false)
 const bulkDeviceDialogOpen = ref(false)
-const bulkMaintenanceDialogOpen = ref(false)
-const bulkScheduleDialogOpen = ref(false)
 
 const productTypeOptions = [
   { label: t('inventory.productTypeEquipment'), value: 'equipment' },
@@ -1050,28 +865,6 @@ const conditionOptions = [
   { label: t('inventory.conditionGood'), value: 'good' },
   { label: t('inventory.conditionFair'), value: 'fair' },
   { label: t('inventory.conditionDamaged'), value: 'damaged' },
-]
-
-const maintenanceStatusOptions = [
-  { label: t('inventory.maintenanceStatusScheduled'), value: 'scheduled' },
-  { label: t('inventory.maintenanceStatusInProgress'), value: 'in_progress' },
-  { label: t('inventory.maintenanceStatusCompleted'), value: 'completed' },
-  { label: t('inventory.maintenanceStatusCanceled'), value: 'canceled' },
-]
-
-const maintenanceTypeOptions = [
-  { label: t('inventory.maintenanceTypeInspection'), value: 'inspection' },
-  { label: t('inventory.maintenanceTypeCleaning'), value: 'cleaning' },
-  { label: t('inventory.maintenanceTypeRepair'), value: 'repair' },
-  { label: t('inventory.maintenanceTypeCalibration'), value: 'calibration' },
-  { label: t('inventory.maintenanceTypePatTest'), value: 'pat_test' },
-  { label: t('inventory.maintenanceTypeScheduled'), value: 'scheduled' },
-  { label: t('inventory.maintenanceTypeModification'), value: 'modification' },
-]
-
-const maintenanceIntervalModeOptions = [
-  { label: t('inventory.calendarTime'), value: 'calendar' },
-  { label: t('inventory.runtimeHours'), value: 'runtime' },
 ]
 
 const productColumns = [
@@ -1139,29 +932,6 @@ const deviceColumns = [
   { name: 'current_job_code', label: t('inventory.columnCurrentJob'), field: 'current_job_code', sortable: true, align: 'left' },
   { name: 'location_zone_id', label: t('inventory.columnLocation'), field: 'location_zone_id', sortable: true, align: 'left' },
   { name: 'usage_hours', label: t('inventory.columnHours'), field: 'usage_hours', sortable: true, align: 'left' },
-  { name: 'actions', label: '', field: 'actions', align: 'right' },
-]
-
-const maintenanceColumns = [
-  { name: 'asset_tag', label: t('inventory.columnAssetTag'), field: 'asset_tag', sortable: true, align: 'left' },
-  { name: 'product_name', label: t('inventory.columnProduct'), field: 'product_name', sortable: true, align: 'left' },
-  { name: 'maintenance_type', label: t('inventory.columnType'), field: 'maintenance_type', sortable: true, align: 'left' },
-  { name: 'source', label: t('inventory.columnSource'), field: row => maintenanceSourceLabel(row), sortable: false, align: 'left' },
-  { name: 'status', label: t('inventory.columnStatus'), field: 'status', sortable: true, align: 'left' },
-  { name: 'scheduled_date', label: t('inventory.columnScheduled'), field: 'scheduled_date', sortable: true, align: 'left' },
-  { name: 'completed_date', label: t('inventory.columnCompleted'), field: 'completed_date', sortable: true, align: 'left' },
-  { name: 'notes', label: t('inventory.columnNotes'), field: 'notes', sortable: false, align: 'left' },
-  { name: 'actions', label: '', field: 'actions', align: 'right' },
-]
-
-const scheduleColumns = [
-  { name: 'id', label: t('inventory.columnId'), field: 'id', sortable: true, align: 'left' },
-  { name: 'maintenance_type', label: t('inventory.columnType'), field: 'maintenance_type', sortable: true, align: 'left' },
-  { name: 'interval', label: t('inventory.columnInterval'), field: row => scheduleIntervalLabel(row), sortable: false, align: 'left' },
-  { name: 'scheduled_date', label: t('inventory.columnScheduled'), field: 'scheduled_date', sortable: true, align: 'left' },
-  { name: 'task_count', label: t('inventory.columnLinkedTasks'), field: row => scheduleTaskCount(row.id), sortable: false, align: 'left' },
-  { name: 'notes', label: t('inventory.columnNotes'), field: 'notes', sortable: false, align: 'left' },
-  { name: 'updated_at', label: t('inventory.columnUpdated'), field: 'updated_at', sortable: true, align: 'left' },
   { name: 'actions', label: '', field: 'actions', align: 'right' },
 ]
 
@@ -1554,39 +1324,6 @@ function openDeviceEditorFromLink(deviceId) {
   openEditDevice(device)
 }
 
-const filteredMaintenance = computed(() => {
-  const needle = maintenanceSearch.value.trim().toLowerCase()
-  if (!needle) return store.maintenances
-  return store.maintenances.filter(item =>
-    [item.asset_tag, item.product_name, item.maintenance_type, item.status, item.notes]
-      .filter(Boolean)
-      .some(value => String(value).toLowerCase().includes(needle))
-  )
-})
-
-function scheduleTaskCount(scheduleId) {
-  const targetId = Number(scheduleId || 0)
-  if (!targetId) return 0
-  return (store.maintenances || []).filter(item => Number(item?.schedule_id || 0) === targetId).length
-}
-
-function scheduleIntervalLabel(schedule) {
-  const mode = String(schedule?.interval_mode || '').toLowerCase()
-  const value = Number(schedule?.interval_value)
-  if (!Number.isFinite(value) || value <= 0) return mode === 'runtime' ? 'Runtime' : 'Calendar'
-  return mode === 'runtime' ? `Every ${value}h` : `Every ${value}d`
-}
-
-const filteredSchedules = computed(() => {
-  const needle = scheduleSearch.value.trim().toLowerCase()
-  if (!needle) return store.schedules
-  return store.schedules.filter(item =>
-    [item.id, item.maintenance_type, item.interval_mode, item.interval_value, item.scheduled_date, item.notes]
-      .filter(value => value !== null && value !== undefined)
-      .some(value => String(value).toLowerCase().includes(needle))
-  )
-})
-
 const categoryById = computed(() => {
   const map = new Map()
   for (const category of store.categories) map.set(category.id, category)
@@ -1956,75 +1693,6 @@ function zoneTypeLabel(value) {
   return mapping[value] || value
 }
 
-function maintenanceStatusColor(status) {
-  if (status === 'completed') return 'positive'
-  if (status === 'in_progress') return 'warning'
-  if (status === 'canceled') return 'grey'
-  return 'info'
-}
-
-function maintenanceSourceLabel(row) {
-  const scheduleId = Number(row?.schedule_id || 0)
-  return scheduleId ? `Schedule #${scheduleId}` : 'Manual'
-}
-
-function maintenanceSourceColor(row) {
-  return Number(row?.schedule_id || 0) ? 'secondary' : 'grey-7'
-}
-
-const maintenanceDialogOpen = ref(false)
-const maintenanceEditing = ref(null)
-const maintenanceDialogMode = ref('schedule')
-const maintenanceInitialDeviceId = ref(null)
-const maintenanceScheduleDialogOpen = ref(false)
-const maintenanceScheduleEditing = ref(null)
-const maintenanceCompleteDialogOpen = ref(false)
-const maintenanceCompleteTarget = ref(null)
-
-function openCreateMaintenance(mode = 'schedule', preferredDeviceId = null) {
-  maintenanceDialogMode.value = mode === 'task' ? 'task' : 'schedule'
-  maintenanceEditing.value = null
-  maintenanceInitialDeviceId.value = preferredDeviceId || null
-  maintenanceDialogOpen.value = true
-}
-
-function openEditMaintenance(item) {
-  maintenanceEditing.value = item
-  maintenanceDialogOpen.value = true
-}
-
-async function openEditMaintenanceSchedule(item) {
-  const scheduleId = Number(item?.schedule_id || item?.id || 0)
-  if (!scheduleId) return
-  try {
-    const schedule = await store.fetchMaintenanceSchedule(scheduleId)
-    maintenanceScheduleEditing.value = schedule
-    maintenanceScheduleDialogOpen.value = true
-  } catch (error) {
-    $q.notify({ type: 'negative', message: error?.response?.data?.detail || 'Failed to load maintenance schedule' })
-  }
-}
-
-async function completeMaintenanceRow(item) {
-  maintenanceCompleteTarget.value = item || null
-  maintenanceCompleteDialogOpen.value = true
-}
-
-function onMaintenanceSaved() {
-  maintenanceDialogOpen.value = false
-  maintenanceEditing.value = null
-}
-
-function onMaintenanceScheduleSaved() {
-  maintenanceScheduleDialogOpen.value = false
-  maintenanceScheduleEditing.value = null
-}
-
-function onMaintenanceCompleteSaved() {
-  maintenanceCompleteDialogOpen.value = false
-  maintenanceCompleteTarget.value = null
-}
-
 function selectedRowIds(rows) {
   return [...new Set((rows || []).map(row => Number(row?.id || 0)).filter(Boolean))]
 }
@@ -2176,56 +1844,6 @@ async function runBulkDeleteDevices() {
     $q.notify({ type: 'positive', message: `Devices deleted: ${result?.deleted || 0}` })
   } catch (error) {
     $q.notify({ type: 'negative', message: error?.response?.data?.detail || 'Bulk device delete failed' })
-  } finally {
-    saving.value = false
-  }
-}
-
-function openBulkEditMaintenance() {
-  bulkMaintenanceDialogOpen.value = true
-}
-
-function onBulkMaintenanceSaved() {
-  selectedMaintenance.value = []
-}
-
-async function runBulkDeleteMaintenance() {
-  const ids = selectedRowIds(selectedMaintenance.value)
-  if (!ids.length) return
-  if (!window.confirm(`Delete ${ids.length} selected maintenance tasks?`)) return
-
-  saving.value = true
-  try {
-    const result = await store.bulkDeleteMaintenance(ids)
-    selectedMaintenance.value = []
-    $q.notify({ type: 'positive', message: `Maintenance tasks deleted: ${result?.deleted || 0}` })
-  } catch (error) {
-    $q.notify({ type: 'negative', message: error?.response?.data?.detail || 'Bulk maintenance delete failed' })
-  } finally {
-    saving.value = false
-  }
-}
-
-function openBulkEditSchedules() {
-  bulkScheduleDialogOpen.value = true
-}
-
-function onBulkSchedulesSaved() {
-  selectedSchedules.value = []
-}
-
-async function runBulkDeleteSchedules() {
-  const ids = selectedRowIds(selectedSchedules.value)
-  if (!ids.length) return
-  if (!window.confirm(`Delete ${ids.length} selected schedules? Linked maintenance tasks stay unchanged.`)) return
-
-  saving.value = true
-  try {
-    const result = await store.bulkDeleteMaintenanceSchedules(ids)
-    selectedSchedules.value = []
-    $q.notify({ type: 'positive', message: `Schedules deleted: ${result?.deleted || 0}, skipped: ${result?.skipped || 0}` })
-  } catch (error) {
-    $q.notify({ type: 'negative', message: error?.response?.data?.detail || 'Bulk schedule delete failed' })
   } finally {
     saving.value = false
   }

@@ -17,6 +17,20 @@
               :rules="[v => !!v?.trim() || t('scan.required')]"
               ref="defectTitleRef"
             />
+            <q-select
+              v-if="needsDeviceSelect"
+              v-model="selectedDeviceId"
+              :label="t('maintenance.columnDevice')"
+              :options="deviceOptions"
+              outlined
+              dense
+              emit-value
+              map-options
+              use-input
+              input-debounce="300"
+              class="q-mb-sm"
+              :rules="[v => !!v || t('scan.required')]"
+            />
             <q-input
               v-model="defectDescription"
               :label="t('scan.defectDescriptionLabel')"
@@ -71,15 +85,18 @@ import { computed, ref } from 'vue'
 import { api } from '../boot/axios'
 import { useI18n } from 'vue-i18n'
 import { Notify } from 'quasar'
+import { useInventoryStore } from '../stores/inventory'
 
 const { t } = useI18n()
+const inventoryStore = useInventoryStore()
 
 
 const props = defineProps({
   modelValue: Boolean,
   deviceId: {
     type: [String, Number],
-    required: true,
+    required: false,
+    default: null,
   },
 })
 
@@ -107,9 +124,18 @@ const defectDescription = ref('')
 const defectSeverity = ref('medium')
 const defectFiles = ref(null)
 const defectSaving = ref(false)
+const selectedDeviceId = ref(null)
+
+const needsDeviceSelect = computed(() => !props.deviceId)
+const deviceOptions = computed(() =>
+  inventoryStore.devices.map(d => ({
+    label: `${d.asset_tag || 'N/A'} — ${d.product_name || ''}`.trim(),
+    value: d.id,
+  }))
+)
 
 async function submitDefectReport() {
-  const deviceId = props.deviceId
+  const deviceId = props.deviceId || selectedDeviceId.value
   if (!deviceId) return
   const title = String(defectTitle.value || '').trim()
   if (!title) {
