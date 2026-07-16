@@ -81,7 +81,7 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { api } from '../boot/axios'
 import { useI18n } from 'vue-i18n'
 import { Notify } from 'quasar'
@@ -111,6 +111,12 @@ const defectDialogOpen = computed({
   set: (value) => emit('update:modelValue', value),
 })
 
+watch(defectDialogOpen, (open) => {
+  if (open && needsDeviceSelect.value && !inventoryStore.devices.length) {
+    inventoryStore.fetchAll()
+  }
+})
+
 const defectSeverityOptions = computed(() => [
   { label: t('scan.defectSeverityLow'), value: 'low' },
   { label: t('scan.defectSeverityMedium'), value: 'medium' },
@@ -127,12 +133,23 @@ const defectSaving = ref(false)
 const selectedDeviceId = ref(null)
 
 const needsDeviceSelect = computed(() => !props.deviceId)
-const deviceOptions = computed(() =>
-  inventoryStore.devices.map(d => ({
-    label: `${d.asset_tag || 'N/A'} — ${d.product_name || ''}`.trim(),
-    value: d.id,
-  }))
-)
+const deviceOptions = computed(() => {
+  const productById = new Map(inventoryStore.products.map(p => [p.id, p]))
+  const zoneById = new Map(inventoryStore.zones.map(z => [z.id, z]))
+  return inventoryStore.devices.filter(d => {
+    const product = productById.get(d.product_id)
+    return product?.product_type !== 'rental' && !product?.is_rental_product
+  }).map(d => {
+    const product = productById.get(d.product_id)
+    const productName = product?.name || ''
+    const zone = zoneById.get(d.location_zone_id)
+    const zoneName = zone?.name || 'Unassigned'
+    return {
+      label: productName ? `${d.asset_tag} · ${productName} (${zoneName})` : `${d.asset_tag} (${zoneName})`,
+      value: d.id,
+    }
+  })
+})
 
 async function submitDefectReport() {
   const deviceId = props.deviceId || selectedDeviceId.value
