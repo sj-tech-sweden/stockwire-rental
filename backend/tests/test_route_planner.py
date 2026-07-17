@@ -1,7 +1,5 @@
 """Route Planner API integration tests."""
 
-import pytest
-
 
 # ---------------------------------------------------------------------------
 # Helpers – create prerequisite data (products, customers, venues, jobs)
