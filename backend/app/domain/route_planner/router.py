@@ -11,7 +11,6 @@ from app.domain.auth.deps import get_current_user, require_editor
 from app.domain.auth.models import User
 from app.domain.inventory.models import Product
 from app.domain.jobs.models import Job, JobRequirement
-from app.domain.venues.models import Venue
 from app.domain.route_planner.models import DeliveryRoute, RouteStop, RouteVehicle, Vehicle
 from app.domain.route_planner.schemas import (
     GoogleMapsExportRequest,
