@@ -65,7 +65,9 @@ class TwentyClient:
                     await asyncio.sleep(RETRY_BACKOFF[attempt])
                     continue
                 raise
-        raise last_exc  # type: ignore[misc]
+        if last_exc is not None:
+            raise last_exc
+        raise RuntimeError(f"Twenty {method} {url} failed after {MAX_RETRIES} retries")
 
     async def test_connection(self) -> dict[str, Any]:
         resp = await self._request_with_retry("GET", f"{self.base_url}/metadata")
