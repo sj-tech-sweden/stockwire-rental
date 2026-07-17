@@ -552,6 +552,8 @@ export default {
         apiKey: 'API-nyckel',
         apiKeyPlaceholder: 'twenty_...',
         apiKeySaved: '(API-nyckel sparad)',
+        apiKeyHint: 'Hämta din API-nyckel från Twenty CRM Inställningar > APIs & Webhooks',
+        apiKeySavedHint: 'En API-nyckel är lagrad. Ange en ny nyckel för att ersätta den.',
         baseUrl: 'API-basURL',
         baseUrlDefault: 'https://api.twenty.com',
         testConnection: 'Testa anslutning',

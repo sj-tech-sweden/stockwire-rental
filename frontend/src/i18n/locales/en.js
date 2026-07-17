@@ -553,6 +553,8 @@ export default {
         apiKey: 'API Key',
         apiKeyPlaceholder: 'twenty_...',
         apiKeySaved: '(API key saved)',
+        apiKeyHint: 'Get your API key from Twenty CRM Settings > APIs & Webhooks',
+        apiKeySavedHint: 'An API key is stored. Enter a new key to replace it.',
         baseUrl: 'API Base URL',
         baseUrlDefault: 'https://api.twenty.com',
         testConnection: 'Test connection',

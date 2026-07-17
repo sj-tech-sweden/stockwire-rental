@@ -1,6 +1,7 @@
 from datetime import datetime
+from typing import Literal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 
 
 class TwentyConfigBase(BaseModel):
@@ -8,6 +9,21 @@ class TwentyConfigBase(BaseModel):
     base_url: str = "https://api.twenty.com"
     workspace_id: str | None = None
     is_active: bool = True
+
+    @field_validator("api_key")
+    @classmethod
+    def api_key_must_not_be_empty(cls, v: str) -> str:
+        if not v or not v.strip():
+            raise ValueError("API key must not be empty")
+        return v.strip()
+
+    @field_validator("base_url")
+    @classmethod
+    def base_url_must_be_valid(cls, v: str) -> str:
+        v = v.strip().rstrip("/")
+        if not v.startswith(("http://", "https://")):
+            raise ValueError("Base URL must start with http:// or https://")
+        return v
 
 
 class TwentyConfigCreate(TwentyConfigBase):
@@ -19,6 +35,17 @@ class TwentyConfigUpdate(BaseModel):
     base_url: str | None = None
     workspace_id: str | None = None
     is_active: bool | None = None
+    clear_api_key: bool = False
+
+    @field_validator("base_url")
+    @classmethod
+    def base_url_must_be_valid(cls, v: str | None) -> str | None:
+        if v is None:
+            return v
+        v = v.strip().rstrip("/")
+        if not v.startswith(("http://", "https://")):
+            raise ValueError("Base URL must start with http:// or https://")
+        return v
 
 
 class TwentyConfigRead(BaseModel):
@@ -62,5 +89,15 @@ class TwentySyncStatus(BaseModel):
 
 
 class TwentySyncTrigger(BaseModel):
-    direction: str = "outbound"  # "outbound", "inbound", "both"
+    direction: Literal["outbound", "inbound", "both"] = "outbound"
     entity_types: list[str] | None = None  # None = all
+
+    @field_validator("entity_types")
+    @classmethod
+    def validate_entity_types(cls, v: list[str] | None) -> list[str] | None:
+        if v is not None:
+            valid = {"customer", "job"}
+            invalid = set(v) - valid
+            if invalid:
+                raise ValueError(f"Invalid entity types: {', '.join(sorted(invalid))}. Valid: {', '.join(sorted(valid))}")
+        return v

@@ -1,4 +1,3 @@
-import asyncio
 import logging
 from datetime import datetime
 
@@ -18,6 +17,8 @@ STAGE_MAP = {
     "completed": "WON",
     "cancelled": "LOST",
 }
+
+SYNC_PAGE_SIZE = 50
 
 
 def _extract_twenty_id(response: dict, object_name: str) -> str | None:
@@ -57,7 +58,6 @@ def _log_sync(
         payload=payload,
     )
     db.add(log)
-    db.commit()
 
 
 def _customer_to_company_payload(customer: Customer) -> dict:
@@ -94,10 +94,26 @@ def _job_to_opportunity_payload(job: Job) -> dict:
         "stage": STAGE_MAP.get(job.status, "SCREENING"),
     }
     if job.sales_price:
-        payload["amount"] = {"amountMicros": int(float(job.sales_price) * 1_000_000)}
+        micros = int(round(float(job.sales_price) * 1_000_000))
+        payload["amount"] = {"amountMicros": micros}
     if job.end_date:
         payload["closeDate"] = job.end_date.isoformat()
     return payload
+
+
+async def _find_existing_person(client: TwentyClient, company_id: str, email: str | None) -> str | None:
+    if not email:
+        return None
+    try:
+        people = await client.search_people(email=email)
+        for person_edge in people:
+            person = person_edge.get("node", person_edge)
+            company_rel = person.get("company") or {}
+            if company_rel.get("id") == company_id:
+                return person.get("id")
+    except Exception:
+        logger.debug("Could not search for existing person with email %s", email)
+    return None
 
 
 async def sync_customer_outbound(db: Session, client: TwentyClient, customer: Customer) -> None:
@@ -106,7 +122,6 @@ async def sync_customer_outbound(db: Session, client: TwentyClient, customer: Cu
         person_data = _customer_to_person_payload(customer)
 
         twenty_company_id = None
-        twenty_person_id = None
 
         if customer.external_source == "twenty" and customer.external_reference:
             twenty_company_id = customer.external_reference
@@ -121,15 +136,25 @@ async def sync_customer_outbound(db: Session, client: TwentyClient, customer: Cu
 
         if twenty_company_id and person_data.get("name"):
             person_data["companyId"] = twenty_company_id
-            if twenty_person_id is None:
-                result = await client.create_object("people", person_data)
-                twenty_person_id = _extract_twenty_id(result, "people")
+            existing_person_id = await _find_existing_person(client, twenty_company_id, customer.email)
+            if existing_person_id:
+                await client.update_object("people", existing_person_id, person_data)
+            else:
+                try:
+                    result = await client.create_object("people", person_data)
+                    _extract_twenty_id(result, "people")
+                except Exception as create_err:
+                    err_str = str(create_err).lower()
+                    if "duplicate" in err_str or "400" in err_str:
+                        logger.debug("Person may already exist for customer %s, skipping create", customer.id)
+                    else:
+                        raise
 
         db.commit()
     except Exception as e:
         logger.exception("Failed to sync customer %s to Twenty", customer.id)
         _log_sync(db, "outbound", "customer", customer.id, None, "update", "failed", str(e))
-        db.rollback()
+        db.commit()
         raise
 
 
@@ -159,7 +184,7 @@ async def sync_job_outbound(db: Session, client: TwentyClient, job: Job) -> None
     except Exception as e:
         logger.exception("Failed to sync job %s to Twenty", job.id)
         _log_sync(db, "outbound", "job", job.id, None, "update", "failed", str(e))
-        db.rollback()
+        db.commit()
         raise
 
 
@@ -252,7 +277,7 @@ async def sync_job_inbound(db: Session, client: TwentyClient, twenty_opp: dict) 
         amount_micros = raw_amount.get("amountMicros")
         amount = float(amount_micros) / 1_000_000 if amount_micros else 0
     elif raw_amount:
-        amount = float(raw_amount) / 1_000_000
+        amount = float(raw_amount)
     else:
         amount = 0
 
@@ -271,7 +296,6 @@ async def sync_job_inbound(db: Session, client: TwentyClient, twenty_opp: dict) 
             status=stockwire_status,
             sales_price=amount or None,
             end_date=datetime.fromisoformat(twenty_opp["closeDate"]).date() if twenty_opp.get("closeDate") else None,
-            description=twenty_opp.get("description", ""),
             external_source="twenty",
             external_reference=opp_id,
         )

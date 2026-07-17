@@ -935,7 +935,7 @@
           </div>
           <div class="text-caption text-grey-7 q-mb-sm">{{ t('settings.integrations.productionplanner.description') }}</div>
 
-          <div v-if="integrationsDraft.productionplanner.enabled" class="q-pa-sm q-mb-sm" style="border: 1px solid #d7dee6; border-radius: 10px">
+          <div class="q-pa-sm q-mb-sm" style="border: 1px solid #d7dee6; border-radius: 10px">
             <div class="row q-col-gutter-sm q-mb-sm">
               <div class="col-12 col-md-6">
                 <q-input
@@ -958,7 +958,7 @@
                 />
               </div>
             </div>
-            <div class="row items-center q-gutter-sm">
+            <div v-if="integrationsDraft.productionplanner.enabled" class="row items-center q-gutter-sm">
               <q-btn
                 color="secondary"
                 icon="wifi_tethering"
@@ -993,13 +993,14 @@
           </div>
           <div class="text-caption text-grey-7 q-mb-sm">{{ t('settings.integrations.twenty.description') }}</div>
 
-          <div v-if="twentyDraft.enabled" class="q-pa-sm q-mb-sm" style="border: 1px solid #d7dee6; border-radius: 10px">
+          <div class="q-pa-sm q-mb-sm" style="border: 1px solid #d7dee6; border-radius: 10px">
             <div class="row q-col-gutter-sm q-mb-sm">
               <div class="col-12 col-md-6">
                 <q-input
                   v-model="twentyDraft.api_key"
                   :label="t('settings.integrations.twenty.apiKey')"
                   :placeholder="twentyDraft.has_api_key && !twentyDraft.api_key ? t('settings.integrations.twenty.apiKeySaved') : t('settings.integrations.twenty.apiKeyPlaceholder')"
+                  :hint="twentyDraft.has_api_key && !twentyDraft.api_key ? t('settings.integrations.twenty.apiKeySavedHint') : t('settings.integrations.twenty.apiKeyHint')"
                   outlined
                   dense
                   type="password"
@@ -1015,7 +1016,7 @@
                 />
               </div>
             </div>
-            <div class="row items-center q-gutter-sm q-mb-sm">
+            <div v-if="twentyDraft.enabled" class="row items-center q-gutter-sm q-mb-sm">
               <q-btn
                 color="secondary"
                 icon="wifi_tethering"
@@ -1035,45 +1036,48 @@
               </span>
             </div>
 
-            <q-separator class="q-my-sm" />
+            <template v-if="twentyDraft.enabled">
+              <q-separator class="q-my-sm" />
 
-            <div class="text-subtitle2 q-mb-sm">{{ t('settings.integrations.twenty.syncStatus') }}</div>
-            <div v-if="twentySyncStatus" class="row q-col-gutter-sm q-mb-sm">
-              <div class="col-12 col-md-4">
-                <div class="text-caption text-grey-7">{{ t('settings.integrations.twenty.lastSync') }}</div>
-                <div>{{ twentySyncStatus.last_sync_at ? new Date(twentySyncStatus.last_sync_at).toLocaleString() : t('settings.integrations.twenty.never') }}</div>
+              <div class="text-subtitle2 q-mb-sm">{{ t('settings.integrations.twenty.syncStatus') }}</div>
+              <div v-if="twentySyncStatus" class="row q-col-gutter-sm q-mb-sm">
+                <div class="col-12 col-md-4">
+                  <div class="text-caption text-grey-7">{{ t('settings.integrations.twenty.lastSync') }}</div>
+                  <div>{{ twentySyncStatus.last_sync_at ? new Date(twentySyncStatus.last_sync_at).toLocaleString() : t('settings.integrations.twenty.never') }}</div>
+                </div>
+                <div class="col-12 col-md-4">
+                  <div class="text-caption text-grey-7">{{ t('settings.integrations.twenty.totalSynced') }}</div>
+                  <div>{{ twentySyncStatus.total_synced }}</div>
+                </div>
+                <div class="col-12 col-md-4">
+                  <div class="text-caption text-grey-7">{{ t('settings.integrations.twenty.totalFailed') }}</div>
+                  <div :class="twentySyncStatus.total_failed > 0 ? 'text-negative' : ''">{{ twentySyncStatus.total_failed }}</div>
+                </div>
               </div>
-              <div class="col-12 col-md-4">
-                <div class="text-caption text-grey-7">{{ t('settings.integrations.twenty.totalSynced') }}</div>
-                <div>{{ twentySyncStatus.total_synced }}</div>
+              <div class="row items-center q-gutter-sm q-mb-sm">
+                <q-btn
+                  color="accent"
+                  icon="sync"
+                  :label="t('settings.integrations.twenty.syncNow')"
+                  unelevated
+                  :loading="twentySyncing"
+                  @click="triggerTwentySync"
+                />
               </div>
-              <div class="col-12 col-md-4">
-                <div class="text-caption text-grey-7">{{ t('settings.integrations.twenty.totalFailed') }}</div>
-                <div :class="twentySyncStatus.total_failed > 0 ? 'text-negative' : ''">{{ twentySyncStatus.total_failed }}</div>
+              <div v-if="twentySyncStatus?.recent_logs?.length" class="q-mt-sm">
+                <div class="text-caption text-grey-7 q-mb-xs">{{ t('settings.integrations.twenty.recentLogs') }}</div>
+                <q-table
+                  :rows="twentySyncStatus.recent_logs.slice(0, 10)"
+                  :columns="twentyLogColumns"
+                  row-key="id"
+                  dense
+                  flat
+                  bordered
+                  hide-pagination
+                />
               </div>
-            </div>
-            <div class="row items-center q-gutter-sm q-mb-sm">
-              <q-btn
-                color="accent"
-                icon="sync"
-                :label="t('settings.integrations.twenty.syncNow')"
-                unelevated
-                :loading="twentySyncing"
-                @click="triggerTwentySync"
-              />
-            </div>
-            <div v-if="twentySyncStatus?.recent_logs?.length" class="q-mt-sm">
-              <div class="text-caption text-grey-7 q-mb-xs">{{ t('settings.integrations.twenty.recentLogs') }}</div>
-              <q-table
-                :rows="twentySyncStatus.recent_logs.slice(0, 10)"
-                :columns="twentyLogColumns"
-                row-key="id"
-                dense
-                flat
-                bordered
-                hide-pagination
-              />
-            </div>
+            </template>
+
             <div class="row justify-end q-mt-sm">
               <q-btn color="positive" :label="t('settings.integrations.twenty.save')" unelevated :loading="integrationsSaving" @click="saveTwentyConfig" />
             </div>
@@ -3069,17 +3073,15 @@ async function testIntegration(plugin, config = null, target = 'default') {
   }
 }
 
-const TWENTY_API = '/api/v1/integrations/twenty'
-
 async function loadTwentyConfig() {
   try {
-    const res = await api.get(`${TWENTY_API}/config`)
-    if (res.data) {
+    const data = await settingsStore.fetchTwentyConfig()
+    if (data) {
       twentyDraft.value = {
-        enabled: true,
+        enabled: data.is_active ?? true,
         api_key: '',
-        base_url: res.data.base_url || 'https://api.twenty.com',
-        has_api_key: res.data.has_api_key ?? true,
+        base_url: data.base_url || 'https://api.twenty.com',
+        has_api_key: data.has_api_key ?? false,
       }
     }
   } catch {
@@ -3089,33 +3091,25 @@ async function loadTwentyConfig() {
 
 async function loadTwentySyncStatus() {
   try {
-    const res = await api.get(`${TWENTY_API}/status`)
-    twentySyncStatus.value = res.data
+    twentySyncStatus.value = await settingsStore.fetchTwentySyncStatus()
   } catch {
     twentySyncStatus.value = null
   }
 }
 
 async function saveTwentyConfig() {
-  if (!twentyDraft.value.enabled) {
-    try { await api.delete(`${TWENTY_API}/config`) } catch {}
-    twentyDraft.value = { enabled: false, api_key: '', base_url: 'https://api.twenty.com', has_api_key: false }
-    $q.notify({ type: 'positive', message: t('settings.integrations.twenty.saved') })
-    return
-  }
   const payload = {
-    api_key: twentyDraft.value.api_key || undefined,
     base_url: twentyDraft.value.base_url,
+    is_active: twentyDraft.value.enabled,
+  }
+  if (twentyDraft.value.api_key) {
+    payload.api_key = twentyDraft.value.api_key
+  } else if (!twentyDraft.value.has_api_key) {
+    payload.clear_api_key = true
   }
   try {
-    const existing = await api.get(`${TWENTY_API}/config`).catch(() => null)
-    let res
-    if (existing?.data) {
-      res = await api.put(`${TWENTY_API}/config`, payload)
-    } else {
-      res = await api.post(`${TWENTY_API}/config`, payload)
-    }
-    twentyDraft.value.has_api_key = res.data?.has_api_key ?? true
+    const data = await settingsStore.saveTwentyConfig(payload)
+    twentyDraft.value.has_api_key = data?.has_api_key ?? true
     twentyDraft.value.api_key = ''
     $q.notify({ type: 'positive', message: t('settings.integrations.twenty.saved') })
   } catch (error) {
@@ -3127,10 +3121,26 @@ async function testTwentyConnection() {
   twentyTesting.value = true
   twentyTestResult.value = null
   try {
-    await saveTwentyConfig()
-    const res = await api.post(`${TWENTY_API}/test`)
-    twentyTestResult.value = res.data
-    $q.notify({ type: res.data.success ? 'positive' : 'warning', message: res.data.message })
+    const existing = await settingsStore.fetchTwentyConfig().catch(() => null)
+    if (existing) {
+      const updatePayload = { base_url: twentyDraft.value.base_url }
+      if (twentyDraft.value.api_key) {
+        updatePayload.api_key = twentyDraft.value.api_key
+      }
+      await settingsStore.saveTwentyConfig(updatePayload)
+    } else {
+      await settingsStore.saveTwentyConfig({
+        api_key: twentyDraft.value.api_key || '',
+        base_url: twentyDraft.value.base_url,
+      })
+    }
+    const result = await settingsStore.testTwentyConnection()
+    twentyTestResult.value = result
+    if (result.success) {
+      twentyDraft.value.has_api_key = true
+      twentyDraft.value.api_key = ''
+    }
+    $q.notify({ type: result.success ? 'positive' : 'warning', message: result.message })
   } catch (error) {
     const message = error?.response?.data?.detail || error?.message || t('settings.integrations.twenty.testFailed')
     twentyTestResult.value = { success: false, message }
@@ -3144,8 +3154,8 @@ async function triggerTwentySync() {
   twentySyncing.value = true
   try {
     await saveTwentyConfig()
-    const res = await api.post(`${TWENTY_API}/sync`, { direction: 'both' })
-    $q.notify({ type: 'positive', message: t('settings.integrations.twenty.syncComplete', { synced: res.data.synced, failed: res.data.failed }) })
+    const result = await settingsStore.triggerTwentySync('both')
+    $q.notify({ type: 'positive', message: t('settings.integrations.twenty.syncComplete', { synced: result.synced, failed: result.failed }) })
     await loadTwentySyncStatus()
   } catch (error) {
     $q.notify({ type: 'negative', message: error?.response?.data?.detail || t('settings.integrations.twenty.syncFailed') })

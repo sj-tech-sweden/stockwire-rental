@@ -1,5 +1,5 @@
 import asyncio
-from datetime import datetime
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
@@ -17,7 +17,10 @@ from app.domain.integrations.schemas import (
     TwentyTestResult,
 )
 from app.domain.integrations.sync_engine import (
+    SYNC_PAGE_SIZE,
+    sync_customer_inbound,
     sync_customer_outbound,
+    sync_job_inbound,
     sync_job_outbound,
 )
 from app.domain.integrations.twenty_client import TwentyClient
@@ -33,7 +36,7 @@ router = APIRouter(
 def _get_config(db: Session):
     from app.domain.integrations.models import TwentyConfig
 
-    config = db.query(TwentyConfig).filter(TwentyConfig.is_active == True).first()
+    config = db.query(TwentyConfig).first()
     if not config:
         raise HTTPException(status_code=400, detail="Twenty CRM is not configured")
     return config
@@ -48,7 +51,7 @@ def _get_client(db: Session):
 def get_config(db: Session = Depends(get_db)):
     from app.domain.integrations.models import TwentyConfig
 
-    config = db.query(TwentyConfig).filter(TwentyConfig.is_active == True).first()
+    config = db.query(TwentyConfig).first()
     if not config:
         return None
     return TwentyConfigRead(
@@ -56,7 +59,7 @@ def get_config(db: Session = Depends(get_db)):
         base_url=config.base_url,
         workspace_id=config.workspace_id,
         is_active=config.is_active,
-        has_api_key=bool(config.api_key),
+        has_api_key=config.api_key is not None and config.api_key != "",
         created_at=config.created_at,
         updated_at=config.updated_at,
     )
@@ -66,7 +69,7 @@ def get_config(db: Session = Depends(get_db)):
 def create_config(payload: TwentyConfigCreate, db: Session = Depends(get_db)):
     from app.domain.integrations.models import TwentyConfig
 
-    existing = db.query(TwentyConfig).filter(TwentyConfig.is_active == True).first()
+    existing = db.query(TwentyConfig).first()
     if existing:
         raise HTTPException(status_code=400, detail="Twenty CRM is already configured. Use PUT to update.")
 
@@ -79,7 +82,7 @@ def create_config(payload: TwentyConfigCreate, db: Session = Depends(get_db)):
         base_url=config.base_url,
         workspace_id=config.workspace_id,
         is_active=config.is_active,
-        has_api_key=bool(config.api_key),
+        has_api_key=config.api_key is not None and config.api_key != "",
         created_at=config.created_at,
         updated_at=config.updated_at,
     )
@@ -89,14 +92,19 @@ def create_config(payload: TwentyConfigCreate, db: Session = Depends(get_db)):
 def update_config(payload: TwentyConfigUpdate, db: Session = Depends(get_db)):
     from app.domain.integrations.models import TwentyConfig
 
-    config = db.query(TwentyConfig).filter(TwentyConfig.is_active == True).first()
+    config = db.query(TwentyConfig).first()
     if not config:
         raise HTTPException(status_code=404, detail="Twenty CRM is not configured")
 
     update_data = payload.model_dump(exclude_unset=True)
+    update_data.pop("clear_api_key", None)
+    if payload.clear_api_key:
+        config.api_key = ""
+    elif "api_key" in update_data and not update_data["api_key"]:
+        del update_data["api_key"]
     for field, value in update_data.items():
         setattr(config, field, value)
-    config.updated_at = datetime.utcnow()
+    config.updated_at = datetime.now(timezone.utc)
     db.commit()
     db.refresh(config)
     return TwentyConfigRead(
@@ -104,7 +112,7 @@ def update_config(payload: TwentyConfigUpdate, db: Session = Depends(get_db)):
         base_url=config.base_url,
         workspace_id=config.workspace_id,
         is_active=config.is_active,
-        has_api_key=bool(config.api_key),
+        has_api_key=config.api_key is not None and config.api_key != "",
         created_at=config.created_at,
         updated_at=config.updated_at,
     )
@@ -146,26 +154,81 @@ async def trigger_sync(payload: TwentySyncTrigger, db: Session = Depends(get_db)
 
     if payload.direction in ("outbound", "both"):
         if "customer" in entity_types:
-            customers = db.query(Customer).filter(
-                (Customer.external_source != "twenty") | (Customer.external_source.is_(None))
-            ).all()
-            for customer in customers:
-                try:
-                    await sync_customer_outbound(db, client, customer)
-                    synced += 1
-                except Exception:
-                    failed += 1
+            offset = 0
+            while True:
+                customers = db.query(Customer).offset(offset).limit(SYNC_PAGE_SIZE).all()
+                if not customers:
+                    break
+                for customer in customers:
+                    try:
+                        await sync_customer_outbound(db, client, customer)
+                        synced += 1
+                    except Exception:
+                        failed += 1
+                if len(customers) < SYNC_PAGE_SIZE:
+                    break
+                offset += SYNC_PAGE_SIZE
 
         if "job" in entity_types:
-            jobs = db.query(Job).filter(
-                (Job.external_source != "twenty") | (Job.external_source.is_(None))
-            ).all()
-            for job in jobs:
-                try:
-                    await sync_job_outbound(db, client, job)
-                    synced += 1
-                except Exception:
-                    failed += 1
+            offset = 0
+            while True:
+                jobs = db.query(Job).offset(offset).limit(SYNC_PAGE_SIZE).all()
+                if not jobs:
+                    break
+                for job in jobs:
+                    try:
+                        await sync_job_outbound(db, client, job)
+                        synced += 1
+                    except Exception:
+                        failed += 1
+                if len(jobs) < SYNC_PAGE_SIZE:
+                    break
+                offset += SYNC_PAGE_SIZE
+
+    if payload.direction in ("inbound", "both"):
+        if "customer" in entity_types:
+            offset = 0
+            while True:
+                companies_data = await client.list_objects("companies", limit=SYNC_PAGE_SIZE, offset=offset)
+                companies = companies_data.get("data", {}).get("companies", {}).get("edges", [])
+                if not companies:
+                    break
+                for edge in companies:
+                    company = edge.get("node", edge)
+                    try:
+                        person_list = await client.search_people(email=None)
+                        matched_person = None
+                        for p_edge in person_list:
+                            p_node = p_edge.get("node", p_edge)
+                            comp = p_node.get("company", {})
+                            if isinstance(comp, dict) and comp.get("id") == company.get("id"):
+                                matched_person = p_node
+                                break
+                        await sync_customer_inbound(db, client, company, matched_person)
+                        synced += 1
+                    except Exception:
+                        failed += 1
+                if len(companies) < SYNC_PAGE_SIZE:
+                    break
+                offset += SYNC_PAGE_SIZE
+
+        if "job" in entity_types:
+            offset = 0
+            while True:
+                opps_data = await client.list_objects("opportunities", limit=SYNC_PAGE_SIZE, offset=offset)
+                opps = opps_data.get("data", {}).get("opportunities", {}).get("edges", [])
+                if not opps:
+                    break
+                for edge in opps:
+                    opp = edge.get("node", edge)
+                    try:
+                        await sync_job_inbound(db, client, opp)
+                        synced += 1
+                    except Exception:
+                        failed += 1
+                if len(opps) < SYNC_PAGE_SIZE:
+                    break
+                offset += SYNC_PAGE_SIZE
 
     return {"synced": synced, "failed": failed}
 
@@ -174,7 +237,7 @@ async def trigger_sync(payload: TwentySyncTrigger, db: Session = Depends(get_db)
 def get_sync_status(db: Session = Depends(get_db)):
     from app.domain.integrations.models import TwentyConfig, TwentySyncLog
 
-    config = db.query(TwentyConfig).filter(TwentyConfig.is_active == True).first()
+    config = db.query(TwentyConfig).first()
     if not config:
         return TwentySyncStatus(is_configured=False)
 
