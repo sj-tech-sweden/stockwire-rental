@@ -337,7 +337,7 @@ def add_stop(route_id: int, payload: RouteStopCreate, db: Session = Depends(get_
 
 @router.put("/routes/{route_id}/stops/reorder", response_model=RouteRead)
 def reorder_stops(route_id: int, payload: RouteStopReorder, db: Session = Depends(get_db), user: User = Depends(require_editor)):
-    route = _get_route_or_404(route_id, db)
+    _get_route_or_404(route_id, db)
     stops = db.execute(
         select(RouteStop).where(RouteStop.route_id == route_id)
     ).scalars().all()
