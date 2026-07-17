@@ -317,7 +317,7 @@ def remove_vehicle(route_id: int, vehicle_id: int, db: Session = Depends(get_db)
 
 @router.post("/routes/{route_id}/stops", response_model=RouteRead)
 def add_stop(route_id: int, payload: RouteStopCreate, db: Session = Depends(get_db), user: User = Depends(require_editor)):
-    route = _get_route_or_404(route_id, db)
+    _get_route_or_404(route_id, db)
     job = db.get(Job, payload.job_id)
     if not job:
         raise HTTPException(status_code=404, detail=f"Job {payload.job_id} not found")
