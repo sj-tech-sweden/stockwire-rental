@@ -271,7 +271,7 @@ def delete_route(route_id: int, db: Session = Depends(get_db), _user: User = Dep
 
 @router.post("/routes/{route_id}/vehicles", response_model=RouteRead)
 def assign_vehicle(route_id: int, payload: RouteVehicleAssign, db: Session = Depends(get_db), user: User = Depends(require_editor)):
-    route = _get_route_or_404(route_id, db)
+    _get_route_or_404(route_id, db)
     _get_vehicle_or_404(payload.vehicle_id, db)
     existing = db.execute(
         select(RouteVehicle).where(RouteVehicle.route_id == route_id, RouteVehicle.vehicle_id == payload.vehicle_id)
