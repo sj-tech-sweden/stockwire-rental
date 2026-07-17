@@ -3,6 +3,7 @@ from app.domain.auth.models import User
 from app.domain.custom_fields.models import CustomFieldDefinition, CustomFieldValue
 from app.domain.customers.models import Customer
 from app.domain.finance.models import FinancialTransaction
+from app.domain.integrations.models import TwentyConfig, TwentySyncLog
 from app.domain.inventory.models import (
     DefectComment,
     DefectReport,
@@ -44,4 +45,6 @@ __all__ = [
     "FinancialTransaction",
     "AppSetting",
     "AssetFile",
+    "TwentyConfig",
+    "TwentySyncLog",
 ]

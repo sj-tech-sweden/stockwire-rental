@@ -12,6 +12,8 @@ class CustomerBase(BaseModel):
     postal_code: str | None = None
     country: str | None = None
     notes: str | None = None
+    external_source: str | None = None
+    external_reference: str | None = None
 
 
 class CustomerCreate(CustomerBase):
@@ -27,6 +29,8 @@ class CustomerUpdate(BaseModel):
     postal_code: str | None = None
     country: str | None = None
     notes: str | None = None
+    external_source: str | None = None
+    external_reference: str | None = None
 
 
 class CustomerRead(CustomerBase):

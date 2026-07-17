@@ -29,6 +29,8 @@ class Job(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
 
     productionplanner_project_id: Mapped[str | None] = mapped_column(String(100), nullable=True, index=True)
+    external_source: Mapped[str] = mapped_column(String(80), nullable=True, index=True)
+    external_reference: Mapped[str] = mapped_column(String(120), nullable=True, index=True)
 
     owner: Mapped["User"] = relationship(back_populates="jobs")
     project: Mapped["Project"] = relationship(back_populates="jobs")
