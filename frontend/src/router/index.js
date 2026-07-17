@@ -70,7 +70,8 @@ const routes = [
       { path: 'venues', component: VenuesPage },
       { path: 'profile', component: ProfilePage },
       { path: 'settings', component: SettingsPage },
-      { path: 'finance', component: FinancePage }
+      { path: 'finance', component: FinancePage },
+      { path: 'route-planner', component: () => import('../pages/RoutePlannerPage.vue') }
     ]
   }
 ]

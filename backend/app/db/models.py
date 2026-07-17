@@ -4,6 +4,7 @@ from app.domain.custom_fields.models import CustomFieldDefinition, CustomFieldVa
 from app.domain.customers.models import Customer
 from app.domain.finance.models import FinancialTransaction
 from app.domain.integrations.models import TwentyConfig, TwentySyncLog
+from app.domain.route_planner.models import DeliveryRoute, RouteStop, RouteVehicle, Vehicle
 from app.domain.inventory.models import (
     DefectComment,
     DefectReport,
@@ -47,4 +48,8 @@ __all__ = [
     "AssetFile",
     "TwentyConfig",
     "TwentySyncLog",
+    "Vehicle",
+    "DeliveryRoute",
+    "RouteStop",
+    "RouteVehicle",
 ]
