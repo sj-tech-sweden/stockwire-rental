@@ -48,6 +48,8 @@ class JobRead(JobBase):
     id: int
     created_at: datetime
     productionplanner_project_id: str | None = None
+    external_source: str | None = None
+    external_reference: str | None = None
 
     model_config = {"from_attributes": True}
 

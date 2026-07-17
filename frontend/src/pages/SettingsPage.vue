@@ -919,6 +919,10 @@
             </div>
           </div>
 
+          <div class="row justify-end q-mt-sm">
+            <q-btn color="positive" :label="t('settings.integrations.eventory.save')" unelevated :loading="integrationsSaving" @click="saveIntegrations" />
+          </div>
+
           <q-separator class="q-my-md" />
 
           <div class="row items-center justify-between q-mb-sm">
@@ -931,7 +935,7 @@
           </div>
           <div class="text-caption text-grey-7 q-mb-sm">{{ t('settings.integrations.productionplanner.description') }}</div>
 
-          <div v-if="integrationsDraft.productionplanner.enabled" class="q-pa-sm q-mb-sm" style="border: 1px solid #d7dee6; border-radius: 10px">
+          <div class="q-pa-sm q-mb-sm" style="border: 1px solid #d7dee6; border-radius: 10px">
             <div class="row q-col-gutter-sm q-mb-sm">
               <div class="col-12 col-md-6">
                 <q-input
@@ -954,7 +958,7 @@
                 />
               </div>
             </div>
-            <div class="row items-center q-gutter-sm">
+            <div v-if="integrationsDraft.productionplanner.enabled" class="row items-center q-gutter-sm">
               <q-btn
                 color="secondary"
                 icon="wifi_tethering"
@@ -972,9 +976,112 @@
                 {{ integrationResult('productionplanner', 'productionplanner').message }}
               </span>
             </div>
+            <div class="row justify-end q-mt-sm">
+              <q-btn color="positive" :label="t('settings.integrations.productionplanner.save')" unelevated :loading="integrationsSaving" @click="saveProductionPlanner" />
+            </div>
           </div>
 
-          <q-btn color="positive" :label="t('settings.integrations.save')" unelevated :loading="integrationsSaving" @click="saveIntegrations" />
+          <q-separator class="q-my-md" />
+
+          <div class="row items-center justify-between q-mb-sm">
+            <div class="text-subtitle2">{{ t('settings.integrations.twenty.title') }}</div>
+            <q-toggle
+              v-model="twentyDraft.enabled"
+              :label="t('settings.integrations.twenty.enabled')"
+              color="primary"
+            />
+          </div>
+          <div class="text-caption text-grey-7 q-mb-sm">{{ t('settings.integrations.twenty.description') }}</div>
+
+          <div class="q-pa-sm q-mb-sm" style="border: 1px solid #d7dee6; border-radius: 10px">
+            <div class="row q-col-gutter-sm q-mb-sm">
+              <div class="col-12 col-md-6">
+                <q-input
+                  v-model="twentyDraft.api_key"
+                  :label="t('settings.integrations.twenty.apiKey')"
+                  :placeholder="twentyDraft.has_api_key && !twentyDraft.api_key ? t('settings.integrations.twenty.apiKeySaved') : t('settings.integrations.twenty.apiKeyPlaceholder')"
+                  :hint="twentyDraft.has_api_key && !twentyDraft.api_key ? t('settings.integrations.twenty.apiKeySavedHint') : t('settings.integrations.twenty.apiKeyHint')"
+                  outlined
+                  dense
+                  type="password"
+                />
+              </div>
+              <div class="col-12 col-md-6">
+                <q-input
+                  v-model="twentyDraft.base_url"
+                  :label="t('settings.integrations.twenty.baseUrl')"
+                  :placeholder="t('settings.integrations.twenty.baseUrlDefault')"
+                  outlined
+                  dense
+                />
+              </div>
+            </div>
+            <div v-if="twentyDraft.enabled" class="row items-center q-gutter-sm q-mb-sm">
+              <q-btn
+                color="secondary"
+                icon="wifi_tethering"
+                :label="t('settings.integrations.twenty.testConnection')"
+                unelevated
+                :loading="twentyTesting"
+                @click="testTwentyConnection"
+              />
+              <q-badge
+                v-if="twentyTestResult"
+                :color="twentyTestResult.success ? 'positive' : 'negative'"
+                :label="twentyTestResult.success ? t('settings.integrations.twenty.connected') : t('settings.integrations.twenty.failed')"
+              />
+              <span v-if="twentyTestResult" class="text-caption text-grey-7">
+                {{ twentyTestResult.message }}
+                <template v-if="twentyTestResult.workspace_name"> — {{ twentyTestResult.workspace_name }}</template>
+              </span>
+            </div>
+
+            <template v-if="twentyDraft.enabled">
+              <q-separator class="q-my-sm" />
+
+              <div class="text-subtitle2 q-mb-sm">{{ t('settings.integrations.twenty.syncStatus') }}</div>
+              <div v-if="twentySyncStatus" class="row q-col-gutter-sm q-mb-sm">
+                <div class="col-12 col-md-4">
+                  <div class="text-caption text-grey-7">{{ t('settings.integrations.twenty.lastSync') }}</div>
+                  <div>{{ twentySyncStatus.last_sync_at ? new Date(twentySyncStatus.last_sync_at).toLocaleString() : t('settings.integrations.twenty.never') }}</div>
+                </div>
+                <div class="col-12 col-md-4">
+                  <div class="text-caption text-grey-7">{{ t('settings.integrations.twenty.totalSynced') }}</div>
+                  <div>{{ twentySyncStatus.total_synced }}</div>
+                </div>
+                <div class="col-12 col-md-4">
+                  <div class="text-caption text-grey-7">{{ t('settings.integrations.twenty.totalFailed') }}</div>
+                  <div :class="twentySyncStatus.total_failed > 0 ? 'text-negative' : ''">{{ twentySyncStatus.total_failed }}</div>
+                </div>
+              </div>
+              <div class="row items-center q-gutter-sm q-mb-sm">
+                <q-btn
+                  color="accent"
+                  icon="sync"
+                  :label="t('settings.integrations.twenty.syncNow')"
+                  unelevated
+                  :loading="twentySyncing"
+                  @click="triggerTwentySync"
+                />
+              </div>
+              <div v-if="twentySyncStatus?.recent_logs?.length" class="q-mt-sm">
+                <div class="text-caption text-grey-7 q-mb-xs">{{ t('settings.integrations.twenty.recentLogs') }}</div>
+                <q-table
+                  :rows="twentySyncStatus.recent_logs.slice(0, 10)"
+                  :columns="twentyLogColumns"
+                  row-key="id"
+                  dense
+                  flat
+                  bordered
+                  hide-pagination
+                />
+              </div>
+            </template>
+
+            <div class="row justify-end q-mt-sm">
+              <q-btn color="positive" :label="t('settings.integrations.twenty.save')" unelevated :loading="integrationsSaving" @click="saveTwentyConfig" />
+            </div>
+          </div>
         </q-card>
       </q-tab-panel>
 
@@ -1614,6 +1721,24 @@ const eventorySyncLoading = ref({})
 const eventorySyncResults = ref({})
 const eventorySyncPollTimers = ref({})
 const eventoryDraftCounter = ref(0)
+
+const twentyDraft = ref({
+  enabled: false,
+  api_key: '',
+  base_url: 'https://api.twenty.com',
+  has_api_key: false,
+})
+const twentyTesting = ref(false)
+const twentyTestResult = ref(null)
+const twentySyncing = ref(false)
+const twentySyncStatus = ref(null)
+const twentyLogColumns = [
+  { name: 'direction', label: t('settings.integrations.twenty.logDirection'), field: 'direction', align: 'left', sortable: true },
+  { name: 'entity_type', label: t('settings.integrations.twenty.logEntity'), field: 'entity_type', align: 'left', sortable: true },
+  { name: 'operation', label: t('settings.integrations.twenty.logOperation'), field: 'operation', align: 'left', sortable: true },
+  { name: 'status', label: t('settings.integrations.twenty.logStatus'), field: 'status', align: 'left', sortable: true },
+  { name: 'created_at', label: t('settings.integrations.twenty.logDate'), field: 'created_at', align: 'left', sortable: true, format: v => v ? new Date(v).toLocaleString() : '' },
+]
 const offlineQueueRows = ref([])
 const offlineQueueFlushing = ref(false)
 const offlineQueueRetryingFailed = ref(false)
@@ -2424,6 +2549,42 @@ function startEventorySyncPolling(instanceId, options = {}) {
   }
 }
 
+async function saveEventory(options = {}) {
+  return saveIntegrations(options)
+}
+
+async function saveProductionPlanner() {
+  integrationsSaving.value = true
+  try {
+    const productionplanner = integrationsDraft.value.productionplanner ? {
+      enabled: Boolean(integrationsDraft.value.productionplanner.enabled),
+      api_key: String(integrationsDraft.value.productionplanner.api_key || ''),
+      base_url: String(integrationsDraft.value.productionplanner.base_url || DEFAULT_INTEGRATIONS.productionplanner.base_url),
+    } : { ...DEFAULT_INTEGRATIONS.productionplanner }
+
+    const saved = await settingsStore.updateIntegrations({
+      eventory_instances: (integrationsDraft.value.eventory_instances || []).map((instance, index) => {
+        const { _draftKey, _keyManuallyEdited, ...persistedFields } = instance
+        return {
+          ...persistedFields,
+          id: normalizeEventoryInstanceKey(instance.id) || prefillEventoryInstanceKey(instance.name, index),
+          name: String(instance.name || '').trim() || `Eventory ${index + 1}`,
+        }
+      }),
+      productionplanner,
+    })
+    integrationsDraft.value = {
+      eventory_instances: withEventoryDraftMeta((saved.eventory_instances || DEFAULT_INTEGRATIONS.eventory_instances).map(instance => ({ ...instance }))),
+      productionplanner: saved.productionplanner || { ...DEFAULT_INTEGRATIONS.productionplanner },
+    }
+    $q.notify({ type: 'positive', message: t('settings.integrations.productionplanner.saved') })
+  } catch (error) {
+    $q.notify({ type: 'negative', message: error?.response?.data?.detail || t('settings.integrations.failedSave') })
+  } finally {
+    integrationsSaving.value = false
+  }
+}
+
 async function saveIntegrations(options = {}) {
   const silent = Boolean(options?.silent)
   const normalizedInstances = (integrationsDraft.value.eventory_instances || []).map((instance, index) => {
@@ -2912,6 +3073,97 @@ async function testIntegration(plugin, config = null, target = 'default') {
   }
 }
 
+async function loadTwentyConfig() {
+  try {
+    const data = await settingsStore.fetchTwentyConfig()
+    if (data) {
+      twentyDraft.value = {
+        enabled: data.is_active ?? true,
+        api_key: '',
+        base_url: data.base_url || 'https://api.twenty.com',
+        has_api_key: data.has_api_key ?? false,
+      }
+    }
+  } catch {
+    twentyDraft.value = { enabled: false, api_key: '', base_url: 'https://api.twenty.com', has_api_key: false }
+  }
+}
+
+async function loadTwentySyncStatus() {
+  try {
+    twentySyncStatus.value = await settingsStore.fetchTwentySyncStatus()
+  } catch {
+    twentySyncStatus.value = null
+  }
+}
+
+async function saveTwentyConfig() {
+  const payload = {
+    base_url: twentyDraft.value.base_url,
+    is_active: twentyDraft.value.enabled,
+  }
+  if (twentyDraft.value.api_key) {
+    payload.api_key = twentyDraft.value.api_key
+  } else if (!twentyDraft.value.has_api_key) {
+    payload.clear_api_key = true
+  }
+  try {
+    const data = await settingsStore.saveTwentyConfig(payload)
+    twentyDraft.value.has_api_key = data?.has_api_key ?? true
+    twentyDraft.value.api_key = ''
+    $q.notify({ type: 'positive', message: t('settings.integrations.twenty.saved') })
+  } catch (error) {
+    $q.notify({ type: 'negative', message: error?.response?.data?.detail || t('settings.integrations.twenty.saveFailed') })
+  }
+}
+
+async function testTwentyConnection() {
+  twentyTesting.value = true
+  twentyTestResult.value = null
+  try {
+    const existing = await settingsStore.fetchTwentyConfig().catch(() => null)
+    if (existing) {
+      const updatePayload = { base_url: twentyDraft.value.base_url }
+      if (twentyDraft.value.api_key) {
+        updatePayload.api_key = twentyDraft.value.api_key
+      }
+      await settingsStore.saveTwentyConfig(updatePayload)
+    } else {
+      await settingsStore.saveTwentyConfig({
+        api_key: twentyDraft.value.api_key || '',
+        base_url: twentyDraft.value.base_url,
+      })
+    }
+    const result = await settingsStore.testTwentyConnection()
+    twentyTestResult.value = result
+    if (result.success) {
+      twentyDraft.value.has_api_key = true
+      twentyDraft.value.api_key = ''
+    }
+    $q.notify({ type: result.success ? 'positive' : 'warning', message: result.message })
+  } catch (error) {
+    const message = error?.response?.data?.detail || error?.message || t('settings.integrations.twenty.testFailed')
+    twentyTestResult.value = { success: false, message }
+    $q.notify({ type: 'negative', message })
+  } finally {
+    twentyTesting.value = false
+  }
+}
+
+async function triggerTwentySync() {
+  twentySyncing.value = true
+  try {
+    await saveTwentyConfig()
+    const result = await settingsStore.triggerTwentySync('both')
+    $q.notify({ type: 'positive', message: t('settings.integrations.twenty.syncComplete', { synced: result.synced, failed: result.failed }) })
+    await loadTwentySyncStatus()
+  } catch (error) {
+    $q.notify({ type: 'negative', message: error?.response?.data?.detail || t('settings.integrations.twenty.syncFailed') })
+  } finally {
+    twentySyncing.value = false
+  }
+}
+
 async function previewEventoryProducts(instanceId) {
   const key = await ensureEventoryInstancePersisted(instanceId)
   if (!key) return
@@ -3135,6 +3387,8 @@ onMounted(async () => {
       eventory_instances: withEventoryDraftMeta((settingsStore.integrations?.eventory_instances || DEFAULT_INTEGRATIONS.eventory_instances).map(instance => ({ ...instance }))),
       productionplanner: settingsStore.integrations?.productionplanner ? { ...settingsStore.integrations.productionplanner } : { ...DEFAULT_INTEGRATIONS.productionplanner },
     }
+    loadTwentyConfig()
+    loadTwentySyncStatus()
     applyAuthSsoDraft(settingsStore.authSsoSettings)
     applySmtpDraft(settingsStore.smtpSettings)
     for (const instance of integrationsDraft.value.eventory_instances || []) {

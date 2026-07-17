@@ -1092,6 +1092,69 @@ export const useSettingsStore = defineStore('settings', () => {
     }
   }
 
+  const TWENTY_API = '/api/v1/integrations/twenty'
+
+  async function fetchTwentyConfig() {
+    const { data } = await api.get(`${TWENTY_API}/config`)
+    return data
+  }
+
+  async function saveTwentyConfig(payload) {
+    const existing = await api.get(`${TWENTY_API}/config`).catch(() => null)
+    let res
+    if (existing?.data) {
+      if (!isOnline()) {
+        await queueMutation({
+          method: 'put',
+          url: `${TWENTY_API}/config`,
+          data: payload,
+          conflictPolicy: 'guarded',
+        })
+        return payload
+      }
+      res = await api.put(`${TWENTY_API}/config`, payload)
+    } else {
+      if (!isOnline()) {
+        await queueMutation({
+          method: 'post',
+          url: `${TWENTY_API}/config`,
+          data: payload,
+          conflictPolicy: 'guarded',
+        })
+        return payload
+      }
+      res = await api.post(`${TWENTY_API}/config`, payload)
+    }
+    return res.data
+  }
+
+  async function deleteTwentyConfig() {
+    if (!isOnline()) {
+      await queueMutation({
+        method: 'delete',
+        url: `${TWENTY_API}/config`,
+        conflictPolicy: 'guarded',
+      })
+      return
+    }
+    await api.delete(`${TWENTY_API}/config`)
+  }
+
+  async function testTwentyConnection() {
+    const { data } = await api.post(`${TWENTY_API}/test`)
+    return data
+  }
+
+  async function triggerTwentySync(direction = 'both') {
+    const { data } = await api.post(`${TWENTY_API}/sync`, { direction })
+    return data
+  }
+
+  async function fetchTwentySyncStatus() {
+    const { data } = await api.get(`${TWENTY_API}/status`)
+    return data
+  }
+
   return {
     locationTypes,
     categoryPrefillPaths,
@@ -1145,5 +1208,11 @@ export const useSettingsStore = defineStore('settings', () => {
     normalizeAuthSsoSettings,
     cloneAuthSsoSettings,
     normalizeCompanyProfile,
+    fetchTwentyConfig,
+    saveTwentyConfig,
+    deleteTwentyConfig,
+    testTwentyConnection,
+    triggerTwentySync,
+    fetchTwentySyncStatus,
   }
 })

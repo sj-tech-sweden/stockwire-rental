@@ -66,6 +66,9 @@ class Settings(BaseSettings):
     productionplanner_api_key: str = ""
     productionplanner_base_url: str = "https://api.productionplanner.io/v1"
 
+    twenty_api_key: str = ""
+    twenty_base_url: str = "https://api.twenty.com"
+
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", case_sensitive=False)
 
     @property

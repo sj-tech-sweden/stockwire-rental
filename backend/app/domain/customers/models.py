@@ -18,6 +18,8 @@ class Customer(Base):
     postal_code: Mapped[str] = mapped_column(String(20), nullable=True)
     country: Mapped[str] = mapped_column(String(100), nullable=True)
     notes: Mapped[str] = mapped_column(Text, nullable=True)
+    external_source: Mapped[str] = mapped_column(String(80), nullable=True, index=True)
+    external_reference: Mapped[str] = mapped_column(String(120), nullable=True, index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
 
     jobs: Mapped[list["Job"]] = relationship(back_populates="customer")
