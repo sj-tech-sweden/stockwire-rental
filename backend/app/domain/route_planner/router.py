@@ -286,7 +286,7 @@ def assign_vehicle(route_id: int, payload: RouteVehicleAssign, db: Session = Dep
 
 @router.put("/routes/{route_id}/vehicles/reorder", response_model=RouteRead)
 def reorder_vehicles(route_id: int, payload: RouteVehicleReorder, db: Session = Depends(get_db), user: User = Depends(require_editor)):
-    route = _get_route_or_404(route_id, db)
+    _get_route_or_404(route_id, db)
     assignments = db.execute(
         select(RouteVehicle).where(RouteVehicle.route_id == route_id)
     ).scalars().all()
