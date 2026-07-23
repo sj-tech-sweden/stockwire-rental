@@ -87,7 +87,15 @@
           </q-expansion-item>
         </div>
 
-        <div class="text-subtitle2 q-mb-sm">{{ t('inventory.infoDialogs.linkedDevices') }}</div>
+        <div class="text-subtitle2 q-mb-sm row items-center">
+          <span class="col">{{ t('inventory.infoDialogs.linkedDevices') }}</span>
+          <q-btn
+            v-if="linkedDevices.length"
+            flat dense color="orange" icon="lightbulb" size="sm"
+            :label="t('warehouseLeds.actions.locateAll')"
+            @click="locateAllDevicesLed"
+          />
+        </div>
         <q-list bordered separator class="rounded-borders q-mb-md">
           <q-item v-for="row in linkedDevices" :key="row.id">
             <q-item-section>
@@ -106,6 +114,9 @@
               <div class="row no-wrap items-center q-gutter-xs">
                 <q-btn v-if="row.location_zone_id" flat dense round color="primary" icon="place" size="sm" @click="openDeviceLocate(row)">
                   <q-tooltip>{{ t('inventory.deviceDialog.locateOnMap') }}</q-tooltip>
+                </q-btn>
+                <q-btn v-if="row.location_zone_id" flat dense round color="orange" icon="lightbulb" size="sm" @click="locateDeviceLed(row.id)">
+                  <q-tooltip>{{ t('warehouseLeds.actions.locate') }}</q-tooltip>
                 </q-btn>
                 <q-btn
                   flat
@@ -222,6 +233,7 @@ import { useInventoryStore } from '../stores/inventory'
 import { useJobsStore } from '../stores/jobs'
 import { useSettingsStore } from '../stores/settings'
 import { useCustomFieldsStore } from '../stores/customFields'
+import { useWarehouseLedsStore } from '../stores/warehouseLeds'
 import { normalizeCurrencyCode } from '../constants/currencies'
 import EntityAttachmentsPanel from './EntityAttachmentsPanel.vue'
 import LocateDeviceMapDialog from './LocateDeviceMapDialog.vue'
@@ -246,6 +258,7 @@ const store = useInventoryStore()
 const jobsStore = useJobsStore()
 const settingsStore = useSettingsStore()
 const customFieldsStore = useCustomFieldsStore()
+const warehouseLedsStore = useWarehouseLedsStore()
 
 const infoCustomFieldValues = ref([])
 
@@ -285,6 +298,32 @@ const deviceLocateTarget = ref(null)
 function openDeviceLocate(row) {
   deviceLocateTarget.value = { location_zone_id: row.location_zone_id, asset_tag: row.asset_tag, serial_number: row.serial_number, id: row.id }
   deviceLocateOpen.value = true
+}
+
+async function locateDeviceLed(deviceId) {
+  try {
+    const result = await warehouseLedsStore.locateDevice(deviceId)
+    $q.notify({ type: 'positive', message: t('warehouseLeds.locateSuccess', { tag: result.asset_tag || '' }) })
+  } catch (err) {
+    $q.notify({ type: 'negative', message: err.response?.data?.detail || err.message })
+  }
+}
+
+async function locateAllDevicesLed() {
+  if (!props.product?.id) return
+  const devices = (store.devices || []).filter(d => d.product_id === props.product.id && d.location_zone_id)
+  if (!devices.length) {
+    $q.notify({ type: 'warning', message: t('warehouseLeds.noDevicesWithLocation') })
+    return
+  }
+  let successCount = 0
+  for (const device of devices) {
+    try {
+      await warehouseLedsStore.locateDevice(device.id)
+      successCount++
+    } catch { /* skip */ }
+  }
+  $q.notify({ type: 'positive', message: t('warehouseLeds.locateAllSuccess', { count: successCount }) })
 }
 
 watch(() => props.modelValue, async (open) => {

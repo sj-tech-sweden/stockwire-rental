@@ -5,6 +5,7 @@ from app.domain.customers.models import Customer
 from app.domain.finance.models import FinancialTransaction
 from app.domain.integrations.models import TwentyConfig, TwentySyncLog
 from app.domain.route_planner.models import DeliveryRoute, RouteStop, RouteVehicle, Vehicle
+from app.domain.warehouse_leds.models import LEDBinMapping, LEDController, LEDControllerZone
 from app.domain.inventory.models import (
     DefectComment,
     DefectReport,
@@ -52,4 +53,7 @@ __all__ = [
     "DeliveryRoute",
     "RouteStop",
     "RouteVehicle",
+    "LEDController",
+    "LEDControllerZone",
+    "LEDBinMapping",
 ]
