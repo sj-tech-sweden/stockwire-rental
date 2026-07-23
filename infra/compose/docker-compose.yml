@@ -25,6 +25,21 @@ services:
       timeout: 5s
       retries: 8
 
+  mosquitto:
+    image: eclipse-mosquitto:2
+    ports:
+      - "1883:1883"
+      - "9001:9001"
+    volumes:
+      - ./mosquitto/config:/mosquitto/config
+      - mosquitto-data:/mosquitto/data
+      - mosquitto-log:/mosquitto/log
+    healthcheck:
+      test: ["CMD-SHELL", "mosquitto_sub -t '$$SYS/#' -C 1 -i healthcheck -W 3 | grep -q . || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   backend:
     build:
       context: ../../backend
@@ -41,6 +56,14 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-stockwire_rental}
       REDIS_URL: redis://valkey:6379/0
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:9000,http://localhost:3000}
+      MQTT_ENABLED: ${MQTT_ENABLED:-false}
+      MQTT_BROKER_HOST: mosquitto
+      MQTT_BROKER_PORT: 1883
+      MQTT_USERNAME: ${MQTT_USERNAME:-}
+      MQTT_PASSWORD: ${MQTT_PASSWORD:-}
+      MQTT_TOPIC_PREFIX: ${MQTT_TOPIC_PREFIX:-stockwire}
+      MQTT_WAREHOUSE_ID: ${MQTT_WAREHOUSE_ID:-default}
+      MQTT_TLS: ${MQTT_TLS:-false}
       PROMETHEUS_ENABLED: true
       PROMETHEUS_METRICS_USER: ${PROMETHEUS_METRICS_USER:-prometheus}
       PROMETHEUS_METRICS_PASSWORD: ${PROMETHEUS_METRICS_PASSWORD:-metrics}
@@ -50,6 +73,8 @@ services:
       postgres:
         condition: service_healthy
       valkey:
+        condition: service_healthy
+      mosquitto:
         condition: service_healthy
 
   frontend:
@@ -101,3 +126,5 @@ volumes:
   stockwire-rental-postgres18-data:
   prometheus-data:
   grafana-data:
+  mosquitto-data:
+  mosquitto-log:

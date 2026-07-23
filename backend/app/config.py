@@ -69,6 +69,15 @@ class Settings(BaseSettings):
     twenty_api_key: str = ""
     twenty_base_url: str = "https://api.twenty.com"
 
+    mqtt_broker_host: str = "localhost"
+    mqtt_broker_port: int = 1883
+    mqtt_username: str = ""
+    mqtt_password: str = ""
+    mqtt_topic_prefix: str = "stockwire"
+    mqtt_warehouse_id: str = "default"
+    mqtt_tls: bool = False
+    mqtt_enabled: bool = False
+
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", case_sensitive=False)
 
     @property

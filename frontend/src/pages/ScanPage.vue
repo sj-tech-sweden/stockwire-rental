@@ -282,7 +282,45 @@
 
         <q-card v-if="scanAction === 'lookup' && lastLookupResult" flat bordered class="q-mt-md lookup-details-card">
           <q-card-section>
-            <div class="text-subtitle1 q-mb-sm">{{ t('scan.lookupDetails') }}</div>
+            <div class="row items-center q-mb-sm">
+              <div class="col">
+                <div class="text-subtitle1">{{ t('scan.lookupDetails') }}</div>
+                <div v-if="lastLookupResult.device_details?.asset_tag" class="text-h6 text-weight-bold">
+                  {{ lastLookupResult.device_details.asset_tag }}
+                </div>
+                <div v-if="lastLookupResult.product_details?.name" class="text-caption text-grey-4">
+                  {{ lastLookupResult.product_details.name }}
+                </div>
+              </div>
+              <div class="col-auto row q-gutter-xs">
+                <q-btn
+                  v-if="lastLookupResult.zone_id || lastLookupResult.device_details?.location_zone_name"
+                  color="primary" icon="place" unelevated no-caps size="sm"
+                  :label="t('inventory.deviceDialog.locateOnMap')"
+                  @click="lookupDeviceId && openScanLookupLocateMap(lastLookupResult)"
+                />
+                <q-btn
+                  v-if="lastLookupResult.device_id"
+                  color="orange" icon="lightbulb" unelevated no-caps size="sm"
+                  :label="t('warehouseLeds.actions.locate')"
+                  @click="lookupLocateLed(lastLookupResult.device_id)"
+                />
+              </div>
+            </div>
+
+            <div v-if="lastLookupResult.device_details" class="row q-col-gutter-xs q-mb-sm">
+              <div class="col-auto">
+                <q-badge :color="lastLookupResult.device_details.status === 'available' ? 'positive' : lastLookupResult.device_details.status === 'on_rent' ? 'info' : 'grey'" :label="lastLookupResult.device_details.status || '-'" />
+              </div>
+              <div class="col-auto">
+                <q-badge color="grey-7" :label="lastLookupResult.device_details.condition || '-'" />
+              </div>
+              <div v-if="lastLookupResult.device_details.location_zone_name" class="col-auto">
+                <q-badge color="primary" icon="place" :label="lastLookupResult.device_details.location_zone_name" />
+              </div>
+            </div>
+
+            <q-separator class="q-my-sm" />
 
             <div v-if="lookupDeviceEntries.length" class="q-mb-sm">
               <div class="text-caption text-grey-4 q-mb-xs">{{ t('scan.device') }}</div>
@@ -308,22 +346,25 @@
               </div>
             </div>
 
-            <div>
+            <div v-if="lookupMaintenanceEntries.length">
               <div class="text-caption text-grey-4 q-mb-xs">{{ t('scan.maintenanceHistory') }}</div>
-              <div v-if="lookupMaintenanceEntries.length">
-                <div
-                  v-for="item in lookupMaintenanceEntries"
-                  :key="`maintenance-${item.id}`"
-                  class="lookup-maintenance-item"
-                >
-                  <span>#{{ item.id }} {{ item.maintenance_type }} - {{ item.status }}</span>
-                  <span>{{ formatLookupValue(item.scheduled_date || item.completed_date || item.created_at) }}</span>
-                </div>
+              <div
+                v-for="item in lookupMaintenanceEntries"
+                :key="`maintenance-${item.id}`"
+                class="lookup-maintenance-item"
+              >
+                <span>#{{ item.id }} {{ item.maintenance_type }} - {{ item.status }}</span>
+                <span>{{ formatLookupValue(item.scheduled_date || item.completed_date || item.created_at) }}</span>
               </div>
-              <div v-else class="text-grey-5">{{ t('scan.noMaintenanceRecords') }}</div>
+            </div>
+            <div v-else>
+              <div class="text-caption text-grey-4 q-mb-xs">{{ t('scan.maintenanceHistory') }}</div>
+              <div class="text-grey-5">{{ t('scan.noMaintenanceRecords') }}</div>
             </div>
           </q-card-section>
         </q-card>
+
+        <LocateDeviceMapDialog v-model="lookupMapOpen" :device-id="lookupMapDeviceId" :highlight-duration="30" />
 
         <q-banner v-if="scanResultMessage" class="q-mt-md rounded-borders" :class="scanResultSuccess ? 'bg-positive text-white' : 'bg-negative text-white'" dense>
           {{ scanResultMessage }}
@@ -454,6 +495,10 @@
           </div>
           <q-linear-progress rounded size="12px" color="positive" track-color="grey-4" :value="workflowSummary.percent / 100" />
         </div>
+        <div v-if="scanAction === 'job_out' || scanAction === 'rental_job_out'" class="row q-gutter-sm q-mb-sm">
+          <q-btn color="orange" icon="lightbulb" :label="t('warehouseLeds.actions.highlight')" unelevated no-caps size="sm" @click="highlightJobBins" />
+          <q-btn color="grey-7" icon="clear_all" :label="t('warehouseLeds.clearAll')" unelevated no-caps size="sm" @click="clearWarehouseLeds" />
+        </div>
         <div class="text-caption text-grey-5 q-mb-sm">
           {{ t(workflowHelpKey) }}
         </div>
@@ -489,6 +534,9 @@
                     <div class="col-auto">
                       <q-btn flat dense round color="primary" icon="place" size="sm" @click="openWorkflowProductLocationMap(props.row)">
                         <q-tooltip>{{ t('inventory.deviceDialog.locateOnMap') }}</q-tooltip>
+                      </q-btn>
+                      <q-btn flat dense round color="orange" icon="lightbulb" size="sm" @click="highlightJobBins">
+                        <q-tooltip>{{ t('warehouseLeds.actions.highlight') }} bins</q-tooltip>
                       </q-btn>
                     </div>
                   </div>
@@ -566,6 +614,9 @@
                 <span class="text-caption">{{ productZonePath(props.row.product_id) }}</span>
                 <q-btn flat dense round color="primary" icon="place" size="xs" class="q-ml-xs" @click="openWorkflowProductLocationMap(props.row)">
                   <q-tooltip>{{ t('inventory.deviceDialog.locateOnMap') }}</q-tooltip>
+                </q-btn>
+                <q-btn flat dense round color="orange" icon="lightbulb" size="xs" class="q-ml-xs" @click="highlightJobBins">
+                  <q-tooltip>{{ t('warehouseLeds.actions.highlight') }} bins</q-tooltip>
                 </q-btn>
               </div>
               <span v-else class="text-grey-5">-</span>
@@ -673,6 +724,9 @@
                     <q-btn flat dense round color="primary" icon="place" size="sm" @click="openGlobalCheckinProductLocationMap(req)">
                       <q-tooltip>{{ t('inventory.deviceDialog.locateOnMap') }}</q-tooltip>
                     </q-btn>
+                    <q-btn flat dense round color="orange" icon="lightbulb" size="sm" @click="highlightJobBins">
+                      <q-tooltip>{{ t('warehouseLeds.actions.highlight') }} bins</q-tooltip>
+                    </q-btn>
                   </div>
                 </div>
                 <div v-if="productZonePath(req.product_id)" class="text-caption text-primary">
@@ -708,6 +762,9 @@
                   <div class="col-auto">
                     <q-btn flat dense round color="primary" icon="place" size="xs" @click="openCheckedOutDeviceLocate(device)">
                       <q-tooltip>{{ t('inventory.deviceDialog.locateOnMap') }}</q-tooltip>
+                    </q-btn>
+                    <q-btn flat dense round color="orange" icon="lightbulb" size="xs" @click="locateDeviceLed(device.id)">
+                      <q-tooltip>{{ t('warehouseLeds.actions.locate') }}</q-tooltip>
                     </q-btn>
                   </div>
                 </div>
@@ -897,6 +954,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { api } from '../boot/axios'
 import { useInventoryStore } from '../stores/inventory'
 import { useJobsStore } from '../stores/jobs'
+import { useWarehouseLedsStore } from '../stores/warehouseLeds'
 import { useCompactGrid } from '../composables/useCompactGrid'
 import { shouldSuppressDuplicateCameraScan } from '../utils/scan-camera'
 import ShortcutHelpDialog from '../components/ShortcutHelpDialog.vue'
@@ -915,6 +973,7 @@ import {
 
 const store = useInventoryStore()
 const jobsStore = useJobsStore()
+const warehouseLedsStore = useWarehouseLedsStore()
 const $q = useQuasar()
 const { t } = useI18n()
 const route = useRoute()
@@ -1478,6 +1537,23 @@ function zonePathById(id) {
 
 const productLocationMapOpen = ref(false)
 const productLocationMapProduct = ref(null)
+const lookupMapOpen = ref(false)
+const lookupMapDeviceId = ref(null)
+
+function openScanLookupLocateMap(result) {
+  if (result?.device_id) {
+    lookupMapDeviceId.value = result.device_id
+    lookupMapOpen.value = true
+  }
+}
+
+async function lookupLocateLed(deviceId) {
+  try {
+    await warehouseLedsStore.locateDevice(deviceId)
+  } catch (err) {
+    console.error('LED locate failed:', err)
+  }
+}
 
 function openWorkflowProductLocationMap(row) {
   const prod = productById.value.get(row.product_id)
@@ -1505,6 +1581,34 @@ const checkedOutLocateDevice = ref(null)
 function openCheckedOutDeviceLocate(row) {
   checkedOutLocateDevice.value = { location_zone_id: row.location_zone_id, asset_tag: row.asset_tag, serial_number: row.serial_number, id: row.id }
   checkedOutLocateOpen.value = true
+}
+
+async function highlightJobBins() {
+  if (!activeJobId.value) return
+  try {
+    const result = await warehouseLedsStore.highlightJob(activeJobId.value)
+    $q.notify({ type: 'positive', message: t('warehouseLeds.jobHighlighted', { count: result.bins_highlighted }) })
+  } catch (err) {
+    $q.notify({ type: 'negative', message: err.response?.data?.detail || err.message })
+  }
+}
+
+async function locateDeviceLed(deviceId) {
+  try {
+    const result = await warehouseLedsStore.locateDevice(deviceId)
+    $q.notify({ type: 'positive', message: t('warehouseLeds.locateSuccess', { tag: result.asset_tag || '' }) })
+  } catch (err) {
+    $q.notify({ type: 'negative', message: err.response?.data?.detail || err.message })
+  }
+}
+
+async function clearWarehouseLeds() {
+  try {
+    await warehouseLedsStore.clearAll()
+    $q.notify({ type: 'positive', message: t('warehouseLeds.allCleared') })
+  } catch (err) {
+    $q.notify({ type: 'negative', message: err.response?.data?.detail || err.message })
+  }
 }
 
 const checkedOutDeviceRows = computed(() => {

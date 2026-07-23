@@ -10,6 +10,7 @@
       <q-tab name="integrations" icon="hub" :label="t('settings.tabs.integrations')" />
       <q-tab name="email" icon="email" :label="t('settings.tabs.email')" />
       <q-tab name="offline-queue" icon="sync" :label="t('settings.tabs.offlineQueue')" />
+      <q-tab name="warehouse-leds" icon="developer_board" :label="t('settings.tabs.warehouseLeds')" />
       <q-tab name="about" icon="info" :label="t('settings.tabs.about')" />
     </q-tabs>
 
@@ -1306,6 +1307,10 @@
         </q-card>
       </q-tab-panel>
 
+      <q-tab-panel name="warehouse-leds" class="q-pa-none">
+        <WarehouseLedsSettings />
+      </q-tab-panel>
+
       <q-tab-panel name="about" class="q-pa-none">
         <q-card class="ec-card q-pa-md">
           <div class="text-subtitle1 q-mb-sm">{{ t('settings.about.title') }}</div>
@@ -1478,10 +1483,11 @@ import SettingsUserDialog from '../components/SettingsUserDialog.vue'
 import SettingsDeleteUserDialog from '../components/SettingsDeleteUserDialog.vue'
 import ApiKeyDialog from '../components/ApiKeyDialog.vue'
 import FieldDialog from '../components/FieldDialog.vue'
+import WarehouseLedsSettings from '../components/WarehouseLedsSettings.vue'
 
 const route = useRoute()
 const apiBaseUrl = getApiBaseUrl()
-const knownTabs = new Set(['auth', 'company', 'custom-fields', 'inventory', 'integrations', 'offline-queue', 'about'])
+const knownTabs = new Set(['auth', 'company', 'custom-fields', 'inventory', 'integrations', 'offline-queue', 'warehouse-leds', 'about'])
 const requestedTab = String(route.query.tab || '')
 const tab = ref(knownTabs.has(requestedTab) ? requestedTab : 'auth')
 const $q = useQuasar()

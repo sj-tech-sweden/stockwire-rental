@@ -61,6 +61,9 @@
             <q-btn v-if="device?.location_zone_id" flat dense round color="primary" icon="place" size="sm" class="q-ml-xs" @click="locateDeviceMapOpen = true">
               <q-tooltip>{{ t('inventory.deviceDialog.locateOnMap') }}</q-tooltip>
             </q-btn>
+            <q-btn v-if="device?.location_zone_id" flat dense round color="orange" icon="lightbulb" size="sm" class="q-ml-xs" @click="locateDeviceWithLed">
+              <q-tooltip>{{ t('warehouseLeds.actions.locate') }}</q-tooltip>
+            </q-btn>
           </div>
           <div class="col-12 col-md-6 text-caption">
             {{ t('inventory.infoDialogs.purchase') }}:
@@ -502,6 +505,7 @@ import { useI18n } from 'vue-i18n'
 import { useInventoryStore } from '../stores/inventory'
 import { useJobsStore } from '../stores/jobs'
 import { useSettingsStore } from '../stores/settings'
+import { useWarehouseLedsStore } from '../stores/warehouseLeds'
 import { normalizeCurrencyCode } from '../constants/currencies'
 import { api } from '../boot/axios'
 import EntityAttachmentsPanel from './EntityAttachmentsPanel.vue'
@@ -519,6 +523,7 @@ const { t } = useI18n()
 const store = useInventoryStore()
 const jobsStore = useJobsStore()
 const settingsStore = useSettingsStore()
+const warehouseLedsStore = useWarehouseLedsStore()
 
 const effectiveIsPhone = computed(() => props.isPhone || $q.screen.lt.md)
 
@@ -530,6 +535,16 @@ const productActionColor = computed(() => ($q.dark.isActive ? 'green-4' : 'secon
 const infoActionColor = computed(() => ($q.dark.isActive ? 'teal-4' : 'secondary'))
 
 const locateDeviceMapOpen = ref(false)
+
+async function locateDeviceWithLed() {
+  if (!props.device?.id) return
+  try {
+    const result = await warehouseLedsStore.locateDevice(props.device.id)
+    $q.notify({ type: 'positive', message: t('warehouseLeds.locateSuccess', { tag: result.asset_tag || '' }) })
+  } catch (err) {
+    $q.notify({ type: 'negative', message: err.response?.data?.detail || err.message })
+  }
+}
 
 const deviceLocationPath = computed(() => {
   if (!props.device?.location_zone_id) return ''
