@@ -163,14 +163,6 @@
 
     <ProjectDialog v-model="dialogOpen" :project="editing" @saved="onProjectSaved" />
     <ProjectDeleteDialog v-model="deleteDialogOpen" :project="deleteTarget" @deleted="onProjectDeleted" />
-    <JobDialog
-      v-model="newJobDialogOpen"
-      @saved="onNewJobSaved"
-      :customers="customersStore.customers"
-      :venues="venuesStore.venues"
-      :products="inventoryStore.products"
-      :initial-values="newJobInitialValues"
-    />
   </q-page>
 </template>
 
@@ -189,7 +181,6 @@ import { useJobsStore } from '../stores/jobs'
 import { useSettingsStore } from '../stores/settings'
 import ProjectDialog from '../components/ProjectDialog.vue'
 import ProjectDeleteDialog from '../components/ProjectDeleteDialog.vue'
-import JobDialog from '../components/JobDialog.vue'
 
 const $q = useQuasar()
 const router = useRouter()
@@ -210,8 +201,6 @@ const dialogOpen = ref(false)
 const editing = ref(null)
 const deleteDialogOpen = ref(false)
 const deleteTarget = ref(null)
-const newJobDialogOpen = ref(false)
-const newJobInitialValues = ref(null)
 
 const compactGrid = computed(() => $q.screen.width < 600)
 
@@ -301,17 +290,14 @@ function onProjectDeleted() {
 }
 
 function openNewJob(project) {
-  newJobInitialValues.value = {
-    customer_id: project.customer_id,
-    venue_id: project.venue_id,
-    project_id: project.id,
-  }
-  newJobDialogOpen.value = true
-}
-
-function onNewJobSaved() {
-  newJobDialogOpen.value = false
-  newJobInitialValues.value = null
+  router.push({
+    path: '/jobs/new',
+    query: {
+      customerId: project.customer_id,
+      venueId: project.venue_id,
+      projectId: project.id,
+    }
+  })
 }
 
 function navigateToJobs(project) {

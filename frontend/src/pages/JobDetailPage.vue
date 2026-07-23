@@ -5,10 +5,10 @@
         <q-btn flat icon="arrow_back" :label="t('jobs.backToJobs')" @click="goBack" />
       </div>
       <div class="col">
-        <div class="text-h5">{{ currentJob?.job_code || t('jobs.viewJob') }}</div>
+        <div class="text-h5">{{ isNewJob ? t('jobs.newJob') : (currentJob?.job_code || t('jobs.viewJob')) }}</div>
       </div>
-      <div class="col-auto" v-if="currentJob && authStore.canEdit">
-        <q-btn color="primary" unelevated :label="t('jobs.saveChanges')" :loading="saving" @click="saveChanges" />
+      <div class="col-auto" v-if="authStore.canEdit">
+        <q-btn color="primary" unelevated :label="isNewJob ? t('jobs.create') : t('jobs.saveChanges')" :loading="saving" @click="isNewJob ? createJob() : saveChanges()" />
       </div>
     </div>
 
@@ -16,7 +16,7 @@
       <q-spinner color="primary" size="48px" />
     </div>
 
-    <div v-else-if="!currentJob" class="q-gutter-md">
+    <div v-else-if="!isNewJob && !currentJob" class="q-gutter-md">
       <q-banner class="bg-warning text-dark rounded-borders">
         {{ t('jobs.jobNotFound') }}
       </q-banner>
@@ -223,6 +223,47 @@
         </q-card-section>
       </q-card>
 
+      <q-card v-if="selectedVenueMapEmbedUrl" class="ec-card">
+        <q-card-section>
+          <div class="text-subtitle2 q-mb-sm">{{ t('jobs.venue') }}</div>
+          <div class="rounded-borders overflow-hidden" style="height: 300px">
+            <iframe :src="selectedVenueMapEmbedUrl" width="100%" height="100%" style="border:0" allowfullscreen loading="lazy" />
+          </div>
+          <q-btn flat dense no-caps color="primary" icon="open_in_new" :label="t('jobs.openVenueMap')" :href="selectedVenueMapLink" target="_blank" class="q-mt-sm" />
+        </q-card-section>
+      </q-card>
+
+      <q-card class="ec-card">
+        <q-card-section class="row items-center justify-between q-col-gutter-sm">
+          <div class="col">
+            <div class="text-subtitle2">{{ t('jobs.customFieldValues') }}</div>
+          </div>
+          <div class="col-auto" v-if="authStore.canEdit">
+            <q-btn flat dense no-caps color="primary" icon="edit" :label="t('jobs.editCustomFields')" @click="customFieldsDialogOpen = true" />
+          </div>
+        </q-card-section>
+        <q-card-section class="q-pt-none" v-if="jobFieldRows.length">
+          <q-list bordered separator class="rounded-borders">
+            <q-item v-for="field in jobFieldRows" :key="field.field_definition_id">
+              <q-item-section>
+                <q-item-label>{{ customFieldLabel(field.label) }}</q-item-label>
+                <q-item-label caption>{{ formatFieldValue(field) }}</q-item-label>
+              </q-item-section>
+            </q-item>
+          </q-list>
+        </q-card-section>
+        <q-card-section class="q-pt-none" v-else>
+          <div class="text-caption text-grey-7">{{ t('jobs.noJobCustomFields') }}</div>
+        </q-card-section>
+      </q-card>
+
+      <EntityAttachmentsPanel
+        entity-type="job"
+        :entity-id="currentJob?.id || null"
+        :title="t('jobs.jobDocuments')"
+        default-category="job-document"
+      />
+
       <q-card class="ec-card">
         <q-card-section class="row items-center justify-between q-col-gutter-sm">
           <div class="col">
@@ -307,6 +348,30 @@
           </q-banner>
         </q-card-section>
       </q-card>
+
+      <q-card class="ec-card">
+        <q-card-section class="row items-center justify-between q-col-gutter-sm">
+          <div class="col">
+            <div class="text-subtitle2">{{ t('jobs.rentalRequirements') }}</div>
+          </div>
+          <div class="col-auto" v-if="authStore.canEdit">
+            <q-btn flat dense no-caps color="primary" icon="edit" :label="t('jobs.editRequirements')" @click="rentalRequirementDialogOpen = true" />
+          </div>
+        </q-card-section>
+        <q-card-section class="q-pt-none" v-if="rentalRequirementRows.length">
+          <q-list bordered separator class="rounded-borders">
+            <q-item v-for="row in rentalRequirementRows" :key="`rental-${row.product_id}`">
+              <q-item-section>
+                <q-item-label>{{ productNameForId(row.product_id) }}</q-item-label>
+                <q-item-label caption>{{ t('jobs.requiredQty') }}: {{ row.quantity_required }} · {{ t('jobs.picked') }}: {{ row.quantity_picked }}</q-item-label>
+              </q-item-section>
+            </q-item>
+          </q-list>
+        </q-card-section>
+        <q-card-section class="q-pt-none" v-else>
+          <div class="text-caption text-grey-7">{{ t('jobs.noRequirements') }}</div>
+        </q-card-section>
+      </q-card>
     </div>
 
     <JobProductRequirementDialog
@@ -316,8 +381,18 @@
       :start-date="form.start_date"
       :end-date="form.end_date"
       :job-id="currentJob?.id || null"
-      :include-rental-products="true"
     />
+    <JobRentalRequirementDialog
+      v-model="rentalRequirementDialogOpen"
+      v-model:requirement-rows="rentalRequirementRows"
+      :products="inventoryStore.products"
+      :start-date="form.start_date"
+      :end-date="form.end_date"
+      :job-id="currentJob?.id || null"
+    />
+    <CustomerPickerDialog v-model="customerPickerOpen" :customers="customersStore.customers" :selected-id="form.customer_id" @select="onCustomerSelected" />
+    <VenuePickerDialog v-model="venuePickerOpen" :venues="venuesStore.venues" :selected-id="form.venue_id" @select="onVenueSelected" />
+    <JobCustomFieldsDialog v-model="customFieldsDialogOpen" :job-id="currentJob?.id || null" @saved="reloadFieldRows" />
   </q-page>
 </template>
 
@@ -336,7 +411,15 @@ import { useAuthStore } from '../stores/auth'
 import { useSettingsStore } from '../stores/settings'
 import { normalizeCurrencyCode } from '../constants/currencies'
 import { buildScanJobLink } from '../utils/scan-workflow'
+import { googleMapsEmbedUrl, googleMapsSearchUrl, locationQueryFromParts } from '../utils/maps'
+import { translateMaybePrefillCustomFieldLabel } from '../i18n/prefillContent'
+import { useCustomFieldsStore } from '../stores/customFields'
+import EntityAttachmentsPanel from '../components/EntityAttachmentsPanel.vue'
 import JobProductRequirementDialog from '../components/JobProductRequirementDialog.vue'
+import JobRentalRequirementDialog from '../components/JobRentalRequirementDialog.vue'
+import CustomerPickerDialog from '../components/CustomerPickerDialog.vue'
+import VenuePickerDialog from '../components/VenuePickerDialog.vue'
+import JobCustomFieldsDialog from '../components/JobCustomFieldsDialog.vue'
 
 const $q = useQuasar()
 const route = useRoute()
@@ -350,19 +433,27 @@ const venuesStore = useVenuesStore()
 const projectsStore = useProjectsStore()
 const authStore = useAuthStore()
 const settingsStore = useSettingsStore()
+const customFieldsStore = useCustomFieldsStore()
 
 const pageLoading = ref(false)
 const saving = ref(false)
 const isDirty = ref(false)
 const formRef = ref(null)
 const requirementDialogOpen = ref(false)
+const rentalRequirementDialogOpen = ref(false)
+const customerPickerOpen = ref(false)
+const venuePickerOpen = ref(false)
+const customFieldsDialogOpen = ref(false)
 const filteredCustomerOptions = ref([])
 const filteredVenueOptions = ref([])
 const form = ref(emptyForm())
 const requirementRows = ref([])
+const rentalRequirementRows = ref([])
+const jobFieldRows = ref([])
 
 const activeCurrencyCode = computed(() => normalizeCurrencyCode(settingsStore.companyProfile?.currency, 'SEK'))
 const currentJobId = computed(() => Number(route.params.jobId || 0))
+const isNewJob = computed(() => route.path.endsWith('/new'))
 const currentJob = computed(() => jobsStore.jobs.find(job => job.id === currentJobId.value) || null)
 
 const statusOptions = computed(() => JOB_STATUSES.map(status => ({ label: statusLabel(status.value), value: status.value })))
@@ -600,10 +691,65 @@ const projectDisplayName = computed(() => (
 
 const formattedDateRange = computed(() => `${formatDate(form.value.start_date || currentJob.value?.start_date)} ${t('jobs.to')} ${formatDate(form.value.end_date || currentJob.value?.end_date)}`)
 
+const selectedVenueLocationQuery = computed(() => {
+  if (form.value.venue_id) {
+    const venue = venuesStore.venues.find(v => v.id === form.value.venue_id)
+    return locationQueryFromParts(venue || {})
+  }
+  return ''
+})
+
+const selectedVenueMapLink = computed(() => googleMapsSearchUrl(selectedVenueLocationQuery.value))
+const selectedVenueMapEmbedUrl = computed(() => googleMapsEmbedUrl(selectedVenueLocationQuery.value))
+
+function customFieldLabel(label) {
+  return translateMaybePrefillCustomFieldLabel(label, t)
+}
+
+function formatFieldValue(field) {
+  if (field.value == null) return '—'
+  if (field.value_type === 'boolean') return field.value === 'true' || field.value === true ? t('common.true') : t('common.false')
+  return String(field.value)
+}
+
+function productNameForId(id) {
+  const p = inventoryStore.products.find(p => p.id === id)
+  return p ? `${p.sku} · ${p.name}` : `#${id}`
+}
+
+async function loadFieldRows() {
+  if (!currentJob.value?.id) {
+    jobFieldRows.value = []
+    return
+  }
+  try {
+    const data = await customFieldsStore.fetchEntityValues('job', currentJob.value.id)
+    jobFieldRows.value = Array.isArray(data?.values) ? data.values.map(v => ({ ...v })) : []
+  } catch {
+    jobFieldRows.value = []
+  }
+}
+
+function reloadFieldRows() {
+  void loadFieldRows()
+}
+
+function onCustomerSelected(customer) {
+  form.value.customer_id = customer.id
+  form.value.customer_name = customer.name
+}
+
+function onVenueSelected(venue) {
+  form.value.venue_id = venue.id
+  form.value.venue_name = venue.name
+}
+
 function syncFromJob(job) {
   if (!job) {
     form.value = emptyForm()
     requirementRows.value = []
+    rentalRequirementRows.value = []
+    jobFieldRows.value = []
     isDirty.value = false
     return
   }
@@ -638,7 +784,10 @@ function syncFromJob(job) {
       notes: req.notes || null,
     }))
 
+  rentalRequirementRows.value = [...requirementRows.value]
+
   isDirty.value = false
+  void loadFieldRows()
 }
 
 function setRequirementQty(productId, value) {
@@ -677,9 +826,63 @@ async function loadData() {
       projectsStore.fetchAll(),
       settingsStore.fetchCompanyProfile(),
     ])
-    syncFromJob(currentJob.value)
+
+    if (isNewJob.value) {
+      const customerId = Number(route.query.customerId || 0)
+      const venueId = Number(route.query.venueId || 0)
+      const projectId = Number(route.query.projectId || 0)
+      const customer = customerId > 0 ? customersStore.customers.find(c => c.id === customerId) : null
+      const venue = venueId > 0 ? venuesStore.venues.find(v => v.id === venueId) : null
+      form.value = emptyForm()
+      if (customer) {
+        form.value.customer_id = customer.id
+        form.value.customer_name = customer.name
+      }
+      if (venue) {
+        form.value.venue_id = venue.id
+        form.value.venue_name = venue.name
+      }
+      if (projectId > 0) {
+        form.value.project_id = projectId
+      }
+    } else {
+      syncFromJob(currentJob.value)
+    }
   } finally {
     pageLoading.value = false
+  }
+}
+
+async function createJob() {
+  if (!authStore.canEdit) return
+
+  const valid = await formRef.value?.validate()
+  if (!valid) return
+
+  saving.value = true
+  try {
+    const selectedCustomer = customersStore.customers.find(customer => customer.id === form.value.customer_id)
+    const selectedVenue = venuesStore.venues.find(venue => venue.id === form.value.venue_id)
+
+    const payload = {
+      ...form.value,
+      customer_name: selectedCustomer?.name || form.value.customer_name || '',
+      venue_name: selectedVenue?.name || form.value.venue_name || '',
+      start_date: normalizeDate(form.value.start_date),
+      end_date: normalizeDate(form.value.end_date),
+      sales_price: form.value.sales_price == null || form.value.sales_price === '' ? null : Number(form.value.sales_price),
+      invoice_paid: Boolean(form.value.invoice_paid),
+      invoice_paid_at: form.value.invoice_paid ? normalizeDate(form.value.invoice_paid_at) : null,
+    }
+
+    const savedJob = await jobsStore.createJob(payload)
+    $q.notify({ type: 'positive', message: t('jobs.created') || 'Job created' })
+    await router.replace(`/jobs/${savedJob.id}`)
+  } catch (err) {
+    console.error('Failed to create job:', err)
+    $q.notify({ type: 'negative', message: t('jobs.createFailed') || 'Failed to create job' })
+  } finally {
+    saving.value = false
   }
 }
 
@@ -707,12 +910,26 @@ async function saveChanges() {
     }
 
     const savedJob = await jobsStore.updateJob(currentJob.value.id, payload)
-    await jobsStore.bulkUpsertRequirements(savedJob.id, requirementRows.value.map(item => ({
-      product_id: item.product_id,
-      quantity_required: Number(item.quantity_required || 0),
-      quantity_picked: Number(item.quantity_picked || 0),
-      notes: item.notes || null,
-    })))
+    const allRequirements = new Map()
+    for (const item of requirementRows.value) {
+      allRequirements.set(item.product_id, {
+        product_id: item.product_id,
+        quantity_required: Number(item.quantity_required || 0),
+        quantity_picked: Number(item.quantity_picked || 0),
+        notes: item.notes || null,
+      })
+    }
+    for (const item of rentalRequirementRows.value) {
+      if (!allRequirements.has(item.product_id)) {
+        allRequirements.set(item.product_id, {
+          product_id: item.product_id,
+          quantity_required: Number(item.quantity_required || 0),
+          quantity_picked: Number(item.quantity_picked || 0),
+          notes: item.notes || null,
+        })
+      }
+    }
+    await jobsStore.bulkUpsertRequirements(savedJob.id, [...allRequirements.values()])
 
     syncFromJob(savedJob)
     $q.notify({ type: 'positive', message: t('jobs.jobUpdated') })
@@ -732,6 +949,7 @@ onMounted(async () => {
 })
 
 watch(currentJob, (job) => {
+  if (isNewJob.value) return
   if (!isDirty.value) syncFromJob(job)
 })
 

@@ -213,14 +213,6 @@
       </template>
     </q-table>
 
-    <JobDialog
-      v-model="dialogOpen"
-      :job="editing"
-      :customers="customersStore.customers"
-      :venues="venuesStore.venues"
-      :products="inventoryStore.products"
-      @saved="onJobSaved"
-    />
     <JobDeleteDialog
       v-model="deleteDialogOpen"
       :job="deleteTarget"
@@ -245,7 +237,6 @@ import { useProjectsStore } from '../stores/projects'
 import { useCompactGrid } from '../composables/useCompactGrid'
 import { normalizeCurrencyCode } from '../constants/currencies'
 import { googleMapsSearchUrl, locationQueryFromParts } from '../utils/maps'
-import JobDialog from '../components/JobDialog.vue'
 import JobDeleteDialog from '../components/JobDeleteDialog.vue'
 
 const compactGrid = useCompactGrid(1024)
@@ -273,8 +264,6 @@ const showCachedOfflineBanner = computed(() => (
   jobsStore.fetchSource === 'snapshot' || inventoryStore.fetchSource === 'snapshot'
 ))
 
-const dialogOpen = ref(false)
-const editing = ref(null)
 const deleteDialogOpen = ref(false)
 const deleteTarget = ref(null)
 
@@ -459,10 +448,9 @@ async function applyRouteContext() {
   const focusJobId = Number(route.query.focusJobId || 0)
   if (focusJobId > 0) {
     const target = jobsStore.jobs.find(item => item.id === focusJobId)
-    if (target && authStore.canEdit) {
-      openEdit(target)
-    } else if (target) {
-      search.value = String(target.job_code || '').trim()
+    if (target) {
+      await router.replace(`/jobs/${target.id}`)
+      return
     }
   }
 
@@ -502,13 +490,11 @@ function jobVenueMapLink(job) {
 }
 
 function openCreate() {
-  editing.value = null
-  dialogOpen.value = true
+  router.push('/jobs/new')
 }
 
 function openEdit(job) {
-  editing.value = job
-  dialogOpen.value = true
+  router.push(`/jobs/${job.id}`)
 }
 
 function confirmDelete(job) {
@@ -536,11 +522,6 @@ function openProductionPlanner(productionPlannerProjectId) {
   if (productionPlannerProjectId) {
     window.open(jobsStore.getProductionPlannerUrl(productionPlannerProjectId), '_blank', 'noopener,noreferrer')
   }
-}
-
-function onJobSaved() {
-  dialogOpen.value = false
-  editing.value = null
 }
 
 function onJobDeleted() {
