@@ -911,7 +911,6 @@ export default {
     editCustomFields: 'Redigera anpassade fält',
     selectCustomer: 'Välj kund',
     selectVenue: 'Välj plats',
-    rentalRequirements: 'Hyreskrav',
     picked: 'Plockade',
     filterByStatus: 'Status',
     filterByCustomer: 'Kund',

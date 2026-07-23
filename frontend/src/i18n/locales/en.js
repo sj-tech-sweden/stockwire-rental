@@ -911,7 +911,6 @@ export default {
     editCustomFields: 'Edit custom fields',
     selectCustomer: 'Select customer',
     selectVenue: 'Select venue',
-    rentalRequirements: 'Rental requirements',
     picked: 'Picked',
     filterByStatus: 'Status',
     filterByCustomer: 'Customer',
