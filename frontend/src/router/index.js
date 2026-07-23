@@ -64,6 +64,7 @@ const routes = [
       { path: 'defects', redirect: '/maintenance' },
       { path: 'activity', component: ActivityPage },
       { path: 'jobs', component: JobsPage },
+      { path: 'jobs/new', component: () => import('../pages/JobDetailPage.vue') },
       { path: 'jobs/:jobId', component: () => import('../pages/JobDetailPage.vue') },
       { path: 'projects', component: () => import('../pages/ProjectsPage.vue') },
       { path: 'customers', component: CustomersPage },
