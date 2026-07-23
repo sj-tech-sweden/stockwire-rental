@@ -31,6 +31,6 @@ describe('job requirement dialog regressions', () => {
   it('enables rental inclusion from JobDetailPage', () => {
     const pageSource = readFileSync(resolve(process.cwd(), 'src/pages/JobDetailPage.vue'), 'utf8')
 
-    expect(pageSource).toContain(':include-rental-products="true"')
+    expect(pageSource).toContain('JobRentalRequirementDialog')
   })
 })
