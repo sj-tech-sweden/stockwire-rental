@@ -219,6 +219,18 @@
                 map-options
               />
             </div>
+            <div class="col-12 col-sm-6 col-md-3">
+              <q-select
+                v-model="rentalProductCategoryFilter"
+                :options="rentalCategoryOptions"
+                :label="t('inventory.category')"
+                outlined
+                dense
+                clearable
+                emit-value
+                map-options
+              />
+            </div>
             <div class="col-12 col-md-2">
               <q-select
                 v-model="rentalProductSyncFilter"
@@ -830,6 +842,7 @@ const selectedDevices = ref([])
 const selectedLocationIds = ref([])
 const rentalProductSearch = ref('')
 const rentalProductSupplierFilter = ref(null)
+const rentalProductCategoryFilter = ref(null)
 const rentalProductSyncFilter = ref('all')
 const rentalProductSort = ref('name_asc')
 const rentalProductDialogOpen = ref(false)
@@ -939,7 +952,7 @@ const filteredProducts = computed(() => {
   const needle = productSearch.value.trim().toLowerCase()
   const rows = store.products.filter(product => {
     if (isRentalProduct(product)) return false
-    if (productCategoryFilter.value && String(product.category || '') !== String(productCategoryFilter.value)) return false
+    if (selectedCategoryDescendantIds.value && !selectedCategoryDescendantIds.value.has(product.category_id)) return false
     if (productTypeFilter.value && String(product.product_type || '') !== String(productTypeFilter.value)) return false
     if (productBrandFilter.value && String(product.brand || '') !== String(productBrandFilter.value)) return false
     if (productManufacturerFilter.value && String(product.manufacturer || '') !== String(productManufacturerFilter.value)) return false
@@ -995,10 +1008,16 @@ const rentalSupplierOptions = computed(() => {
   return values.sort((a, b) => a.localeCompare(b)).map(value => ({ label: value, value }))
 })
 
+const rentalCategoryOptions = computed(() => {
+  const values = [...new Set(rentalProducts.value.map(item => String(item.category || '').trim()).filter(Boolean))]
+  return values.sort((a, b) => a.localeCompare(b)).map(value => ({ label: value, value }))
+})
+
 const filteredRentalProducts = computed(() => {
   const needle = rentalProductSearch.value.trim().toLowerCase()
   const rows = rentalProducts.value.filter(product => {
     if (rentalProductSupplierFilter.value && String(product.supplier_name || '') !== String(rentalProductSupplierFilter.value)) return false
+    if (rentalProductCategoryFilter.value && String(product.category || '') !== String(rentalProductCategoryFilter.value)) return false
     if (rentalProductSyncFilter.value === 'synced' && !isSyncedEventoryProduct(product)) return false
     if (rentalProductSyncFilter.value === 'manual' && isSyncedEventoryProduct(product)) return false
     if (!needle) return true
@@ -1058,8 +1077,38 @@ function openEditRentalProduct(product) {
 }
 
 const productCategoryOptions = computed(() => {
-  const values = [...new Set(store.products.map(item => String(item.category || '').trim()).filter(Boolean))]
-  return values.sort((a, b) => a.localeCompare(b)).map(value => ({ label: value, value }))
+  const flat = []
+  const walk = (nodes, prefix = '') => {
+    for (const node of nodes || []) {
+      const label = prefix ? `${prefix} / ${node.name}` : node.name
+      flat.push({ label, value: node.id })
+      walk(node.children || [], label)
+    }
+  }
+  walk(store.categoryTree)
+  return flat
+})
+
+function collectCategoryIds(node) {
+  const ids = [node.id]
+  for (const child of node.children || []) {
+    ids.push(...collectCategoryIds(child))
+  }
+  return ids
+}
+
+const selectedCategoryDescendantIds = computed(() => {
+  if (!productCategoryFilter.value) return null
+  const findNode = (nodes) => {
+    for (const node of nodes || []) {
+      if (node.id === productCategoryFilter.value) return node
+      const found = findNode(node.children || [])
+      if (found) return found
+    }
+    return null
+  }
+  const node = findNode(store.categoryTree)
+  return node ? new Set(collectCategoryIds(node)) : new Set([productCategoryFilter.value])
 })
 
 const productBrandOptions = computed(() => {
