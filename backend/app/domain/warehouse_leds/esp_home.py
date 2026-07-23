@@ -20,7 +20,7 @@ def generate_esphome_yaml(
     api_key: str = "",
 ) -> str:
     topic_suffix = controller_id
-    command_topic = f"{mqtt_topic_prefix}/{topic_suffix}/cmd"
+    # command_topic = f"{mqtt_topic_prefix}/{topic_suffix}/cmd"
     status_topic = f"{mqtt_topic_prefix}/{topic_suffix}/status"
 
     mqtt_section = ""
