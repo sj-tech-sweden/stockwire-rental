@@ -13,27 +13,73 @@
       {{ t('jobs.cachedOfflineBanner') }}
     </q-banner>
 
-    <div class="row items-center justify-between q-mb-md q-gutter-sm">
-      <div class="row q-gutter-xs">
-        <q-chip
-          v-for="status in statusFilters"
-          :key="status.value"
-          clickable
+    <div class="row q-col-gutter-sm q-mb-md items-end">
+      <div class="col-12 col-sm-6 col-md-3">
+        <q-select
+          v-model="selectedStatuses"
+          :options="statusOptions"
+          emit-value
+          map-options
+          outlined
           dense
-          :color="status.color"
-          :text-color="activeFilter === status.value ? 'white' : status.color"
-          :outline="activeFilter !== status.value"
-          @click="activeFilter = activeFilter === status.value ? null : status.value"
-        >
-          {{ status.label }}
-        </q-chip>
+          use-chips
+          multiple
+          :label="t('jobs.filterByStatus')"
+          clearable
+        />
       </div>
-
-      <q-input v-model="search" dense outlined clearable :placeholder="t('jobs.searchJobs')">
-        <template #prepend>
-          <q-icon name="search" />
-        </template>
-      </q-input>
+      <div class="col-12 col-sm-6 col-md-3">
+        <q-select
+          v-model="filterCustomerId"
+          :options="customerOptions"
+          emit-value
+          map-options
+          outlined
+          dense
+          clearable
+          :label="t('jobs.filterByCustomer')"
+        />
+      </div>
+      <div class="col-12 col-sm-6 col-md-3">
+        <q-select
+          v-model="filterVenueId"
+          :options="venueOptions"
+          emit-value
+          map-options
+          outlined
+          dense
+          clearable
+          :label="t('jobs.filterByVenue')"
+        />
+      </div>
+      <div class="col-12 col-sm-6 col-md-3">
+        <q-select
+          v-model="filterProjectIdLocal"
+          :options="projectOptions"
+          emit-value
+          map-options
+          outlined
+          dense
+          clearable
+          :label="t('jobs.filterByProject')"
+        />
+      </div>
+      <div class="col-6 col-sm-3 col-md-2">
+        <q-input v-model="filterStartDateFrom" type="date" outlined dense clearable :label="t('jobs.startDateFrom')" />
+      </div>
+      <div class="col-6 col-sm-3 col-md-2">
+        <q-input v-model="filterStartDateTo" type="date" outlined dense clearable :label="t('jobs.startDateTo')" />
+      </div>
+      <div class="col-12 col-sm-6 col-md-3">
+        <q-input v-model="search" dense outlined clearable :placeholder="t('jobs.searchJobs')">
+          <template #prepend>
+            <q-icon name="search" />
+          </template>
+        </q-input>
+      </div>
+      <div v-if="hasActiveFilters" class="col-auto">
+        <q-btn flat dense color="negative" icon="filter_alt_off" :label="t('jobs.clearFilters')" @click="clearAllFilters" />
+      </div>
     </div>
 
     <q-table
@@ -217,7 +263,12 @@ const $q = useQuasar()
 
 const pageLoading = ref(false)
 const search = ref('')
-const activeFilter = ref(null)
+const selectedStatuses = ref([])
+const filterCustomerId = ref(null)
+const filterVenueId = ref(null)
+const filterProjectIdLocal = ref(null)
+const filterStartDateFrom = ref('')
+const filterStartDateTo = ref('')
 const showCachedOfflineBanner = computed(() => (
   jobsStore.fetchSource === 'snapshot' || inventoryStore.fetchSource === 'snapshot'
 ))
@@ -249,6 +300,28 @@ function statusLabel(value) {
   }
   return mapping[normalized] || value
 }
+
+const statusOptions = computed(() =>
+  statusFilters.value.map(s => ({ label: s.label, value: s.value }))
+)
+
+const customerOptions = computed(() =>
+  customersStore.customers
+    .map(c => ({ label: c.name, value: c.id }))
+    .sort((a, b) => a.label.localeCompare(b.label))
+)
+
+const venueOptions = computed(() =>
+  venuesStore.venues
+    .map(v => ({ label: v.name, value: v.id }))
+    .sort((a, b) => a.label.localeCompare(b.label))
+)
+
+const projectOptions = computed(() =>
+  projectsStore.projects
+    .map(p => ({ label: p.name, value: p.id }))
+    .sort((a, b) => a.label.localeCompare(b.label))
+)
 
 function normalizeDate(value) {
   if (!value) return null
@@ -323,12 +396,41 @@ const visibleJobs = computed(() => {
   const term = search.value.trim().toLowerCase()
   return jobsWithProject.value.filter(job => {
     if (filterProjectId.value && job.project_id !== filterProjectId.value) return false
-    if (activeFilter.value && job.status !== activeFilter.value) return false
+    if (selectedStatuses.value?.length && !selectedStatuses.value.includes(job.status)) return false
+    if (filterCustomerId.value && job.customer_id !== filterCustomerId.value) return false
+    if (filterVenueId.value && job.venue_id !== filterVenueId.value) return false
+    if (filterProjectIdLocal.value && job.project_id !== filterProjectIdLocal.value) return false
+    if (filterStartDateFrom.value && job.start_date < filterStartDateFrom.value) return false
+    if (filterStartDateTo.value && job.start_date > filterStartDateTo.value) return false
     if (!term) return true
     return [job.job_code, job.description, job.customer_name, job.venue_name, job.project_name, job.status]
       .filter(Boolean)
       .some(value => String(value).toLowerCase().includes(term))
   })
+})
+
+const hasActiveFilters = computed(() =>
+  (selectedStatuses.value?.length || 0) > 0 ||
+  filterCustomerId.value !== null ||
+  filterVenueId.value !== null ||
+  filterProjectIdLocal.value !== null ||
+  filterStartDateFrom.value !== '' ||
+  filterStartDateTo.value !== '' ||
+  search.value.trim() !== ''
+)
+
+function clearAllFilters() {
+  selectedStatuses.value = []
+  filterCustomerId.value = null
+  filterVenueId.value = null
+  filterProjectIdLocal.value = null
+  filterStartDateFrom.value = ''
+  filterStartDateTo.value = ''
+  search.value = ''
+}
+
+watch(selectedStatuses, (val) => {
+  if (val === null) selectedStatuses.value = []
 })
 
 async function loadData() {
@@ -351,7 +453,7 @@ async function loadData() {
 async function applyRouteContext() {
   const status = String(route.query.status || '').trim().toLowerCase()
   if (status && JOB_STATUSES.some(item => item.value === status)) {
-    activeFilter.value = status
+    selectedStatuses.value = [status]
   }
 
   const focusJobId = Number(route.query.focusJobId || 0)
