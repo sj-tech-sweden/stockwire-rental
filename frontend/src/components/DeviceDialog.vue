@@ -91,6 +91,14 @@
             </div>
             <div class="col-12 col-md-4"><q-input v-model="deviceForm.purchase_date" type="date" :label="t('inventory.deviceDialog.purchaseDate')" outlined dense @update:model-value="onPurchaseDateChanged" /></div>
             <div class="col-12 col-md-4"><q-input v-model.number="deviceForm.purchase_price" type="number" step="0.01" :label="t('inventory.deviceDialog.purchasePrice')" outlined dense /></div>
+            <div class="col-12 col-md-4">
+              <SupplierPickerInline
+                v-model="deviceForm.supplier_id"
+                :label="t('inventory.deviceDialog.supplier')"
+                supplier-type="product"
+                :product-supplier-ids="selectedProductSupplierIds"
+              />
+            </div>
             <div class="col-12 col-md-4"><q-input v-model="deviceForm.purchased_from" :label="t('inventory.deviceDialog.purchasedFrom')" outlined dense /></div>
             <div class="col-12 col-md-4"><q-input v-model.number="deviceForm.sold_price" type="number" step="0.01" :label="t('inventory.deviceDialog.soldPrice')" outlined dense /></div>
             <div class="col-12 col-md-4"><q-input v-model="deviceForm.finance_upto" :label="t('inventory.deviceDialog.financeUpTo')" outlined dense /></div>
@@ -131,11 +139,13 @@
 </template>
 
 <script setup>
-import { computed, nextTick, onUnmounted, ref, watch } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 import { useQuasar } from 'quasar'
 import { useI18n } from 'vue-i18n'
 import { DEVICE_STATUSES, useInventoryStore } from '../stores/inventory'
+import { useCustomersStore } from '../stores/customers'
 import { useSettingsStore } from '../stores/settings'
+import SupplierPickerInline from './SupplierPickerInline.vue'
 import { isRentalProduct } from '../utils/inventory-overview'
 import { api } from '../boot/axios'
 import EntityAttachmentsPanel from './EntityAttachmentsPanel.vue'
@@ -152,6 +162,7 @@ const emit = defineEmits(['update:modelValue', 'saved'])
 const $q = useQuasar()
 const { t } = useI18n()
 const store = useInventoryStore()
+const customersStore = useCustomersStore()
 const settingsStore = useSettingsStore()
 
 const saving = ref(false)
@@ -180,7 +191,7 @@ const locateDeviceMapOpen = ref(false)
 const emptyDeviceForm = () => ({
   product_id: null, asset_tag: '', serial_number: '', barcode: '', qr_code: '', rfid: '',
   location_zone_id: null, case_device_id: null, status: 'available', condition: 'good',
-  purchase_date: '', purchase_price: null, purchased_from: '', sold_price: null, finance_upto: '', finance_company: '', finance_ref: '', pre_prep: '', warranty_end_date: '', retire_date: '', usage_hours: null, notes: '',
+  purchase_date: '', purchase_price: null, supplier_id: null, purchased_from: '', sold_price: null, finance_upto: '', finance_company: '', finance_ref: '', pre_prep: '', warranty_end_date: '', retire_date: '', usage_hours: null, notes: '',
 })
 const deviceForm = ref(emptyDeviceForm())
 
@@ -194,6 +205,14 @@ const conditionOptions = [
 ]
 
 const productOptions = computed(() => store.products.map(p => ({ label: `${p.sku} - ${p.name}`, value: p.id })))
+
+const selectedProductSupplierIds = computed(() => {
+  if (!deviceForm.value.product_id) return null
+  const product = store.products.find(p => p.id === deviceForm.value.product_id)
+  if (!product?.suppliers?.length) return null
+  return product.suppliers.map(s => s.supplier_id)
+})
+
 const locationSelectOptions = computed(() => {
   const flat = [{ label: t('inventory.deviceDialog.unassigned'), value: null }]
   const walk = (nodes, prefix = '') => {
@@ -315,6 +334,7 @@ function openEditDevice(device) {
     condition: device.condition ?? 'good',
     purchase_date: device.purchase_date || '',
     purchase_price: device.purchase_price ?? null,
+    supplier_id: device.supplier_id ?? null,
     purchased_from: device.purchased_from ?? '',
     sold_price: device.sold_price ?? null,
     finance_upto: device.finance_upto ?? '',
@@ -400,6 +420,7 @@ async function saveDevice() {
       condition: deviceForm.value.condition,
       purchase_date: normalizeOptionalDate(deviceForm.value.purchase_date),
       purchase_price: deviceForm.value.purchase_price === '' || deviceForm.value.purchase_price === null || deviceForm.value.purchase_price === undefined ? null : Number(deviceForm.value.purchase_price),
+      supplier_id: deviceForm.value.supplier_id,
       purchased_from: deviceForm.value.purchased_from || null,
       sold_price: deviceForm.value.sold_price === '' || deviceForm.value.sold_price === null || deviceForm.value.sold_price === undefined ? null : Number(deviceForm.value.sold_price),
       finance_upto: deviceForm.value.finance_upto || null,
@@ -512,16 +533,7 @@ watch(() => props.modelValue, (open) => {
   }
 })
 
-onUnmounted(async () => {
-  if (ocrWorkerInstance) {
-    try {
-      await ocrWorkerInstance.terminate()
-    } catch {
-      // Ignore termination errors on unmount.
-    }
-    ocrWorkerInstance = null
-  }
-})
+
 </script>
 
 <style lang="scss" scoped>

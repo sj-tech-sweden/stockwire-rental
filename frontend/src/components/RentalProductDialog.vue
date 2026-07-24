@@ -9,7 +9,16 @@
               <div class="col-12 col-md-4"><q-input v-model="draft.sku" :label="t('inventory.columnSku')" outlined dense :rules="[v => !!v || t('login.required')]" /></div>
               <div class="col-12 col-md-8"><q-input v-model="draft.name" :label="t('inventory.columnName')" outlined dense :rules="[v => !!v || t('login.required')]" /></div>
               <div class="col-12 col-md-4"><q-input v-model="draft.category" :label="t('inventory.columnCategory')" outlined dense /></div>
-              <div class="col-12 col-md-4"><q-input v-model="draft.supplier_name" :label="t('inventory.columnSupplier')" outlined dense /></div>
+              <div class="col-12 col-md-4">
+                <SupplierPickerInline
+                  v-model="draft.supplier_id"
+                  :label="t('inventory.columnSupplier')"
+                  supplier-type="rental"
+                />
+              </div>
+              <div class="col-12 col-md-4">
+                <q-input v-model="draft.supplier_name" :label="t('inventory.columnSupplier') + ' (legacy)'" outlined dense />
+              </div>
             </div>
           </q-expansion-item>
 
@@ -132,8 +141,10 @@ import { useI18n } from 'vue-i18n'
 import { useInventoryStore } from '../stores/inventory'
 import { useCustomFieldsStore } from '../stores/customFields'
 import { useSettingsStore } from '../stores/settings'
+import { useCustomersStore } from '../stores/customers'
 import { normalizeCurrencyCode } from '../constants/currencies'
 import { translateMaybePrefillCustomFieldLabel, translateMaybePrefillCustomFieldOption } from '../i18n/prefillContent'
+import SupplierPickerInline from './SupplierPickerInline.vue'
 
 const props = defineProps({
   modelValue: Boolean,
@@ -150,6 +161,7 @@ const { t } = useI18n()
 const store = useInventoryStore()
 const customFieldsStore = useCustomFieldsStore()
 const settingsStore = useSettingsStore()
+const customersStore = useCustomersStore()
 
 const isPhone = computed(() => $q.screen.lt.md)
 const activeCurrencyCode = computed(() => normalizeCurrencyCode(settingsStore.companyProfile?.currency, 'SEK'))
@@ -176,6 +188,7 @@ function emptyDraft() {
     sku: '',
     name: '',
     category: '',
+    supplier_id: null,
     supplier_name: '',
     rental_price: 0,
     daily_rate: 0,
@@ -272,11 +285,15 @@ function openCreate() {
 }
 
 async function openEdit(product) {
+  const primarySupplier = Array.isArray(product.suppliers)
+    ? product.suppliers.find(s => s.is_primary) || product.suppliers[0]
+    : null
   draft.value = {
     id: product.id,
     sku: product.sku || '',
     name: product.name || '',
     category: product.category || '',
+    supplier_id: primarySupplier?.supplier_id || null,
     supplier_name: product.supplier_name || '',
     rental_price: Number(product.rental_price || 0),
     daily_rate: Number(product.daily_rate || 0),
@@ -326,6 +343,15 @@ async function save() {
       $q.notify({ type: 'positive', message: t('inventory.rentalProductCreated') })
     }
 
+    if (draft.value.supplier_id) {
+      await store.updateProductSuppliers(savedProduct.id, [{
+        supplier_id: draft.value.supplier_id,
+        is_primary: true,
+      }])
+    } else {
+      await store.updateProductSuppliers(savedProduct.id, [])
+    }
+
     await customFieldsStore.saveEntityValues('product', savedProduct.id, fieldRows.value.map(row => ({
       field_definition_id: row.field_definition_id,
       value: row.value,
@@ -345,6 +371,9 @@ watch(() => props.modelValue, async (open) => {
   if (open) {
     if (!customFieldsStore.definitions.length) {
       await customFieldsStore.fetchDefinitions('product')
+    }
+    if (!customersStore.customers.length) {
+      customersStore.fetchAll().catch(() => {})
     }
     if (props.product) {
       await openEdit(props.product)

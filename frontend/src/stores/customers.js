@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 
 import { api } from '../boot/axios'
 import { cacheSnapshot, isOnline, queueMutation, readSnapshot } from '../services/offline/orbitSync'
@@ -7,6 +7,22 @@ import { cacheSnapshot, isOnline, queueMutation, readSnapshot } from '../service
 export const useCustomersStore = defineStore('customers', () => {
   const customers = ref([])
   const loading = ref(false)
+
+  const productSuppliers = computed(() =>
+    customers.value.filter(c => c.is_product_supplier)
+  )
+
+  const rentalSuppliers = computed(() =>
+    customers.value.filter(c => c.is_rental_supplier)
+  )
+
+  const crewSuppliers = computed(() =>
+    customers.value.filter(c => c.is_crew_supplier)
+  )
+
+  const allSuppliers = computed(() =>
+    customers.value.filter(c => c.is_product_supplier || c.is_rental_supplier || c.is_crew_supplier)
+  )
 
   async function fetchAll() {
     loading.value = true
@@ -67,5 +83,16 @@ export const useCustomersStore = defineStore('customers', () => {
     await cacheSnapshot('customers.fetchAll', customers.value)
   }
 
-  return { customers, loading, fetchAll, createCustomer, updateCustomer, deleteCustomer }
+  return {
+    customers,
+    loading,
+    productSuppliers,
+    rentalSuppliers,
+    crewSuppliers,
+    allSuppliers,
+    fetchAll,
+    createCustomer,
+    updateCustomer,
+    deleteCustomer,
+  }
 })

@@ -17,6 +17,8 @@ from app.domain.inventory.models import (
     MaintenanceComment,
     Product,
     ProductAccessory,
+    ProductComponent,
+    ProductSupplier,
     Zone,
 )
 from app.domain.jobs.models import Job, JobRequirement
@@ -30,6 +32,8 @@ __all__ = [
     "InventoryCategory",
     "Product",
     "ProductAccessory",
+    "ProductComponent",
+    "ProductSupplier",
     "Device",
     "DeviceMaintenance",
     "DeviceMaintenanceSchedule",

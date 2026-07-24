@@ -32,6 +32,23 @@
           <q-input v-model="form.notes" :label="t('customers.notes')" type="textarea" autogrow outlined dense />
 
           <q-separator class="q-my-md" />
+          <div class="text-subtitle2 q-mb-sm">{{ t('customers.supplierTypes') }}</div>
+          <div class="row q-col-gutter-sm q-mb-md">
+            <div class="col-6 col-md-3">
+              <q-checkbox v-model="form.is_customer" :label="t('customers.isCustomer')" />
+            </div>
+            <div class="col-6 col-md-3">
+              <q-checkbox v-model="form.is_product_supplier" :label="t('customers.isProductSupplier')" />
+            </div>
+            <div class="col-6 col-md-3">
+              <q-checkbox v-model="form.is_rental_supplier" :label="t('customers.isRentalSupplier')" />
+            </div>
+            <div class="col-6 col-md-3">
+              <q-checkbox v-model="form.is_crew_supplier" :label="t('customers.isCrewSupplier')" />
+            </div>
+          </div>
+
+          <q-separator class="q-my-md" />
           <div class="text-subtitle2 q-mb-sm">{{ t('customers.customFieldValues') }}</div>
           <div v-if="customerFieldRows.length">
             <div v-for="field in customerFieldRows" :key="field.field_definition_id" class="q-mb-sm">
@@ -144,6 +161,10 @@ const emptyForm = () => ({
   postal_code: '',
   country: '',
   notes: '',
+  is_customer: true,
+  is_product_supplier: false,
+  is_rental_supplier: false,
+  is_crew_supplier: false,
 })
 
 const form = ref(emptyForm())
@@ -202,6 +223,10 @@ async function openEdit(customer) {
     postal_code: customer.postal_code ?? '',
     country: customer.country ?? '',
     notes: customer.notes ?? '',
+    is_customer: customer.is_customer ?? true,
+    is_product_supplier: customer.is_product_supplier ?? false,
+    is_rental_supplier: customer.is_rental_supplier ?? false,
+    is_crew_supplier: customer.is_crew_supplier ?? false,
   }
   await loadCustomerFieldRows(customer.id)
   dialogError.value = ''

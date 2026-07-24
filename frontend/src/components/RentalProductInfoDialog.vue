@@ -3,7 +3,7 @@
     <q-card :style="isPhone ? 'width: 100vw; max-width: 100vw; height: 100vh' : 'min-width: 860px; max-width: 96vw'" class="ec-card">
       <q-card-section class="row items-start no-wrap">
         <div>
-          <div class="text-h6">Rental Info · {{ product?.sku || '-' }}</div>
+          <div class="text-h6">{{ t('inventory.rentalInfoTitle', { sku: product?.sku || '-' }) }}</div>
           <div class="text-caption text-grey-7">{{ product?.name || '-' }}</div>
         </div>
         <q-space />
@@ -22,15 +22,15 @@
         <q-list bordered separator class="rounded-borders q-mb-md">
           <q-item>
             <q-item-section>
-              <q-item-label>ID: {{ product?.id || '-' }} · Supplier: {{ product?.supplier_name || '-' }}</q-item-label>
+              <q-item-label>ID: {{ product?.id || '-' }} · {{ t('inventory.infoDialogs.supplier') }}: <template v-if="product?.suppliers?.length">{{ product.suppliers.map(s => supplierNameById(s.supplier_id)).join(', ') }}</template><template v-else>{{ product?.supplier_name || '-' }}</template></q-item-label>
               <q-item-label caption>
-                Category: {{ product?.category || '-' }} · Supplier price: {{ formatMoney(product?.rental_price) }} · Client price: {{ formatMoney(product?.daily_rate) }}
+                {{ t('inventory.category') }}: {{ product?.category || '-' }} · {{ t('inventory.supplierPrice') }}: {{ formatMoney(product?.rental_price) }} · {{ t('inventory.clientPrice') }}: {{ formatMoney(product?.daily_rate) }}
               </q-item-label>
               <q-item-label caption>
-                Eventory source: {{ product?.external_source || '-' }} · Link: {{ eventoryInstanceLabelById(product?.external_reference) }}
+                {{ t('inventory.eventorySource') }}: {{ product?.external_source || '-' }} · {{ t('inventory.eventoryLink') }}: {{ eventoryInstanceLabelById(product?.external_reference) }}
               </q-item-label>
               <q-item-label caption>
-                Eventory available qty: {{ Number(product?.eventory_available_qty || 0) }}
+                {{ t('inventory.eventoryAvailableQty') }}: {{ Number(product?.eventory_available_qty || 0) }}
               </q-item-label>
             </q-item-section>
             <q-item-section side>
@@ -40,21 +40,21 @@
                 :round="isPhone"
                 color="primary"
                 icon="edit"
-                :label="isPhone ? void 0 : 'Edit'"
-                :aria-label="isPhone ? 'Edit rental product' : void 0"
+                :label="isPhone ? void 0 : t('app.actions.edit')"
+                :aria-label="isPhone ? t('inventory.editRentalProduct') : void 0"
                 @click="emit('edit-product')"
               />
             </q-item-section>
           </q-item>
         </q-list>
 
-        <div class="text-subtitle2 q-mb-sm">Linked Jobs</div>
+        <div class="text-subtitle2 q-mb-sm">{{ t('inventory.infoDialogs.linkedJobs') }}</div>
         <q-list bordered separator class="rounded-borders q-mb-md">
           <q-item v-for="row in linkedJobs" :key="`rental-job-${row.job_id}`">
             <q-item-section>
               <q-item-label>{{ row.job_code || `Job #${row.job_id}` }}</q-item-label>
               <q-item-label caption>
-                Required: {{ row.quantity_required_total }} · Picked: {{ row.quantity_picked_total }}
+                {{ t('inventory.infoDialogs.requiredPicked', { required: row.quantity_required_total, picked: row.quantity_picked_total }) }}
               </q-item-label>
             </q-item-section>
             <q-item-section side>
@@ -64,21 +64,21 @@
                 :round="isPhone"
                 color="primary"
                 icon="edit"
-                :label="isPhone ? void 0 : 'Edit'"
-                :aria-label="isPhone ? 'Edit linked job' : void 0"
+                :label="isPhone ? void 0 : t('app.actions.edit')"
+                :aria-label="isPhone ? t('app.actions.editJob') : void 0"
                 @click="emit('open-job', row.job_id)"
               />
             </q-item-section>
           </q-item>
           <q-item v-if="!linkedJobs.length">
-            <q-item-section><q-item-label caption>No linked jobs found for this rental product.</q-item-label></q-item-section>
+            <q-item-section><q-item-label caption>{{ t('inventory.noLinkedJobsForRentalProduct') }}</q-item-label></q-item-section>
           </q-item>
         </q-list>
 
         <EntityAttachmentsPanel
           entity-type="product"
           :entity-id="product?.id || null"
-          title="Rental Documents"
+          :title="t('inventory.rentalDocuments')"
           default-category="rental-document"
           :read-only="true"
         />
@@ -86,17 +86,18 @@
 
       <q-card-actions :align="isPhone ? 'stretch' : 'right'" :class="isPhone ? 'q-pa-md bg-grey-2' : ''">
         <q-space />
-        <q-btn flat :class="isPhone ? 'full-width' : ''" label="Close" @click="emit('update:modelValue', false)" />
+        <q-btn flat :class="isPhone ? 'full-width' : ''" :label="t('app.actions.close')" @click="emit('update:modelValue', false)" />
       </q-card-actions>
     </q-card>
   </q-dialog>
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, watch } from 'vue'
 import { useQuasar } from 'quasar'
 import { useI18n } from 'vue-i18n'
 import { useSettingsStore } from '../stores/settings'
+import { useCustomersStore } from '../stores/customers'
 import { useJobsStore } from '../stores/jobs'
 import { normalizeCurrencyCode } from '../constants/currencies'
 import EntityAttachmentsPanel from './EntityAttachmentsPanel.vue'
@@ -115,6 +116,7 @@ const emit = defineEmits([
 const $q = useQuasar()
 const { t } = useI18n()
 const settingsStore = useSettingsStore()
+const customersStore = useCustomersStore()
 const jobsStore = useJobsStore()
 
 const isPhone = computed(() => $q.screen.lt.md)
@@ -129,6 +131,11 @@ function eventoryInstanceLabelById(instanceId) {
   const linked = findEventoryInstanceById(instanceId)
   if (!linked) return instanceId || 'Unknown'
   return linked.name || linked.id
+}
+
+function supplierNameById(supplierId) {
+  const supplier = customersStore.customers.find(c => c.id === supplierId)
+  return supplier?.name || `Supplier #${supplierId}`
 }
 
 function formatMoney(value) {
@@ -182,5 +189,11 @@ const linkedJobs = computed(() => {
     const startB = String(b.start_date || '')
     return startB.localeCompare(startA)
   })
+})
+
+watch(() => props.modelValue, (open) => {
+  if (open && !customersStore.customers.length) {
+    customersStore.fetchAll().catch(() => {})
+  }
 })
 </script>

@@ -1,13 +1,12 @@
 <template>
   <q-page class="q-pa-md ec-page">
     <div class="row items-center q-mb-md">
-      <div class="text-h5 col">{{ t('customers.title') }}</div>
-      <q-btn v-if="authStore.canEdit" color="primary" icon="person_add" :label="t('customers.newCustomer')" unelevated @click="openCreate" />
+      <div class="text-h5 col">{{ t('app.nav.suppliers') }}</div>
+      <q-btn v-if="authStore.canEdit" color="primary" icon="person_add" :label="t('customers.newSupplier')" unelevated @click="openCreate" />
     </div>
 
     <q-tabs v-model="filterType" inline-label align="left" class="q-mb-md">
       <q-tab name="all" :label="t('common.all')" />
-      <q-tab name="customer" :label="t('customers.isCustomer')" />
       <q-tab name="product_supplier" :label="t('customers.isProductSupplier')" />
       <q-tab name="rental_supplier" :label="t('customers.isRentalSupplier')" />
       <q-tab name="crew_supplier" :label="t('customers.isCrewSupplier')" />
@@ -42,19 +41,31 @@
         </q-td>
       </template>
 
+      <template #body-cell-supplier_types="props">
+        <q-td :props="props" auto-width>
+          <q-badge v-if="props.row.is_product_supplier" color="blue" label="Products" class="q-mr-xs" />
+          <q-badge v-if="props.row.is_rental_supplier" color="orange" label="Rentals" class="q-mr-xs" />
+          <q-badge v-if="props.row.is_crew_supplier" color="green" label="Crew" />
+        </q-td>
+      </template>
+
       <template #item="props">
         <div class="q-pa-xs col-12">
           <q-card flat bordered>
             <q-card-section class="q-pb-sm">
               <div class="text-subtitle2">{{ props.row.name }}</div>
               <div class="text-caption text-grey-7">{{ props.row.email || t('customers.noEmail') }}</div>
+              <div class="q-mt-xs">
+                <q-badge v-if="props.row.is_product_supplier" color="blue" label="Products" class="q-mr-xs" />
+                <q-badge v-if="props.row.is_rental_supplier" color="orange" label="Rentals" class="q-mr-xs" />
+                <q-badge v-if="props.row.is_crew_supplier" color="green" label="Crew" />
+              </div>
             </q-card-section>
             <q-card-section class="q-pt-none q-pb-sm">
               <div class="text-caption">{{ t('customers.phone') }}: {{ props.row.phone || '-' }}</div>
               <div class="text-caption" v-if="props.row.address || props.row.city">{{ [props.row.address, props.row.city, props.row.postal_code].filter(Boolean).join(', ') }}</div>
               <div class="text-caption" v-if="props.row.country">{{ props.row.country }}</div>
-              <div class="text-caption">{{ t('customers.created') }}: {{ props.row.created_at ? new Date(props.row.created_at).toLocaleDateString() : '—' }}</div>
-              <div class="text-caption">{{ props.row.notes || t('customers.noNotes') }}</div>
+              <div class="text-caption">{{ t('customers.notes') || t('customers.noNotes') }}</div>
             </q-card-section>
             <q-card-actions v-if="authStore.canEdit" align="right">
               <q-btn flat dense icon="edit" color="primary" @click="openEdit(props.row)" />
@@ -81,7 +92,6 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import { useQuasar } from 'quasar'
-import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 
 import { useCustomersStore } from '../stores/customers'
@@ -93,8 +103,6 @@ import CustomerDeleteDialog from '../components/CustomerDeleteDialog.vue'
 
 const $q = useQuasar()
 const compactGrid = useCompactGrid(1024)
-const route = useRoute()
-const router = useRouter()
 const store = useCustomersStore()
 const customFieldsStore = useCustomFieldsStore()
 const authStore = useAuthStore()
@@ -108,24 +116,15 @@ const columns = [
   { name: 'email', label: t('profile.email'), field: 'email', sortable: true, align: 'left' },
   { name: 'phone', label: t('customers.phone'), field: 'phone', sortable: true, align: 'left' },
   { name: 'city', label: t('customers.city'), field: 'city', sortable: true, align: 'left' },
+  { name: 'supplier_types', label: 'Types', field: 'supplier_types', align: 'left' },
   { name: 'notes', label: t('customers.notes'), field: 'notes', sortable: false, align: 'left' },
-  {
-    name: 'created_at',
-    label: t('customers.created'),
-    field: 'created_at',
-    sortable: true,
-    align: 'left',
-    format: v => (v ? new Date(v).toLocaleDateString() : '—'),
-  },
   { name: 'actions', label: '', field: 'actions', align: 'right' },
 ]
 
 const filteredCustomers = computed(() => {
-  let list = store.customers
+  let list = store.customers.filter(c => c.is_product_supplier || c.is_rental_supplier || c.is_crew_supplier)
 
-  if (filterType.value === 'customer') {
-    list = list.filter(c => c.is_customer)
-  } else if (filterType.value === 'product_supplier') {
+  if (filterType.value === 'product_supplier') {
     list = list.filter(c => c.is_product_supplier)
   } else if (filterType.value === 'rental_supplier') {
     list = list.filter(c => c.is_rental_supplier)
@@ -142,25 +141,11 @@ const filteredCustomers = computed(() => {
   )
 })
 
-async function focusCustomerFromQuery() {
-  const focusId = Number(route.query.focusCustomerId || 0)
-  if (!focusId) return
-  const customer = store.customers.find(item => item.id === focusId)
-  if (customer) {
-    openEdit(customer)
-  }
-
-  const nextQuery = { ...route.query }
-  delete nextQuery.focusCustomerId
-  await router.replace({ path: '/customers', query: nextQuery })
-}
-
 onMounted(async () => {
   await Promise.all([
     store.fetchAll(),
     customFieldsStore.fetchDefinitions('customer'),
   ])
-  await focusCustomerFromQuery()
 })
 
 const dialogOpen = ref(false)

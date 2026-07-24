@@ -64,6 +64,31 @@
           </q-item>
         </q-list>
 
+        <div v-if="product?.suppliers?.length" class="text-subtitle2 q-mb-sm">Suppliers</div>
+        <q-list v-if="product?.suppliers?.length" bordered separator class="rounded-borders q-mb-md">
+          <q-item v-for="sup in product.suppliers" :key="`sup-${sup.id}`">
+            <q-item-section>
+              <q-item-label>{{ supplierNameById(sup.supplier_id) }}</q-item-label>
+              <q-item-label caption>
+                {{ sup.is_primary ? 'Primary' : 'Secondary' }}
+                <span v-if="sup.lead_time_days"> · {{ sup.lead_time_days }} days lead time</span>
+                <span v-if="sup.unit_cost"> · {{ formatMoney(sup.unit_cost) }}</span>
+              </q-item-label>
+            </q-item-section>
+          </q-item>
+        </q-list>
+
+        <div v-if="product?.product_type === 'consumable' && (product?.min_stock_level != null || product?.min_order_qty != null)" class="text-subtitle2 q-mb-sm">Reorder Info</div>
+        <q-list v-if="product?.product_type === 'consumable' && (product?.min_stock_level != null || product?.min_order_qty != null)" bordered separator class="rounded-borders q-mb-md">
+          <q-item>
+            <q-item-section>
+              <q-item-label caption>
+                Min stock level: {{ product?.min_stock_level ?? '-' }} · Min order qty: {{ product?.min_order_qty ?? '-' }}
+              </q-item-label>
+            </q-item-section>
+          </q-item>
+        </q-list>
+
         <div v-if="productDeviceZoneIds.length" class="q-mb-md">
           <q-expansion-item
             v-model="mapExpanded"
@@ -231,6 +256,7 @@ import { useQuasar } from 'quasar'
 import { useI18n } from 'vue-i18n'
 import { useInventoryStore } from '../stores/inventory'
 import { useJobsStore } from '../stores/jobs'
+import { useCustomersStore } from '../stores/customers'
 import { useSettingsStore } from '../stores/settings'
 import { useCustomFieldsStore } from '../stores/customFields'
 import { useWarehouseLedsStore } from '../stores/warehouseLeds'
@@ -256,6 +282,7 @@ const $q = useQuasar()
 const { t } = useI18n()
 const store = useInventoryStore()
 const jobsStore = useJobsStore()
+const customersStore = useCustomersStore()
 const settingsStore = useSettingsStore()
 const customFieldsStore = useCustomFieldsStore()
 const warehouseLedsStore = useWarehouseLedsStore()
@@ -330,6 +357,9 @@ watch(() => props.modelValue, async (open) => {
   if (open) {
     drillDownFocusId.value = null
     mapExpanded.value = false
+    if (!customersStore.customers.length) {
+      customersStore.fetchAll().catch(() => {})
+    }
     if (props.product?.id) {
       if (!customFieldsStore.definitions.length) {
         await customFieldsStore.fetchDefinitions('product')
@@ -465,5 +495,10 @@ function productNameById(productId) {
   const item = store.products.find(row => row.id === productId)
   if (!item) return `Product #${productId}`
   return `${item.sku} - ${item.name}`
+}
+
+function supplierNameById(supplierId) {
+  const supplier = customersStore.customers.find(c => c.id === supplierId)
+  return supplier?.name || `Supplier #${supplierId}`
 }
 </script>
