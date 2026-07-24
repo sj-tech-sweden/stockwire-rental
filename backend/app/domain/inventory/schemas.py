@@ -69,6 +69,12 @@ class ProductBase(BaseModel):
     power_consumption_watts: Decimal | None = None
     daily_rate: Decimal = Decimal("0.00")
     replace_cost: Decimal | None = None
+    min_stock_level: int | None = None
+    min_order_qty: int | None = None
+    crew_skills: str | None = None
+    crew_certifications: str | None = None
+    crew_rate_type: str | None = None
+    crew_hourly_rate: Decimal | None = None
 
 
 class ProductCreate(ProductBase):
@@ -97,6 +103,12 @@ class ProductUpdate(BaseModel):
     power_consumption_watts: Decimal | None = None
     daily_rate: Decimal | None = None
     replace_cost: Decimal | None = None
+    min_stock_level: int | None = None
+    min_order_qty: int | None = None
+    crew_skills: str | None = None
+    crew_certifications: str | None = None
+    crew_rate_type: str | None = None
+    crew_hourly_rate: Decimal | None = None
 
 
 class ProductBulkUpdateRequest(BaseModel):
@@ -108,6 +120,26 @@ class ProductBulkUpdateRequest(BaseModel):
         if not self.ids:
             raise ValueError("At least one id is required")
         return self
+
+
+class ProductSupplierRead(BaseModel):
+    id: int
+    product_id: int
+    supplier_id: int
+    supplier_name: str | None = None
+    is_primary: bool = False
+    lead_time_days: int | None = None
+    unit_cost: Decimal | None = None
+    notes: str | None = None
+    created_at: datetime | None = None
+
+
+class ProductSupplierUpsert(BaseModel):
+    supplier_id: int
+    is_primary: bool = False
+    lead_time_days: int | None = None
+    unit_cost: Decimal | None = None
+    notes: str | None = None
 
 
 class BulkDeleteRequest(BaseModel):
@@ -136,6 +168,7 @@ class ProductRead(ProductBase):
     eventory_packlists: list[dict[str, object]] = Field(default_factory=list)
     accessories: list["ProductAccessoryRead"] = Field(default_factory=list)
     components: list["ProductComponentRead"] = Field(default_factory=list)
+    suppliers: list["ProductSupplierRead"] = Field(default_factory=list)
 
     model_config = {"from_attributes": True}
 
@@ -155,6 +188,7 @@ class DeviceBase(BaseModel):
     purchase_date: date | None = None
     purchase_price: Decimal | None = None
     purchased_from: str | None = None
+    supplier_id: int | None = None
     sold_price: Decimal | None = None
     finance_upto: str | None = None
     finance_company: str | None = None
@@ -196,6 +230,7 @@ class DeviceUpdate(BaseModel):
     purchase_date: date | None = None
     purchase_price: Decimal | None = None
     purchased_from: str | None = None
+    supplier_id: int | None = None
     sold_price: Decimal | None = None
     finance_upto: str | None = None
     finance_company: str | None = None
@@ -225,6 +260,7 @@ class DeviceRead(DeviceBase):
     parent_component_asset_tag: str | None = None
     current_job_id: int | None = None
     current_job_code: str | None = None
+    supplier_name: str | None = None
 
     model_config = {"from_attributes": True}
 

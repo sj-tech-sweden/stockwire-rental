@@ -29,9 +29,11 @@ from app.domain.inventory.models import (
     Product,
     ProductAccessory,
     ProductComponent,
+    ProductSupplier,
     Zone,
 )
 from app.domain.jobs.models import Job, JobRequirement
+from app.domain.customers.models import Customer
 from app.domain.settings.models import AppSetting
 from app.domain.settings.schemas import DEFAULT_CATEGORY_PREFILL_PATHS
 from app.domain.realtime.events import emit_realtime_event
@@ -78,6 +80,8 @@ from app.domain.inventory.schemas import (
     ProductDevicesBulkCreate,
     ProductBulkUpdateRequest,
     ProductRead,
+    ProductSupplierRead,
+    ProductSupplierUpsert,
     ProductUpdate,
     MAINTENANCE_STATUSES,
     DEFECT_SEVERITIES,
@@ -787,14 +791,6 @@ def list_products(db: Session = Depends(get_db)) -> list[ProductRead]:
     return [_to_product_read(db, product) for product in products]
 
 
-@router.get("/products/{product_id}", response_model=ProductRead)
-def get_product(product_id: int, db: Session = Depends(get_db)) -> ProductRead:
-    product = db.get(Product, product_id)
-    if product is None:
-        raise HTTPException(status_code=404, detail="Product not found")
-    return _to_product_read(db, product)
-
-
 @router.get("/products/generate-sku")
 def generate_product_sku(db: Session = Depends(get_db), prefix: str = "PRD-") -> dict[str, str]:
     cleaned_prefix = (prefix or "PRD-").strip()
@@ -803,6 +799,14 @@ def generate_product_sku(db: Session = Depends(get_db), prefix: str = "PRD-") ->
     if len(cleaned_prefix) > 20:
         raise HTTPException(status_code=400, detail="Prefix is too long")
     return {"sku": _generate_next_product_sku(db, cleaned_prefix)}
+
+
+@router.get("/products/{product_id}", response_model=ProductRead)
+def get_product(product_id: int, db: Session = Depends(get_db)) -> ProductRead:
+    product = db.get(Product, product_id)
+    if product is None:
+        raise HTTPException(status_code=404, detail="Product not found")
+    return _to_product_read(db, product)
 
 
 @router.post("/products", response_model=ProductRead)
@@ -2968,9 +2972,9 @@ def _normalize_sibling_sort_orders(db: Session, parent_id: int | None) -> None:
 def _validate_product_type(product_type: str | None) -> None:
     if product_type is None:
         return
-    allowed = {"equipment", "accessory", "consumable", "case", "rental", "bundle"}
+    allowed = {"equipment", "accessory", "consumable", "case", "rental", "bundle", "crew"}
     if product_type not in allowed:
-        raise HTTPException(status_code=400, detail="product_type must be one of: equipment, accessory, consumable, case, rental, bundle")
+        raise HTTPException(status_code=400, detail="product_type must be one of: equipment, accessory, consumable, case, rental, bundle, crew")
 
 
 def _validate_device_product_and_location(db: Session, payload: dict) -> None:
@@ -3783,6 +3787,24 @@ def _to_product_read(db: Session, product: Product) -> ProductRead:
         except Exception:
             eventory_packlists = []
 
+    supplier_rows = list(db.scalars(
+        select(ProductSupplier).where(ProductSupplier.product_id == product.id)
+    ).all())
+    suppliers_list = []
+    for sr in supplier_rows:
+        sup = db.get(Customer, sr.supplier_id)
+        suppliers_list.append(ProductSupplierRead(
+            id=sr.id,
+            product_id=sr.product_id,
+            supplier_id=sr.supplier_id,
+            supplier_name=sup.name if sup else None,
+            is_primary=sr.is_primary,
+            lead_time_days=sr.lead_time_days,
+            unit_cost=sr.unit_cost,
+            notes=sr.notes,
+            created_at=sr.created_at,
+        ))
+
     return ProductRead.model_validate(
         {
             "id": product.id,
@@ -3815,6 +3837,7 @@ def _to_product_read(db: Session, product: Product) -> ProductRead:
             "eventory_packlists": eventory_packlists,
             "accessories": [_to_product_accessory_read(db, row) for row in accessories],
             "components": [_to_product_component_read(db, row) for row in components],
+            "suppliers": suppliers_list,
         }
     )
 
@@ -3862,3 +3885,143 @@ def _generate_asset_tag(db: Session, product: Product | None = None, preferred_p
         if not exists:
             return candidate
         next_idx += 1
+
+
+# ---------------------------------------------------------------------------
+# Product Suppliers
+# ---------------------------------------------------------------------------
+
+@router.get("/products/{product_id}/suppliers", response_model=list[ProductSupplierRead])
+def list_product_suppliers(product_id: int, db: Session = Depends(get_db)) -> list[ProductSupplierRead]:
+    product = db.get(Product, product_id)
+    if product is None:
+        raise HTTPException(status_code=404, detail="Product not found")
+    rows = db.scalars(
+        select(ProductSupplier).where(ProductSupplier.product_id == product_id)
+    ).all()
+    result = []
+    for row in rows:
+        supplier = db.get(Customer, row.supplier_id)
+        result.append(ProductSupplierRead(
+            id=row.id,
+            product_id=row.product_id,
+            supplier_id=row.supplier_id,
+            supplier_name=supplier.name if supplier else None,
+            is_primary=row.is_primary,
+            lead_time_days=row.lead_time_days,
+            unit_cost=row.unit_cost,
+            notes=row.notes,
+            created_at=row.created_at,
+        ))
+    return result
+
+
+@router.put("/products/{product_id}/suppliers", response_model=list[ProductSupplierRead])
+def upsert_product_suppliers(
+    product_id: int,
+    suppliers: list[ProductSupplierUpsert],
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_editor),
+) -> list[ProductSupplierRead]:
+    product = db.get(Product, product_id)
+    if product is None:
+        raise HTTPException(status_code=404, detail="Product not found")
+
+    for s in suppliers:
+        customer = db.get(Customer, s.supplier_id)
+        if customer is None:
+            raise HTTPException(status_code=404, detail=f"Supplier (customer) {s.supplier_id} not found")
+
+    primary_count = sum(1 for s in suppliers if s.is_primary)
+    if primary_count > 1:
+        raise HTTPException(status_code=400, detail="Only one supplier can be marked as primary")
+
+    existing = list(db.scalars(
+        select(ProductSupplier).where(ProductSupplier.product_id == product_id)
+    ).all())
+    for row in existing:
+        db.delete(row)
+    db.flush()
+
+    result = []
+    for s in suppliers:
+        row = ProductSupplier(
+            product_id=product_id,
+            supplier_id=s.supplier_id,
+            is_primary=s.is_primary,
+            lead_time_days=s.lead_time_days,
+            unit_cost=s.unit_cost,
+            notes=s.notes,
+        )
+        db.add(row)
+        db.flush()
+        supplier = db.get(Customer, s.supplier_id)
+        result.append(ProductSupplierRead(
+            id=row.id,
+            product_id=row.product_id,
+            supplier_id=row.supplier_id,
+            supplier_name=supplier.name if supplier else None,
+            is_primary=row.is_primary,
+            lead_time_days=row.lead_time_days,
+            unit_cost=row.unit_cost,
+            notes=row.notes,
+            created_at=row.created_at,
+        ))
+
+    if suppliers:
+        primary = next((s for s in suppliers if s.is_primary), None)
+        if primary:
+            supplier = db.get(Customer, primary.supplier_id)
+            product.supplier_name = supplier.name if supplier else product.supplier_name
+    else:
+        product.supplier_name = None
+
+    db.commit()
+    return result
+
+
+# ---------------------------------------------------------------------------
+# Low Stock
+# ---------------------------------------------------------------------------
+
+@router.get("/low-stock")
+def list_low_stock(db: Session = Depends(get_db)) -> list[dict]:
+    products = list(db.scalars(
+        select(Product).where(
+            Product.min_stock_level.isnot(None),
+            Product.product_type.in_(["consumable", "crew"]),
+        )
+    ).all())
+
+    results = []
+    for product in products:
+        device_count = db.scalar(
+            select(func.count()).select_from(Device).where(Device.product_id == product.id)
+        ) or 0
+        if device_count < product.min_stock_level:
+            primary_supplier_name = product.supplier_name
+            primary_supplier_id = None
+            ps = db.scalar(
+                select(ProductSupplier).where(
+                    ProductSupplier.product_id == product.id,
+                    ProductSupplier.is_primary.is_(True),
+                )
+            )
+            if ps:
+                primary_supplier_id = ps.supplier_id
+                supplier = db.get(Customer, ps.supplier_id)
+                if supplier:
+                    primary_supplier_name = supplier.name
+            results.append({
+                "product_id": product.id,
+                "sku": product.sku,
+                "name": product.name,
+                "product_type": product.product_type,
+                "current_count": device_count,
+                "min_stock_level": product.min_stock_level,
+                "min_order_qty": product.min_order_qty,
+                "primary_supplier_id": primary_supplier_id,
+                "primary_supplier_name": primary_supplier_name,
+            })
+
+    return results

@@ -26,7 +26,8 @@ from app.config import settings
 from app.db.session import SessionLocal, get_db
 from app.domain.auth.deps import get_current_user, require_admin, require_editor
 from app.domain.auth.models import User
-from app.domain.inventory.models import Product, Zone
+from app.domain.inventory.models import Product, ProductSupplier, Zone
+from app.domain.customers.models import Customer
 from app.domain.settings.models import AppSetting
 from app.domain.auth.sso import default_sso_settings_payload, normalize_sso_settings_payload
 from app.domain.realtime.events import emit_realtime_event
@@ -1279,6 +1280,21 @@ def _run_eventory_sync(db: Session, instance_id: str) -> EventorySyncRead:
     supplier_name = str(config.get("supplier_name") or "").strip() or "Eventory"
     margin = max(0.0, float(config.get("price_margin_percent") or 0.0))
 
+    supplier_customer = db.scalar(
+        select(Customer).where(
+            Customer.name == supplier_name,
+            Customer.is_rental_supplier == True,
+        )
+    )
+    if supplier_customer is None:
+        supplier_customer = Customer(
+            name=supplier_name,
+            is_customer=False,
+            is_rental_supplier=True,
+        )
+        db.add(supplier_customer)
+        db.flush()
+
     _set_eventory_sync_runtime_status(
         db,
         instance_id,
@@ -1346,6 +1362,13 @@ def _run_eventory_sync(db: Session, instance_id: str) -> EventorySyncRead:
                 created_at=now,
             )
             db.add(row)
+            db.flush()
+            ps_link = ProductSupplier(
+                product_id=row.id,
+                supplier_id=supplier_customer.id,
+                is_primary=True,
+            )
+            db.add(ps_link)
             imported += 1
         else:
             existing.name = name
@@ -1360,6 +1383,19 @@ def _run_eventory_sync(db: Session, instance_id: str) -> EventorySyncRead:
                 existing.daily_rate = target_daily_rate
             existing.external_source = "eventory"
             existing.external_reference = external_reference
+            existing_link = db.scalar(
+                select(ProductSupplier).where(
+                    ProductSupplier.product_id == existing.id,
+                    ProductSupplier.supplier_id == supplier_customer.id,
+                )
+            )
+            if existing_link is None:
+                ps_link = ProductSupplier(
+                    product_id=existing.id,
+                    supplier_id=supplier_customer.id,
+                    is_primary=True,
+                )
+                db.add(ps_link)
             updated += 1
 
         processed += 1

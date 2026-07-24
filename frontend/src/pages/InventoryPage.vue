@@ -36,6 +36,32 @@
           <div class="text-subtitle1">{{ t('inventory.overview.mostUsedDevice', { device: overviewMostUsedDeviceLabel }) }}</div>
           <div class="text-subtitle1">{{ t('inventory.overview.mostUsedProductByDays', { product: overviewMostUsedProductByUsageDaysLabel }) }}</div>
         </q-card>
+
+        <q-card v-if="store.lowStockItems.length" class="ec-card q-pa-md q-mt-md">
+          <div class="row items-center q-mb-sm">
+            <div class="text-subtitle1 text-negative">
+              <q-icon name="warning" class="q-mr-xs" />
+              {{ t('inventory.overview.lowStock') }}
+            </div>
+            <q-badge color="negative" class="q-ml-sm" :label="store.lowStockItems.length" />
+          </div>
+          <q-list bordered separator class="rounded-borders">
+            <q-item v-for="item in store.lowStockItems" :key="item.product_id">
+              <q-item-section>
+                <q-item-label>{{ item.name }}</q-item-label>
+                <q-item-label caption>
+                  {{ item.sku }} · {{ item.product_type }}
+                  · {{ t('inventory.overview.currentStock') }}: {{ item.current_count }}
+                  · {{ t('inventory.overview.minimumStock') }}: {{ item.min_stock_level }}
+                  <span v-if="item.primary_supplier_name"> · {{ item.primary_supplier_name }}</span>
+                </q-item-label>
+              </q-item-section>
+              <q-item-section side>
+                <q-badge color="warning" :label="`${item.current_count}/${item.min_stock_level}`" />
+              </q-item-section>
+            </q-item>
+          </q-list>
+        </q-card>
       </q-tab-panel>
 
       <q-tab-panel name="products" class="q-pa-none">
@@ -1620,6 +1646,7 @@ async function loadAll() {
   try {
     await Promise.all([
       store.fetchAll(),
+      store.fetchLowStock(),
       jobsStore.fetchAll(),
       settingsStore.fetchProductDefaults(),
       settingsStore.fetchIntegrations(),

@@ -113,10 +113,16 @@
                 {{ t('inventory.infoDialogs.brand') }}: {{ deviceInfoProduct?.brand || '-' }} · {{ t('inventory.infoDialogs.manufacturer') }}: {{ deviceInfoProduct?.manufacturer || '-' }}
               </q-item-label>
               <q-item-label caption>
-                {{ t('inventory.infoDialogs.dailyRate') }}: {{ formatMoney(deviceInfoProduct?.daily_rate) }} · {{ t('inventory.infoDialogs.supplier') }}: {{ deviceInfoProduct?.supplier_name || '-' }}
+                {{ t('inventory.infoDialogs.dailyRate') }}: {{ formatMoney(deviceInfoProduct?.daily_rate) }}
+              </q-item-label>
+              <q-item-label caption v-if="deviceInfoProduct?.suppliers?.length">
+                {{ t('inventory.infoDialogs.supplier') }}: {{ deviceInfoProduct.suppliers.map(s => supplierNameById(s.supplier_id)).join(', ') }}
+              </q-item-label>
+              <q-item-label caption v-else>
+                {{ t('inventory.infoDialogs.supplier') }}: {{ deviceInfoProduct?.supplier_name || '-' }}
               </q-item-label>
               <q-item-label caption>
-                {{ t('inventory.infoDialogs.replacementCost') }}: {{ formatMoney(deviceInfoProduct?.replace_cost) }} · {{ t('inventory.infoDialogs.supplier') }}: {{ deviceInfoProduct?.supplier_name || '-' }}
+                {{ t('inventory.infoDialogs.replacementCost') }}: {{ formatMoney(deviceInfoProduct?.replace_cost) }}
               </q-item-label>
               <q-item-label caption v-if="deviceInfoProduct?.is_rental_product">
                 {{ t('inventory.infoDialogs.rentalSource') }}: {{ deviceInfoProduct?.external_source || '-' }} · {{ t('inventory.infoDialogs.externalRef') }}: {{ deviceInfoProduct?.external_reference || '-' }}
@@ -126,6 +132,9 @@
               </q-item-label>
               <q-item-label caption>
                 {{ t('inventory.infoDialogs.weight') }}: {{ deviceInfoProduct?.weight_kg ?? '-' }} kg · {{ t('inventory.infoDialogs.size') }}: {{ deviceInfoProduct?.height_cm ?? '-' }}x{{ deviceInfoProduct?.width_cm ?? '-' }}x{{ deviceInfoProduct?.depth_cm ?? '-' }} cm
+              </q-item-label>
+              <q-item-label caption v-if="deviceInfoProduct?.product_type === 'consumable' && (deviceInfoProduct?.min_stock_level != null || deviceInfoProduct?.min_order_qty != null)">
+                Min stock: {{ deviceInfoProduct?.min_stock_level ?? '-' }} · Min order: {{ deviceInfoProduct?.min_order_qty ?? '-' }}
               </q-item-label>
               <q-item-label caption>
                 {{ t('inventory.infoDialogs.power') }}: {{ deviceInfoProduct?.power_consumption_watts ?? '-' }} W · {{ t('inventory.infoDialogs.maintenanceInterval') }}: {{ deviceInfoProduct?.maintenance_interval_days ?? '-' }} days
@@ -504,6 +513,7 @@ import { useQuasar } from 'quasar'
 import { useI18n } from 'vue-i18n'
 import { useInventoryStore } from '../stores/inventory'
 import { useJobsStore } from '../stores/jobs'
+import { useCustomersStore } from '../stores/customers'
 import { useSettingsStore } from '../stores/settings'
 import { useWarehouseLedsStore } from '../stores/warehouseLeds'
 import { normalizeCurrencyCode } from '../constants/currencies'
@@ -522,6 +532,7 @@ const $q = useQuasar()
 const { t } = useI18n()
 const store = useInventoryStore()
 const jobsStore = useJobsStore()
+const customersStore = useCustomersStore()
 const settingsStore = useSettingsStore()
 const warehouseLedsStore = useWarehouseLedsStore()
 
@@ -686,6 +697,11 @@ function productNameById(productId) {
   const item = store.products.find(row => row.id === productId)
   if (!item) return t('inventory.infoDialogs.productWithIdName', { productId })
   return `${item.sku} - ${item.name}`
+}
+
+function supplierNameById(supplierId) {
+  const supplier = customersStore.customers.find(c => c.id === supplierId)
+  return supplier?.name || `Supplier #${supplierId}`
 }
 
 function maintenanceSortTimestamp(row) {
@@ -873,6 +889,9 @@ watch(() => props.device, (device) => {
 
 watch(() => props.modelValue, (open) => {
   if (open && props.device) {
+    if (!customersStore.customers.length) {
+      customersStore.fetchAll().catch(() => {})
+    }
     void loadDeviceData(props.device)
   }
 })

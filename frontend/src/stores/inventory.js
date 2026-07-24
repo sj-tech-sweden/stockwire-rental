@@ -754,6 +754,24 @@ export const useInventoryStore = defineStore('inventory', () => {
     return data?.asset_tag || ''
   }
 
+  const lowStockItems = ref([])
+
+  async function fetchLowStock() {
+    const { data } = await api.get('/api/v1/inventory/low-stock')
+    lowStockItems.value = data
+    return data
+  }
+
+  async function fetchProductSuppliers(productId) {
+    const { data } = await api.get(`/api/v1/inventory/products/${productId}/suppliers`)
+    return data
+  }
+
+  async function updateProductSuppliers(productId, suppliers) {
+    const { data } = await api.put(`/api/v1/inventory/products/${productId}/suppliers`, suppliers)
+    return data
+  }
+
   return {
     products,
     devices,
@@ -769,6 +787,7 @@ export const useInventoryStore = defineStore('inventory', () => {
     categoryTree,
     fetchSource,
     loading,
+    lowStockItems,
     fetchAll,
     fetchCategories,
     prefillCategories,
@@ -824,5 +843,8 @@ export const useInventoryStore = defineStore('inventory', () => {
     bulkDeleteDefectReports,
     fetchDefectComments,
     createDefectComment,
+    fetchLowStock,
+    fetchProductSuppliers,
+    updateProductSuppliers,
   }
 })

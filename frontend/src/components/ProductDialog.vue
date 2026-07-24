@@ -125,6 +125,102 @@
             <div class="col-12 q-mt-sm">
               <q-separator class="q-my-md" />
               <q-expansion-item
+                v-model="suppliersExpanded"
+                icon="local_shipping"
+                label="Suppliers"
+                dense
+                header-class="rounded-borders"
+              >
+                <div class="text-caption text-grey-7 q-mb-sm">Link suppliers to this product. Mark one as primary.</div>
+                <div class="row q-col-gutter-sm items-end q-mb-sm">
+                  <div class="col-12 col-md-5">
+                    <SupplierPickerInline
+                      v-model="newSupplierId"
+                      label="Supplier"
+                      supplier-type="product"
+                    />
+                  </div>
+                  <div class="col-6 col-md-2">
+                    <q-input v-model.number="newSupplierLeadTime" type="number" min="0" label="Lead time (days)" outlined dense />
+                  </div>
+                  <div class="col-6 col-md-2">
+                    <q-input v-model.number="newSupplierUnitCost" type="number" step="0.01" min="0" label="Unit cost" outlined dense />
+                  </div>
+                  <div class="col-6 col-md-2">
+                    <q-toggle v-model="newSupplierIsPrimary" label="Primary" color="primary" />
+                  </div>
+                  <div class="col-6 col-md-1">
+                    <q-btn color="primary" unelevated icon="add" @click="addSupplierRow" />
+                  </div>
+                </div>
+
+                <q-list bordered separator class="rounded-borders">
+                  <q-item v-for="row in productForm.suppliers" :key="`sup-${row.supplier_id}`">
+                    <q-item-section side>
+                      <q-btn
+                        flat dense :icon="row.is_primary ? 'star' : 'star_border'"
+                        :color="row.is_primary ? 'amber' : 'grey'"
+                        @click="togglePrimarySupplier(row.supplier_id)"
+                      >
+                        <q-tooltip>{{ row.is_primary ? 'Demote to secondary' : 'Promote to primary' }}</q-tooltip>
+                      </q-btn>
+                    </q-item-section>
+                    <q-item-section v-if="editingSupplierId !== row.supplier_id">
+                      <q-item-label :class="{ 'text-bold': row.is_primary }">{{ supplierNameById(row.supplier_id) }}</q-item-label>
+                      <q-item-label caption>
+                        {{ row.is_primary ? 'Primary' : 'Secondary' }}
+                        <span v-if="row.lead_time_days"> · {{ row.lead_time_days }} days lead time</span>
+                        <span v-if="row.unit_cost"> · {{ row.unit_cost }} {{ activeCurrencyCode }}</span>
+                      </q-item-label>
+                    </q-item-section>
+                    <q-item-section v-else>
+                      <div class="row q-col-gutter-xs items-center">
+                        <div class="col-auto">
+                          <q-input v-model.number="editLeadTime" type="number" min="0" label="Lead time (days)" outlined dense style="width: 140px" />
+                        </div>
+                        <div class="col-auto">
+                          <q-input v-model.number="editUnitCost" type="number" step="0.01" min="0" label="Unit cost" outlined dense style="width: 120px" />
+                        </div>
+                        <div class="col-auto">
+                          <q-btn flat dense icon="check" color="positive" @click="saveEditSupplier" />
+                          <q-btn flat dense icon="close" color="grey" @click="cancelEditSupplier" />
+                        </div>
+                      </div>
+                    </q-item-section>
+                    <q-item-section side>
+                      <div class="row items-center no-wrap">
+                        <q-btn flat dense icon="edit" color="grey" @click="startEditSupplier(row)">
+                          <q-tooltip>Edit lead time / cost</q-tooltip>
+                        </q-btn>
+                        <q-btn flat dense icon="delete" color="negative" @click="removeSupplierRow(row.supplier_id)" />
+                      </div>
+                    </q-item-section>
+                  </q-item>
+                  <q-item v-if="!productForm.suppliers.length">
+                    <q-item-section>
+                      <q-item-label caption>No suppliers linked.</q-item-label>
+                    </q-item-section>
+                  </q-item>
+                </q-list>
+              </q-expansion-item>
+            </div>
+
+            <div class="col-12 q-mt-sm" v-if="productForm.product_type === 'consumable'">
+              <q-separator class="q-my-md" />
+              <div class="text-subtitle2 q-mb-sm">Reorder Settings</div>
+              <div class="row q-col-gutter-sm">
+                <div class="col-12 col-md-4">
+                  <q-input v-model.number="productForm.min_stock_level" type="number" min="0" label="Min stock level" outlined dense hint="Alert when stock falls below this" />
+                </div>
+                <div class="col-12 col-md-4">
+                  <q-input v-model.number="productForm.min_order_qty" type="number" min="1" label="Min order quantity" outlined dense hint="Minimum to order from supplier" />
+                </div>
+              </div>
+            </div>
+
+            <div class="col-12 q-mt-sm">
+              <q-separator class="q-my-md" />
+              <q-expansion-item
                 v-model="accessoriesExpanded"
                 icon="extension"
                 label="Accessories"
@@ -384,12 +480,14 @@ import { computed, ref, watch } from 'vue'
 import { useQuasar } from 'quasar'
 import { useI18n } from 'vue-i18n'
 import { useInventoryStore } from '../stores/inventory'
+import { useCustomersStore } from '../stores/customers'
 import { useSettingsStore } from '../stores/settings'
 import { useCustomFieldsStore } from '../stores/customFields'
 import { translateMaybePrefillCustomFieldLabel, translateMaybePrefillCustomFieldOption } from '../i18n/prefillContent'
 import { normalizeCurrencyCode } from '../constants/currencies'
 import { isRentalProduct } from '../utils/inventory-overview'
 import EntityAttachmentsPanel from './EntityAttachmentsPanel.vue'
+import SupplierPickerInline from './SupplierPickerInline.vue'
 
 const props = defineProps({
   modelValue: Boolean,
@@ -407,6 +505,7 @@ const emit = defineEmits([
 const $q = useQuasar()
 const { t } = useI18n()
 const store = useInventoryStore()
+const customersStore = useCustomersStore()
 const settingsStore = useSettingsStore()
 const customFieldsStore = useCustomFieldsStore()
 
@@ -440,6 +539,16 @@ const newAccessoryRequired = ref(false)
 const componentsExpanded = ref(true)
 const newComponentProductId = ref(null)
 const newComponentQty = ref(1)
+
+const suppliersExpanded = ref(true)
+const newSupplierId = ref(null)
+const newSupplierLeadTime = ref(null)
+const newSupplierUnitCost = ref(null)
+const newSupplierIsPrimary = ref(false)
+
+const editingSupplierId = ref(null)
+const editLeadTime = ref(null)
+const editUnitCost = ref(null)
 
 const customFieldsExpanded = ref(true)
 const productFieldRows = ref([])
@@ -485,8 +594,11 @@ const emptyProductForm = () => ({
   product_type: 'equipment',
   accessories: [],
   components: [],
+  suppliers: [],
   weight_kg: null, height_cm: null, width_cm: null, depth_cm: null,
   maintenance_interval_days: null, power_consumption_watts: null, daily_rate: 0, replace_cost: 0,
+  min_stock_level: null,
+  min_order_qty: null,
 })
 const productForm = ref(emptyProductForm())
 
@@ -720,6 +832,83 @@ function removeComponentRow(componentProductId) {
   )
 }
 
+function supplierNameById(id) {
+  const supplier = customersStore.productSuppliers.find(s => s.id === id)
+  return supplier?.name || `Supplier #${id}`
+}
+
+function addSupplierRow() {
+  const supplierId = Number(newSupplierId.value || 0)
+  if (!supplierId) return
+
+  const existing = (productForm.value.suppliers || []).find(item => item.supplier_id === supplierId)
+  if (existing) {
+    existing.is_primary = newSupplierIsPrimary.value
+    existing.lead_time_days = newSupplierLeadTime.value
+    existing.unit_cost = newSupplierUnitCost.value
+  } else {
+    productForm.value.suppliers = [
+      ...(productForm.value.suppliers || []),
+      {
+        supplier_id: supplierId,
+        is_primary: newSupplierIsPrimary.value,
+        lead_time_days: newSupplierLeadTime.value,
+        unit_cost: newSupplierUnitCost.value,
+      },
+    ]
+  }
+
+  if (newSupplierIsPrimary.value) {
+    productForm.value.suppliers.forEach(s => {
+      if (s.supplier_id !== supplierId) s.is_primary = false
+    })
+  }
+
+  newSupplierId.value = null
+  newSupplierLeadTime.value = null
+  newSupplierUnitCost.value = null
+  newSupplierIsPrimary.value = false
+  editingSupplierId.value = null
+}
+
+function removeSupplierRow(supplierId) {
+  productForm.value.suppliers = (productForm.value.suppliers || []).filter(
+    item => item.supplier_id !== supplierId
+  )
+  if (editingSupplierId.value === supplierId) {
+    editingSupplierId.value = null
+  }
+}
+
+function togglePrimarySupplier(supplierId) {
+  const suppliers = productForm.value.suppliers || []
+  const target = suppliers.find(s => s.supplier_id === supplierId)
+  if (!target) return
+  const makingPrimary = !target.is_primary
+  suppliers.forEach(s => {
+    s.is_primary = s.supplier_id === supplierId ? makingPrimary : false
+  })
+}
+
+function startEditSupplier(row) {
+  editingSupplierId.value = row.supplier_id
+  editLeadTime.value = row.lead_time_days ?? null
+  editUnitCost.value = row.unit_cost ?? null
+}
+
+function saveEditSupplier() {
+  const row = (productForm.value.suppliers || []).find(s => s.supplier_id === editingSupplierId.value)
+  if (row) {
+    row.lead_time_days = editLeadTime.value
+    row.unit_cost = editUnitCost.value
+  }
+  editingSupplierId.value = null
+}
+
+function cancelEditSupplier() {
+  editingSupplierId.value = null
+}
+
 function loadPrefixMemory() {
   if (typeof window === 'undefined') return
   try {
@@ -833,6 +1022,14 @@ function openEditProduct(product) {
           quantity: Number(item.quantity || 1),
         }))
       : [],
+    suppliers: Array.isArray(product.suppliers)
+      ? product.suppliers.map(item => ({
+          supplier_id: item.supplier_id,
+          is_primary: !!item.is_primary,
+          lead_time_days: item.lead_time_days ?? null,
+          unit_cost: item.unit_cost ?? null,
+        }))
+      : [],
     weight_kg: product.weight_kg ?? null,
     height_cm: product.height_cm ?? null,
     width_cm: product.width_cm ?? null,
@@ -841,10 +1038,13 @@ function openEditProduct(product) {
     power_consumption_watts: product.power_consumption_watts ?? null,
     daily_rate: product.daily_rate ?? 0,
     replace_cost: product.replace_cost ?? 0,
+    min_stock_level: product.min_stock_level ?? null,
+    min_order_qty: product.min_order_qty ?? null,
   }
   applySkuPrefixForType(productForm.value.product_type)
   productDialogError.value = ''
   accessoriesExpanded.value = !isPhone.value
+  suppliersExpanded.value = !isPhone.value
   customFieldsExpanded.value = !isPhone.value
   newAccessoryProductId.value = null
   newAccessoryQty.value = 1
@@ -973,6 +1173,8 @@ async function saveProduct() {
       power_consumption_watts: productForm.value.power_consumption_watts,
       daily_rate: Number(productForm.value.daily_rate || 0),
       replace_cost: Number(productForm.value.replace_cost || 0),
+      min_stock_level: productForm.value.product_type === 'consumable' ? productForm.value.min_stock_level : null,
+      min_order_qty: productForm.value.product_type === 'consumable' ? productForm.value.min_order_qty : null,
     }
 
     let savedProduct
@@ -980,11 +1182,13 @@ async function saveProduct() {
       savedProduct = await store.updateProduct(productEditing.value.id, payload)
       await store.updateProductAccessories(productEditing.value.id, productForm.value.accessories || [])
       await store.updateProductComponents(productEditing.value.id, productForm.value.components || [])
+      await store.updateProductSuppliers(productEditing.value.id, productForm.value.suppliers || [])
       $q.notify({ type: 'positive', message: 'Product updated' })
     } else {
       savedProduct = await store.createProduct(payload)
       await store.updateProductAccessories(savedProduct.id, productForm.value.accessories || [])
       await store.updateProductComponents(savedProduct.id, productForm.value.components || [])
+      await store.updateProductSuppliers(savedProduct.id, productForm.value.suppliers || [])
       $q.notify({ type: 'positive', message: 'Product created' })
     }
 
@@ -1012,6 +1216,9 @@ watch(() => props.modelValue, async (open) => {
   if (open) {
     if (!customFieldsStore.definitions.length) {
       await customFieldsStore.fetchDefinitions('product')
+    }
+    if (!customersStore.customers.length) {
+      customersStore.fetchAll().catch(() => {})
     }
     if (props.product) {
       await openEditProduct(props.product)
