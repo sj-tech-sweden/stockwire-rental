@@ -233,6 +233,7 @@ const baseMenuList = [
   { icon: 'folder', key: 'app.nav.projects', to: '/projects', separator: false },
   { icon: 'business', key: 'app.nav.customers', to: '/customers', separator: false },
   { icon: 'local_shipping', key: 'app.nav.suppliers', to: '/suppliers', separator: false },
+  { icon: 'groups', key: 'app.nav.crew', to: '/crew', separator: false },
   { icon: 'place', key: 'app.nav.venues', to: '/venues', separator: false },
   { icon: 'payments', key: 'app.nav.finance', to: '/finance', separator: false },
   { icon: 'alt_route', key: 'app.nav.routePlanner', to: '/route-planner', separator: false }
