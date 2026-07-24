@@ -3,6 +3,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import MainLayout from '../layouts/MainLayout.vue'
 import CustomersPage from '../pages/CustomersPage.vue'
+import CrewPage from '../pages/CrewPage.vue'
 import FinancePage from '../pages/FinancePage.vue'
 import ActivityPage from '../pages/ActivityPage.vue'
 import HomePage from '../pages/HomePage.vue'
@@ -68,6 +69,7 @@ const routes = [
       { path: 'jobs/:jobId', component: () => import('../pages/JobDetailPage.vue') },
       { path: 'projects', component: () => import('../pages/ProjectsPage.vue') },
       { path: 'customers', component: CustomersPage },
+      { path: 'crew', component: CrewPage },
       { path: 'suppliers', component: () => import('../pages/SuppliersPage.vue') },
       { path: 'venues', component: VenuesPage },
       { path: 'profile', component: ProfilePage },

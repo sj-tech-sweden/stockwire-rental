@@ -372,6 +372,59 @@
           <div class="text-caption text-grey-7">{{ t('jobs.noRequirements') }}</div>
         </q-card-section>
       </q-card>
+
+      <q-card class="ec-card" v-if="currentJob?.id">
+        <q-card-section class="row items-center justify-between q-col-gutter-sm">
+          <div class="col">
+            <div class="text-subtitle2">{{ t('crew.crewRequirements') }}</div>
+          </div>
+          <div class="col-auto" v-if="authStore.canEdit">
+            <q-btn flat dense no-caps color="primary" icon="add" :label="t('crew.addRequirement')" @click="crewRequirementDialogOpen = true" />
+            <q-btn flat dense no-caps color="primary" icon="person_add" :label="t('crew.assignMember')" class="q-ml-xs" @click="crewAssignmentDialogOpen = true" />
+          </div>
+        </q-card-section>
+        <q-card-section class="q-pt-none" v-if="crewRequirementRows.length">
+          <q-list bordered separator class="rounded-borders">
+            <q-item v-for="row in crewRequirementRows" :key="`crew-req-${row.id}`">
+              <q-item-section>
+                <q-item-label :class="{ 'text-bold': row.quantity_assigned >= row.quantity }">
+                  {{ row.crew_role_name || row.custom_role_name || t('crew.unknownRole') }}
+                </q-item-label>
+                <q-item-label caption>
+                  {{ t('crew.quantity') }}: {{ row.quantity_assigned }}/{{ row.quantity }}
+                  <span v-if="row.required_skills"> · {{ row.required_skills }}</span>
+                </q-item-label>
+              </q-item-section>
+              <q-item-section side v-if="authStore.canEdit">
+                <div class="row items-center no-wrap">
+                  <q-btn v-if="row.quantity_assigned < row.quantity" flat dense icon="person_add" color="primary" class="q-mr-xs" @click="openCrewAssignment(row.id)" />
+                  <q-btn flat dense icon="delete" color="negative" @click="deleteCrewRequirement(row)" />
+                </div>
+              </q-item-section>
+            </q-item>
+          </q-list>
+          <div class="q-mt-sm" v-if="crewAssignmentRows.length">
+            <div class="text-caption text-grey-7 q-mb-xs">{{ t('crew.crewAssignments') }}</div>
+            <q-list bordered separator class="rounded-borders">
+              <q-item v-for="a in crewAssignmentRows" :key="`crew-a-${a.id}`">
+                <q-item-section>
+                  <q-item-label>{{ a.crew_member_name }}</q-item-label>
+                  <q-item-label caption>
+                    {{ a.crew_role_name }}
+                    <q-badge v-if="a.status !== 'assigned'" :color="a.status === 'completed' ? 'positive' : a.status === 'cancelled' ? 'negative' : 'warning'" class="q-ml-xs" :label="t(`crew.${a.status}`)" />
+                  </q-item-label>
+                </q-item-section>
+                <q-item-section side v-if="authStore.canEdit">
+                  <q-btn flat dense icon="person_remove" color="negative" @click="unassignCrew(a)" />
+                </q-item-section>
+              </q-item>
+            </q-list>
+          </div>
+        </q-card-section>
+        <q-card-section class="q-pt-none" v-else>
+          <div class="text-caption text-grey-7">{{ t('crew.noRequirements') }}</div>
+        </q-card-section>
+      </q-card>
     </div>
 
     <JobProductRequirementDialog
@@ -393,6 +446,8 @@
     <CustomerPickerDialog v-model="customerPickerOpen" :customers="customersStore.customers" :selected-id="form.customer_id" @select="onCustomerSelected" />
     <VenuePickerDialog v-model="venuePickerOpen" :venues="venuesStore.venues" :selected-id="form.venue_id" @select="onVenueSelected" />
     <JobCustomFieldsDialog v-model="customFieldsDialogOpen" :job-id="currentJob?.id || null" @saved="reloadFieldRows" />
+    <CrewRequirementDialog v-model="crewRequirementDialogOpen" :job-id="currentJob?.id || null" @saved="loadCrewData" />
+    <CrewAssignmentDialog v-model="crewAssignmentDialogOpen" :job-id="currentJob?.id || null" :requirement-id="selectedCrewRequirementId" @saved="onCrewAssignmentSaved" />
   </q-page>
 </template>
 
@@ -409,7 +464,9 @@ import { useVenuesStore } from '../stores/venues'
 import { useProjectsStore } from '../stores/projects'
 import { useAuthStore } from '../stores/auth'
 import { useSettingsStore } from '../stores/settings'
+import { useCrewStore } from '../stores/crew'
 import { normalizeCurrencyCode } from '../constants/currencies'
+import { isRentalProduct } from '../utils/job-requirements'
 import { buildScanJobLink } from '../utils/scan-workflow'
 import { googleMapsEmbedUrl, googleMapsSearchUrl, locationQueryFromParts } from '../utils/maps'
 import { translateMaybePrefillCustomFieldLabel } from '../i18n/prefillContent'
@@ -417,6 +474,8 @@ import { useCustomFieldsStore } from '../stores/customFields'
 import EntityAttachmentsPanel from '../components/EntityAttachmentsPanel.vue'
 import JobProductRequirementDialog from '../components/JobProductRequirementDialog.vue'
 import JobRentalRequirementDialog from '../components/JobRentalRequirementDialog.vue'
+import CrewRequirementDialog from '../components/CrewRequirementDialog.vue'
+import CrewAssignmentDialog from '../components/CrewAssignmentDialog.vue'
 import CustomerPickerDialog from '../components/CustomerPickerDialog.vue'
 import VenuePickerDialog from '../components/VenuePickerDialog.vue'
 import JobCustomFieldsDialog from '../components/JobCustomFieldsDialog.vue'
@@ -434,6 +493,7 @@ const projectsStore = useProjectsStore()
 const authStore = useAuthStore()
 const settingsStore = useSettingsStore()
 const customFieldsStore = useCustomFieldsStore()
+const crewStore = useCrewStore()
 
 const pageLoading = ref(false)
 const saving = ref(false)
@@ -444,6 +504,11 @@ const rentalRequirementDialogOpen = ref(false)
 const customerPickerOpen = ref(false)
 const venuePickerOpen = ref(false)
 const customFieldsDialogOpen = ref(false)
+const crewRequirementDialogOpen = ref(false)
+const crewAssignmentDialogOpen = ref(false)
+const selectedCrewRequirementId = ref(null)
+const crewRequirementRows = ref([])
+const crewAssignmentRows = ref([])
 const filteredCustomerOptions = ref([])
 const filteredVenueOptions = ref([])
 const form = ref(emptyForm())
@@ -734,6 +799,66 @@ function reloadFieldRows() {
   void loadFieldRows()
 }
 
+async function loadCrewData() {
+  if (!currentJob.value?.id) return
+  try {
+    crewRequirementRows.value = await crewStore.fetchJobCrewRequirements(currentJob.value.id)
+  } catch {
+    crewRequirementRows.value = []
+  }
+  try {
+    crewAssignmentRows.value = await crewStore.fetchJobCrewAssignments(currentJob.value.id)
+  } catch {
+    crewAssignmentRows.value = []
+  }
+}
+
+async function deleteCrewRequirement(req) {
+  $q.dialog({
+    title: t('crew.deleteRequirement'),
+    message: t('crew.deleteRequirementConfirm', { name: req.crew_role_name || req.custom_role_name || t('crew.unknownRole') }),
+    cancel: t('app.actions.cancel'),
+    ok: t('app.actions.delete'),
+    persistent: true,
+  }).onOk(async () => {
+    try {
+      await crewStore.deleteJobCrewRequirement(currentJob.value.id, req.id)
+      await loadCrewData()
+      $q.notify({ type: 'positive', message: t('crew.requirementDeleted') })
+    } catch (err) {
+      $q.notify({ type: 'negative', message: err?.response?.data?.detail || t('crew.failedToDelete') })
+    }
+  })
+}
+
+async function unassignCrew(assignment) {
+  $q.dialog({
+    title: t('crew.unassign'),
+    message: t('crew.unassignConfirm', { member: assignment.crew_member_name, role: assignment.crew_role_name }),
+    cancel: t('app.actions.cancel'),
+    ok: t('app.actions.delete'),
+    persistent: true,
+  }).onOk(async () => {
+    try {
+      await crewStore.deleteCrewAssignment(assignment.id)
+      await loadCrewData()
+      $q.notify({ type: 'positive', message: t('crew.memberUnassigned') })
+    } catch (err) {
+      $q.notify({ type: 'negative', message: err?.response?.data?.detail || t('crew.failedToUnassign') })
+    }
+  })
+}
+
+function openCrewAssignment(requirementId) {
+  selectedCrewRequirementId.value = requirementId
+  crewAssignmentDialogOpen.value = true
+}
+
+function onCrewAssignmentSaved() {
+  selectedCrewRequirementId.value = null
+  loadCrewData()
+}
+
 function onCustomerSelected(customer) {
   form.value.customer_id = customer.id
   form.value.customer_name = customer.name
@@ -772,7 +897,7 @@ function syncFromJob(job) {
     notes: job.notes ?? '',
   }
 
-  requirementRows.value = jobsStore.requirements
+  const allRows = jobsStore.requirements
     .filter(req => (
       req.job_id === job.id
       && (Number(req.quantity_required || 0) > 0 || Number(req.quantity_picked || 0) > 0)
@@ -784,10 +909,13 @@ function syncFromJob(job) {
       notes: req.notes || null,
     }))
 
-  rentalRequirementRows.value = [...requirementRows.value]
+  const productMap = productById.value
+  requirementRows.value = allRows.filter(r => !isRentalProduct(productMap.get(r.product_id)))
+  rentalRequirementRows.value = allRows.filter(r => isRentalProduct(productMap.get(r.product_id)))
 
   isDirty.value = false
   void loadFieldRows()
+  void loadCrewData()
 }
 
 function setRequirementQty(productId, value) {

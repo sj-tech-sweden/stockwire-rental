@@ -37,6 +37,9 @@ class Job(Base):
     customer: Mapped["Customer"] = relationship(back_populates="jobs")
     venue: Mapped["Venue"] = relationship(back_populates="jobs")
     requirements: Mapped[list["JobRequirement"]] = relationship(back_populates="job", cascade="all,delete")
+    crew_requirements: Mapped[list["JobCrewRequirement"]] = relationship(
+        back_populates="job", cascade="all,delete"
+    )
     transactions: Mapped[list["FinancialTransaction"]] = relationship(back_populates="job")
 
 

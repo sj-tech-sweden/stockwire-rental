@@ -2,6 +2,14 @@ from app.domain.audit.models import ActivityLog
 from app.domain.auth.models import User
 from app.domain.custom_fields.models import CustomFieldDefinition, CustomFieldValue
 from app.domain.customers.models import Customer
+from app.domain.crew.models import (
+    CrewMember,
+    CrewMemberCertification,
+    CrewMemberSkill,
+    CrewRole,
+    JobCrewAssignment,
+    JobCrewRequirement,
+)
 from app.domain.finance.models import FinancialTransaction
 from app.domain.integrations.models import TwentyConfig, TwentySyncLog
 from app.domain.route_planner.models import DeliveryRoute, RouteStop, RouteVehicle, Vehicle
@@ -60,4 +68,10 @@ __all__ = [
     "LEDController",
     "LEDControllerZone",
     "LEDBinMapping",
+    "CrewRole",
+    "CrewMember",
+    "CrewMemberSkill",
+    "CrewMemberCertification",
+    "JobCrewRequirement",
+    "JobCrewAssignment",
 ]

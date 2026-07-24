@@ -6,6 +6,7 @@ from app.domain.audit.router import router as audit_router
 from app.domain.auth.router import router as auth_router
 from app.domain.custom_fields.router import router as custom_fields_router
 from app.domain.customers.router import router as customers_router
+from app.domain.crew.router import router as crew_router
 from app.domain.finance.router import router as finance_router
 from app.domain.integrations.router import router as integrations_router
 from app.domain.route_planner.router import router as route_planner_router
@@ -26,6 +27,7 @@ api_router.include_router(audit_router)
 api_router.include_router(inventory_router)
 api_router.include_router(custom_fields_router)
 api_router.include_router(customers_router)
+api_router.include_router(crew_router)
 api_router.include_router(jobs_router)
 api_router.include_router(projects_router)
 api_router.include_router(realtime_router)
