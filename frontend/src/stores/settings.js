@@ -371,6 +371,7 @@ export const useSettingsStore = defineStore('settings', () => {
   const companyProfile = ref({ ...DEFAULT_COMPANY_PROFILE })
   const smtpSettings = ref({ ...DEFAULT_SMTP_SETTINGS })
   const labelTemplates = ref([])
+  const calendarFeeds = ref([])
   const loading = ref(false)
 
   async function fetchLocationTypes() {
@@ -792,6 +793,15 @@ export const useSettingsStore = defineStore('settings', () => {
     labelTemplates.value = labelTemplates.value.filter(item => item.id !== templateId)
   }
 
+  async function fetchCalendarFeeds() {
+    try {
+      const { data } = await api.get('/api/v1/calendar/feeds')
+      calendarFeeds.value = Array.isArray(data) ? data : []
+    } catch {
+      calendarFeeds.value = []
+    }
+  }
+
   async function uploadStorageFile({ file, entityType = null, entityId = null, category = null }) {
     if (!file) {
       throw new Error('File is required')
@@ -1170,6 +1180,7 @@ export const useSettingsStore = defineStore('settings', () => {
     companyProfile,
     smtpSettings,
     labelTemplates,
+    calendarFeeds,
     loading,
     fetchLocationTypes,
     updateLocationTypes,
@@ -1194,6 +1205,7 @@ export const useSettingsStore = defineStore('settings', () => {
     createLabelTemplate,
     updateLabelTemplate,
     deleteLabelTemplate,
+    fetchCalendarFeeds,
     uploadStorageFile,
     listStorageFiles,
     deleteStorageFile,

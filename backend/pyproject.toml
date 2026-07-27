@@ -26,7 +26,8 @@ dependencies = [
   "httpx==0.28.1",
   "paho-mqtt==2.1.0",
   "boto3==1.43.56",
-  "prometheus-fastapi-instrumentator==8.0.2"
+  "prometheus-fastapi-instrumentator==8.0.2",
+  "icalendar==7.2.2"
 ]
 
 [project.optional-dependencies]

@@ -10,6 +10,7 @@
       <q-tab name="integrations" icon="hub" :label="t('settings.tabs.integrations')" />
       <q-tab name="email" icon="email" :label="t('settings.tabs.email')" />
       <q-tab name="offline-queue" icon="sync" :label="t('settings.tabs.offlineQueue')" />
+      <q-tab name="calendar-feeds" icon="calendar_month" :label="t('settings.tabs.calendarFeeds')" />
       <q-tab name="warehouse-leds" icon="developer_board" :label="t('settings.tabs.warehouseLeds')" />
       <q-tab name="about" icon="info" :label="t('settings.tabs.about')" />
     </q-tabs>
@@ -1311,6 +1312,10 @@
         <WarehouseLedsSettings />
       </q-tab-panel>
 
+      <q-tab-panel name="calendar-feeds" class="q-pa-none">
+        <CalendarFeedsSettings />
+      </q-tab-panel>
+
       <q-tab-panel name="about" class="q-pa-none">
         <q-card class="ec-card q-pa-md">
           <div class="text-subtitle1 q-mb-sm">{{ t('settings.about.title') }}</div>
@@ -1484,10 +1489,11 @@ import SettingsDeleteUserDialog from '../components/SettingsDeleteUserDialog.vue
 import ApiKeyDialog from '../components/ApiKeyDialog.vue'
 import FieldDialog from '../components/FieldDialog.vue'
 import WarehouseLedsSettings from '../components/WarehouseLedsSettings.vue'
+import CalendarFeedsSettings from '../components/CalendarFeedsSettings.vue'
 
 const route = useRoute()
 const apiBaseUrl = getApiBaseUrl()
-const knownTabs = new Set(['auth', 'company', 'custom-fields', 'inventory', 'integrations', 'offline-queue', 'warehouse-leds', 'about'])
+const knownTabs = new Set(['auth', 'company', 'custom-fields', 'inventory', 'integrations', 'offline-queue', 'calendar-feeds', 'warehouse-leds', 'about'])
 const requestedTab = String(route.query.tab || '')
 const tab = ref(knownTabs.has(requestedTab) ? requestedTab : 'auth')
 const $q = useQuasar()
@@ -3379,6 +3385,7 @@ onMounted(async () => {
       jobsStore.fetchAll(),
       customersStore.fetchAll(),
       fetchVersionInfo(),
+      settingsStore.fetchCalendarFeeds(),
     ])
     locationTypeDraft.value = [...settingsStore.locationTypes]
     brandOptionsDraft.value = [...settingsStore.brandOptions]

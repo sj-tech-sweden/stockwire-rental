@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, date
 from decimal import Decimal
 
 from pydantic import BaseModel, Field, model_validator
@@ -31,13 +31,41 @@ class CrewRoleRead(CrewRoleBase):
     model_config = {"from_attributes": True}
 
 
-class CrewMemberSkillItem(BaseModel):
-    skill: str
+class CrewSkillBase(BaseModel):
+    name: str
+    category: str | None = None
+
+
+class CrewSkillCreate(CrewSkillBase):
+    pass
+
+
+class CrewSkillRead(CrewSkillBase):
+    id: int
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class CrewCertificationBase(BaseModel):
+    name: str
+    category: str | None = None
+
+
+class CrewCertificationCreate(CrewCertificationBase):
+    pass
+
+
+class CrewCertificationRead(CrewCertificationBase):
+    id: int
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
 
 
 class CrewMemberCertificationItem(BaseModel):
-    certification: str
-    expires_at: datetime | None = None
+    certification_id: int
+    expiry_date: date | None = None
 
 
 class CrewMemberBase(BaseModel):
@@ -53,8 +81,8 @@ class CrewMemberBase(BaseModel):
 
 
 class CrewMemberCreate(CrewMemberBase):
-    skills: list[str] = Field(default_factory=list)
-    certifications: list[CrewMemberCertificationItem] = Field(default_factory=list)
+    skill_ids: list[int] = Field(default_factory=list)
+    certification_items: list[CrewMemberCertificationItem] = Field(default_factory=list)
     preferred_role_ids: list[int] = Field(default_factory=list)
 
 
@@ -68,15 +96,15 @@ class CrewMemberUpdate(BaseModel):
     daily_rate: Decimal | None = None
     notes: str | None = None
     is_active: bool | None = None
-    skills: list[str] | None = None
-    certifications: list[CrewMemberCertificationItem] | None = None
+    skill_ids: list[int] | None = None
+    certification_items: list[CrewMemberCertificationItem] | None = None
     preferred_role_ids: list[int] | None = None
 
 
 class CrewMemberSkillRead(BaseModel):
     id: int
     crew_member_id: int
-    skill: str
+    skill: CrewSkillRead
     created_at: datetime
 
     model_config = {"from_attributes": True}
@@ -85,9 +113,19 @@ class CrewMemberSkillRead(BaseModel):
 class CrewMemberCertificationRead(BaseModel):
     id: int
     crew_member_id: int
-    certification: str
-    expires_at: datetime | None = None
+    certification: CrewCertificationRead
+    expiry_date: date | None = None
     created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class CrewMemberAssignmentRead(BaseModel):
+    id: int
+    job_id: int
+    job_code: str | None = None
+    crew_role_name: str | None = None
+    status: str
 
     model_config = {"from_attributes": True}
 
@@ -97,9 +135,10 @@ class CrewMemberRead(CrewMemberBase):
     created_at: datetime
     user_name: str | None = None
     supplier_name: str | None = None
-    skills: list[str] = Field(default_factory=list)
+    skills: list[CrewSkillRead] = Field(default_factory=list)
     certifications: list[CrewMemberCertificationRead] = Field(default_factory=list)
     preferred_roles: list[CrewRoleRead] = Field(default_factory=list)
+    assignments: list[CrewMemberAssignmentRead] = Field(default_factory=list)
 
 
 class JobCrewRequirementBase(BaseModel):
@@ -107,7 +146,7 @@ class JobCrewRequirementBase(BaseModel):
     crew_role_id: int | None = None
     custom_role_name: str | None = None
     quantity: int = 1
-    required_skills: str | None = None
+    skill_ids: list[int] = Field(default_factory=list)
     hourly_rate: Decimal | None = None
     notes: str | None = None
 
@@ -120,7 +159,7 @@ class JobCrewRequirementUpdate(BaseModel):
     crew_role_id: int | None = None
     custom_role_name: str | None = None
     quantity: int | None = None
-    required_skills: str | None = None
+    skill_ids: list[int] | None = None
     hourly_rate: Decimal | None = None
     notes: str | None = None
 
@@ -129,7 +168,7 @@ class JobCrewRequirementBulkItem(BaseModel):
     crew_role_id: int | None = None
     custom_role_name: str | None = None
     quantity: int = 1
-    required_skills: str | None = None
+    skill_ids: list[int] = Field(default_factory=list)
     hourly_rate: Decimal | None = None
     notes: str | None = None
 
@@ -151,7 +190,7 @@ class JobCrewRequirementRead(BaseModel):
     custom_role_name: str | None = None
     quantity: int
     quantity_assigned: int
-    required_skills: str | None = None
+    skills: list[CrewSkillRead] = Field(default_factory=list)
     hourly_rate: Decimal | None = None
     notes: str | None = None
     created_at: datetime

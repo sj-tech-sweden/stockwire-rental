@@ -1,14 +1,18 @@
 from app.domain.audit.models import ActivityLog
 from app.domain.auth.models import User
+from app.domain.calendar_feeds.models import CalendarFeed
 from app.domain.custom_fields.models import CustomFieldDefinition, CustomFieldValue
 from app.domain.customers.models import Customer
 from app.domain.crew.models import (
+    CrewCertification,
     CrewMember,
     CrewMemberCertification,
     CrewMemberSkill,
     CrewRole,
+    CrewSkill,
     JobCrewAssignment,
     JobCrewRequirement,
+    JobRequiredSkill,
 )
 from app.domain.finance.models import FinancialTransaction
 from app.domain.integrations.models import TwentyConfig, TwentySyncLog
@@ -69,9 +73,13 @@ __all__ = [
     "LEDControllerZone",
     "LEDBinMapping",
     "CrewRole",
+    "CrewSkill",
+    "CrewCertification",
     "CrewMember",
     "CrewMemberSkill",
     "CrewMemberCertification",
     "JobCrewRequirement",
+    "JobRequiredSkill",
     "JobCrewAssignment",
+    "CalendarFeed",
 ]

@@ -1,9 +1,38 @@
-from datetime import datetime
+from datetime import datetime, date
 
-from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, Numeric, String, Table, Text, UniqueConstraint
+from sqlalchemy import Boolean, Column, DateTime, Date, ForeignKey, Integer, Numeric, String, Table, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
+
+
+class CrewSkill(Base):
+    __tablename__ = "crew_skills"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(120), unique=True, index=True)
+    category: Mapped[str | None] = mapped_column(String(100), nullable=True, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
+
+    member_links: Mapped[list["CrewMemberSkill"]] = relationship(
+        back_populates="skill", cascade="all, delete-orphan"
+    )
+    job_links: Mapped[list["JobRequiredSkill"]] = relationship(
+        back_populates="skill", cascade="all, delete-orphan"
+    )
+
+
+class CrewCertification(Base):
+    __tablename__ = "crew_certifications"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(120), unique=True, index=True)
+    category: Mapped[str | None] = mapped_column(String(100), nullable=True, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
+
+    member_links: Mapped[list["CrewMemberCertification"]] = relationship(
+        back_populates="certification", cascade="all, delete-orphan"
+    )
 
 
 class CrewRole(Base):
@@ -67,27 +96,29 @@ crew_member_preferred_roles = Table(
 
 class CrewMemberSkill(Base):
     __tablename__ = "crew_member_skills"
-    __table_args__ = (UniqueConstraint("crew_member_id", "skill", name="uq_crew_member_skill"),)
+    __table_args__ = (UniqueConstraint("crew_member_id", "skill_id", name="uq_crew_member_skill"),)
 
     id: Mapped[int] = mapped_column(primary_key=True)
     crew_member_id: Mapped[int] = mapped_column(ForeignKey("crew_members.id", ondelete="CASCADE"), index=True)
-    skill: Mapped[str] = mapped_column(String(120))
+    skill_id: Mapped[int] = mapped_column(ForeignKey("crew_skills.id", ondelete="CASCADE"), index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
 
     crew_member: Mapped[CrewMember] = relationship(back_populates="skills")
+    skill: Mapped[CrewSkill] = relationship(back_populates="member_links")
 
 
 class CrewMemberCertification(Base):
     __tablename__ = "crew_member_certifications"
-    __table_args__ = (UniqueConstraint("crew_member_id", "certification", name="uq_crew_member_cert"),)
+    __table_args__ = (UniqueConstraint("crew_member_id", "certification_id", name="uq_crew_member_cert"),)
 
     id: Mapped[int] = mapped_column(primary_key=True)
     crew_member_id: Mapped[int] = mapped_column(ForeignKey("crew_members.id", ondelete="CASCADE"), index=True)
-    certification: Mapped[str] = mapped_column(String(120))
-    expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    certification_id: Mapped[int] = mapped_column(ForeignKey("crew_certifications.id", ondelete="CASCADE"), index=True)
+    expiry_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
 
     crew_member: Mapped[CrewMember] = relationship(back_populates="certifications")
+    certification: Mapped[CrewCertification] = relationship(back_populates="member_links")
 
 
 class JobCrewRequirement(Base):
@@ -99,7 +130,6 @@ class JobCrewRequirement(Base):
     custom_role_name: Mapped[str | None] = mapped_column(String(120), nullable=True)
     quantity: Mapped[int] = mapped_column(Integer, default=1)
     quantity_assigned: Mapped[int] = mapped_column(Integer, default=0)
-    required_skills: Mapped[str | None] = mapped_column(Text, nullable=True)
     hourly_rate: Mapped[float | None] = mapped_column(Numeric(10, 2), nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
@@ -109,6 +139,23 @@ class JobCrewRequirement(Base):
     assignments: Mapped[list["JobCrewAssignment"]] = relationship(
         back_populates="job_crew_requirement", cascade="all, delete-orphan"
     )
+    required_skills: Mapped[list["JobRequiredSkill"]] = relationship(
+        back_populates="job_crew_requirement", cascade="all, delete-orphan"
+    )
+
+
+class JobRequiredSkill(Base):
+    __tablename__ = "job_required_skills"
+    __table_args__ = (UniqueConstraint("job_crew_requirement_id", "skill_id", name="uq_job_required_skill"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    job_crew_requirement_id: Mapped[int] = mapped_column(
+        ForeignKey("job_crew_requirements.id", ondelete="CASCADE"), index=True
+    )
+    skill_id: Mapped[int] = mapped_column(ForeignKey("crew_skills.id", ondelete="CASCADE"), index=True)
+
+    job_crew_requirement: Mapped[JobCrewRequirement] = relationship(back_populates="required_skills")
+    skill: Mapped[CrewSkill] = relationship(back_populates="job_links")
 
 
 class JobCrewAssignment(Base):
