@@ -23,7 +23,8 @@
             <q-input v-model.number="form.hourly_rate" type="number" min="0" step="0.01" :label="t('crew.hourlyRate')" outlined dense />
           </div>
           <div class="col-12">
-            <q-input v-model="form.required_skills" :label="t('crew.requiredSkills')" outlined dense hint="Comma-separated skills" />
+            <div class="text-subtitle2 q-mb-sm">{{ t('crew.requiredSkills') }}</div>
+            <SkillAutocomplete v-model="form.skill_ids" :label="t('crew.selectSkills')" />
           </div>
           <div class="col-12">
             <q-input v-model="form.notes" :label="t('crew.notes')" outlined dense type="textarea" />
@@ -43,6 +44,7 @@ import { ref, watch } from 'vue'
 import { useQuasar } from 'quasar'
 import { useI18n } from 'vue-i18n'
 import { useCrewStore } from '../stores/crew'
+import SkillAutocomplete from './SkillAutocomplete.vue'
 
 const props = defineProps({
   modelValue: Boolean,
@@ -64,7 +66,7 @@ function emptyForm() {
     crew_role_id: null,
     custom_role_name: '',
     quantity: 1,
-    required_skills: '',
+    skill_ids: [],
     hourly_rate: null,
     notes: '',
   }
@@ -92,7 +94,7 @@ async function save() {
       crew_role_id: form.value.crew_role_id || null,
       custom_role_name: form.value.custom_role_name || null,
       quantity: form.value.quantity || 1,
-      required_skills: form.value.required_skills || null,
+      skill_ids: form.value.skill_ids.map(s => s.id || s.value),
       hourly_rate: form.value.hourly_rate || null,
       notes: form.value.notes || null,
     }
@@ -120,7 +122,7 @@ watch(() => props.modelValue, async (open) => {
         crew_role_id: props.requirement.crew_role_id || null,
         custom_role_name: props.requirement.custom_role_name || '',
         quantity: props.requirement.quantity || 1,
-        required_skills: props.requirement.required_skills || '',
+        skill_ids: (props.requirement.skills || []).map(s => ({ id: s.id, name: s.name, label: s.name, value: s.id })),
         hourly_rate: props.requirement.hourly_rate ?? null,
         notes: props.requirement.notes || '',
       }

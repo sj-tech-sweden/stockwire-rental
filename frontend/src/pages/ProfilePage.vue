@@ -77,6 +77,23 @@
           />
         </div>
       </q-form>
+
+      <template v-if="crewCalendarUrl">
+        <q-separator class="q-my-md" />
+        <div class="text-subtitle1 q-mb-sm">{{ t('profile.crewCalendar') }}</div>
+        <div class="text-caption text-grey-7 q-mb-sm">{{ t('profile.crewCalendarDescription') }}</div>
+        <div class="row items-center q-gutter-sm">
+          <q-input
+            :model-value="crewCalendarUrl"
+            outlined
+            dense
+            readonly
+            class="col"
+          />
+          <q-btn flat dense icon="content_copy" color="primary" @click="copyCrewCalendarUrl" />
+          <q-btn flat dense icon="open_in_new" color="secondary" @click="openCrewCalendarUrl" />
+        </div>
+      </template>
     </q-card>
   </q-page>
 </template>
@@ -87,6 +104,8 @@ import { useQuasar } from 'quasar'
 import { useI18n } from 'vue-i18n'
 
 import { useAuthStore } from '../stores/auth'
+import { api } from '../boot/axios'
+import { getApiBaseUrl } from '../utils/runtime-config'
 import { resolveAppLocale, setLocale, setUserLocalePreference } from '../i18n'
 
 const $q = useQuasar()
@@ -105,6 +124,34 @@ const localeOptions = computed(() => [
   { label: t('app.language.english'), value: 'en' },
   { label: t('app.language.swedish'), value: 'sv' },
 ])
+
+const crewCalendarUrl = ref('')
+
+function copyCrewCalendarUrl() {
+  if (!crewCalendarUrl.value) return
+  navigator.clipboard.writeText(crewCalendarUrl.value).then(() => {
+    $q.notify({ type: 'positive', message: t('crew.calendarFeedCopied') })
+  }).catch(() => {
+    $q.notify({ type: 'negative', message: t('crew.calendarFeedCopyFailed') })
+  })
+}
+
+function openCrewCalendarUrl() {
+  if (crewCalendarUrl.value) window.open(crewCalendarUrl.value, '_blank')
+}
+
+async function fetchCrewCalendarUrl() {
+  try {
+    const { data: feed } = await api.get('/api/v1/calendar/my-feed')
+    if (feed && feed.token) {
+      crewCalendarUrl.value = `${getApiBaseUrl()}/api/v1/calendar/${feed.token}/feed.ics`
+    }
+  } catch (err) {
+    if (err?.response?.status !== 404) {
+      $q.notify({ type: 'warning', message: t('crew.calendarFeedCopyFailed') })
+    }
+  }
+}
 
 const authSource = computed(() => String(authStore.me?.auth_source || 'local').toLowerCase())
 const isSsoManaged = computed(() => ['oidc', 'saml'].includes(authSource.value))
@@ -165,5 +212,6 @@ onMounted(async () => {
     ? resolveAppLocale(userId)
     : localStorage.getItem('sw_locale') || resolveAppLocale(null)
   userLocale.value = setLocale(preferred)
+  fetchCrewCalendarUrl()
 })
 </script>

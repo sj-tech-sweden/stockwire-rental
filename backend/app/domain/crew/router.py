@@ -1,5 +1,5 @@
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import func, select
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session, selectinload
 
 from app.db.session import get_db
@@ -7,14 +7,30 @@ from app.domain.auth.deps import get_current_user
 from app.domain.customers.models import Customer
 from app.domain.auth.models import User
 from app.domain.jobs.models import Job
-from app.domain.crew.models import CrewMember, CrewMemberCertification, CrewMemberSkill, CrewRole, JobCrewAssignment, JobCrewRequirement
+from app.domain.crew.models import (
+    CrewMember,
+    CrewMemberCertification,
+    CrewMemberSkill,
+    CrewRole,
+    CrewSkill,
+    CrewCertification,
+    JobCrewAssignment,
+    JobCrewRequirement,
+    JobRequiredSkill,
+)
 from app.domain.crew.schemas import (
+    CrewCertificationCreate,
+    CrewCertificationRead,
+    CrewMemberAssignmentRead,
+    CrewMemberCertificationRead,
     CrewMemberCreate,
     CrewMemberRead,
     CrewMemberUpdate,
     CrewRoleCreate,
     CrewRoleRead,
     CrewRoleUpdate,
+    CrewSkillCreate,
+    CrewSkillRead,
     JobCrewAssignmentCreate,
     JobCrewAssignmentRead,
     JobCrewAssignmentUpdate,
@@ -32,24 +48,46 @@ def _to_crew_role_read(role: CrewRole) -> CrewRoleRead:
     return CrewRoleRead.model_validate(role)
 
 
-def _parse_skills(raw: str | None) -> list[str]:
-    if not raw:
-        return []
-    return [s.strip() for s in raw.split(",") if s.strip()]
+def _to_crew_skill_read(skill: CrewSkill) -> CrewSkillRead:
+    return CrewSkillRead.model_validate(skill)
+
+
+def _to_crew_certification_read(cert: CrewCertification) -> CrewCertificationRead:
+    return CrewCertificationRead.model_validate(cert)
 
 
 def _to_crew_member_read(db: Session, member: CrewMember) -> CrewMemberRead:
-    skills = [sk.skill for sk in member.skills] if member.skills else []
-    certs = list(member.certifications) if member.certifications else []
+    skills = [_to_crew_skill_read(sk.skill) for sk in member.skills] if member.skills else []
+    certs = []
+    for cert_link in member.certifications:
+        certs.append(CrewMemberCertificationRead(
+            id=cert_link.id,
+            crew_member_id=cert_link.crew_member_id,
+            certification=_to_crew_certification_read(cert_link.certification),
+            expiry_date=cert_link.expiry_date,
+            created_at=cert_link.created_at,
+        ))
     preferred_roles = [_to_crew_role_read(r) for r in member.preferred_roles] if member.preferred_roles else []
-    user_name = None
-    if member.user_id:
-        user = db.get(User, member.user_id)
-        user_name = user.full_name if user else None
-    supplier_name = None
-    if member.supplier_id:
-        supplier = db.get(Customer, member.supplier_id)
-        supplier_name = supplier.name if supplier else None
+    user_name = member.user.full_name if member.user else None
+    supplier_name = member.supplier.name if member.supplier else None
+    assignments = []
+    if member.assignments:
+        for a in member.assignments:
+            req = a.job_crew_requirement
+            job_code = req.job.job_code if req and req.job else None
+            role_name = None
+            if req:
+                if req.crew_role:
+                    role_name = req.crew_role.name
+                elif req.custom_role_name:
+                    role_name = req.custom_role_name
+            assignments.append(CrewMemberAssignmentRead(
+                id=a.id,
+                job_id=req.job_id if req else 0,
+                job_code=job_code,
+                crew_role_name=role_name,
+                status=a.status,
+            ))
     return CrewMemberRead(
         id=member.id,
         name=member.name,
@@ -67,6 +105,7 @@ def _to_crew_member_read(db: Session, member: CrewMember) -> CrewMemberRead:
         skills=skills,
         certifications=certs,
         preferred_roles=preferred_roles,
+        assignments=assignments,
     )
 
 
@@ -77,6 +116,7 @@ def _to_job_crew_requirement_read(db: Session, req: JobCrewRequirement) -> JobCr
         role_name = role.name if role else None
     if not role_name and req.custom_role_name:
         role_name = req.custom_role_name
+    skills = [_to_crew_skill_read(link.skill) for link in req.required_skills] if req.required_skills else []
     return JobCrewRequirementRead(
         id=req.id,
         job_id=req.job_id,
@@ -84,7 +124,7 @@ def _to_job_crew_requirement_read(db: Session, req: JobCrewRequirement) -> JobCr
         custom_role_name=req.custom_role_name,
         quantity=req.quantity,
         quantity_assigned=req.quantity_assigned,
-        required_skills=req.required_skills,
+        skills=skills,
         hourly_rate=req.hourly_rate,
         notes=req.notes,
         created_at=req.created_at,
@@ -215,6 +255,92 @@ def delete_crew_role(role_id: int, db: Session = Depends(get_db)) -> dict:
     return {"ok": True}
 
 
+# ── Skills Registry ─────────────────────────────────────────────────────────
+
+
+@router.get("/skills", response_model=list[CrewSkillRead])
+def list_skills(
+    q: str | None = Query(None),
+    category: str | None = Query(None),
+    db: Session = Depends(get_db),
+) -> list[CrewSkillRead]:
+    query = select(CrewSkill).order_by(CrewSkill.name)
+    if q:
+        query = query.where(CrewSkill.name.ilike(f"%{q}%"))
+    if category:
+        query = query.where(CrewSkill.category == category)
+    skills = list(db.scalars(query).all())
+    return [_to_crew_skill_read(s) for s in skills]
+
+
+@router.post("/skills", response_model=CrewSkillRead, status_code=status.HTTP_201_CREATED)
+def create_skill(payload: CrewSkillCreate, db: Session = Depends(get_db)) -> CrewSkillRead:
+    existing = db.scalar(select(CrewSkill).where(CrewSkill.name == payload.name.strip()))
+    if existing:
+        raise HTTPException(status_code=409, detail="Skill with this name already exists")
+    skill = CrewSkill(
+        name=payload.name.strip(),
+        category=payload.category.strip() if payload.category else None,
+    )
+    db.add(skill)
+    db.commit()
+    db.refresh(skill)
+    return _to_crew_skill_read(skill)
+
+
+@router.delete("/skills/{skill_id}")
+def delete_skill(skill_id: int, db: Session = Depends(get_db)) -> dict:
+    skill = db.get(CrewSkill, skill_id)
+    if not skill:
+        raise HTTPException(status_code=404, detail="Skill not found")
+    db.delete(skill)
+    db.commit()
+    return {"ok": True}
+
+
+# ── Certifications Registry ─────────────────────────────────────────────────
+
+
+@router.get("/certifications", response_model=list[CrewCertificationRead])
+def list_certifications(
+    q: str | None = Query(None),
+    category: str | None = Query(None),
+    db: Session = Depends(get_db),
+) -> list[CrewCertificationRead]:
+    query = select(CrewCertification).order_by(CrewCertification.name)
+    if q:
+        query = query.where(CrewCertification.name.ilike(f"%{q}%"))
+    if category:
+        query = query.where(CrewCertification.category == category)
+    certs = list(db.scalars(query).all())
+    return [_to_crew_certification_read(c) for c in certs]
+
+
+@router.post("/certifications", response_model=CrewCertificationRead, status_code=status.HTTP_201_CREATED)
+def create_certification(payload: CrewCertificationCreate, db: Session = Depends(get_db)) -> CrewCertificationRead:
+    existing = db.scalar(select(CrewCertification).where(CrewCertification.name == payload.name.strip()))
+    if existing:
+        raise HTTPException(status_code=409, detail="Certification with this name already exists")
+    cert = CrewCertification(
+        name=payload.name.strip(),
+        category=payload.category.strip() if payload.category else None,
+    )
+    db.add(cert)
+    db.commit()
+    db.refresh(cert)
+    return _to_crew_certification_read(cert)
+
+
+@router.delete("/certifications/{cert_id}")
+def delete_certification(cert_id: int, db: Session = Depends(get_db)) -> dict:
+    cert = db.get(CrewCertification, cert_id)
+    if not cert:
+        raise HTTPException(status_code=404, detail="Certification not found")
+    db.delete(cert)
+    db.commit()
+    return {"ok": True}
+
+
 # ── Crew Members ─────────────────────────────────────────────────────────────
 
 
@@ -224,9 +350,17 @@ def list_crew_members(
     db: Session = Depends(get_db),
 ) -> list[CrewMemberRead]:
     q = select(CrewMember).order_by(CrewMember.name).options(
-        selectinload(CrewMember.skills),
-        selectinload(CrewMember.certifications),
+        selectinload(CrewMember.user),
+        selectinload(CrewMember.supplier),
+        selectinload(CrewMember.skills).selectinload(CrewMemberSkill.skill),
+        selectinload(CrewMember.certifications).selectinload(CrewMemberCertification.certification),
         selectinload(CrewMember.preferred_roles),
+        selectinload(CrewMember.assignments)
+        .selectinload(JobCrewAssignment.job_crew_requirement)
+        .selectinload(JobCrewRequirement.crew_role),
+        selectinload(CrewMember.assignments)
+        .selectinload(JobCrewAssignment.job_crew_requirement)
+        .selectinload(JobCrewRequirement.job),
     )
     if active_only:
         q = q.where(CrewMember.is_active.is_(True))
@@ -239,6 +373,23 @@ def get_crew_member(member_id: int, db: Session = Depends(get_db)) -> CrewMember
     member = db.get(CrewMember, member_id)
     if not member:
         raise HTTPException(status_code=404, detail="Crew member not found")
+    member = db.scalars(
+        select(CrewMember)
+        .where(CrewMember.id == member_id)
+        .options(
+            selectinload(CrewMember.user),
+            selectinload(CrewMember.supplier),
+            selectinload(CrewMember.skills).selectinload(CrewMemberSkill.skill),
+            selectinload(CrewMember.certifications).selectinload(CrewMemberCertification.certification),
+            selectinload(CrewMember.preferred_roles),
+            selectinload(CrewMember.assignments)
+            .selectinload(JobCrewAssignment.job_crew_requirement)
+            .selectinload(JobCrewRequirement.crew_role),
+            selectinload(CrewMember.assignments)
+            .selectinload(JobCrewAssignment.job_crew_requirement)
+            .selectinload(JobCrewRequirement.job),
+        )
+    ).unique().one()
     return _to_crew_member_read(db, member)
 
 
@@ -259,18 +410,18 @@ def create_crew_member(payload: CrewMemberCreate, db: Session = Depends(get_db))
     db.add(member)
     db.flush()
 
-    for skill_name in payload.skills:
-        skill_name = skill_name.strip()
-        if skill_name:
-            db.add(CrewMemberSkill(crew_member_id=member.id, skill=skill_name))
+    for skill_id in payload.skill_ids:
+        skill = db.get(CrewSkill, skill_id)
+        if skill:
+            db.add(CrewMemberSkill(crew_member_id=member.id, skill_id=skill_id))
 
-    for cert in payload.certifications:
-        cert_name = cert.certification.strip()
-        if cert_name:
+    for cert_item in payload.certification_items:
+        cert = db.get(CrewCertification, cert_item.certification_id)
+        if cert:
             db.add(CrewMemberCertification(
                 crew_member_id=member.id,
-                certification=cert_name,
-                expires_at=cert.expires_at,
+                certification_id=cert_item.certification_id,
+                expiry_date=cert_item.expiry_date,
             ))
 
     for role_id in payload.preferred_role_ids:
@@ -308,24 +459,22 @@ def update_crew_member(member_id: int, payload: CrewMemberUpdate, db: Session = 
     if payload.is_active is not None:
         member.is_active = payload.is_active
 
-    if payload.skills is not None:
-        db.query(CrewMemberSkill).filter(CrewMemberSkill.crew_member_id == member_id).delete()
-        for skill_name in payload.skills:
-            skill_name = skill_name.strip()
-            if skill_name:
-                db.add(CrewMemberSkill(crew_member_id=member.id, skill=skill_name))
+    if payload.skill_ids is not None:
+        db.execute(delete(CrewMemberSkill).where(CrewMemberSkill.crew_member_id == member_id))
+        for skill_id in payload.skill_ids:
+            skill = db.get(CrewSkill, skill_id)
+            if skill:
+                db.add(CrewMemberSkill(crew_member_id=member.id, skill_id=skill_id))
 
-    if payload.certifications is not None:
-        db.query(CrewMemberCertification).filter(
-            CrewMemberCertification.crew_member_id == member_id
-        ).delete()
-        for cert in payload.certifications:
-            cert_name = cert.certification.strip()
-            if cert_name:
+    if payload.certification_items is not None:
+        db.execute(delete(CrewMemberCertification).where(CrewMemberCertification.crew_member_id == member_id))
+        for cert_item in payload.certification_items:
+            cert = db.get(CrewCertification, cert_item.certification_id)
+            if cert:
                 db.add(CrewMemberCertification(
                     crew_member_id=member.id,
-                    certification=cert_name,
-                    expires_at=cert.expires_at,
+                    certification_id=cert_item.certification_id,
+                    expiry_date=cert_item.expiry_date,
                 ))
 
     if payload.preferred_role_ids is not None:
@@ -370,7 +519,10 @@ def list_job_crew_requirements(job_id: int, db: Session = Depends(get_db)) -> li
     reqs = list(db.scalars(
         select(JobCrewRequirement)
         .where(JobCrewRequirement.job_id == job_id)
-        .options(selectinload(JobCrewRequirement.crew_role))
+        .options(
+            selectinload(JobCrewRequirement.crew_role),
+            selectinload(JobCrewRequirement.required_skills).selectinload(JobRequiredSkill.skill),
+        )
         .order_by(JobCrewRequirement.id)
     ).all())
     return [_to_job_crew_requirement_read(db, r) for r in reqs]
@@ -393,11 +545,17 @@ def create_job_crew_requirement(
         crew_role_id=payload.crew_role_id,
         custom_role_name=payload.custom_role_name,
         quantity=payload.quantity,
-        required_skills=payload.required_skills,
         hourly_rate=payload.hourly_rate,
         notes=payload.notes,
     )
     db.add(req)
+    db.flush()
+
+    for skill_id in payload.skill_ids:
+        skill = db.get(CrewSkill, skill_id)
+        if skill:
+            db.add(JobRequiredSkill(job_crew_requirement_id=req.id, skill_id=skill_id))
+
     db.commit()
     db.refresh(req)
     return _to_job_crew_requirement_read(db, req)
@@ -416,8 +574,12 @@ def update_job_crew_requirement(
         req.custom_role_name = payload.custom_role_name
     if payload.quantity is not None:
         req.quantity = payload.quantity
-    if payload.required_skills is not None:
-        req.required_skills = payload.required_skills
+    if payload.skill_ids is not None:
+        db.execute(delete(JobRequiredSkill).where(JobRequiredSkill.job_crew_requirement_id == req_id))
+        for skill_id in payload.skill_ids:
+            skill = db.get(CrewSkill, skill_id)
+            if skill:
+                db.add(JobRequiredSkill(job_crew_requirement_id=req_id, skill_id=skill_id))
     if payload.hourly_rate is not None:
         req.hourly_rate = payload.hourly_rate
     if payload.notes is not None:
@@ -474,12 +636,17 @@ def bulk_upsert_job_crew_requirements(
             crew_role_id=item.crew_role_id,
             custom_role_name=item.custom_role_name,
             quantity=item.quantity,
-            required_skills=item.required_skills,
             hourly_rate=item.hourly_rate,
             notes=item.notes,
         )
         db.add(req)
         db.flush()
+
+        for skill_id in item.skill_ids:
+            skill = db.get(CrewSkill, skill_id)
+            if skill:
+                db.add(JobRequiredSkill(job_crew_requirement_id=req.id, skill_id=skill_id))
+
         incoming_ids.add(req.id)
         result_rows.append(req)
 
@@ -490,7 +657,10 @@ def bulk_upsert_job_crew_requirements(
     db.commit()
 
     refreshed = list(db.scalars(
-        select(JobCrewRequirement).where(JobCrewRequirement.job_id == job_id).order_by(JobCrewRequirement.id)
+        select(JobCrewRequirement)
+        .where(JobCrewRequirement.job_id == job_id)
+        .options(selectinload(JobCrewRequirement.required_skills).selectinload(JobRequiredSkill.skill))
+        .order_by(JobCrewRequirement.id)
     ).all())
     return [_to_job_crew_requirement_read(db, r) for r in refreshed]
 
@@ -606,7 +776,10 @@ def get_crew_suggestions(
     reqs = list(db.scalars(
         select(JobCrewRequirement)
         .where(JobCrewRequirement.job_id == job_id)
-        .options(selectinload(JobCrewRequirement.assignments))
+        .options(
+            selectinload(JobCrewRequirement.assignments),
+            selectinload(JobCrewRequirement.required_skills).selectinload(JobRequiredSkill.skill),
+        )
     ).all())
 
     if requirement_id:
@@ -630,14 +803,14 @@ def get_crew_suggestions(
         if member.id in assigned_member_ids:
             continue
 
-        member_skills = {sk.skill.lower() for sk in member.skills}
+        member_skills = {sk.skill.name.lower() for sk in member.skills} if member.skills else set()
         member_role_ids = {r.id for r in member.preferred_roles} if member.preferred_roles else set()
         total_required: set[str] = set()
         total_matching: set[str] = set()
         required_role_ids: set[int] = set()
 
         for req in reqs:
-            required = {_parse_skill.lower() for _parse_skill in _parse_skills(req.required_skills)}
+            required = {link.skill.name.lower() for link in req.required_skills} if req.required_skills else set()
             total_required.update(required)
             total_matching.update(member_skills & required)
             if req.crew_role_id:

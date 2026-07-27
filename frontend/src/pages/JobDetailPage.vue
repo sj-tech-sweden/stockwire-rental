@@ -392,7 +392,9 @@
                 </q-item-label>
                 <q-item-label caption>
                   {{ t('crew.quantity') }}: {{ row.quantity_assigned }}/{{ row.quantity }}
-                  <span v-if="row.required_skills"> · {{ row.required_skills }}</span>
+                  <template v-if="row.skills?.length">
+                    <q-badge v-for="skill in row.skills" :key="skill.id" color="teal" class="q-mr-xs q-mb-xs" :label="skill.name" />
+                  </template>
                 </q-item-label>
               </q-item-section>
               <q-item-section side v-if="authStore.canEdit">

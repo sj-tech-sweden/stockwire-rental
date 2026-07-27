@@ -72,6 +72,8 @@ const routes = [
       { path: 'customers/new', component: () => import('../pages/CustomerDetailPage.vue') },
       { path: 'customers/:customerId', component: () => import('../pages/CustomerDetailPage.vue') },
       { path: 'crew', component: CrewPage },
+      { path: 'crew/new', component: () => import('../pages/CrewDetailPage.vue') },
+      { path: 'crew/:crewMemberId', component: () => import('../pages/CrewDetailPage.vue') },
       { path: 'suppliers', component: () => import('../pages/SuppliersPage.vue') },
       { path: 'venues', component: VenuesPage },
       { path: 'profile', component: ProfilePage },

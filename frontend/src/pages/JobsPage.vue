@@ -2,6 +2,7 @@
   <q-page class="q-pa-md ec-page">
     <div class="row items-center q-mb-md">
       <div class="text-h5 col">{{ t('jobs.title') }}</div>
+      <q-btn v-if="jobsFeedUrl" flat dense icon="calendar_month" :label="t('jobs.calendarFeed')" class="q-mr-sm" @click="copyToClipboard(jobsFeedUrl)" />
       <q-btn v-if="authStore.canEdit" color="primary" icon="add" :label="t('jobs.newJob')" unelevated @click="openCreate" />
     </div>
 
@@ -237,6 +238,7 @@ import { useProjectsStore } from '../stores/projects'
 import { useCompactGrid } from '../composables/useCompactGrid'
 import { normalizeCurrencyCode } from '../constants/currencies'
 import { googleMapsSearchUrl, locationQueryFromParts } from '../utils/maps'
+import { getApiBaseUrl } from '../utils/runtime-config'
 import JobDeleteDialog from '../components/JobDeleteDialog.vue'
 
 const compactGrid = useCompactGrid(1024)
@@ -266,6 +268,21 @@ const showCachedOfflineBanner = computed(() => (
 
 const deleteDialogOpen = ref(false)
 const deleteTarget = ref(null)
+
+const jobsFeedUrl = computed(() => {
+  const feeds = settingsStore.calendarFeeds || []
+  const jobsFeed = feeds.find(f => f.feed_type === 'jobs' && f.is_active)
+  if (!jobsFeed) return ''
+  return `${getApiBaseUrl()}/api/v1/calendar/${jobsFeed.token}/feed.ics`
+})
+
+function copyToClipboard(text) {
+  navigator.clipboard.writeText(text).then(() => {
+    $q.notify({ type: 'positive', message: t('jobs.calendarFeedCopied') })
+  }).catch(() => {
+    $q.notify({ type: 'negative', message: t('jobs.calendarFeedCopyFailed') })
+  })
+}
 
 const productionplannerEnabled = computed(() => settingsStore.integrations?.productionplanner?.enabled === true)
 
@@ -433,6 +450,7 @@ async function loadData() {
       settingsStore.fetchIntegrations(),
       settingsStore.fetchCompanyProfile(),
       projectsStore.fetchAll(),
+      settingsStore.fetchCalendarFeeds(),
     ])
   } finally {
     pageLoading.value = false

@@ -279,7 +279,7 @@
                       <span v-if="cm.daily_rate"> · {{ formatMoney(cm.daily_rate) }}/day</span>
                     </q-item-label>
                     <q-item-label caption v-if="cm.skills?.length">
-                      <q-badge v-for="skill in cm.skills.slice(0, 5)" :key="skill" color="teal" class="q-mr-xs q-mb-xs" :label="skill" />
+                      <q-badge v-for="skill in cm.skills.slice(0, 5)" :key="skill.id || skill" color="teal" class="q-mr-xs q-mb-xs" :label="skill.name || skill" />
                       <span v-if="cm.skills.length > 5" class="text-caption text-grey-7">+{{ cm.skills.length - 5 }}</span>
                     </q-item-label>
                     <q-item-label caption v-if="cm.preferred_role_names?.length" class="text-grey-7">
@@ -392,10 +392,10 @@
                 <q-btn flat dense icon="add" color="primary" @click="addCrewSkill" />
               </div>
             </div>
-            <div v-if="crewMemberForm.skills?.length" class="q-mb-sm">
-              <q-badge v-for="(skill, idx) in crewMemberForm.skills" :key="`skill-${idx}`" color="teal" class="q-mr-xs q-mb-xs">
-                {{ skill }}
-                <q-btn flat round dense icon="close" size="xs" @click="crewMemberForm.skills.splice(idx, 1)" />
+            <div v-if="crewMemberForm.skill_ids?.length" class="q-mb-sm">
+              <q-badge v-for="skillId in crewMemberForm.skill_ids" :key="`skill-${skillId}`" color="teal" class="q-mr-xs q-mb-xs">
+                {{ getSkillName(skillId) }}
+                <q-btn flat round dense icon="close" size="xs" @click="crewMemberForm.skill_ids = crewMemberForm.skill_ids.filter(id => id !== skillId)" />
               </q-badge>
             </div>
             <div v-else class="text-caption text-grey-7 q-mb-sm">{{ t('crew.noSkills') }}</div>
@@ -410,10 +410,10 @@
                 <q-btn flat dense icon="add" color="primary" @click="addCrewCert" />
               </div>
             </div>
-            <div v-if="crewMemberForm.certifications?.length" class="q-mb-sm">
-              <q-badge v-for="(cert, idx) in crewMemberForm.certifications" :key="`cert-${idx}`" color="blue" class="q-mr-xs q-mb-xs">
-                {{ cert.certification }}
-                <q-btn flat round dense icon="close" size="xs" @click="crewMemberForm.certifications.splice(idx, 1)" />
+            <div v-if="crewMemberForm.certification_items?.length" class="q-mb-sm">
+              <q-badge v-for="(cert, idx) in crewMemberForm.certification_items" :key="`cert-${idx}`" color="blue" class="q-mr-xs q-mb-xs">
+                {{ getCertName(cert.certification_id) }}
+                <q-btn flat round dense icon="close" size="xs" @click="crewMemberForm.certification_items.splice(idx, 1)" />
               </q-badge>
             </div>
             <div v-else class="text-caption text-grey-7 q-mb-sm">{{ t('crew.noCertifications') }}</div>
@@ -530,6 +530,16 @@ function formatDate(value) {
   return d.toLocaleDateString(currentLocale)
 }
 
+function getSkillName(skillId) {
+  const skill = crewStore.skills.find(s => s.id === skillId)
+  return skill?.name || `Skill #${skillId}`
+}
+
+function getCertName(certId) {
+  const cert = crewStore.certifications.find(c => c.id === certId)
+  return cert?.name || `Cert #${certId}`
+}
+
 function formatMoney(value) {
   const amount = Number(value || 0)
   return amount.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })
@@ -606,9 +616,12 @@ function openCrewMember(cm) {
     daily_rate: cm.daily_rate ?? null,
     notes: cm.notes || '',
     is_active: cm.is_active ?? true,
-    skills: [...(cm.skills || [])],
-    certifications: (cm.certifications || []).map(c => ({ certification: c.certification, expires_at: c.expires_at })),
-    preferred_role_ids: cm.preferred_role_ids || [],
+    skill_ids: (cm.skills || []).map(s => s.id || s),
+    certification_items: (cm.certifications || []).map(c => ({
+      certification_id: c.certification?.id || c.certification_id,
+      expiry_date: c.expiry_date || c.expires_at || null,
+    })),
+    preferred_role_ids: (cm.preferred_roles || []).map(r => r.id),
   }
   newSkill.value = ''
   newCert.value = ''
@@ -627,8 +640,8 @@ function openNewCrewMember() {
     daily_rate: null,
     notes: '',
     is_active: true,
-    skills: [],
-    certifications: [],
+    skill_ids: [],
+    certification_items: [],
     preferred_role_ids: [],
   }
   newSkill.value = ''
@@ -647,23 +660,39 @@ function emptyCrewMemberForm() {
     daily_rate: null,
     notes: '',
     is_active: true,
-    skills: [],
-    certifications: [],
+    skill_ids: [],
+    certification_items: [],
     preferred_role_ids: [],
   }
 }
 
 function addCrewSkill() {
   const val = newSkill.value.trim()
-  if (!val || crewMemberForm.value.skills.includes(val)) return
-  crewMemberForm.value.skills.push(val)
+  if (!val) return
+  const existing = crewMemberForm.value.skill_ids.find(id => {
+    const skill = crewStore.skills.find(s => s.id === id)
+    return skill && skill.name.toLowerCase() === val.toLowerCase()
+  })
+  if (existing) {
+    newSkill.value = ''
+    return
+  }
+  const match = crewStore.skills.find(s => s.name.toLowerCase() === val.toLowerCase())
+  if (match) {
+    crewMemberForm.value.skill_ids.push(match.id)
+  } else {
+    $q.notify({ type: 'warning', message: t('crew.noSkillsFound') })
+  }
   newSkill.value = ''
 }
 
 function addCrewCert() {
   const val = newCert.value.trim()
   if (!val) return
-  crewMemberForm.value.certifications.push({ certification: val, expires_at: null })
+  const match = crewStore.certifications.find(c => c.name.toLowerCase() === val.toLowerCase())
+  if (match) {
+    crewMemberForm.value.certification_items.push({ certification_id: match.id, expiry_date: null })
+  }
   newCert.value = ''
 }
 
@@ -777,6 +806,8 @@ async function loadData() {
       customFieldsStore.fetchDefinitions('customer'),
       settingsStore.fetchCompanyProfile(),
       inventoryStore.fetchAll(),
+      crewStore.fetchSkills(),
+      crewStore.fetchCertifications(),
     ])
 
     if (isNewCustomer.value) {

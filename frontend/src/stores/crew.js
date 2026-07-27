@@ -7,6 +7,8 @@ export const useCrewStore = defineStore('crew', () => {
   const members = ref([])
   const loadingRoles = ref(false)
   const loadingMembers = ref(false)
+  const skills = ref([])
+  const certifications = ref([])
 
   async function fetchRoles() {
     loadingRoles.value = true
@@ -69,6 +71,40 @@ export const useCrewStore = defineStore('crew', () => {
     members.value = members.value.filter(m => m.id !== id)
   }
 
+  async function fetchSkills(params = {}) {
+    const { data } = await api.get('/api/v1/crew/skills', { params })
+    skills.value = data
+    return data
+  }
+
+  async function createSkill(payload) {
+    const { data } = await api.post('/api/v1/crew/skills', payload)
+    skills.value = [data, ...skills.value.filter(s => s.id !== data.id)]
+    return data
+  }
+
+  async function deleteSkill(id) {
+    await api.delete(`/api/v1/crew/skills/${id}`)
+    skills.value = skills.value.filter(s => s.id !== id)
+  }
+
+  async function fetchCertifications(params = {}) {
+    const { data } = await api.get('/api/v1/crew/certifications', { params })
+    certifications.value = data
+    return data
+  }
+
+  async function createCertification(payload) {
+    const { data } = await api.post('/api/v1/crew/certifications', payload)
+    certifications.value = [data, ...certifications.value.filter(c => c.id !== data.id)]
+    return data
+  }
+
+  async function deleteCertification(id) {
+    await api.delete(`/api/v1/crew/certifications/${id}`)
+    certifications.value = certifications.value.filter(c => c.id !== id)
+  }
+
   async function fetchJobCrewRequirements(jobId) {
     const { data } = await api.get(`/api/v1/crew/jobs/${jobId}/crew-requirements`)
     return data
@@ -122,6 +158,8 @@ export const useCrewStore = defineStore('crew', () => {
   return {
     roles,
     members,
+    skills,
+    certifications,
     loadingRoles,
     loadingMembers,
     fetchRoles,
@@ -133,6 +171,12 @@ export const useCrewStore = defineStore('crew', () => {
     createMember,
     updateMember,
     deleteMember,
+    fetchSkills,
+    createSkill,
+    deleteSkill,
+    fetchCertifications,
+    createCertification,
+    deleteCertification,
     fetchJobCrewRequirements,
     createJobCrewRequirement,
     updateJobCrewRequirement,
