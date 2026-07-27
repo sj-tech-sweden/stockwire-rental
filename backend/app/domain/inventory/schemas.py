@@ -709,6 +709,7 @@ class GenerateShelvesRequest(BaseModel):
     shelf_height: int = Field(default=3, ge=1)
     prefix: str = Field(default="Shelf")
     child_type: str = Field(default="shelf")
+    naming_format: str = Field(default="numeric", pattern="^(numeric|alphabetic)$")
 
 
 ProductRead.model_rebuild()
