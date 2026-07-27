@@ -112,6 +112,26 @@
         </defs>
         <rect width="100%" height="100%" :fill="`url(#${mapId}-grid)`" v-if="editMode" />
         <g :transform="`translate(${panX}, ${panY}) scale(${scale})`">
+          <g v-if="parentOutline" :transform="parentOutline.rotation && viewMode === 'top' ? `rotate(${parentOutline.rotation}, ${parentOutline.x + parentOutline.w / 2}, ${parentOutline.y + parentOutline.h / 2})` : undefined">
+            <rect
+              :x="parentOutline.x"
+              :y="parentOutline.y"
+              :width="parentOutline.w"
+              :height="parentOutline.h"
+              fill="none"
+              stroke="rgba(255,165,0,0.5)"
+              stroke-width="2"
+              stroke-dasharray="8,4"
+              style="pointer-events:none"
+            />
+            <text
+              :x="parentOutline.x + parentOutline.w / 2"
+              :y="parentOutline.y + 14"
+              text-anchor="middle"
+              class="warehouse-parent-outline-label"
+              style="pointer-events:none"
+            >{{ parentOutline.name }}</text>
+          </g>
           <g v-for="zone in renderMappedZones" :key="'m-' + zone.id">
             <g :transform="zone.rotation && viewMode === 'top' ? `rotate(${zone.rotation}, ${zone.x + zone.w / 2}, ${zone.y + zone.h / 2})` : undefined">
               <rect
@@ -644,6 +664,27 @@ const currentLevelNodes = computed(() => {
   return props.zones.filter(z => z.parent_id == null)
 })
 
+const parentOutline = computed(() => {
+  if (!props.focusZoneId) return null
+  const parent = props.zones.find(z => z.id === props.focusZoneId)
+  if (!parent) return null
+  const pa = getZonePosA(parent)
+  const pb = getZonePosB(parent)
+  if (pa == null || pb == null) return null
+  const sa = getZoneSizeA(parent)
+  const sb = getZoneSizeB(parent)
+  const w = cmToPx(sa) || DEFAULT_W_CM / CM_PER_PX
+  const h = cmToPx(sb) || DEFAULT_H_CM / CM_PER_PX
+  return {
+    x: cmToPx(pa) || 0,
+    y: flipY(pb, h),
+    w,
+    h,
+    rotation: parent.rotation || 0,
+    name: parent.name || '',
+  }
+})
+
 function toggleMeasureMode() {
   measureMode.value = !measureMode.value
   measureStart.value = null
@@ -832,6 +873,22 @@ function onZoneDragStart(e, zone) {
   const svg = clientToSvg(e.clientX, e.clientY)
   const origX = Number(zone.x) || 0
   const origY = Number(zone.y) || 0
+  const parentOrigA = zone._tree ? (zone._tree[axes.posA] ?? 0) : 0
+  const parentOrigB = zone._tree ? (zone._tree[axes.posB] ?? 0) : 0
+  function getAllDescendants(zoneId) {
+    const result = []
+    const kids = getChildren(zoneId)
+    for (const k of kids) {
+      const ca = getZonePosA(k)
+      const cb = getZonePosB(k)
+      if (ca != null && cb != null) {
+        result.push({ node: k, origA: Number(ca), origB: Number(cb) })
+      }
+      result.push(...getAllDescendants(k.id))
+    }
+    return result
+  }
+  const childDragData = getAllDescendants(zone.id)
   let dragging = false
   const DRAG_THRESHOLD = 4
   function onMove(ev) {
@@ -843,6 +900,13 @@ function onZoneDragStart(e, zone) {
     const nxA = Math.max(0, snap(Math.round((origX + (cur.x - svg.x)) * CM_PER_PX)))
     const nxB = Math.max(0, snap(Math.round((origY + (cur.y - svg.y)) * CM_PER_PX)))
     overrides[zone.id] = { ...(overrides[zone.id] || {}), [axes.posA]: nxA, [axes.posB]: nxB }
+    const deltaA = nxA - parentOrigA
+    const deltaB = nxB - parentOrigB
+    for (const cd of childDragData) {
+      const newA = Math.max(0, snap(cd.origA + deltaA))
+      const newB = Math.max(0, snap(cd.origB + deltaB))
+      overrides[cd.node.id] = { ...(overrides[cd.node.id] || {}), [axes.posA]: newA, [axes.posB]: newB }
+    }
   }
   function onUp() {
     document.removeEventListener('mousemove', onMove)
@@ -855,6 +919,9 @@ function onZoneDragStart(e, zone) {
     if (ov) {
       emit('zone-move', { id: zone.id, ...ov })
       delete overrides[zone.id]
+    }
+    for (const cd of childDragData) {
+      delete overrides[cd.node.id]
     }
   }
   document.addEventListener('mousemove', onMove)
@@ -1071,6 +1138,7 @@ defineExpose({ fitToView })
 
 .warehouse-zone-label { fill: #fff; font-size: 11px; font-weight: 600; font-family: inherit; }
 .warehouse-zone-label-sm { fill: rgba(255,255,255,0.85); font-size: 9px; font-weight: 500; font-family: inherit; }
+.warehouse-parent-outline-label { fill: rgba(255,165,0,0.85); font-size: 10px; font-weight: 600; font-family: inherit; stroke: rgba(0,0,0,0.7); stroke-width: 2px; paint-order: stroke fill; }
 .warehouse-zone-count { fill: rgba(255,255,255,0.75); font-size: 9px; font-family: inherit; }
 .warehouse-zone-subcount { fill: rgba(255,255,255,0.5); font-size: 8px; font-family: inherit; }
 .warehouse-zone-dim { fill: rgba(255,255,255,0.4); font-size: 7px; font-family: inherit; }

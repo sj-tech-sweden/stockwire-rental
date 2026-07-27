@@ -2095,7 +2095,45 @@ async function onMapZoneMove(layout) {
     for (const key of ['pos_x', 'pos_y', 'pos_z', 'map_width', 'map_depth', 'map_height']) {
       if (layout[key] != null) payload[key] = layout[key]
     }
+    const oldZone = (store.zones || []).find(z => z.id === layout.id)
+    const oldPositions = {}
+    if (oldZone) {
+      for (const key of ['pos_x', 'pos_y', 'pos_z']) {
+        oldPositions[key] = oldZone[key]
+      }
+    }
     await store.updateZoneLayout(layout.id, payload)
+    if (oldZone) {
+      const deltas = {}
+      for (const key of ['pos_x', 'pos_y', 'pos_z']) {
+        if (layout[key] != null && oldPositions[key] != null) {
+          deltas[key] = layout[key] - oldPositions[key]
+        }
+      }
+      if (Object.keys(deltas).length > 0) {
+        const childItems = []
+        function collectDescendants(parentId) {
+          for (const z of store.zones || []) {
+            if (z.parent_id === parentId) {
+              const item = { id: z.id }
+              let hasDelta = false
+              for (const key of ['pos_x', 'pos_y', 'pos_z']) {
+                if (deltas[key] != null && z[key] != null) {
+                  item[key] = z[key] + deltas[key]
+                  hasDelta = true
+                }
+              }
+              if (hasDelta) childItems.push(item)
+              collectDescendants(z.id)
+            }
+          }
+        }
+        collectDescendants(layout.id)
+        if (childItems.length) {
+          await store.bulkUpdateZoneLayout(childItems)
+        }
+      }
+    }
   } catch (err) {
     $q.notify({ type: 'negative', message: 'Failed to save zone position' })
   }
