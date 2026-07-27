@@ -1,13 +1,21 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 from app.db.session import get_db
 from app.domain.auth.deps import get_current_user, require_editor
 from app.domain.auth.models import User
 from app.domain.audit.service import record_activity
 from app.domain.customers.models import Customer
-from app.domain.customers.schemas import CustomerCreate, CustomerRead, CustomerUpdate
+from app.domain.customers.schemas import (
+    CustomerCreate,
+    CustomerCrewMemberSummary,
+    CustomerInfoRead,
+    CustomerJobSummary,
+    CustomerProductSummary,
+    CustomerRead,
+    CustomerUpdate,
+)
 from app.domain.inventory.models import Device, ProductSupplier
 from app.services.metrics import created_total, deleted_total, entities_count
 from app.domain.jobs.models import Job
@@ -36,6 +44,110 @@ def list_customers(
     elif type == "crew_supplier":
         stmt = stmt.where(Customer.is_crew_supplier.is_(True))
     return list(db.scalars(stmt).all())
+
+
+@router.get("/{customer_id}/info", response_model=CustomerInfoRead)
+def get_customer_info(customer_id: int, db: Session = Depends(get_db)) -> CustomerInfoRead:
+    customer = db.get(Customer, customer_id)
+    if not customer:
+        raise HTTPException(status_code=404, detail="Customer not found")
+
+    result = CustomerInfoRead(
+        id=customer.id,
+        name=customer.name,
+        email=customer.email,
+        phone=customer.phone,
+        address=customer.address,
+        city=customer.city,
+        postal_code=customer.postal_code,
+        country=customer.country,
+        notes=customer.notes,
+        external_source=customer.external_source,
+        external_reference=customer.external_reference,
+        is_customer=customer.is_customer,
+        is_product_supplier=customer.is_product_supplier,
+        is_rental_supplier=customer.is_rental_supplier,
+        is_crew_supplier=customer.is_crew_supplier,
+        created_at=customer.created_at,
+    )
+
+    if customer.is_customer:
+        jobs = list(db.scalars(
+            select(Job).where(Job.customer_id == customer_id).order_by(Job.id.desc())
+        ).all())
+        result.jobs = [
+            CustomerJobSummary(
+                id=j.id,
+                job_code=j.job_code,
+                status=j.status,
+                description=j.description,
+                start_date=j.start_date,
+                end_date=j.end_date,
+                venue_name=j.venue_name,
+            )
+            for j in jobs
+        ]
+
+    if customer.is_product_supplier or customer.is_rental_supplier:
+        ps_rows = list(db.scalars(
+            select(ProductSupplier)
+            .where(ProductSupplier.supplier_id == customer_id)
+            .options(selectinload(ProductSupplier.product))
+        ).all())
+        products = [ps.product for ps in ps_rows if ps.product]
+        if customer.is_rental_supplier and not customer.is_product_supplier:
+            products = [p for p in products if p.is_rental_product]
+        result.supplied_products = [
+            CustomerProductSummary(
+                id=p.id,
+                sku=p.sku,
+                name=p.name,
+                product_type=p.product_type,
+                is_rental_product=p.is_rental_product,
+                rental_price=float(p.rental_price or 0),
+                daily_rate=float(p.daily_rate or 0),
+                category=p.category,
+            )
+            for p in products
+        ]
+
+    if customer.is_crew_supplier:
+        from app.domain.crew.models import CrewMember
+
+        crew_members = list(db.scalars(
+            select(CrewMember)
+            .where(CrewMember.supplier_id == customer_id)
+            .options(
+                selectinload(CrewMember.skills),
+                selectinload(CrewMember.certifications),
+                selectinload(CrewMember.preferred_roles),
+            )
+            .order_by(CrewMember.name)
+        ).all())
+        result.crew_members = [
+            CustomerCrewMemberSummary(
+                id=cm.id,
+                name=cm.name,
+                email=cm.email,
+                phone=cm.phone,
+                user_id=cm.user_id,
+                supplier_id=cm.supplier_id,
+                hourly_rate=float(cm.hourly_rate) if cm.hourly_rate else None,
+                daily_rate=float(cm.daily_rate) if cm.daily_rate else None,
+                is_active=cm.is_active,
+                skills=[sk.skill for sk in cm.skills] if cm.skills else [],
+                certifications=[
+                    {"certification": c.certification, "expires_at": c.expires_at.isoformat() if c.expires_at else None}
+                    for c in cm.certifications
+                ] if cm.certifications else [],
+                preferred_role_ids=[r.id for r in cm.preferred_roles] if cm.preferred_roles else [],
+                preferred_role_names=[r.name for r in cm.preferred_roles] if cm.preferred_roles else [],
+                notes=cm.notes,
+            )
+            for cm in crew_members
+        ]
+
+    return result
 
 
 @router.post("", response_model=CustomerRead)
