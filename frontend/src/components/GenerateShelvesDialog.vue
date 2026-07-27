@@ -26,6 +26,17 @@
           </div>
         </div>
 
+        <div class="row q-col-gutter-sm q-mb-sm">
+          <div class="col-12">
+            <q-select
+              v-model="form.naming_format"
+              :options="namingFormatOptions"
+              :label="t('inventory.namingFormat')"
+              outlined dense emit-value map-options
+            />
+          </div>
+        </div>
+
         <div class="text-subtitle2 q-mb-xs">{{ t('inventory.childDimensions') }} (cm)</div>
         <div class="row q-col-gutter-sm q-mb-sm">
           <div class="col-4"><q-input v-model.number="form.child_width" type="number" label="Width" outlined dense :min="1" /></div>
@@ -74,14 +85,19 @@ const dialog = computed({
   set: (value) => emit('update:modelValue', value),
 })
 
-const SHELF_DEFAULTS = { child_width: 115, child_depth: 75, child_height: 3, prefix: 'Shelf', count: 5 }
-const BIN_DEFAULTS = { child_width: 55, child_depth: 35, child_height: 12, prefix: 'Bin', count: 5 }
+const SHELF_DEFAULTS = { child_width: 115, child_depth: 75, child_height: 3, prefix: 'Shelf', count: 5, naming_format: 'numeric' }
+const BIN_DEFAULTS = { child_width: 55, child_depth: 35, child_height: 12, prefix: 'Bin', count: 5, naming_format: 'numeric' }
 
 const form = ref({ child_type: 'shelf', ...SHELF_DEFAULTS })
 const error = ref('')
 const saving = ref(false)
 
 const isBinMode = computed(() => form.value.child_type === 'bin')
+
+const namingFormatOptions = computed(() => [
+  { label: t('inventory.namingFormatNumeric'), value: 'numeric' },
+  { label: t('inventory.namingFormatAlphabetic'), value: 'alphabetic' },
+])
 
 const childTypeOptions = computed(() => [
   { label: t('inventory.zoneTypeShelf'), value: 'shelf' },
@@ -101,6 +117,7 @@ watch(() => form.value.child_type, (type) => {
   form.value.child_depth = defaults.child_depth
   form.value.child_height = defaults.child_height
   form.value.prefix = defaults.prefix
+  form.value.naming_format = defaults.naming_format
 })
 
 function applyPreset(w, d, h) {
@@ -137,6 +154,7 @@ async function save() {
       shelf_height: form.value.child_height,
       prefix: form.value.prefix,
       child_type: childType,
+      naming_format: form.value.naming_format || 'numeric',
     })
     dialog.value = false
     const label = childType === 'bin' ? 'bins' : 'shelves'

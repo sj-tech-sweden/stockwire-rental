@@ -2720,14 +2720,73 @@ def generate_shelves(
     if not payload.rack_ids:
         return []
     child_type = payload.child_type if payload.child_type in ("shelf", "bin") else "shelf"
+    naming_format = payload.naming_format if payload.naming_format in ("numeric", "alphabetic") else "numeric"
     parents = list(db.scalars(select(Zone).where(Zone.id.in_(payload.rack_ids))).all())
+
+    existing_children = list(db.scalars(
+        select(Zone).where(Zone.parent_id.in_(payload.rack_ids))
+    ).all())
+
+    children_by_parent: dict[int, list[Zone]] = {}
+    for child in existing_children:
+        children_by_parent.setdefault(child.parent_id or 0, []).append(child)
+
+    used_codes: set[str] = {
+        str(z.code or "").lower()
+        for z in existing_children if z.code
+    }
+
+    def _alpha_to_index(label: str) -> int:
+        result = 0
+        for ch in label.upper():
+            result = result * 26 + (ord(ch) - 64)
+        return result
+
+    def _index_to_alpha(idx: int) -> str:
+        parts: list[str] = []
+        n = idx
+        while n > 0:
+            n, rem = divmod(n - 1, 26)
+            parts.append(chr(65 + rem))
+        return "".join(reversed(parts)) if parts else "A"
+
     created = []
     for parent in parents:
         parent_type = parent.zone_type or "rack"
         is_horizontal = child_type == "bin" and parent_type == "shelf"
         prefix = (payload.prefix or "").strip()
         code_prefix = f"{parent.code}-{prefix.upper()}" if prefix else parent.code
+
+        siblings = children_by_parent.get(parent.id, [])
+        if naming_format == "alphabetic":
+            max_label = 0
+            for s in siblings:
+                sname = (s.name or "").strip()
+                if prefix:
+                    sname = sname[len(prefix):].strip()
+                if sname and sname.isalpha():
+                    idx = _alpha_to_index(sname)
+                    if idx > max_label:
+                        max_label = idx
+            start = max_label + 1 if max_label > 0 else 1
+        else:
+            max_label = 0
+            for s in siblings:
+                sname = (s.name or "").strip()
+                if prefix:
+                    sname = sname[len(prefix):].strip()
+                if sname.isdigit():
+                    n = int(sname)
+                    if n > max_label:
+                        max_label = n
+            start = max_label + 1
+
+        sort_base = max((s.sort_order or 0) for s in siblings) + 1 if siblings else 0
+
         for i in range(payload.count):
+            seq = start + i
+            label = _index_to_alpha(seq) if naming_format == "alphabetic" else str(seq)
+
             if is_horizontal:
                 rot = parent.rotation or 0
                 rotated = rot in (90, 270)
@@ -2751,14 +2810,23 @@ def generate_shelves(
                 pos_x = parent.pos_x
                 pos_y = parent.pos_y
                 pos_z = round(parent.pos_z or 0) + round(i * (payload.shelf_height + gap))
-            code = f"{code_prefix}-{i + 1}"
-            name = f"{prefix} {i + 1}".strip() if prefix else str(i + 1)
+
+            base_code = f"{code_prefix}-{label}"
+            code = base_code
+            suffix = 1
+            while code.lower() in used_codes:
+                code = f"{base_code}-{suffix}"
+                suffix += 1
+            used_codes.add(code.lower())
+
+            name = f"{prefix} {label}".strip() if prefix else label
             child = Zone(
                 code=code,
                 name=name,
                 zone_type=child_type,
                 parent_id=parent.id,
                 is_active=True,
+                sort_order=sort_base + i,
                 pos_x=pos_x,
                 pos_y=pos_y,
                 pos_z=pos_z,
