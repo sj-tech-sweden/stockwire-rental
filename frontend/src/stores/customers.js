@@ -83,6 +83,11 @@ export const useCustomersStore = defineStore('customers', () => {
     await cacheSnapshot('customers.fetchAll', customers.value)
   }
 
+  async function fetchCustomerInfo(id) {
+    const { data } = await api.get(`/api/v1/customers/${id}/info`)
+    return data
+  }
+
   return {
     customers,
     loading,
@@ -91,6 +96,7 @@ export const useCustomersStore = defineStore('customers', () => {
     crewSuppliers,
     allSuppliers,
     fetchAll,
+    fetchCustomerInfo,
     createCustomer,
     updateCustomer,
     deleteCustomer,

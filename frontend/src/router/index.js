@@ -69,6 +69,8 @@ const routes = [
       { path: 'jobs/:jobId', component: () => import('../pages/JobDetailPage.vue') },
       { path: 'projects', component: () => import('../pages/ProjectsPage.vue') },
       { path: 'customers', component: CustomersPage },
+      { path: 'customers/new', component: () => import('../pages/CustomerDetailPage.vue') },
+      { path: 'customers/:customerId', component: () => import('../pages/CustomerDetailPage.vue') },
       { path: 'crew', component: CrewPage },
       { path: 'suppliers', component: () => import('../pages/SuppliersPage.vue') },
       { path: 'venues', component: VenuesPage },
