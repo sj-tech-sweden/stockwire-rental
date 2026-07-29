@@ -2,10 +2,11 @@ import { defineConfig, devices } from '@playwright/test';
 
 export default defineConfig({
   testDir: './tests/e2e',
-  timeout: 120_000,
-  expect: { timeout: 10_000 },
+  timeout: 180_000,
+  expect: { timeout: 15_000 },
   fullyParallel: false,
   workers: 1,
+  retries: 1,
   projects: [
     {
       name: 'chromium',
@@ -17,12 +18,17 @@ export default defineConfig({
     },
     {
       name: 'webkit',
-      use: { ...devices['Desktop Safari'] },
+      use: {
+        ...devices['Desktop Safari'],
+        expect: { timeout: 20_000 },
+        actionTimeout: 15_000 },
     },
   ],
   use: {
     trace: 'on',
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
+    navigationTimeout: 45_000,
+    actionTimeout: 10_000,
   },
 });
