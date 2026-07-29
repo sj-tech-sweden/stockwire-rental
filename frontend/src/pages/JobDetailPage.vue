@@ -177,10 +177,10 @@
 
             <div class="row q-col-gutter-sm q-mt-sm">
               <div class="col-12 col-md-6">
-                <q-input v-model="form.start_date" :label="t('jobs.startDate')" type="date" outlined dense :disable="!authStore.canEdit" />
+                <q-input ref="startDateRef" v-model="form.start_date" :label="t('jobs.startDate')" type="date" outlined dense :disable="!authStore.canEdit" />
               </div>
               <div class="col-12 col-md-6">
-                <q-input v-model="form.end_date" :label="t('jobs.endDate')" type="date" outlined dense :disable="!authStore.canEdit" />
+                <q-input ref="endDateRef" v-model="form.end_date" :label="t('jobs.endDate')" type="date" outlined dense :disable="!authStore.canEdit" />
               </div>
             </div>
 
@@ -371,6 +371,64 @@
               </q-item-section>
             </q-item>
           </q-list>
+          <div v-if="eventorySyncInstances.length" class="q-mt-sm">
+            <div class="text-caption text-grey-7 q-mb-xs">{{ t('jobs.eventorySync') }}</div>
+            <div v-if="eventoryVerifying" class="text-caption text-grey-7">
+              <q-spinner size="14px" class="q-mr-xs" />{{ t('jobs.eventoryVerifying') }}
+            </div>
+            <div v-else class="row q-gutter-sm">
+              <div v-for="inst in eventorySyncInstances" :key="inst.id" class="row items-center q-gutter-xs">
+                <q-badge color="teal" :label="inst.name" />
+                <template v-if="getEventoryJobId(inst.id) && eventoryVerified[inst.id] === true">
+                  <q-badge color="positive" :label="t('jobs.eventoryBooked')">
+                    <q-tooltip>{{ t('jobs.eventoryJobId') }}: {{ getEventoryJobId(inst.id) }}</q-tooltip>
+                  </q-badge>
+                  <q-btn
+                    v-if="authStore.canEdit"
+                    color="secondary"
+                    icon="sync"
+                    :label="isPhone ? undefined : t('jobs.eventoryUpdateBooking')"
+                    :loading="eventorySyncLoading[inst.id]"
+                    unelevated
+                    dense
+                    no-caps
+                    size="sm"
+                    @click="updateEventoryRentals(inst.id)"
+                  />
+                </template>
+                <template v-else-if="getEventoryJobId(inst.id) && eventoryVerified[inst.id] === false">
+                  <q-badge color="warning" text-color="black" :label="t('jobs.eventoryDeleted')">
+                    <q-tooltip>{{ t('jobs.eventoryDeletedHint') }}</q-tooltip>
+                  </q-badge>
+                  <q-btn
+                    v-if="authStore.canEdit && inst.create_jobs && inst.rental_customer_id"
+                    color="primary"
+                    icon="cloud_upload"
+                    :label="isPhone ? undefined : t('jobs.createEventoryBooking')"
+                    :loading="eventorySyncLoading[inst.id]"
+                    unelevated
+                    dense
+                    no-caps
+                    size="sm"
+                    @click="syncEventoryRentals(inst.id)"
+                  />
+                </template>
+                <q-badge v-else-if="!getEventoryJobId(inst.id)" color="grey" :label="t('jobs.eventoryNotBooked')" />
+                <q-btn
+                  v-if="!getEventoryJobId(inst.id) && authStore.canEdit && inst.create_jobs && inst.rental_customer_id"
+                  color="primary"
+                  icon="cloud_upload"
+                  :label="isPhone ? undefined : t('jobs.createEventoryBooking')"
+                  :loading="eventorySyncLoading[inst.id]"
+                  unelevated
+                  dense
+                  no-caps
+                  size="sm"
+                  @click="syncEventoryRentals(inst.id)"
+                />
+              </div>
+            </div>
+          </div>
         </q-card-section>
         <q-card-section class="q-pt-none" v-else>
           <div class="text-caption text-grey-7">{{ t('jobs.noRequirements') }}</div>
@@ -463,7 +521,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useQuasar } from 'quasar'
 import { useI18n } from 'vue-i18n'
@@ -482,6 +540,7 @@ import { buildScanJobLink } from '../utils/scan-workflow'
 import { googleMapsEmbedUrl, googleMapsSearchUrl, locationQueryFromParts } from '../utils/maps'
 import { translateMaybePrefillCustomFieldLabel } from '../i18n/prefillContent'
 import { useCustomFieldsStore } from '../stores/customFields'
+import { api } from '../boot/axios'
 import EntityAttachmentsPanel from '../components/EntityAttachmentsPanel.vue'
 import JobProductRequirementDialog from '../components/JobProductRequirementDialog.vue'
 import JobRentalRequirementDialog from '../components/JobRentalRequirementDialog.vue'
@@ -519,6 +578,11 @@ const customFieldsDialogOpen = ref(false)
 const crewRequirementDialogOpen = ref(false)
 const crewAssignmentDialogOpen = ref(false)
 const selectedCrewRequirementId = ref(null)
+const eventorySyncLoading = ref({})
+const eventoryVerified = ref({})
+const eventoryVerifying = ref(false)
+const startDateRef = ref(null)
+const endDateRef = ref(null)
 const crewRequirementRows = ref([])
 const crewAssignmentRows = ref([])
 const filteredCustomerOptions = ref([])
@@ -532,6 +596,115 @@ const activeCurrencyCode = computed(() => normalizeCurrencyCode(settingsStore.co
 const currentJobId = computed(() => Number(route.params.jobId || 0))
 const isNewJob = computed(() => route.path.endsWith('/new'))
 const currentJob = computed(() => jobsStore.jobs.find(job => job.id === currentJobId.value) || null)
+
+const eventoryInstances = computed(() => settingsStore.integrations?.eventory_instances || [])
+const eventorySyncInstances = computed(() => {
+  if (!rentalRequirementRows.value.length) return []
+  const instanceIds = new Set()
+  for (const row of rentalRequirementRows.value) {
+    const product = inventoryStore.products.find(p => p.id === row.product_id)
+    if (product?.external_reference && product.external_reference.includes(':')) {
+      instanceIds.add(product.external_reference.split(':')[0])
+    }
+  }
+  return eventoryInstances.value.filter(
+    inst => instanceIds.has(inst.id) && inst.enabled && inst.create_jobs
+  )
+})
+
+function getEventoryJobId(instanceId) {
+  if (!currentJob.value?.eventory_job_ids) return null
+  try {
+    const ids = JSON.parse(currentJob.value.eventory_job_ids)
+    return ids[instanceId] || null
+  } catch {
+    return null
+  }
+}
+
+async function verifyEventoryJobs() {
+  if (!currentJob.value?.eventory_job_ids) return
+  let ids
+  try {
+    ids = JSON.parse(currentJob.value.eventory_job_ids)
+  } catch {
+    return
+  }
+  if (!ids || Object.keys(ids).length === 0) return
+
+  eventoryVerifying.value = true
+  const results = {}
+
+  for (const [instanceId, eventoryJobId] of Object.entries(ids)) {
+    if (!eventoryJobId) continue
+    try {
+      const { data } = await api.post('/api/v1/jobs/verify-eventory-job', {
+        instance_id: instanceId,
+        eventory_job_id: eventoryJobId,
+      })
+      results[instanceId] = Boolean(data?.exists)
+    } catch {
+      results[instanceId] = false
+    }
+  }
+
+  eventoryVerified.value = results
+  eventoryVerifying.value = false
+}
+
+async function syncEventoryRentals(instanceId) {
+  if (!currentJob.value?.id) return
+
+  if (!form.value.start_date || !form.value.end_date) {
+    $q.dialog({
+      title: t('jobs.eventoryDatesRequired'),
+      message: t('jobs.eventoryDatesRequiredMessage'),
+      ok: { label: t('app.actions.ok'), color: 'primary' },
+      persistent: true,
+    }).onOk(() => {
+      nextTick(() => {
+        const el = startDateRef.value?.$el || endDateRef.value?.$el
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+          el.classList.add('eventory-highlight-field')
+          setTimeout(() => el.classList.remove('eventory-highlight-field'), 2000)
+        }
+      })
+    })
+    return
+  }
+
+  eventorySyncLoading.value = { ...eventorySyncLoading.value, [instanceId]: true }
+  try {
+    await jobsStore.createEventoryRentals(currentJob.value.id, instanceId)
+    eventoryVerified.value = {}
+    $q.notify({ type: 'positive', message: t('jobs.eventorySyncSuccess') })
+    await jobsStore.fetchAll()
+    await nextTick()
+    await verifyEventoryJobs()
+  } catch (err) {
+    $q.notify({ type: 'negative', message: err?.response?.data?.detail || t('jobs.eventorySyncFailed') })
+  } finally {
+    eventorySyncLoading.value = { ...eventorySyncLoading.value, [instanceId]: false }
+  }
+}
+
+async function updateEventoryRentals(instanceId) {
+  if (!currentJob.value?.id) return
+  eventorySyncLoading.value = { ...eventorySyncLoading.value, [instanceId]: true }
+  try {
+    await jobsStore.updateEventoryRentals(currentJob.value.id, instanceId)
+    eventoryVerified.value = {}
+    $q.notify({ type: 'positive', message: t('jobs.eventoryUpdateSuccess') })
+    await jobsStore.fetchAll()
+    await nextTick()
+    await verifyEventoryJobs()
+  } catch (err) {
+    $q.notify({ type: 'negative', message: err?.response?.data?.detail || t('jobs.eventoryUpdateFailed') })
+  } finally {
+    eventorySyncLoading.value = { ...eventorySyncLoading.value, [instanceId]: false }
+  }
+}
 
 const statusOptions = computed(() => JOB_STATUSES.map(status => ({ label: statusLabel(status.value), value: status.value })))
 const customerOptions = computed(() => customersStore.customers.map(customer => ({
@@ -965,6 +1138,7 @@ async function loadData() {
       venuesStore.fetchAll(),
       projectsStore.fetchAll(),
       settingsStore.fetchCompanyProfile(),
+      settingsStore.fetchIntegrations(),
     ])
 
     if (isNewJob.value) {
@@ -990,6 +1164,10 @@ async function loadData() {
     }
   } finally {
     pageLoading.value = false
+  }
+
+  if (!isNewJob.value && currentJob.value?.eventory_job_ids) {
+    verifyEventoryJobs()
   }
 }
 
@@ -1098,3 +1276,15 @@ watch(() => route.params.jobId, async (next, prev) => {
   await loadData()
 })
 </script>
+
+<style scoped>
+.eventory-highlight-field {
+  animation: eventory-pulse 0.6s ease-in-out 3;
+  border-radius: 4px;
+}
+
+@keyframes eventory-pulse {
+  0%, 100% { box-shadow: none; }
+  50% { box-shadow: 0 0 0 3px rgba(255, 193, 7, 0.6); }
+}
+</style>
