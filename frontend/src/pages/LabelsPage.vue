@@ -22,11 +22,36 @@
       <div class="col-auto">
         <q-btn :color="newTemplateButtonColor" :text-color="newTemplateButtonTextColor" icon="add" :label="t('labels.new')" unelevated @click="resetTemplate" />
       </div>
+      <div class="col-auto">
+        <q-btn color="secondary" icon="auto_awesome" :label="t('labels.loadPreset')" unelevated @click="presetDialogOpen = true" />
+      </div>
       <div class="col-auto" v-if="selectedTemplateId && canEditSelectedTemplate">
         <q-btn color="negative" icon="delete" :label="t('labels.delete')" flat @click="deleteTemplate" />
       </div>
       <div class="col-auto">
         <q-btn color="positive" icon="print" :label="t('labels.print')" unelevated :disable="!selectedRows.length" @click="printLabels" />
+      </div>
+      <div class="col-auto">
+        <q-btn
+          v-if="webUSBSupported"
+          :color="printerConnected ? 'positive' : 'secondary'"
+          :icon="printerConnected ? 'usb' : 'link'"
+          :label="printerConnected ? t('labels.brotherConnected') : t('labels.brotherConnect')"
+          unelevated
+          :loading="connectingPrinter"
+          @click="togglePrinterConnection"
+        />
+      </div>
+      <div class="col-auto" v-if="printerConnected">
+        <q-btn
+          color="positive"
+          icon="printer"
+          :label="t('labels.directPrint')"
+          unelevated
+          :disable="!selectedRows.length"
+          :loading="directPrinting"
+          @click="directPrintLabels"
+        />
       </div>
     </div>
 
@@ -216,6 +241,29 @@
         </q-card>
       </div>
     </div>
+
+    <q-dialog v-model="presetDialogOpen" persistent>
+      <q-card style="min-width: 400px" class="ec-card">
+        <q-card-section>
+          <div class="text-h6">{{ t('labels.loadPreset') }}</div>
+        </q-card-section>
+        <q-card-section class="q-pt-none">
+          <q-select
+            v-model="selectedPresetKey"
+            :options="presetOptions"
+            :label="t('labels.selectPreset')"
+            outlined
+            dense
+            emit-value
+            map-options
+          />
+        </q-card-section>
+        <q-card-actions align="right">
+          <q-btn flat :label="t('app.actions.cancel')" @click="presetDialogOpen = false" />
+          <q-btn color="primary" unelevated :label="t('app.actions.load')" :disable="!selectedPresetKey" @click="loadPresetTemplate(selectedPresetKey)" />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
   </q-page>
 </template>
 
@@ -231,6 +279,14 @@ import { useInventoryStore } from '../stores/inventory'
 import { useSettingsStore } from '../stores/settings'
 import { useAuthStore } from '../stores/auth'
 import { getApiBaseUrl } from '../utils/runtime-config'
+import {
+  isWebUSBSupported,
+  connectPrinter,
+  disconnectPrinter,
+  getPrinter,
+  printCanvas,
+  LABEL_PRESETS,
+} from '../utils/brother-print'
 
 const inventoryStore = useInventoryStore()
 const settingsStore = useSettingsStore()
@@ -293,6 +349,11 @@ const guideState = ref({ vertical: [], horizontal: [] })
 const customCanvasMm = ref({ width: 62, height: 29 })
 const qrcodePreviewById = ref({})
 const barcodePreviewById = ref({})
+
+const webUSBSupported = isWebUSBSupported()
+const printerConnected = ref(false)
+const connectingPrinter = ref(false)
+const directPrinting = ref(false)
 
 const printPresetOptions = computed(() => [
   { label: t('labels.preset62x29'), value: '62x29' },
@@ -419,6 +480,103 @@ function resetTemplate() {
   templateVisibility.value = 'all'
   templateEditRoles.value = ['admin', 'manager']
   canvas.value = { width: 420, height: 280 }
+}
+
+const PRESET_TEMPLATES = {
+  device_simple: {
+    name: 'Device — Simple',
+    entity_type: 'device',
+    print_preset: '62x29',
+    canvas: { width: 732, height: 343 },
+    elements: [
+      { kind: 'field', source: 'asset_tag', x: 5, y: 5, w: 90, h: 12, fontSize: 14 },
+      { kind: 'barcode', source: 'asset_tag', x: 5, y: 22, w: 90, h: 20 },
+      { kind: 'field', source: 'product_name', x: 5, y: 48, w: 90, h: 8, fontSize: 8 },
+    ],
+  },
+  device_detailed: {
+    name: 'Device — Detailed',
+    entity_type: 'device',
+    print_preset: '62x100',
+    canvas: { width: 732, height: 1181 },
+    elements: [
+      { kind: 'field', source: 'asset_tag', x: 5, y: 5, w: 90, h: 12, fontSize: 16 },
+      { kind: 'barcode', source: 'asset_tag', x: 5, y: 22, w: 90, h: 25 },
+      { kind: 'field', source: 'product_name', x: 5, y: 52, w: 90, h: 10, fontSize: 10 },
+      { kind: 'field', source: 'serial_number', x: 5, y: 65, w: 90, h: 8, fontSize: 8 },
+      { kind: 'field', source: 'location_name', x: 5, y: 78, w: 90, h: 8, fontSize: 8 },
+      { kind: 'logo', source: 'logo_default', x: 5, y: 92, w: 25, h: 8 },
+    ],
+  },
+  product_simple: {
+    name: 'Product — Simple',
+    entity_type: 'product',
+    print_preset: '62x29',
+    canvas: { width: 732, height: 343 },
+    elements: [
+      { kind: 'field', source: 'name', x: 5, y: 5, w: 90, h: 12, fontSize: 12 },
+      { kind: 'barcode', source: 'sku', x: 5, y: 22, w: 90, h: 20 },
+      { kind: 'field', source: 'sku', x: 5, y: 48, w: 90, h: 8, fontSize: 8 },
+    ],
+  },
+  product_pricing: {
+    name: 'Product — With Pricing',
+    entity_type: 'product',
+    print_preset: '62x100',
+    canvas: { width: 732, height: 1181 },
+    elements: [
+      { kind: 'field', source: 'name', x: 5, y: 5, w: 90, h: 14, fontSize: 14 },
+      { kind: 'barcode', source: 'sku', x: 5, y: 24, w: 90, h: 25 },
+      { kind: 'field', source: 'sku', x: 5, y: 54, w: 90, h: 8, fontSize: 8 },
+      { kind: 'field', source: 'category', x: 5, y: 68, w: 90, h: 8, fontSize: 8 },
+      { kind: 'field', source: 'daily_rate', x: 5, y: 82, w: 45, h: 10, fontSize: 12 },
+      { kind: 'field', source: 'replace_cost', x: 50, y: 82, w: 45, h: 10, fontSize: 10 },
+    ],
+  },
+  location_simple: {
+    name: 'Location — Simple',
+    entity_type: 'location',
+    print_preset: '62x29',
+    canvas: { width: 732, height: 343 },
+    elements: [
+      { kind: 'field', source: 'name', x: 5, y: 5, w: 90, h: 14, fontSize: 16 },
+      { kind: 'barcode', source: 'code', x: 5, y: 24, w: 90, h: 20 },
+    ],
+  },
+  location_detailed: {
+    name: 'Location — With Zone',
+    entity_type: 'location',
+    print_preset: '62x100',
+    canvas: { width: 732, height: 1181 },
+    elements: [
+      { kind: 'field', source: 'name', x: 5, y: 5, w: 90, h: 14, fontSize: 16 },
+      { kind: 'barcode', source: 'code', x: 5, y: 24, w: 90, h: 25 },
+      { kind: 'field', source: 'code', x: 5, y: 54, w: 90, h: 10, fontSize: 10 },
+      { kind: 'field', source: 'zone_name', x: 5, y: 70, w: 90, h: 10, fontSize: 10 },
+    ],
+  },
+}
+
+const presetDialogOpen = ref(false)
+const selectedPresetKey = ref(null)
+const presetOptions = computed(() =>
+  Object.entries(PRESET_TEMPLATES).map(([key, tpl]) => ({
+    label: tpl.name,
+    value: key,
+  }))
+)
+
+function loadPresetTemplate(presetKey) {
+  const preset = PRESET_TEMPLATES[presetKey]
+  if (!preset) return
+  selectedTemplateId.value = null
+  templateName.value = preset.name
+  entityType.value = preset.entity_type
+  printPreset.value = preset.print_preset
+  canvas.value = { ...preset.canvas }
+  templateElements.value = preset.elements.map(el => normalizeElement({ ...el }))
+  selectedElementId.value = templateElements.value[0]?.id || null
+  presetDialogOpen.value = false
 }
 
 function loadTemplate(templateId) {
@@ -1150,6 +1308,147 @@ async function printLabels() {
   await waitForPopupImages(popup)
   popup.focus()
   popup.print()
+}
+
+async function togglePrinterConnection() {
+  if (printerConnected.value) {
+    await disconnectPrinter()
+    printerConnected.value = false
+    $q.notify({ type: 'info', message: t('labels.brotherDisconnected') })
+    return
+  }
+  connectingPrinter.value = true
+  try {
+    await connectPrinter()
+    printerConnected.value = true
+    $q.notify({ type: 'positive', message: t('labels.brotherConnected') })
+  } catch (err) {
+    if (err?.name !== 'NotFoundError') {
+      $q.notify({ type: 'negative', message: t('labels.brotherConnectFailed') })
+    }
+  } finally {
+    connectingPrinter.value = false
+  }
+}
+
+async function directPrintLabels() {
+  if (!selectedRows.value.length || !templateElements.value.length) return
+  const printer = getPrinter()
+  if (!printer?.connected) {
+    $q.notify({ type: 'warning', message: t('labels.brotherNotConnected') })
+    return
+  }
+
+  directPrinting.value = true
+  try {
+    const preset = PRINT_PRESETS[printPreset.value] || PRINT_PRESETS['62x29']
+    const labelW = preset.labelW
+    const labelH = preset.labelH
+    const pxPerMm = 300 / 25.4
+    const canvasW = Math.round(labelW * pxPerMm)
+    const canvasH = Math.round(labelH * pxPerMm)
+
+    const canvases = []
+    for (const row of selectedRows.value) {
+      const offscreen = document.createElement('canvas')
+      offscreen.width = canvasW
+      offscreen.height = canvasH
+      const ctx = offscreen.getContext('2d')
+      ctx.fillStyle = '#fff'
+      ctx.fillRect(0, 0, canvasW, canvasH)
+      await renderLabelToCanvas(ctx, row, canvasW, canvasH, labelW, labelH)
+      canvases.push(offscreen)
+    }
+
+    await printCanvas(canvases[0], { cut: true, copies: 1 })
+    for (let i = 1; i < canvases.length; i++) {
+      await printCanvas(canvases[i], { cut: true, copies: 1 })
+    }
+
+    $q.notify({ type: 'positive', message: t('labels.directPrintSuccess', { count: canvases.length }) })
+  } catch (err) {
+    $q.notify({ type: 'negative', message: t('labels.directPrintFailed') + ': ' + (err?.message || err) })
+  } finally {
+    directPrinting.value = false
+  }
+}
+
+async function renderLabelToCanvas(ctx, row, canvasW, canvasH, labelWmm, labelHmm) {
+  const pxPerMmX = canvasW / labelWmm
+  const pxPerMmY = canvasH / labelHmm
+
+  for (const el of templateElements.value) {
+    const x = el.x * pxPerMmX
+    const y = el.y * pxPerMmY
+    const w = (el.w || 40) * pxPerMmX
+    const h = (el.h || 10) * pxPerMmY
+    const fontSize = (el.fontSize || 12) * pxPerMmX
+
+    if (el.kind === 'text' || el.kind === 'field') {
+      const text = el.kind === 'text' ? el.text : (resolveFieldValue(row, el.source) || '')
+      ctx.fillStyle = '#000'
+      ctx.font = `${Math.round(fontSize)}px Arial`
+      ctx.textBaseline = 'top'
+      ctx.fillText(text, x, y, w)
+    } else if (el.kind === 'barcode') {
+      const value = resolveFieldValue(row, el.source) || row.asset_tag || row.sku || row.code || ''
+      if (value) {
+        const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
+        JsBarcode(svg, value, { format: 'CODE128', width: 1, height: h, displayValue: false })
+        const img = new Image()
+        const svgBlob = new Blob([svg.outerHTML], { type: 'image/svg+xml' })
+        const url = URL.createObjectURL(svgBlob)
+        await new Promise((resolve) => {
+          img.onload = resolve
+          img.src = url
+        })
+        ctx.drawImage(img, x, y, w, h)
+        URL.revokeObjectURL(url)
+      }
+    } else if (el.kind === 'qrcode') {
+      const value = resolveFieldValue(row, el.source) || row.asset_tag || row.sku || ''
+      if (value) {
+        const dataUrl = await QRCode.toDataURL(value, { width: Math.round(w), margin: 0 })
+        const img = new Image()
+        await new Promise((resolve) => {
+          img.onload = resolve
+          img.src = dataUrl
+        })
+        ctx.drawImage(img, x, y, w, h)
+      }
+    } else if (el.kind === 'logo') {
+      const logoUrl = resolveLogoUrl(el.source)
+      if (logoUrl) {
+        const img = new Image()
+        img.crossOrigin = 'anonymous'
+        await new Promise((resolve) => {
+          img.onload = resolve
+          img.onerror = resolve
+          img.src = logoUrl
+        })
+        if (img.naturalWidth > 0) {
+          ctx.drawImage(img, x, y, w, h)
+        }
+      }
+    }
+  }
+}
+
+function resolveFieldValue(row, source) {
+  if (!source) return ''
+  return row[source] ?? row[source.replace(/_/g, '')] ?? ''
+}
+
+function resolveLogoUrl(source) {
+  const profile = settingsStore.companyProfile || {}
+  const map = {
+    logo_default: profile.logo_url,
+    logo_light_wide: profile.logo_light_wide_url,
+    logo_light_small: profile.logo_light_small_url,
+    logo_dark_wide: profile.logo_dark_wide_url,
+    logo_dark_small: profile.logo_dark_small_url,
+  }
+  return map[source] || profile.logo_url || ''
 }
 
 async function maybeAutoPrintFromQuery() {
