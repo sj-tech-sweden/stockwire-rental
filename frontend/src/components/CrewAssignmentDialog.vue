@@ -1,6 +1,6 @@
 <template>
-  <q-dialog :model-value="modelValue" persistent @update:model-value="emit('update:modelValue', $event)">
-    <q-card style="min-width: 480px; max-width: 95vw" class="ec-card">
+  <q-dialog :model-value="modelValue" persistent :maximized="isPhone" @update:model-value="emit('update:modelValue', $event)">
+    <q-card :style="isPhone ? '' : 'min-width: 480px; max-width: 95vw'" class="ec-card">
       <q-card-section>
         <div class="text-h6">{{ t('crew.assignMember') }}</div>
         <div v-if="requirement" class="text-caption text-grey-7">
@@ -76,6 +76,7 @@ const $q = useQuasar()
 const { t } = useI18n()
 const crewStore = useCrewStore()
 const saving = ref(false)
+const isPhone = computed(() => $q.screen.lt.md)
 
 const requirements = ref([])
 const suggestions = ref([])

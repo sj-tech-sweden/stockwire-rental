@@ -1,6 +1,6 @@
 <template>
-  <q-dialog :model-value="modelValue" @update:model-value="emit('update:modelValue', $event)">
-    <q-card style="min-width: 400px; max-width: 95vw" class="ec-card">
+  <q-dialog :model-value="modelValue" :maximized="isPhone" @update:model-value="emit('update:modelValue', $event)">
+    <q-card :style="isPhone ? '' : 'min-width: 400px; max-width: 95vw'" class="ec-card">
       <q-card-section class="row items-center q-pb-none">
         <div class="text-h6">{{ t('jobs.selectCustomer') }}</div>
         <q-space />
@@ -8,7 +8,7 @@
       </q-card-section>
 
       <q-card-section>
-        <q-input v-model="search" dense outlined clearable :placeholder="t('jobs.searchJobs')">
+        <q-input v-model="search" dense outlined clearable :placeholder="t('customers.searchCustomers')">
           <template #prepend><q-icon name="search" /></template>
         </q-input>
       </q-card-section>
@@ -30,7 +30,7 @@
           </q-item>
           <q-item v-if="!filteredCustomers.length">
             <q-item-section>
-              <q-item-label caption>{{ t('jobs.noDescription') }}</q-item-label>
+              <q-item-label caption>{{ t('customers.noCustomersFound') }}</q-item-label>
             </q-item-section>
           </q-item>
         </q-list>
@@ -41,6 +41,7 @@
 
 <script setup>
 import { computed, ref } from 'vue'
+import { useQuasar } from 'quasar'
 import { useI18n } from 'vue-i18n'
 
 const props = defineProps({
@@ -51,8 +52,10 @@ const props = defineProps({
 
 const emit = defineEmits(['update:modelValue', 'select'])
 
+const $q = useQuasar()
 const { t } = useI18n()
 const search = ref('')
+const isPhone = computed(() => $q.screen.lt.md)
 
 const filteredCustomers = computed(() => {
   const term = search.value.trim().toLowerCase()

@@ -273,8 +273,8 @@
                   <q-item-section>
                     <q-item-label>{{ cm.name }}</q-item-label>
                     <q-item-label caption>
-                      <q-badge v-if="cm.is_active" color="positive" label="Active" class="q-mr-xs" />
-                      <q-badge v-else color="grey" label="Inactive" class="q-mr-xs" />
+                      <q-badge v-if="cm.is_active" color="positive" :label="t('crew.active')" class="q-mr-xs" />
+                      <q-badge v-else color="grey" :label="t('crew.inactive')" class="q-mr-xs" />
                       <span v-if="cm.hourly_rate">{{ formatMoney(cm.hourly_rate) }}/h</span>
                       <span v-if="cm.daily_rate"> · {{ formatMoney(cm.daily_rate) }}/day</span>
                     </q-item-label>
@@ -442,6 +442,7 @@ import { useInventoryStore } from '../stores/inventory'
 import { useAuthStore } from '../stores/auth'
 import { useSettingsStore } from '../stores/settings'
 import { COUNTRIES } from '../constants/countries'
+import { normalizeCurrencyCode } from '../constants/currencies'
 import { translateMaybePrefillCustomFieldLabel, translateMaybePrefillCustomFieldOption } from '../i18n/prefillContent'
 import CustomerDeleteDialog from '../components/CustomerDeleteDialog.vue'
 import CustomerCustomFieldsDialog from '../components/CustomerCustomFieldsDialog.vue'
@@ -494,7 +495,7 @@ const selectedRentalForInfo = ref(null)
 const rentalEditDialogOpen = ref(false)
 const selectedRentalForEdit = ref(null)
 
-const isNewCustomer = computed(() => route.path === '/customers/new')
+const isNewCustomer = computed(() => route.path === '/companies/new')
 
 const currentCustomer = computed(() => {
   const id = Number(route.params.customerId || 0)
@@ -542,7 +543,20 @@ function getCertName(certId) {
 
 function formatMoney(value) {
   const amount = Number(value || 0)
-  return amount.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })
+  const currentCurrency = normalizeCurrencyCode(settingsStore.companyProfile?.currency, 'SEK')
+  try {
+    return new Intl.NumberFormat(undefined, {
+      style: 'currency',
+      currency: currentCurrency,
+      maximumFractionDigits: 2,
+    }).format(amount)
+  } catch {
+    return new Intl.NumberFormat(undefined, {
+      style: 'currency',
+      currency: 'SEK',
+      maximumFractionDigits: 2,
+    }).format(amount)
+  }
 }
 
 function customFieldLabel(label) {
@@ -848,7 +862,7 @@ async function createCustomer() {
     })))
 
     $q.notify({ type: 'positive', message: t('customers.createdNotice') })
-    await router.replace(`/customers/${saved.id}`)
+    await router.replace(`/companies/${saved.id}`)
   } catch (err) {
     $q.notify({ type: 'negative', message: err?.response?.data?.detail || t('common.errorOccurred') })
   } finally {
@@ -897,11 +911,11 @@ function confirmDelete() {
 
 function onCustomerDeleted() {
   deleteDialogOpen.value = false
-  router.push('/customers')
+  router.push('/companies')
 }
 
 function goBack() {
-  router.push('/customers')
+  router.push('/companies')
 }
 
 onMounted(async () => {
@@ -920,7 +934,7 @@ watch(() => route.params.customerId, async (next, prev) => {
 
 watch(() => route.path, async (next, prev) => {
   if (next === prev) return
-  if (next === '/customers/new') {
+  if (next === '/companies/new') {
     form.value = emptyForm()
     await loadFieldRows()
     info.value = null
