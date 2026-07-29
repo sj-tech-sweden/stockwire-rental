@@ -159,6 +159,8 @@ export default {
     noLinkedRentals: 'Inga kopplade hyresprodukter.',
     noCrewMembers: 'Inga personer kopplade till denna leverantör.',
     failedLoadInfo: 'Kunde inte ladda kundinformation',
+    noCustomersFound: 'Inga kunder hittades',
+    searchCustomers: 'Sök kunder',
   },
   venues: {
     title: 'Platser',
@@ -167,6 +169,8 @@ export default {
     search: 'Sök platser',
     noCity: 'Ingen stad',
     noNotes: 'Inga anteckningar',
+    noVenuesFound: 'Inga platser hittades',
+    searchVenues: 'Sök platser',
     name: 'Namn',
     address: 'Adress',
     city: 'Stad',

@@ -95,7 +95,7 @@ const entityFilter = ref(null)
 const entityOptions = [
   { label: t('app.nav.jobs'), value: 'job' },
   { label: t('home.products'), value: 'product' },
-  { label: t('app.nav.customers'), value: 'customer' },
+  { label: t('app.nav.companies'), value: 'customer' },
   { label: t('app.nav.venues'), value: 'venue' },
   { label: t('app.nav.scan'), value: 'scan' },
 ]

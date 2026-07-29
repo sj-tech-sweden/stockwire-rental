@@ -45,9 +45,9 @@
 
       <template #body-cell-supplier_types="props">
         <q-td :props="props" auto-width>
-          <q-badge v-if="props.row.is_product_supplier" color="blue" label="Products" class="q-mr-xs" />
-          <q-badge v-if="props.row.is_rental_supplier" color="orange" label="Rentals" class="q-mr-xs" />
-          <q-badge v-if="props.row.is_crew_supplier" color="green" label="Crew" />
+          <q-badge v-if="props.row.is_product_supplier" color="blue" :label="t('customers.isProductSupplier')" class="q-mr-xs" />
+          <q-badge v-if="props.row.is_rental_supplier" color="orange" :label="t('customers.isRentalSupplier')" class="q-mr-xs" />
+          <q-badge v-if="props.row.is_crew_supplier" color="green" :label="t('customers.isCrewSupplier')" />
         </q-td>
       </template>
 
@@ -58,9 +58,9 @@
               <div class="text-subtitle2">{{ props.row.name }}</div>
               <div class="text-caption text-grey-7">{{ props.row.email || t('customers.noEmail') }}</div>
               <div class="q-mt-xs">
-                <q-badge v-if="props.row.is_product_supplier" color="blue" label="Products" class="q-mr-xs" />
-                <q-badge v-if="props.row.is_rental_supplier" color="orange" label="Rentals" class="q-mr-xs" />
-                <q-badge v-if="props.row.is_crew_supplier" color="green" label="Crew" />
+                <q-badge v-if="props.row.is_product_supplier" color="blue" :label="t('customers.isProductSupplier')" class="q-mr-xs" />
+                <q-badge v-if="props.row.is_rental_supplier" color="orange" :label="t('customers.isRentalSupplier')" class="q-mr-xs" />
+                <q-badge v-if="props.row.is_crew_supplier" color="green" :label="t('customers.isCrewSupplier')" />
               </div>
             </q-card-section>
             <q-card-section class="q-pt-none q-pb-sm">
@@ -114,7 +114,7 @@ const columns = [
   { name: 'email', label: t('profile.email'), field: 'email', sortable: true, align: 'left' },
   { name: 'phone', label: t('customers.phone'), field: 'phone', sortable: true, align: 'left' },
   { name: 'city', label: t('customers.city'), field: 'city', sortable: true, align: 'left' },
-  { name: 'supplier_types', label: 'Types', field: 'supplier_types', align: 'left' },
+  { name: 'supplier_types', label: t('customers.supplierTypes'), field: 'supplier_types', align: 'left' },
   { name: 'notes', label: t('customers.notes'), field: 'notes', sortable: false, align: 'left' },
   {
     name: 'created_at',

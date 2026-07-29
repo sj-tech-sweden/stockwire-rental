@@ -159,6 +159,8 @@ export default {
     noLinkedRentals: 'No linked rentals.',
     noCrewMembers: 'No crew members linked to this supplier.',
     failedLoadInfo: 'Failed to load customer info',
+    noCustomersFound: 'No customers found',
+    searchCustomers: 'Search customers',
   },
   venues: {
     title: 'Venues',
@@ -167,6 +169,8 @@ export default {
     search: 'Search venues',
     noCity: 'No city',
     noNotes: 'No notes',
+    noVenuesFound: 'No venues found',
+    searchVenues: 'Search venues',
     name: 'Name',
     address: 'Address',
     city: 'City',

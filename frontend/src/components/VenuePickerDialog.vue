@@ -8,7 +8,7 @@
       </q-card-section>
 
       <q-card-section>
-        <q-input v-model="search" dense outlined clearable :placeholder="t('jobs.searchJobs')">
+        <q-input v-model="search" dense outlined clearable :placeholder="t('venues.searchVenues')">
           <template #prepend><q-icon name="search" /></template>
         </q-input>
       </q-card-section>
@@ -30,7 +30,7 @@
           </q-item>
           <q-item v-if="!filteredVenues.length">
             <q-item-section>
-              <q-item-label caption>{{ t('jobs.noDescription') }}</q-item-label>
+              <q-item-label caption>{{ t('venues.noVenuesFound') }}</q-item-label>
             </q-item-section>
           </q-item>
         </q-list>

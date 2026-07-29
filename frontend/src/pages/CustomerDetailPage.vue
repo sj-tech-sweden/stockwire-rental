@@ -273,8 +273,8 @@
                   <q-item-section>
                     <q-item-label>{{ cm.name }}</q-item-label>
                     <q-item-label caption>
-                      <q-badge v-if="cm.is_active" color="positive" label="Active" class="q-mr-xs" />
-                      <q-badge v-else color="grey" label="Inactive" class="q-mr-xs" />
+                      <q-badge v-if="cm.is_active" color="positive" :label="t('crew.active')" class="q-mr-xs" />
+                      <q-badge v-else color="grey" :label="t('crew.inactive')" class="q-mr-xs" />
                       <span v-if="cm.hourly_rate">{{ formatMoney(cm.hourly_rate) }}/h</span>
                       <span v-if="cm.daily_rate"> · {{ formatMoney(cm.daily_rate) }}/day</span>
                     </q-item-label>
