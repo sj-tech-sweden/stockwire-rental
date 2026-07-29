@@ -515,7 +515,6 @@
 import { computed, ref, watch } from 'vue'
 import { useQuasar } from 'quasar'
 import { useI18n } from 'vue-i18n'
-import { api } from '../boot/axios'
 import { useInventoryStore } from '../stores/inventory'
 import { useCustomersStore } from '../stores/customers'
 import { useSettingsStore } from '../stores/settings'
@@ -523,6 +522,8 @@ import { useCustomFieldsStore } from '../stores/customFields'
 import { translateMaybePrefillCustomFieldLabel, translateMaybePrefillCustomFieldOption } from '../i18n/prefillContent'
 import { normalizeCurrencyCode } from '../constants/currencies'
 import { isRentalProduct } from '../utils/inventory-overview'
+import { useProductImage } from '../composables/useProductImage'
+import { api } from '../boot/axios'
 import EntityAttachmentsPanel from './EntityAttachmentsPanel.vue'
 import SupplierPickerInline from './SupplierPickerInline.vue'
 
@@ -566,9 +567,9 @@ const productSkuPrefix = ref('PRD-')
 const skuPrefixByProductType = ref({})
 const PREFIX_MEMORY_STORAGE_KEY = 'inventory.prefix-memory.v1'
 const productImageFile = ref(null)
-const productImageUrl = ref('')
 const existingImageFileId = ref(null)
 const imageCleared = ref(false)
+const { imageUrl: productImageUrl, fetchImage: fetchExistingProductImage, cleanup: cleanupProductImage } = useProductImage()
 
 const productEditing = ref(null)
 const productDialogError = ref('')
@@ -1258,18 +1259,15 @@ async function saveProduct() {
 }
 
 function closeProductDialog() {
-  if (productImageUrl.value && productImageUrl.value.startsWith('blob:')) {
-    URL.revokeObjectURL(productImageUrl.value)
-  }
+  cleanupProductImage()
   productImageFile.value = null
-  productImageUrl.value = ''
+  existingImageFileId.value = null
+  imageCleared.value = false
   emit('update:modelValue', false)
 }
 
 function onProductImageSelected() {
-  if (productImageUrl.value && productImageUrl.value.startsWith('blob:')) {
-    URL.revokeObjectURL(productImageUrl.value)
-  }
+  cleanupProductImage()
   if (productImageFile.value) {
     productImageUrl.value = URL.createObjectURL(productImageFile.value)
     imageCleared.value = false
@@ -1279,11 +1277,8 @@ function onProductImageSelected() {
 }
 
 function clearProductImage() {
-  if (productImageUrl.value && productImageUrl.value.startsWith('blob:')) {
-    URL.revokeObjectURL(productImageUrl.value)
-  }
+  cleanupProductImage()
   productImageFile.value = null
-  productImageUrl.value = ''
   imageCleared.value = true
 }
 
@@ -1300,9 +1295,11 @@ async function uploadProductImage(productId) {
 }
 
 async function loadExistingProductImage(productId) {
-  productImageUrl.value = ''
   existingImageFileId.value = null
-  if (!productId) return
+  if (!productId) {
+    cleanupProductImage()
+    return
+  }
   try {
     const { data } = await api.get('/api/v1/storage/files', {
       params: { entity_type: 'product', entity_id: productId, category: 'product-image' },
@@ -1310,15 +1307,11 @@ async function loadExistingProductImage(productId) {
     const files = Array.isArray(data) ? data : []
     if (files.length) {
       existingImageFileId.value = files[0].id
-      const blobUrl = URL.createObjectURL(
-        await api.get(files[0].download_url, { responseType: 'blob' }).then(r => r.data)
-      )
-      productImageUrl.value = blobUrl
     }
   } catch {
-    productImageUrl.value = ''
     existingImageFileId.value = null
   }
+  await fetchExistingProductImage(productId)
 }
 
 watch(() => props.modelValue, async (open) => {
@@ -1338,11 +1331,8 @@ watch(() => props.modelValue, async (open) => {
       openCreateProduct()
     }
   } else {
-    if (productImageUrl.value && productImageUrl.value.startsWith('blob:')) {
-      URL.revokeObjectURL(productImageUrl.value)
-    }
+    cleanupProductImage()
     productImageFile.value = null
-    productImageUrl.value = ''
     existingImageFileId.value = null
     imageCleared.value = false
   }

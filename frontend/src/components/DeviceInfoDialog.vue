@@ -535,7 +535,7 @@ import { useCustomersStore } from '../stores/customers'
 import { useSettingsStore } from '../stores/settings'
 import { useWarehouseLedsStore } from '../stores/warehouseLeds'
 import { normalizeCurrencyCode } from '../constants/currencies'
-import { api } from '../boot/axios'
+import { useProductImage } from '../composables/useProductImage'
 import EntityAttachmentsPanel from './EntityAttachmentsPanel.vue'
 import LocateDeviceMapDialog from './LocateDeviceMapDialog.vue'
 
@@ -555,7 +555,7 @@ const settingsStore = useSettingsStore()
 const warehouseLedsStore = useWarehouseLedsStore()
 
 const effectiveIsPhone = computed(() => props.isPhone || $q.screen.lt.md)
-const productImageUrl = ref('')
+const { imageUrl: productImageUrl, fetchImage: fetchProductImage, cleanup: cleanupProductImage } = useProductImage()
 
 const deviceInfoAudits = ref([])
 const deviceInfoDefects = ref([])
@@ -912,34 +912,11 @@ watch(() => props.modelValue, (open) => {
       customersStore.fetchAll().catch(() => {})
     }
     void loadDeviceData(props.device)
-    fetchProductImage()
+    fetchProductImage(props.device.product_id)
   } else {
-    if (productImageUrl.value && productImageUrl.value.startsWith('blob:')) {
-      URL.revokeObjectURL(productImageUrl.value)
-    }
-    productImageUrl.value = ''
+    cleanupProductImage()
   }
 })
-
-async function fetchProductImage() {
-  productImageUrl.value = ''
-  const productId = props.device?.product_id
-  if (!productId) return
-  try {
-    const { data } = await api.get('/api/v1/storage/files', {
-      params: { entity_type: 'product', entity_id: productId, category: 'product-image' },
-    })
-    const files = Array.isArray(data) ? data : []
-    if (files.length) {
-      const blobUrl = URL.createObjectURL(
-        await api.get(files[0].download_url, { responseType: 'blob' }).then(r => r.data)
-      )
-      productImageUrl.value = blobUrl
-    }
-  } catch {
-    productImageUrl.value = ''
-  }
-}
 </script>
 
 <style lang="scss" scoped>

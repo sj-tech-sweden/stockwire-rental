@@ -270,7 +270,6 @@
 import { computed, nextTick, ref, watch } from 'vue'
 import { useQuasar } from 'quasar'
 import { useI18n } from 'vue-i18n'
-import { api } from '../boot/axios'
 import { useInventoryStore } from '../stores/inventory'
 import { useJobsStore } from '../stores/jobs'
 import { useCustomersStore } from '../stores/customers'
@@ -278,6 +277,7 @@ import { useSettingsStore } from '../stores/settings'
 import { useCustomFieldsStore } from '../stores/customFields'
 import { useWarehouseLedsStore } from '../stores/warehouseLeds'
 import { normalizeCurrencyCode } from '../constants/currencies'
+import { useProductImage } from '../composables/useProductImage'
 import EntityAttachmentsPanel from './EntityAttachmentsPanel.vue'
 import LocateDeviceMapDialog from './LocateDeviceMapDialog.vue'
 import WarehouseMap from './WarehouseMap.vue'
@@ -305,7 +305,7 @@ const customFieldsStore = useCustomFieldsStore()
 const warehouseLedsStore = useWarehouseLedsStore()
 
 const infoCustomFieldValues = ref([])
-const productImageUrl = ref('')
+const { imageUrl: productImageUrl, fetchImage: fetchProductImage, cleanup: cleanupProductImage } = useProductImage()
 
 const mapExpanded = ref(false)
 const warehouseMapRef = ref(null)
@@ -520,34 +520,11 @@ function supplierNameById(supplierId) {
   return supplier?.name || `Supplier #${supplierId}`
 }
 
-async function fetchProductImage() {
-  productImageUrl.value = ''
-  if (!props.product?.id) return
-  try {
-    const { data } = await api.get('/api/v1/storage/files', {
-      params: { entity_type: 'product', entity_id: props.product.id, category: 'product-image' },
-    })
-    const files = Array.isArray(data) ? data : []
-    if (files.length) {
-      const imageFile = files[0]
-      const blobUrl = URL.createObjectURL(
-        await api.get(imageFile.download_url, { responseType: 'blob' }).then(r => r.data)
-      )
-      productImageUrl.value = blobUrl
-    }
-  } catch {
-    productImageUrl.value = ''
-  }
-}
-
 watch(() => props.modelValue, (open) => {
   if (open) {
-    fetchProductImage()
+    fetchProductImage(props.product?.id)
   } else {
-    if (productImageUrl.value && productImageUrl.value.startsWith('blob:')) {
-      URL.revokeObjectURL(productImageUrl.value)
-    }
-    productImageUrl.value = ''
+    cleanupProductImage()
   }
 })
 </script>

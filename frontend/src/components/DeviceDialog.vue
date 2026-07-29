@@ -7,9 +7,12 @@
           <div class="row q-col-gutter-sm">
             <div class="col-12 col-md-6 row items-center no-wrap">
               <q-select v-model="deviceForm.product_id" :options="productOptions" :label="t('inventory.deviceDialog.product')" outlined dense emit-value map-options :rules="[v => !!v || t('inventory.deviceDialog.required')]" class="col" />
-              <q-avatar v-if="selectedProductImageUrl" size="40px" class="q-ml-sm">
-                <q-img :src="selectedProductImageUrl" style="width: 40px; height: 40px" fit="cover" />
-              </q-avatar>
+              <q-img
+                v-if="selectedProductImageUrl"
+                :src="selectedProductImageUrl"
+                style="width: 40px; height: 40px; border-radius: 50%; margin-left: 8px"
+                fit="cover"
+              />
             </div>
             <div class="col-12 col-md-3">
               <q-input ref="deviceAssetTagInputRef" v-model="deviceForm.asset_tag" :label="t('inventory.deviceDialog.assetTag')" outlined dense :rules="[v => !!v || t('inventory.deviceDialog.required')]">
@@ -150,7 +153,7 @@ import { useCustomersStore } from '../stores/customers'
 import { useSettingsStore } from '../stores/settings'
 import SupplierPickerInline from './SupplierPickerInline.vue'
 import { isRentalProduct } from '../utils/inventory-overview'
-import { api } from '../boot/axios'
+import { useProductImage } from '../composables/useProductImage'
 import EntityAttachmentsPanel from './EntityAttachmentsPanel.vue'
 import FieldScanDialog from './FieldScanDialog.vue'
 import LocateDeviceMapDialog from './LocateDeviceMapDialog.vue'
@@ -187,7 +190,7 @@ const deviceRfidInputRef = ref(null)
 const warrantyManuallyEdited = ref(false)
 const deviceFieldCaptureDialogOpen = ref(false)
 const deviceFieldCaptureTarget = ref('')
-const selectedProductImageUrl = ref('')
+const { imageUrl: selectedProductImageUrl, fetchImage: fetchProductImageForDevice, cleanup: cleanupProductImage } = useProductImage()
 const deviceFieldCaptureLabel = ref('')
 const deviceFieldCaptureInitialValue = ref('')
 const locateDeviceMapOpen = ref(false)
@@ -534,13 +537,10 @@ watch(() => props.modelValue, (open) => {
       fetchProductImageForDevice(props.device.product_id)
     } else {
       openCreateDevice()
-      selectedProductImageUrl.value = ''
+      cleanupProductImage()
     }
   } else {
-    if (selectedProductImageUrl.value && selectedProductImageUrl.value.startsWith('blob:')) {
-      URL.revokeObjectURL(selectedProductImageUrl.value)
-    }
-    selectedProductImageUrl.value = ''
+    cleanupProductImage()
   }
 })
 
@@ -548,34 +548,9 @@ watch(() => deviceForm.value.product_id, (productId) => {
   if (productId) {
     fetchProductImageForDevice(productId)
   } else {
-    if (selectedProductImageUrl.value && selectedProductImageUrl.value.startsWith('blob:')) {
-      URL.revokeObjectURL(selectedProductImageUrl.value)
-    }
-    selectedProductImageUrl.value = ''
+    cleanupProductImage()
   }
 })
-
-async function fetchProductImageForDevice(productId) {
-  if (selectedProductImageUrl.value && selectedProductImageUrl.value.startsWith('blob:')) {
-    URL.revokeObjectURL(selectedProductImageUrl.value)
-  }
-  selectedProductImageUrl.value = ''
-  if (!productId) return
-  try {
-    const { data } = await api.get('/api/v1/storage/files', {
-      params: { entity_type: 'product', entity_id: productId, category: 'product-image' },
-    })
-    const files = Array.isArray(data) ? data : []
-    if (files.length) {
-      const blobUrl = URL.createObjectURL(
-        await api.get(files[0].download_url, { responseType: 'blob' }).then(r => r.data)
-      )
-      selectedProductImageUrl.value = blobUrl
-    }
-  } catch {
-    selectedProductImageUrl.value = ''
-  }
-}
 
 
 </script>

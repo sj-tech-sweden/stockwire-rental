@@ -969,6 +969,7 @@ import { useInventoryStore } from '../stores/inventory'
 import { useJobsStore } from '../stores/jobs'
 import { useWarehouseLedsStore } from '../stores/warehouseLeds'
 import { useCompactGrid } from '../composables/useCompactGrid'
+import { useProductImage } from '../composables/useProductImage'
 import { shouldSuppressDuplicateCameraScan } from '../utils/scan-camera'
 import ShortcutHelpDialog from '../components/ShortcutHelpDialog.vue'
 import DefectReportDialog from '../components/DefectReportDialog.vue'
@@ -1010,7 +1011,7 @@ const scanResultMessage = ref('')
 const scanResultSuccess = ref(false)
 const lastLookupCode = ref('')
 const lastLookupResult = ref(null)
-const lookupProductImageUrl = ref('')
+const { imageUrl: lookupProductImageUrl, fetchImage: fetchLookupProductImage, cleanup: clearLookupProductImage } = useProductImage()
 const lastIntakeResult = ref(null)
 const recentMovedDevices = ref([])
 const workflowDeviceSelections = ref({})
@@ -1566,32 +1567,6 @@ async function lookupLocateLed(deviceId) {
     await warehouseLedsStore.locateDevice(deviceId)
   } catch (err) {
     console.error('LED locate failed:', err)
-  }
-}
-
-function clearLookupProductImage() {
-  if (lookupProductImageUrl.value && lookupProductImageUrl.value.startsWith('blob:')) {
-    URL.revokeObjectURL(lookupProductImageUrl.value)
-  }
-  lookupProductImageUrl.value = ''
-}
-
-async function fetchLookupProductImage(productId) {
-  clearLookupProductImage()
-  if (!productId) return
-  try {
-    const { data } = await api.get('/api/v1/storage/files', {
-      params: { entity_type: 'product', entity_id: productId, category: 'product-image' },
-    })
-    const files = Array.isArray(data) ? data : []
-    if (files.length) {
-      const blobUrl = URL.createObjectURL(
-        await api.get(files[0].download_url, { responseType: 'blob' }).then(r => r.data)
-      )
-      lookupProductImageUrl.value = blobUrl
-    }
-  } catch {
-    lookupProductImageUrl.value = ''
   }
 }
 
