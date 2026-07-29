@@ -5,8 +5,11 @@
       <q-card-section class="q-pt-none" :style="isPhone ? 'max-height: calc(100vh - 140px); overflow: auto;' : ''">
         <q-form ref="deviceFormRef" @submit.prevent="saveDevice">
           <div class="row q-col-gutter-sm">
-            <div class="col-12 col-md-6">
-              <q-select v-model="deviceForm.product_id" :options="productOptions" :label="t('inventory.deviceDialog.product')" outlined dense emit-value map-options :rules="[v => !!v || t('inventory.deviceDialog.required')]" />
+            <div class="col-12 col-md-6 row items-center no-wrap">
+              <q-select v-model="deviceForm.product_id" :options="productOptions" :label="t('inventory.deviceDialog.product')" outlined dense emit-value map-options :rules="[v => !!v || t('inventory.deviceDialog.required')]" class="col" />
+              <q-avatar v-if="selectedProductImageUrl" size="40px" class="q-ml-sm">
+                <q-img :src="selectedProductImageUrl" style="width: 40px; height: 40px" fit="cover" />
+              </q-avatar>
             </div>
             <div class="col-12 col-md-3">
               <q-input ref="deviceAssetTagInputRef" v-model="deviceForm.asset_tag" :label="t('inventory.deviceDialog.assetTag')" outlined dense :rules="[v => !!v || t('inventory.deviceDialog.required')]">
@@ -184,6 +187,7 @@ const deviceRfidInputRef = ref(null)
 const warrantyManuallyEdited = ref(false)
 const deviceFieldCaptureDialogOpen = ref(false)
 const deviceFieldCaptureTarget = ref('')
+const selectedProductImageUrl = ref('')
 const deviceFieldCaptureLabel = ref('')
 const deviceFieldCaptureInitialValue = ref('')
 const locateDeviceMapOpen = ref(false)
@@ -527,11 +531,51 @@ watch(() => props.modelValue, (open) => {
     loadPrefixMemory()
     if (props.device) {
       openEditDevice(props.device)
+      fetchProductImageForDevice(props.device.product_id)
     } else {
       openCreateDevice()
+      selectedProductImageUrl.value = ''
     }
+  } else {
+    if (selectedProductImageUrl.value && selectedProductImageUrl.value.startsWith('blob:')) {
+      URL.revokeObjectURL(selectedProductImageUrl.value)
+    }
+    selectedProductImageUrl.value = ''
   }
 })
+
+watch(() => deviceForm.value.product_id, (productId) => {
+  if (productId) {
+    fetchProductImageForDevice(productId)
+  } else {
+    if (selectedProductImageUrl.value && selectedProductImageUrl.value.startsWith('blob:')) {
+      URL.revokeObjectURL(selectedProductImageUrl.value)
+    }
+    selectedProductImageUrl.value = ''
+  }
+})
+
+async function fetchProductImageForDevice(productId) {
+  if (selectedProductImageUrl.value && selectedProductImageUrl.value.startsWith('blob:')) {
+    URL.revokeObjectURL(selectedProductImageUrl.value)
+  }
+  selectedProductImageUrl.value = ''
+  if (!productId) return
+  try {
+    const { data } = await api.get('/api/v1/storage/files', {
+      params: { entity_type: 'product', entity_id: productId, category: 'product-image' },
+    })
+    const files = Array.isArray(data) ? data : []
+    if (files.length) {
+      const blobUrl = URL.createObjectURL(
+        await api.get(files[0].download_url, { responseType: 'blob' }).then(r => r.data)
+      )
+      selectedProductImageUrl.value = blobUrl
+    }
+  } catch {
+    selectedProductImageUrl.value = ''
+  }
+}
 
 
 </script>

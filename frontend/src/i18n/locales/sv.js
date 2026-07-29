@@ -1138,6 +1138,8 @@ export default {
   inventory: {
     importJson: 'Importera JSON',
     importData: 'Importera data',
+    productImage: 'Produktbild',
+    uploadImage: 'Ladda upp bild',
     cachedOfflineBanner: 'Använder cachelagrad offline-data. Lager- och kravreservationer kan vara inaktuella tills synkronisering uppdateras.',
     tabs: {
       overview: 'Översikt',

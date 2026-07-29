@@ -2,6 +2,22 @@
   <q-dialog :model-value="modelValue" :maximized="isPhone" @update:model-value="emit('update:modelValue', $event)">
     <q-card :style="isPhone ? 'width: 100vw; max-width: 100vw; height: 100vh' : 'min-width: 860px; max-width: 96vw'" class="ec-card">
       <q-card-section class="row items-start no-wrap">
+        <q-img
+          v-if="productImageUrl"
+          :src="productImageUrl"
+          style="width: 80px; height: 80px; border-radius: 8px"
+          fit="cover"
+          class="q-mr-md"
+        >
+          <template #error>
+            <div class="absolute-full flex flex-center bg-grey-3">
+              <q-icon name="broken_image" color="grey-6" size="24px" />
+            </div>
+          </template>
+        </q-img>
+        <q-avatar v-else color="grey-3" text-color="grey-6" size="80px" class="q-mr-md">
+          <q-icon name="inventory_2" size="36px" />
+        </q-avatar>
         <div>
           <div class="text-h6">{{ t('inventory.infoDialogs.productTitle', { sku: product?.sku || '-' }) }}</div>
           <div class="text-caption text-grey-7">{{ product?.name || '-' }}</div>
@@ -254,6 +270,7 @@
 import { computed, nextTick, ref, watch } from 'vue'
 import { useQuasar } from 'quasar'
 import { useI18n } from 'vue-i18n'
+import { api } from '../boot/axios'
 import { useInventoryStore } from '../stores/inventory'
 import { useJobsStore } from '../stores/jobs'
 import { useCustomersStore } from '../stores/customers'
@@ -288,6 +305,7 @@ const customFieldsStore = useCustomFieldsStore()
 const warehouseLedsStore = useWarehouseLedsStore()
 
 const infoCustomFieldValues = ref([])
+const productImageUrl = ref('')
 
 const mapExpanded = ref(false)
 const warehouseMapRef = ref(null)
@@ -501,4 +519,35 @@ function supplierNameById(supplierId) {
   const supplier = customersStore.customers.find(c => c.id === supplierId)
   return supplier?.name || `Supplier #${supplierId}`
 }
+
+async function fetchProductImage() {
+  productImageUrl.value = ''
+  if (!props.product?.id) return
+  try {
+    const { data } = await api.get('/api/v1/storage/files', {
+      params: { entity_type: 'product', entity_id: props.product.id, category: 'product-image' },
+    })
+    const files = Array.isArray(data) ? data : []
+    if (files.length) {
+      const imageFile = files[0]
+      const blobUrl = URL.createObjectURL(
+        await api.get(imageFile.download_url, { responseType: 'blob' }).then(r => r.data)
+      )
+      productImageUrl.value = blobUrl
+    }
+  } catch {
+    productImageUrl.value = ''
+  }
+}
+
+watch(() => props.modelValue, (open) => {
+  if (open) {
+    fetchProductImage()
+  } else {
+    if (productImageUrl.value && productImageUrl.value.startsWith('blob:')) {
+      URL.revokeObjectURL(productImageUrl.value)
+    }
+    productImageUrl.value = ''
+  }
+})
 </script>

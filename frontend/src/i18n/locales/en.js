@@ -1138,6 +1138,8 @@ export default {
   inventory: {
     importJson: 'Import JSON',
     importData: 'Import Data',
+    productImage: 'Product image',
+    uploadImage: 'Upload image',
     cachedOfflineBanner: 'Using cached offline data. Inventory and requirement reservations can be outdated until sync refreshes.',
     tabs: {
       overview: 'Overview',
