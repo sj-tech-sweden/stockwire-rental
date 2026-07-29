@@ -1,6 +1,6 @@
 <template>
-  <q-dialog :model-value="modelValue" @update:model-value="emit('update:modelValue', $event)">
-    <q-card style="min-width: 500px; max-width: 95vw" class="ec-card">
+  <q-dialog :model-value="modelValue" :maximized="isPhone" @update:model-value="emit('update:modelValue', $event)">
+    <q-card :style="isPhone ? '' : 'min-width: 500px; max-width: 95vw'" class="ec-card">
       <q-card-section class="row items-center q-pb-none">
         <div class="text-h6">{{ t('jobs.customFieldValues') }}</div>
         <q-space />
@@ -68,7 +68,8 @@
 </template>
 
 <script setup>
-import { ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
+import { useQuasar } from 'quasar'
 import { useI18n } from 'vue-i18n'
 import { useCustomFieldsStore } from '../stores/customFields'
 import { translateMaybePrefillCustomFieldLabel, translateMaybePrefillCustomFieldOption } from '../i18n/prefillContent'
@@ -80,8 +81,10 @@ const props = defineProps({
 
 const emit = defineEmits(['update:modelValue', 'saved'])
 
+const $q = useQuasar()
 const { t } = useI18n()
 const customFieldsStore = useCustomFieldsStore()
+const isPhone = computed(() => $q.screen.lt.md)
 
 const fieldRows = ref([])
 const saving = ref(false)

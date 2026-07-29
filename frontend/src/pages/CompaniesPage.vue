@@ -43,12 +43,25 @@
         </q-td>
       </template>
 
+      <template #body-cell-supplier_types="props">
+        <q-td :props="props" auto-width>
+          <q-badge v-if="props.row.is_product_supplier" color="blue" label="Products" class="q-mr-xs" />
+          <q-badge v-if="props.row.is_rental_supplier" color="orange" label="Rentals" class="q-mr-xs" />
+          <q-badge v-if="props.row.is_crew_supplier" color="green" label="Crew" />
+        </q-td>
+      </template>
+
       <template #item="props">
         <div class="q-pa-xs col-12">
           <q-card flat bordered @dblclick="openDetail(props.row)">
             <q-card-section class="q-pb-sm">
               <div class="text-subtitle2">{{ props.row.name }}</div>
               <div class="text-caption text-grey-7">{{ props.row.email || t('customers.noEmail') }}</div>
+              <div class="q-mt-xs">
+                <q-badge v-if="props.row.is_product_supplier" color="blue" label="Products" class="q-mr-xs" />
+                <q-badge v-if="props.row.is_rental_supplier" color="orange" label="Rentals" class="q-mr-xs" />
+                <q-badge v-if="props.row.is_crew_supplier" color="green" label="Crew" />
+              </div>
             </q-card-section>
             <q-card-section class="q-pt-none q-pb-sm">
               <div class="text-caption">{{ t('customers.phone') }}: {{ props.row.phone || '-' }}</div>
@@ -94,13 +107,14 @@ const authStore = useAuthStore()
 const { t } = useI18n()
 
 const search = ref('')
-const filterType = ref('all')
+const filterType = ref(route.query.tab || 'all')
 
 const columns = [
   { name: 'name', label: t('customers.name'), field: 'name', sortable: true, align: 'left' },
   { name: 'email', label: t('profile.email'), field: 'email', sortable: true, align: 'left' },
   { name: 'phone', label: t('customers.phone'), field: 'phone', sortable: true, align: 'left' },
   { name: 'city', label: t('customers.city'), field: 'city', sortable: true, align: 'left' },
+  { name: 'supplier_types', label: 'Types', field: 'supplier_types', align: 'left' },
   { name: 'notes', label: t('customers.notes'), field: 'notes', sortable: false, align: 'left' },
   {
     name: 'created_at',
@@ -145,7 +159,7 @@ async function focusCustomerFromQuery() {
 
   const nextQuery = { ...route.query }
   delete nextQuery.focusCustomerId
-  await router.replace({ path: '/customers', query: nextQuery })
+  await router.replace({ path: '/companies', query: nextQuery })
 }
 
 onMounted(async () => {
@@ -160,11 +174,11 @@ const deleteDialogOpen = ref(false)
 const deleteTarget = ref(null)
 
 function openCreate() {
-  router.push('/customers/new')
+  router.push('/companies/new')
 }
 
 function openDetail(customer) {
-  router.push(`/customers/${customer.id}`)
+  router.push(`/companies/${customer.id}`)
 }
 
 function confirmDelete(customer) {

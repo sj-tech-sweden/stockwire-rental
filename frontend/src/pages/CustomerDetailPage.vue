@@ -494,7 +494,7 @@ const selectedRentalForInfo = ref(null)
 const rentalEditDialogOpen = ref(false)
 const selectedRentalForEdit = ref(null)
 
-const isNewCustomer = computed(() => route.path === '/customers/new')
+const isNewCustomer = computed(() => route.path === '/companies/new')
 
 const currentCustomer = computed(() => {
   const id = Number(route.params.customerId || 0)
@@ -848,7 +848,7 @@ async function createCustomer() {
     })))
 
     $q.notify({ type: 'positive', message: t('customers.createdNotice') })
-    await router.replace(`/customers/${saved.id}`)
+    await router.replace(`/companies/${saved.id}`)
   } catch (err) {
     $q.notify({ type: 'negative', message: err?.response?.data?.detail || t('common.errorOccurred') })
   } finally {
@@ -897,11 +897,11 @@ function confirmDelete() {
 
 function onCustomerDeleted() {
   deleteDialogOpen.value = false
-  router.push('/customers')
+  router.push('/companies')
 }
 
 function goBack() {
-  router.push('/customers')
+  router.push('/companies')
 }
 
 onMounted(async () => {
@@ -920,7 +920,7 @@ watch(() => route.params.customerId, async (next, prev) => {
 
 watch(() => route.path, async (next, prev) => {
   if (next === prev) return
-  if (next === '/customers/new') {
+  if (next === '/companies/new') {
     form.value = emptyForm()
     await loadFieldRows()
     info.value = null

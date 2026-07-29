@@ -180,7 +180,7 @@ function entityRoute(log) {
     return { path: '/inventory', query: { tab: 'products', focusProductId: String(log.entity_id) } }
   }
   if (log.entity_type === 'customer' && log.entity_id != null) {
-    return { path: '/customers', query: { focusCustomerId: String(log.entity_id) } }
+    return { path: '/companies', query: { focusCustomerId: String(log.entity_id) } }
   }
   if (log.entity_type === 'venue' && log.entity_id != null) {
     return { path: '/venues', query: { focusVenueId: String(log.entity_id) } }

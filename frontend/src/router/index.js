@@ -2,7 +2,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 
 import { useAuthStore } from '../stores/auth'
 import MainLayout from '../layouts/MainLayout.vue'
-import CustomersPage from '../pages/CustomersPage.vue'
+import CompaniesPage from '../pages/CompaniesPage.vue'
 import CrewPage from '../pages/CrewPage.vue'
 import FinancePage from '../pages/FinancePage.vue'
 import ActivityPage from '../pages/ActivityPage.vue'
@@ -68,13 +68,16 @@ const routes = [
       { path: 'jobs/new', component: () => import('../pages/JobDetailPage.vue') },
       { path: 'jobs/:jobId', component: () => import('../pages/JobDetailPage.vue') },
       { path: 'projects', component: () => import('../pages/ProjectsPage.vue') },
-      { path: 'customers', component: CustomersPage },
-      { path: 'customers/new', component: () => import('../pages/CustomerDetailPage.vue') },
-      { path: 'customers/:customerId', component: () => import('../pages/CustomerDetailPage.vue') },
+      { path: 'companies', component: CompaniesPage },
+      { path: 'companies/new', component: () => import('../pages/CustomerDetailPage.vue') },
+      { path: 'companies/:customerId', component: () => import('../pages/CustomerDetailPage.vue') },
+      { path: 'customers', redirect: '/companies' },
+      { path: 'customers/new', redirect: '/companies/new' },
+      { path: 'customers/:customerId', redirect: to => `/companies/${to.params.customerId}` },
+      { path: 'suppliers', redirect: '/companies?tab=product_supplier' },
       { path: 'crew', component: CrewPage },
       { path: 'crew/new', component: () => import('../pages/CrewDetailPage.vue') },
       { path: 'crew/:crewMemberId', component: () => import('../pages/CrewDetailPage.vue') },
-      { path: 'suppliers', component: () => import('../pages/SuppliersPage.vue') },
       { path: 'venues', component: VenuesPage },
       { path: 'profile', component: ProfilePage },
       { path: 'settings', component: SettingsPage },

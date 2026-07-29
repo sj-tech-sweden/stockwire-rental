@@ -2,13 +2,20 @@
   <q-page class="q-pa-md ec-page">
     <div class="row items-center justify-between q-col-gutter-sm q-mb-md">
       <div class="col-auto">
-        <q-btn flat icon="arrow_back" :label="t('jobs.backToJobs')" @click="goBack" />
+        <q-btn flat icon="arrow_back" :label="isPhone ? undefined : t('jobs.backToJobs')" @click="goBack" />
       </div>
       <div class="col">
-        <div class="text-h5">{{ isNewJob ? t('jobs.newJob') : (currentJob?.job_code || t('jobs.viewJob')) }}</div>
+        <div class="text-h5 text-break">{{ isNewJob ? t('jobs.newJob') : (currentJob?.job_code || t('jobs.viewJob')) }}</div>
       </div>
       <div class="col-auto" v-if="authStore.canEdit">
-        <q-btn color="primary" unelevated :label="isNewJob ? t('jobs.create') : t('jobs.saveChanges')" :loading="saving" @click="isNewJob ? createJob() : saveChanges()" />
+        <q-btn
+          ref="headerSaveBtn"
+          color="primary"
+          unelevated
+          :label="isPhone ? (isNewJob ? t('app.actions.create') : t('app.actions.save')) : (isNewJob ? t('jobs.create') : t('jobs.saveChanges'))"
+          :loading="saving"
+          @click="isNewJob ? createJob() : saveChanges()"
+        />
       </div>
     </div>
 
@@ -23,7 +30,7 @@
       <q-btn color="primary" unelevated :label="t('jobs.backToJobs')" @click="goBack" />
     </div>
 
-    <div v-else class="column q-gutter-md">
+    <div v-else class="column q-gutter-md" :class="{ 'q-pb-xl': isPhone && authStore.canEdit }">
       <q-card class="ec-card">
         <q-card-section>
           <div class="row q-col-gutter-md items-start">
@@ -61,12 +68,9 @@
       </q-card>
 
       <q-card class="ec-card">
-        <q-card-section class="row items-center justify-between q-col-gutter-sm">
+        <q-card-section class="row items-center q-col-gutter-sm">
           <div class="col">
             <div class="text-h6">{{ t('jobs.viewJob') }}</div>
-          </div>
-          <div class="col-auto" v-if="authStore.canEdit">
-            <q-btn color="primary" unelevated :label="t('jobs.saveChanges')" :loading="saving" @click="saveChanges" />
           </div>
         </q-card-section>
         <q-card-section class="q-pt-none">
@@ -271,7 +275,7 @@
             <div class="text-caption text-grey-7">{{ t('jobs.pickList') }}</div>
           </div>
           <div class="col-auto" v-if="authStore.canEdit">
-            <q-btn color="primary" unelevated icon="add" :label="t('jobs.addProductRequirements')" @click="requirementDialogOpen = true" />
+            <q-btn color="primary" unelevated icon="add" :label="isPhone ? undefined : t('jobs.addProductRequirements')" @click="requirementDialogOpen = true" />
           </div>
         </q-card-section>
 
@@ -319,7 +323,7 @@
                   <div class="col-12 col-md">
                     <div class="text-subtitle2">{{ row.product?.name || `${t('jobs.productName')} #${row.product_id}` }}</div>
                     <div class="text-caption text-grey-7">{{ row.product?.sku || '—' }}</div>
-                    <div class="row q-gutter-xs q-mt-sm">
+                    <div class="row q-gutter-xs q-mt-sm items-center">
                       <q-badge color="primary" text-color="white" :label="`${t('jobs.requiredQty')}: ${Number(row.quantity_required || 0)}`" />
                       <q-badge color="info" text-color="white" :label="`${t('scan.picked')}: ${Number(row.quantity_picked || 0)}`" />
                     </div>
@@ -355,7 +359,7 @@
             <div class="text-subtitle2">{{ t('jobs.rentalRequirements') }}</div>
           </div>
           <div class="col-auto" v-if="authStore.canEdit">
-            <q-btn flat dense no-caps color="primary" icon="edit" :label="t('jobs.editRequirements')" @click="rentalRequirementDialogOpen = true" />
+            <q-btn flat dense no-caps color="primary" icon="edit" :label="isPhone ? undefined : t('jobs.editRequirements')" @click="rentalRequirementDialogOpen = true" />
           </div>
         </q-card-section>
         <q-card-section class="q-pt-none" v-if="rentalRequirementRows.length">
@@ -379,8 +383,8 @@
             <div class="text-subtitle2">{{ t('crew.crewRequirements') }}</div>
           </div>
           <div class="col-auto" v-if="authStore.canEdit">
-            <q-btn flat dense no-caps color="primary" icon="add" :label="t('crew.addRequirement')" @click="crewRequirementDialogOpen = true" />
-            <q-btn flat dense no-caps color="primary" icon="person_add" :label="t('crew.assignMember')" class="q-ml-xs" @click="crewAssignmentDialogOpen = true" />
+            <q-btn flat dense no-caps color="primary" icon="add" :label="isPhone ? undefined : t('crew.addRequirement')" @click="crewRequirementDialogOpen = true" />
+            <q-btn flat dense no-caps color="primary" icon="person_add" :label="isPhone ? undefined : t('crew.assignMember')" class="q-ml-xs" @click="crewAssignmentDialogOpen = true" />
           </div>
         </q-card-section>
         <q-card-section class="q-pt-none" v-if="crewRequirementRows.length">
@@ -428,6 +432,11 @@
         </q-card-section>
       </q-card>
     </div>
+
+    <!-- Floating save button on mobile -->
+    <q-page-sticky v-if="isPhone && authStore.canEdit" position="bottom-right" :offset="[18, 18]">
+      <q-btn fab icon="save" color="primary" :loading="saving" @click="isNewJob ? createJob() : saveChanges()" />
+    </q-page-sticky>
 
     <JobProductRequirementDialog
       v-model="requirementDialogOpen"
@@ -486,6 +495,7 @@ const $q = useQuasar()
 const route = useRoute()
 const router = useRouter()
 const { t, locale } = useI18n()
+const isPhone = computed(() => $q.screen.lt.md)
 
 const jobsStore = useJobsStore()
 const inventoryStore = useInventoryStore()

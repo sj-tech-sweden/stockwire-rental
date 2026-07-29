@@ -62,21 +62,79 @@
         <q-list padding>
           <q-item-label header class="ec-drawer-header">{{ t('app.navigation') }}</q-item-label>
 
-          <template v-for="(item, idx) in menuList" :key="idx">
+          <!-- Home -->
+          <q-item
+            clickable
+            v-ripple
+            to="/"
+            @click="onChildNavigate"
+          >
+            <q-item-section avatar>
+              <q-icon name="home" class="text-primary" />
+            </q-item-section>
+            <q-item-section :class="$q.dark.isActive ? 'text-grey-3' : 'text-grey-8'">
+              {{ t('app.nav.home') }}
+            </q-item-section>
+          </q-item>
+          <q-separator />
+
+          <!-- Grouped nav items -->
+          <q-expansion-item
+            v-for="group in navGroups"
+            :key="group.key"
+            :label="t(group.labelKey)"
+            :icon="group.icon"
+            v-model="expandedGroups[group.key]"
+            :header-inset-level="0"
+            content-inset-level="0.4"
+            dense
+          >
             <q-item
+              v-for="child in group.children"
+              :key="child.to"
               clickable
               v-ripple
-              :to="item.to"
-              @click="onNavigate(item)">
+              :to="child.to"
+              @click="onChildNavigate"
+            >
               <q-item-section avatar>
-                <q-icon :name="item.icon" class="text-primary" />
+                <q-icon :name="child.icon" class="text-primary" />
               </q-item-section>
               <q-item-section :class="$q.dark.isActive ? 'text-grey-3' : 'text-grey-8'">
-                {{ item.label }}
+                {{ t(child.labelKey) }}
               </q-item-section>
             </q-item>
-            <q-separator v-if="item.separator" :key="'sep-'+idx" />
-          </template>
+          </q-expansion-item>
+
+          <!-- Standalone items -->
+          <q-separator />
+          <q-item
+            clickable
+            v-ripple
+            to="/activity"
+            @click="onChildNavigate"
+          >
+            <q-item-section avatar>
+              <q-icon name="history" class="text-primary" />
+            </q-item-section>
+            <q-item-section :class="$q.dark.isActive ? 'text-grey-3' : 'text-grey-8'">
+              {{ t('app.nav.activity') }}
+            </q-item-section>
+          </q-item>
+          <q-item
+            v-if="authStore.canManageSettings"
+            clickable
+            v-ripple
+            to="/settings"
+            @click="onChildNavigate"
+          >
+            <q-item-section avatar>
+              <q-icon name="tune" class="text-primary" />
+            </q-item-section>
+            <q-item-section :class="$q.dark.isActive ? 'text-grey-3' : 'text-grey-8'">
+              {{ t('app.nav.settings') }}
+            </q-item-section>
+          </q-item>
         </q-list>
       </q-scroll-area>
     </q-drawer>
@@ -88,7 +146,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch, nextTick, onUnmounted } from 'vue'
+import { ref, computed, reactive, onMounted, watch, nextTick, onUnmounted } from 'vue'
 import { useQuasar } from 'quasar'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
@@ -97,10 +155,7 @@ import { useSettingsStore } from '../stores/settings'
 import { getUserLocalePreference, resolveAppLocale, setLocale } from '../i18n'
 
 const drawerOpen = ref(false)
-// In "mini" screens we keep drawer collapsed by default but allow
-// a temporary expansion via the menu button (drawerExpanded).
 const drawerExpanded = ref(false)
-// allow forcing mini mode even on wide screens
 const forceMini = ref(false)
 const authStore = useAuthStore()
 const settingsStore = useSettingsStore()
@@ -111,9 +166,6 @@ const { t } = useI18n()
 const headerRef = ref(null)
 const headerStyle = computed(() => {
   const dark = $q.dark.isActive
-  // Use explicit colors to avoid depending on other CSS variables that may be
-  // overridden by Quasar. Also expose CSS vars so injected/apply-order rules
-  // can read them with high specificity.
   const bg = dark ? '#182228' : '#f3f9f3'
   const text = dark ? '#E9F1EE' : '#0f1720'
   return {
@@ -147,7 +199,6 @@ function applyInlineHeaderStyles() {
   const dark = $q.dark.isActive
   const bg = dark ? '#182228' : '#f3f9f3'
   const text = dark ? '#E9F1EE' : '#0f1720'
-  // set as important so runtime rules can't easily override
   el.style.setProperty('--ec-header-bg', bg, 'important')
   el.style.setProperty('--ec-header-text', text, 'important')
   el.style.setProperty('background-color', bg, 'important')
@@ -161,8 +212,6 @@ onMounted(() => {
     applyInlineHeaderStyles()
   })
 
-  // Observe DOM changes so we can re-apply inline styles if Quasar replaces
-  // the header element during theme toggles or route changes.
   const domObserver = new MutationObserver((mutations) => {
     for (const m of mutations) {
       if (m.type === 'attributes' && m.attributeName === 'class') {
@@ -176,13 +225,10 @@ onMounted(() => {
     }
   })
   domObserver.observe(document.body, { attributes: true, attributeFilter: ['class'], childList: true, subtree: true })
-  // cleanup on unmount
   onUnmounted(() => domObserver.disconnect())
 
   if (authStore.me) {
-    settingsStore.fetchCompanyProfile().catch(() => {
-      // Header logo/name is optional, ignore fetch failures.
-    })
+    settingsStore.fetchCompanyProfile().catch(() => {})
   }
 
   const userId = authStore.me?.id || null
@@ -213,7 +259,6 @@ function goToProfile() {
 }
 
 function toggleDark() {
-  // toggle and persist user's explicit choice
   $q.dark.toggle()
   try {
     localStorage.setItem('ec_dark_mode', $q.dark.isActive ? 'true' : 'false')
@@ -222,32 +267,83 @@ function toggleDark() {
   }
 }
 
-const baseMenuList = [
-  { icon: 'home', key: 'app.nav.home', to: '/', separator: true },
-  { icon: 'inventory_2', key: 'app.nav.inventory', to: '/inventory', separator: false },
-  { icon: 'print', key: 'app.nav.labels', to: '/labels', separator: false },
-  { icon: 'qr_code_scanner', key: 'app.nav.scan', to: '/scan', separator: false },
-  { icon: 'build_circle', key: 'app.nav.maintenance', to: '/maintenance', separator: false },
-  { icon: 'history', key: 'app.nav.activity', to: '/activity', separator: false },
-  { icon: 'work', key: 'app.nav.jobs', to: '/jobs', separator: false },
-  { icon: 'folder', key: 'app.nav.projects', to: '/projects', separator: false },
-  { icon: 'business', key: 'app.nav.customers', to: '/customers', separator: false },
-  { icon: 'local_shipping', key: 'app.nav.suppliers', to: '/suppliers', separator: false },
-  { icon: 'groups', key: 'app.nav.crew', to: '/crew', separator: false },
-  { icon: 'place', key: 'app.nav.venues', to: '/venues', separator: false },
-  { icon: 'payments', key: 'app.nav.finance', to: '/finance', separator: false },
-  { icon: 'alt_route', key: 'app.nav.routePlanner', to: '/route-planner', separator: false }
+// ── Grouped navigation ──────────────────────────────────────────────────────
+
+const NAV_STORAGE_KEY = 'ec_nav_expanded'
+
+function loadExpandedState() {
+  try {
+    const raw = localStorage.getItem(NAV_STORAGE_KEY)
+    return raw ? JSON.parse(raw) : {}
+  } catch {
+    return {}
+  }
+}
+
+function saveExpandedState(state) {
+  try {
+    localStorage.setItem(NAV_STORAGE_KEY, JSON.stringify(state))
+  } catch {
+    // ignore storage errors
+  }
+}
+
+const navGroups = [
+  {
+    key: 'inventory',
+    icon: 'inventory_2',
+    labelKey: 'app.nav.group.inventory',
+    children: [
+      { icon: 'inventory_2', labelKey: 'app.nav.inventory', to: '/inventory' },
+      { icon: 'print', labelKey: 'app.nav.labels', to: '/labels' },
+      { icon: 'qr_code_scanner', labelKey: 'app.nav.scan', to: '/scan' },
+    ],
+  },
+  {
+    key: 'maintenance',
+    icon: 'build_circle',
+    labelKey: 'app.nav.group.maintenance',
+    children: [
+      { icon: 'build_circle', labelKey: 'app.nav.maintenance', to: '/maintenance' },
+    ],
+  },
+  {
+    key: 'operations',
+    icon: 'work',
+    labelKey: 'app.nav.group.operations',
+    children: [
+      { icon: 'work', labelKey: 'app.nav.jobs', to: '/jobs' },
+      { icon: 'folder', labelKey: 'app.nav.projects', to: '/projects' },
+      { icon: 'payments', labelKey: 'app.nav.finance', to: '/finance' },
+      { icon: 'alt_route', labelKey: 'app.nav.routePlanner', to: '/route-planner' },
+    ],
+  },
+  {
+    key: 'people',
+    icon: 'groups',
+    labelKey: 'app.nav.group.people',
+    children: [
+      { icon: 'business', labelKey: 'app.nav.companies', to: '/companies' },
+      { icon: 'groups', labelKey: 'app.nav.crew', to: '/crew' },
+      { icon: 'place', labelKey: 'app.nav.venues', to: '/venues' },
+    ],
+  },
 ]
 
-const menuList = computed(() => {
-  const items = baseMenuList.map(item => ({ ...item, label: t(item.key) }))
-  if (authStore.canManageSettings) {
-    return [...items, { icon: 'tune', label: t('app.nav.settings'), to: '/settings', separator: false }]
-  }
-  return items
-})
+const expandedGroups = reactive(loadExpandedState())
 
-// Responsive mode helpers
+watch(expandedGroups, (val) => {
+  saveExpandedState({ ...val })
+}, { deep: true })
+
+function onChildNavigate() {
+  if (isPhone.value) {
+    drawerOpen.value = false
+  }
+}
+
+// ── Responsive mode helpers ─────────────────────────────────────────────────
+
 const isPhone = computed(() => $q.screen.width < 600)
 const isMiniMode = computed(() => $q.screen.width >= 600 && $q.screen.width < 1024)
 const isDesktop = computed(() => $q.screen.width >= 1024)
@@ -256,10 +352,6 @@ const miniActive = computed(() => isMiniMode.value || forceMini.value)
 
 const drawerWidth = computed(() => 220)
 
-// no separate header mini toggle; hamburger controls mini/full on medium+ screens
-
-// Initialize drawer state based on screen size and keep it updated when
-// breakpoints change.
 function setDrawerForScreen() {
   if (forceMini.value) {
     drawerOpen.value = true
@@ -270,17 +362,14 @@ function setDrawerForScreen() {
     drawerOpen.value = true
     drawerExpanded.value = false
   } else if (isMiniMode.value) {
-    // keep open so mini bar is visible; collapsed by default
     drawerOpen.value = true
     drawerExpanded.value = false
   } else {
-    // phone / very small: closed by default
     drawerOpen.value = false
     drawerExpanded.value = false
   }
 }
 
-// call once and watch for changes
 setDrawerForScreen()
 watch(() => $q.screen.width, () => setDrawerForScreen())
 
@@ -289,17 +378,8 @@ function handleMenuClick() {
     drawerOpen.value = !drawerOpen.value
     return
   }
-  // medium and up: toggle between mini and full
   forceMini.value = !forceMini.value
   drawerOpen.value = true
   drawerExpanded.value = false
-}
-
-function onNavigate(item) {
-  // only auto-close drawer on phones
-  if (isPhone.value) {
-    drawerOpen.value = false
-  }
-  if (item.to) router.push(item.to)
 }
 </script>

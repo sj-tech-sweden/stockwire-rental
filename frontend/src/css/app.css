@@ -54,6 +54,13 @@ body {
   min-height: calc(100vh - 60px);
 }
 
+.text-break {
+  overflow-wrap: break-word;
+  word-wrap: break-word;
+  word-break: break-word;
+  min-width: 0;
+}
+
 .ec-card {
   background: var(--ec-surface) !important;
   border: 1px solid rgba(63, 135, 63, 0.08) !important;
@@ -520,4 +527,44 @@ body.body--dark .ec-card .q-table tbody td {
   background: var(--ec-surface) !important;
   color: var(--ec-text) !important;
   border-color: rgba(110, 150, 145, 0.22) !important;
+}
+
+/* ── Mobile overrides ─────────────────────────────────────────────────────── */
+
+@media (max-width: 599px) {
+  .ec-page {
+    padding-left: 8px;
+    padding-right: 8px;
+  }
+
+  /* Prevent Quasar inputs/selects from forcing min-width */
+  .ec-page .q-field--outlined .q-field__control,
+  .ec-page .q-field--standard .q-field__control {
+    min-width: 0 !important;
+  }
+
+  /* Prevent cards from overflowing */
+  .ec-page .ec-card {
+    min-width: 0;
+    max-width: 100%;
+    overflow: hidden;
+  }
+
+  /* Make rows wrap properly */
+  .ec-page .row {
+    min-width: 0;
+  }
+
+  /* Prevent text content from overflowing */
+  .ec-page .text-h5,
+  .ec-page .text-h6 {
+    overflow-wrap: break-word;
+    word-wrap: break-word;
+    word-break: break-word;
+  }
+
+  /* Stack card header buttons vertically on very small screens */
+  .ec-page .q-card__section.row.items-center {
+    flex-wrap: wrap;
+  }
 }
