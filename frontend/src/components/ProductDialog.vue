@@ -41,6 +41,42 @@
             </div>
           </div>
 
+          <div class="row items-center q-col-gutter-sm q-my-md">
+            <div class="col-auto">
+              <q-img
+                v-if="productImageUrl"
+                :src="productImageUrl"
+                style="width: 80px; height: 80px; border-radius: 8px"
+                fit="cover"
+              >
+                <template #error>
+                  <div class="absolute-full flex flex-center bg-grey-3">
+                    <q-icon name="broken_image" color="grey-6" size="24px" />
+                  </div>
+                </template>
+              </q-img>
+              <q-avatar v-else color="grey-3" text-color="grey-6" size="80px">
+                <q-icon name="inventory_2" size="36px" />
+              </q-avatar>
+            </div>
+            <div class="col">
+              <div class="text-subtitle2 q-mb-xs">{{ t('inventory.productImage') }}</div>
+              <q-file
+                v-model="productImageFile"
+                accept="image/*"
+                outlined
+                dense
+                :label="t('inventory.uploadImage')"
+                @update:model-value="onProductImageSelected"
+              >
+                <template #prepend><q-icon name="image" /></template>
+                <template #append>
+                  <q-btn v-if="productImageFile || productImageUrl" flat dense round icon="close" size="sm" @click.stop="clearProductImage" />
+                </template>
+              </q-file>
+            </div>
+          </div>
+
           <q-separator class="q-my-md" />
           <div class="text-subtitle2 q-mb-sm">Brand and Manufacturer</div>
           <div class="row q-col-gutter-sm">
@@ -486,6 +522,8 @@ import { useCustomFieldsStore } from '../stores/customFields'
 import { translateMaybePrefillCustomFieldLabel, translateMaybePrefillCustomFieldOption } from '../i18n/prefillContent'
 import { normalizeCurrencyCode } from '../constants/currencies'
 import { isRentalProduct } from '../utils/inventory-overview'
+import { useProductImage } from '../composables/useProductImage'
+import { api } from '../boot/axios'
 import EntityAttachmentsPanel from './EntityAttachmentsPanel.vue'
 import SupplierPickerInline from './SupplierPickerInline.vue'
 
@@ -528,6 +566,10 @@ const generatingProductSku = ref(false)
 const productSkuPrefix = ref('PRD-')
 const skuPrefixByProductType = ref({})
 const PREFIX_MEMORY_STORAGE_KEY = 'inventory.prefix-memory.v1'
+const productImageFile = ref(null)
+const existingImageFileId = ref(null)
+const imageCleared = ref(false)
+const { imageUrl: productImageUrl, fetchImage: fetchExistingProductImage, cleanup: cleanupProductImage } = useProductImage()
 
 const productEditing = ref(null)
 const productDialogError = ref('')
@@ -1197,6 +1239,14 @@ async function saveProduct() {
         field_definition_id: row.field_definition_id,
         value: row.value,
       })))
+      if (imageCleared.value && existingImageFileId.value) {
+        await api.delete(`/api/v1/storage/files/${existingImageFileId.value}`).catch(() => {})
+      } else if (productImageFile.value) {
+        if (existingImageFileId.value) {
+          await api.delete(`/api/v1/storage/files/${existingImageFileId.value}`).catch(() => {})
+        }
+        await uploadProductImage(savedProduct.id)
+      }
     }
 
     emit('update:modelValue', false)
@@ -1209,11 +1259,65 @@ async function saveProduct() {
 }
 
 function closeProductDialog() {
+  cleanupProductImage()
+  productImageFile.value = null
+  existingImageFileId.value = null
+  imageCleared.value = false
   emit('update:modelValue', false)
+}
+
+function onProductImageSelected() {
+  cleanupProductImage()
+  if (productImageFile.value) {
+    productImageUrl.value = URL.createObjectURL(productImageFile.value)
+    imageCleared.value = false
+  } else {
+    productImageUrl.value = ''
+  }
+}
+
+function clearProductImage() {
+  cleanupProductImage()
+  productImageFile.value = null
+  imageCleared.value = true
+}
+
+async function uploadProductImage(productId) {
+  if (!productImageFile.value || !productId) return
+  const formData = new FormData()
+  formData.append('file', productImageFile.value)
+  formData.append('entity_type', 'product')
+  formData.append('entity_id', String(productId))
+  formData.append('category', 'product-image')
+  await api.post('/api/v1/storage/files', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  })
+}
+
+async function loadExistingProductImage(productId) {
+  existingImageFileId.value = null
+  if (!productId) {
+    cleanupProductImage()
+    return
+  }
+  try {
+    const { data } = await api.get('/api/v1/storage/files', {
+      params: { entity_type: 'product', entity_id: productId, category: 'product-image' },
+    })
+    const files = Array.isArray(data) ? data : []
+    if (files.length) {
+      existingImageFileId.value = files[0].id
+    }
+  } catch {
+    existingImageFileId.value = null
+  }
+  await fetchExistingProductImage(productId)
 }
 
 watch(() => props.modelValue, async (open) => {
   if (open) {
+    imageCleared.value = false
+    existingImageFileId.value = null
     if (!customFieldsStore.definitions.length) {
       await customFieldsStore.fetchDefinitions('product')
     }
@@ -1222,9 +1326,15 @@ watch(() => props.modelValue, async (open) => {
     }
     if (props.product) {
       await openEditProduct(props.product)
+      await loadExistingProductImage(props.product.id)
     } else {
       openCreateProduct()
     }
+  } else {
+    cleanupProductImage()
+    productImageFile.value = null
+    existingImageFileId.value = null
+    imageCleared.value = false
   }
 })
 </script>

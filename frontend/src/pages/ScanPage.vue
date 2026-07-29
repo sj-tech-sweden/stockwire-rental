@@ -283,6 +283,19 @@
         <q-card v-if="scanAction === 'lookup' && lastLookupResult" flat bordered class="q-mt-md lookup-details-card">
           <q-card-section>
             <div class="row items-center q-mb-sm">
+              <q-img
+                v-if="lookupProductImageUrl"
+                :src="lookupProductImageUrl"
+                style="width: 56px; height: 56px; border-radius: 6px"
+                fit="cover"
+                class="q-mr-sm"
+              >
+                <template #error>
+                  <div class="absolute-full flex flex-center bg-grey-3">
+                    <q-icon name="broken_image" color="grey-6" size="18px" />
+                  </div>
+                </template>
+              </q-img>
               <div class="col">
                 <div class="text-subtitle1">{{ t('scan.lookupDetails') }}</div>
                 <div v-if="lastLookupResult.device_details?.asset_tag" class="text-h6 text-weight-bold">
@@ -956,6 +969,7 @@ import { useInventoryStore } from '../stores/inventory'
 import { useJobsStore } from '../stores/jobs'
 import { useWarehouseLedsStore } from '../stores/warehouseLeds'
 import { useCompactGrid } from '../composables/useCompactGrid'
+import { useProductImage } from '../composables/useProductImage'
 import { shouldSuppressDuplicateCameraScan } from '../utils/scan-camera'
 import ShortcutHelpDialog from '../components/ShortcutHelpDialog.vue'
 import DefectReportDialog from '../components/DefectReportDialog.vue'
@@ -997,6 +1011,7 @@ const scanResultMessage = ref('')
 const scanResultSuccess = ref(false)
 const lastLookupCode = ref('')
 const lastLookupResult = ref(null)
+const { imageUrl: lookupProductImageUrl, fetchImage: fetchLookupProductImage, cleanup: clearLookupProductImage } = useProductImage()
 const lastIntakeResult = ref(null)
 const recentMovedDevices = ref([])
 const workflowDeviceSelections = ref({})
@@ -2103,6 +2118,7 @@ function onActionChanged() {
   scanZoneCode.value = ''
   if (scanAction.value !== 'lookup') {
     lastLookupResult.value = null
+    clearLookupProductImage()
   }
   if (scanAction.value !== 'job_in') {
     lastIntakeResult.value = null
@@ -2514,6 +2530,7 @@ async function runScanAction() {
     if (scanAction.value === 'lookup' && response.success) {
       lastLookupCode.value = response.asset_tag || code
       lastLookupResult.value = response
+      fetchLookupProductImage(response.product_details?.id)
     }
     if (scanAction.value === 'job_in') {
       lastIntakeResult.value = response.success && Number(response.device_id || 0) > 0 ? response : null
@@ -2784,6 +2801,7 @@ onBeforeUnmount(() => {
   }
   stopCameraScan()
   stopNfcScan()
+  clearLookupProductImage()
 })
 </script>
 

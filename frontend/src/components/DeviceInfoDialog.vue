@@ -1,10 +1,28 @@
 <template>
   <q-dialog :model-value="modelValue" :maximized="effectiveIsPhone" @update:model-value="emit('update:modelValue', $event)">
     <q-card :style="effectiveIsPhone ? 'width: 100vw; max-width: 100vw; height: 100vh' : 'min-width: 820px; max-width: 96vw'" class="ec-card">
-      <q-card-section>
-        <div class="text-h6">{{ t('inventory.infoDialogs.deviceTitle', { assetTag: device?.asset_tag || '-' }) }}</div>
-        <div class="text-caption text-grey-7">
-          {{ device ? (store.products.find(item => item.id === device.product_id)?.name || t('inventory.productWithId', { id: device.product_id })) : '-' }}
+      <q-card-section class="row items-start no-wrap">
+        <q-img
+          v-if="productImageUrl"
+          :src="productImageUrl"
+          style="width: 64px; height: 64px; border-radius: 6px"
+          fit="cover"
+          class="q-mr-md"
+        >
+          <template #error>
+            <div class="absolute-full flex flex-center bg-grey-3">
+              <q-icon name="broken_image" color="grey-6" size="20px" />
+            </div>
+          </template>
+        </q-img>
+        <q-avatar v-else color="grey-3" text-color="grey-6" size="64px" class="q-mr-md">
+          <q-icon name="devices_other" size="28px" />
+        </q-avatar>
+        <div>
+          <div class="text-h6">{{ t('inventory.infoDialogs.deviceTitle', { assetTag: device?.asset_tag || '-' }) }}</div>
+          <div class="text-caption text-grey-7">
+            {{ device ? (store.products.find(item => item.id === device.product_id)?.name || t('inventory.productWithId', { id: device.product_id })) : '-' }}
+          </div>
         </div>
       </q-card-section>
 
@@ -517,7 +535,7 @@ import { useCustomersStore } from '../stores/customers'
 import { useSettingsStore } from '../stores/settings'
 import { useWarehouseLedsStore } from '../stores/warehouseLeds'
 import { normalizeCurrencyCode } from '../constants/currencies'
-import { api } from '../boot/axios'
+import { useProductImage } from '../composables/useProductImage'
 import EntityAttachmentsPanel from './EntityAttachmentsPanel.vue'
 import LocateDeviceMapDialog from './LocateDeviceMapDialog.vue'
 
@@ -537,6 +555,7 @@ const settingsStore = useSettingsStore()
 const warehouseLedsStore = useWarehouseLedsStore()
 
 const effectiveIsPhone = computed(() => props.isPhone || $q.screen.lt.md)
+const { imageUrl: productImageUrl, fetchImage: fetchProductImage, cleanup: cleanupProductImage } = useProductImage()
 
 const deviceInfoAudits = ref([])
 const deviceInfoDefects = ref([])
@@ -893,6 +912,9 @@ watch(() => props.modelValue, (open) => {
       customersStore.fetchAll().catch(() => {})
     }
     void loadDeviceData(props.device)
+    fetchProductImage(props.device.product_id)
+  } else {
+    cleanupProductImage()
   }
 })
 </script>
