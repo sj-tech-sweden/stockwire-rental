@@ -2,7 +2,7 @@ import re
 import json
 from datetime import date
 from urllib.request import Request
-from urllib.parse import urljoin, urlencode
+from urllib.parse import urljoin
 from urllib.error import HTTPError, URLError
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
@@ -702,6 +702,7 @@ def verify_eventory_job(
                 return VerifyEventoryResponse(exists=bool(data.get("id")))
             return VerifyEventoryResponse(exists=False)
     except Exception:
+        # Network or parsing error — treat as not found
         return VerifyEventoryResponse(exists=False)
 
 
@@ -737,6 +738,7 @@ def _create_eventory_job(api_url: str, headers: dict, job: Job, customer_id: str
             try:
                 error_body = exc.fp.read().decode("utf-8", errors="replace")
             except Exception:
+                # Response body may be unreadable — use reason phrase instead
                 pass
         raise HTTPException(
             status_code=502,
@@ -768,6 +770,7 @@ def _create_eventory_pack_list(api_url: str, headers: dict, eventory_job_id: str
             try:
                 error_body = exc.fp.read().decode("utf-8", errors="replace")
             except Exception:
+                # Response body may be unreadable
                 pass
         raise HTTPException(
             status_code=502,
@@ -795,6 +798,7 @@ def _create_eventory_pack_list_rental(
                 try:
                     error_body = resp.read().decode("utf-8", errors="replace")
                 except Exception:
+                    # Response body may be unreadable
                     pass
                 raise HTTPException(
                     status_code=502,
@@ -808,6 +812,7 @@ def _create_eventory_pack_list_rental(
             try:
                 error_body = exc.fp.read().decode("utf-8", errors="replace")
             except Exception:
+                # Response body may be unreadable
                 pass
         raise HTTPException(
             status_code=502,
@@ -836,6 +841,7 @@ def _update_eventory_job(api_url: str, headers: dict, eventory_job_id: str, job:
             try:
                 error_body = exc.fp.read().decode("utf-8", errors="replace")
             except Exception:
+                # Response body may be unreadable
                 pass
         raise HTTPException(
             status_code=502,
@@ -858,6 +864,7 @@ def _get_or_create_eventory_pack_list(api_url: str, headers: dict, eventory_job_
                         if pack_lists:
                             return str(pack_lists[0].get("id") or "")
     except Exception:
+        # Best-effort: ignore errors from secondary API calls
         pass
 
     return _create_eventory_pack_list(api_url, headers, eventory_job_id, job_code)
@@ -877,6 +884,7 @@ def _sync_eventory_pack_list_rentals(
                 if rental_id:
                     existing_rentals[rental_id] = str(item.get("id") or "")
     except Exception:
+        # Best-effort: ignore errors from secondary API calls
         pass
 
     desired_rental_ids = set()
@@ -911,6 +919,7 @@ def _delete_eventory_pack_list_rental(api_url: str, headers: dict, plr_id: str) 
         with _open_outbound_integration_request(req, timeout=10) as resp:
             pass
     except Exception:
+        # Best-effort: ignore errors from secondary API calls
         pass
 
 
@@ -922,4 +931,5 @@ def _update_eventory_pack_list_rental(api_url: str, headers: dict, plr_id: str, 
         with _open_outbound_integration_request(req, timeout=10) as resp:
             pass
     except Exception:
+        # Best-effort: ignore errors from secondary API calls
         pass
