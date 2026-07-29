@@ -9,7 +9,7 @@ description = "Stockwire Rental backend"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
-  "fastapi==0.140.13",
+  "fastapi==0.141.1",
   "uvicorn[standard]==0.52.0",
   "email-validator==2.3.0",
   "pydantic-settings==2.14.2",
