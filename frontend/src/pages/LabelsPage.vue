@@ -1437,7 +1437,6 @@ async function renderLabelToCanvas(ctx, row, canvasW, canvasH, labelWmm, labelHm
 }
 
 function resolveFieldValue(row, source) {
-function resolveFieldValue(row, source) {
   return resolveValue(row, source)
 }
 
