@@ -972,9 +972,7 @@ export default {
   },
   jobs: {
     title: 'Jobb',
-    newJob: 'Nytt jobb',
     editJob: 'Redigera jobb',
-    create: 'Skapa',
     delete: 'Ta bort',
     searchJobs: 'Sök jobb',
     jobInfo: 'Jobbinfo',

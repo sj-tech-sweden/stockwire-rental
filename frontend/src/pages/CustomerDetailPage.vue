@@ -442,6 +442,7 @@ import { useInventoryStore } from '../stores/inventory'
 import { useAuthStore } from '../stores/auth'
 import { useSettingsStore } from '../stores/settings'
 import { COUNTRIES } from '../constants/countries'
+import { normalizeCurrencyCode } from '../constants/currencies'
 import { translateMaybePrefillCustomFieldLabel, translateMaybePrefillCustomFieldOption } from '../i18n/prefillContent'
 import CustomerDeleteDialog from '../components/CustomerDeleteDialog.vue'
 import CustomerCustomFieldsDialog from '../components/CustomerCustomFieldsDialog.vue'
@@ -542,7 +543,20 @@ function getCertName(certId) {
 
 function formatMoney(value) {
   const amount = Number(value || 0)
-  return amount.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })
+  const currentCurrency = normalizeCurrencyCode(settingsStore.companyProfile?.currency, 'SEK')
+  try {
+    return new Intl.NumberFormat(undefined, {
+      style: 'currency',
+      currency: currentCurrency,
+      maximumFractionDigits: 2,
+    }).format(amount)
+  } catch {
+    return new Intl.NumberFormat(undefined, {
+      style: 'currency',
+      currency: 'SEK',
+      maximumFractionDigits: 2,
+    }).format(amount)
+  }
 }
 
 function customFieldLabel(label) {

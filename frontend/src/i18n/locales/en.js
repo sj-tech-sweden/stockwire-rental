@@ -972,9 +972,7 @@ export default {
   },
   jobs: {
     title: 'Jobs',
-    newJob: 'New job',
     editJob: 'Edit job',
-    create: 'Create',
     delete: 'Delete',
     searchJobs: 'Search jobs',
     jobInfo: 'Job Info',
