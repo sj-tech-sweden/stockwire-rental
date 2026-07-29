@@ -112,6 +112,28 @@ export const useJobsStore = defineStore('jobs', () => {
     await persistSnapshot()
   }
 
+  async function createEventoryRentals(jobId, instanceId) {
+    const { data } = await api.post(`/api/v1/jobs/${jobId}/create-eventory-rentals`, {
+      instance_id: instanceId,
+    })
+    const idx = jobs.value.findIndex(j => j.id === jobId)
+    if (idx !== -1) {
+      jobs.value[idx] = data
+    }
+    return data
+  }
+
+  async function updateEventoryRentals(jobId, instanceId) {
+    const { data } = await api.post(`/api/v1/jobs/${jobId}/update-eventory-rentals`, {
+      instance_id: instanceId,
+    })
+    const idx = jobs.value.findIndex(j => j.id === jobId)
+    if (idx !== -1) {
+      jobs.value[idx] = data
+    }
+    return data
+  }
+
   async function createRequirement(payload) {
     if (!isOnline()) {
       const tempId = -Date.now()
@@ -199,6 +221,8 @@ export const useJobsStore = defineStore('jobs', () => {
     generateJobCode,
     updateJob,
     deleteJob,
+    createEventoryRentals,
+    updateEventoryRentals,
     createRequirement,
     updateRequirement,
     bulkUpsertRequirements,

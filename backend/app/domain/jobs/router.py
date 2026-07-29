@@ -1,7 +1,12 @@
 import re
+import json
 from datetime import date
+from urllib.request import Request
+from urllib.parse import urljoin
+from urllib.error import HTTPError, URLError
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
+from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
@@ -31,7 +36,13 @@ from app.services.productionplanner import (
     ProductionPlannerError,
     batch_task_labels,
 )
-from app.domain.settings.router import _parse_integrations, INTEGRATIONS_KEY
+from app.domain.settings.router import (
+    _parse_integrations,
+    _fetch_eventory_token,
+    _eventory_set_headers,
+    _open_outbound_integration_request,
+    INTEGRATIONS_KEY,
+)
 from app.config import settings
 
 router = APIRouter(prefix="/jobs", tags=["jobs"], dependencies=[Depends(get_current_user)])
@@ -475,3 +486,450 @@ def bulk_upsert_requirements(job_id: int, payload: JobRequirementBulkUpsert, db:
     db.commit()
     emit_realtime_event("jobs.updated", {"entity": "requirement", "action": "bulk_upsert", "job_id": job_id})
     return list(db.scalars(select(JobRequirement).where(JobRequirement.job_id == job_id).order_by(JobRequirement.id)).all())
+
+
+# ── Eventory Rental Job Creation ─────────────────────────────────────────────
+
+
+class CreateEventoryRentalsRequest(BaseModel):
+    instance_id: str
+
+
+@router.post("/{job_id}/create-eventory-rentals", response_model=JobRead)
+def create_eventory_rentals(
+    job_id: int,
+    payload: CreateEventoryRentalsRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_editor),
+) -> JobRead:
+    job = db.execute(
+        select(Job).where(Job.id == job_id).with_for_update()
+    ).scalar_one_or_none()
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    integrations = _parse_integrations(_get_integrations_json(db))
+    instances = integrations.get("eventory_instances", [])
+    instance = next((i for i in instances if i.get("id") == payload.instance_id), None)
+    if not instance:
+        raise HTTPException(status_code=404, detail="Eventory instance not found")
+
+    if not instance.get("create_jobs"):
+        raise HTTPException(status_code=400, detail="Job creation is disabled for this Eventory instance")
+
+    rental_customer_id = str(instance.get("rental_customer_id") or "").strip()
+    if not rental_customer_id:
+        raise HTTPException(status_code=400, detail="Rental customer ID is not configured for this Eventory instance")
+
+    api_url = str(instance.get("api_url") or "").strip()
+    api_key = str(instance.get("api_key") or "").strip()
+    username = str(instance.get("username") or "").strip()
+    password = str(instance.get("password") or "").strip()
+    token_endpoint = str(instance.get("token_endpoint") or "").strip()
+
+    oauth_token = ""
+    if username and password:
+        oauth_token = _fetch_eventory_token(api_url, token_endpoint, username, password)
+
+    headers = {"Accept": "application/json", "Content-Type": "application/json"}
+    _eventory_set_headers(headers, oauth_token, api_key)
+
+    requirements = list(db.scalars(
+        select(JobRequirement)
+        .where(JobRequirement.job_id == job_id)
+        .options(selectinload(JobRequirement.product))
+    ).all())
+
+    instance_id = payload.instance_id
+    rental_reqs = [
+        r for r in requirements
+        if r.product
+        and r.product.is_rental_product
+        and r.product.external_reference
+        and r.product.external_reference.startswith(f"{instance_id}:")
+    ]
+
+    if not rental_reqs:
+        raise HTTPException(status_code=400, detail="No Eventory rental products found for this instance")
+
+    if not job.start_date or not job.end_date:
+        raise HTTPException(
+            status_code=400,
+            detail="Job must have start and end dates to create an Eventory booking. Please set dates on the job first.",
+        )
+
+    eventory_job_id = _create_eventory_job(
+        api_url, headers, job, rental_customer_id
+    )
+
+    pack_list_id = _create_eventory_pack_list(
+        api_url, headers, eventory_job_id, job.job_code
+    )
+
+    for req in rental_reqs:
+        external_ref = req.product.external_reference or ""
+        eventory_rental_id = external_ref.split(":", 1)[1] if ":" in external_ref else ""
+        if not eventory_rental_id:
+            continue
+        _create_eventory_pack_list_rental(
+            api_url, headers, pack_list_id, eventory_rental_id, req.quantity_required
+        )
+
+    eventory_ids = json.loads(job.eventory_job_ids or "{}") if job.eventory_job_ids else {}
+    eventory_ids[instance_id] = eventory_job_id
+    job.eventory_job_ids = json.dumps(eventory_ids)
+    db.commit()
+    db.refresh(job)
+
+    return JobRead.model_validate(job)
+
+
+@router.post("/{job_id}/update-eventory-rentals", response_model=JobRead)
+def update_eventory_rentals(
+    job_id: int,
+    payload: CreateEventoryRentalsRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_editor),
+) -> JobRead:
+    job = db.execute(
+        select(Job).where(Job.id == job_id).with_for_update()
+    ).scalar_one_or_none()
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    if not job.start_date or not job.end_date:
+        raise HTTPException(
+            status_code=400,
+            detail="Job must have start and end dates to update an Eventory booking.",
+        )
+
+    eventory_ids = json.loads(job.eventory_job_ids or "{}") if job.eventory_job_ids else {}
+    eventory_job_id = eventory_ids.get(payload.instance_id)
+    if not eventory_job_id:
+        raise HTTPException(status_code=400, detail="No Eventory booking found for this instance. Create one first.")
+
+    integrations = _parse_integrations(_get_integrations_json(db))
+    instances = integrations.get("eventory_instances", [])
+    instance = next((i for i in instances if i.get("id") == payload.instance_id), None)
+    if not instance:
+        raise HTTPException(status_code=404, detail="Eventory instance not found")
+
+    api_url = str(instance.get("api_url") or "").strip()
+    api_key = str(instance.get("api_key") or "").strip()
+    username = str(instance.get("username") or "").strip()
+    password = str(instance.get("password") or "").strip()
+    token_endpoint = str(instance.get("token_endpoint") or "").strip()
+
+    oauth_token = ""
+    if username and password:
+        oauth_token = _fetch_eventory_token(api_url, token_endpoint, username, password)
+
+    headers = {"Accept": "application/json", "Content-Type": "application/json"}
+    _eventory_set_headers(headers, oauth_token, api_key)
+
+    requirements = list(db.scalars(
+        select(JobRequirement)
+        .where(JobRequirement.job_id == job_id)
+        .options(selectinload(JobRequirement.product))
+    ).all())
+
+    instance_id = payload.instance_id
+    rental_reqs = [
+        r for r in requirements
+        if r.product
+        and r.product.is_rental_product
+        and r.product.external_reference
+        and r.product.external_reference.startswith(f"{instance_id}:")
+    ]
+
+    _update_eventory_job(api_url, headers, eventory_job_id, job)
+
+    pack_list_id = _get_or_create_eventory_pack_list(
+        api_url, headers, eventory_job_id, job.job_code
+    )
+
+    _sync_eventory_pack_list_rentals(
+        api_url, headers, pack_list_id, rental_reqs, instance_id
+    )
+
+    return JobRead.model_validate(job)
+
+
+class VerifyEventoryRequest(BaseModel):
+    instance_id: str
+    eventory_job_id: str
+
+
+class VerifyEventoryResponse(BaseModel):
+    exists: bool
+
+
+@router.post("/verify-eventory-job", response_model=VerifyEventoryResponse)
+def verify_eventory_job(
+    payload: VerifyEventoryRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> VerifyEventoryResponse:
+    integrations = _parse_integrations(_get_integrations_json(db))
+    instances = integrations.get("eventory_instances", [])
+    instance = next((i for i in instances if i.get("id") == payload.instance_id), None)
+    if not instance:
+        return VerifyEventoryResponse(exists=False)
+
+    api_url = str(instance.get("api_url") or "").strip()
+    api_key = str(instance.get("api_key") or "").strip()
+    username = str(instance.get("username") or "").strip()
+    password = str(instance.get("password") or "").strip()
+    token_endpoint = str(instance.get("token_endpoint") or "").strip()
+
+    oauth_token = ""
+    if username and password:
+        try:
+            oauth_token = _fetch_eventory_token(api_url, token_endpoint, username, password)
+        except Exception:
+            return VerifyEventoryResponse(exists=False)
+
+    headers = {"Accept": "application/json"}
+    _eventory_set_headers(headers, oauth_token, api_key)
+
+    job_url = urljoin(api_url.rstrip("/") + "/", f"jobs/{payload.eventory_job_id}")
+    req = Request(job_url, headers=headers, method="GET")
+    try:
+        with _open_outbound_integration_request(req, timeout=10) as resp:
+            status_code = getattr(resp, "status", 200)
+            if status_code == 200:
+                data = json.loads(resp.read().decode("utf-8") or "{}")
+                return VerifyEventoryResponse(exists=bool(data.get("id")))
+            return VerifyEventoryResponse(exists=False)
+    except Exception:
+        # Network or parsing error — treat as not found
+        return VerifyEventoryResponse(exists=False)
+
+
+def _get_integrations_json(db: Session) -> str:
+    from app.domain.settings.models import AppSetting
+    setting = db.execute(select(AppSetting).where(AppSetting.key == INTEGRATIONS_KEY)).scalar_one_or_none()
+    return setting.value_json or "{}" if setting else "{}"
+
+
+def _create_eventory_job(api_url: str, headers: dict, job: Job, customer_id: str) -> str:
+    job_url = urljoin(api_url.rstrip("/") + "/", "jobs")
+    body = json.dumps({
+        "name": job.job_code,
+        "customer_id": customer_id,
+        "startDate": job.start_date.isoformat() if job.start_date else None,
+        "endDate": job.end_date.isoformat() if job.end_date else None,
+        "status": "quotation",
+        "note": f"Created from Stockwire job {job.job_code}",
+    }).encode("utf-8")
+    req = Request(job_url, data=body, headers=headers, method="POST")
+    try:
+        with _open_outbound_integration_request(req, timeout=15) as resp:
+            data = json.loads(resp.read().decode("utf-8") or "{}")
+            job_id = str(data.get("id") or "").strip()
+            if not job_id:
+                raise HTTPException(status_code=502, detail=f"Eventory API returned no job ID: {data}")
+            return job_id
+    except HTTPException:
+        raise
+    except HTTPError as exc:
+        error_body = ""
+        if exc.fp:
+            try:
+                error_body = exc.fp.read().decode("utf-8", errors="replace")
+            except Exception:
+                # Response body may be unreadable — use reason phrase instead
+                pass
+        raise HTTPException(
+            status_code=502,
+            detail=f"Eventory job creation failed (HTTP {exc.code}): {error_body or str(exc.reason)}"
+        )
+    except (URLError, Exception) as exc:
+        raise HTTPException(status_code=502, detail=f"Failed to create Eventory job: {exc}")
+
+
+def _create_eventory_pack_list(api_url: str, headers: dict, eventory_job_id: str, job_code: str) -> str:
+    pl_url = urljoin(api_url.rstrip("/") + "/", "pack-lists")
+    body = json.dumps({
+        "name": f"Stockwire - {job_code}",
+        "job_id": eventory_job_id,
+    }).encode("utf-8")
+    req = Request(pl_url, data=body, headers=headers, method="POST")
+    try:
+        with _open_outbound_integration_request(req, timeout=15) as resp:
+            data = json.loads(resp.read().decode("utf-8") or "{}")
+            pl_id = str(data.get("id") or "").strip()
+            if not pl_id:
+                raise HTTPException(status_code=502, detail=f"Eventory API returned no pack list ID: {data}")
+            return pl_id
+    except HTTPException:
+        raise
+    except HTTPError as exc:
+        error_body = ""
+        if exc.fp:
+            try:
+                error_body = exc.fp.read().decode("utf-8", errors="replace")
+            except Exception:
+                # Response body may be unreadable
+                pass
+        raise HTTPException(
+            status_code=502,
+            detail=f"Eventory pack list creation failed (HTTP {exc.code}): {error_body or str(exc.reason)}"
+        )
+    except (URLError, Exception) as exc:
+        raise HTTPException(status_code=502, detail=f"Failed to create Eventory pack list: {exc}")
+
+
+def _create_eventory_pack_list_rental(
+    api_url: str, headers: dict, pack_list_id: str, rental_id: str, quantity: int
+) -> None:
+    plr_url = urljoin(api_url.rstrip("/") + "/", "pack-list-rentals")
+    body = json.dumps({
+        "packList_id": pack_list_id,
+        "rental_id": rental_id,
+        "quantity": quantity,
+    }).encode("utf-8")
+    req = Request(plr_url, data=body, headers=headers, method="POST")
+    try:
+        with _open_outbound_integration_request(req, timeout=15) as resp:
+            status_code = getattr(resp, "status", 200)
+            if status_code and status_code >= 400:
+                error_body = ""
+                try:
+                    error_body = resp.read().decode("utf-8", errors="replace")
+                except Exception:
+                    # Response body may be unreadable
+                    pass
+                raise HTTPException(
+                    status_code=502,
+                    detail=f"Eventory pack list rental failed (HTTP {status_code}): {error_body}"
+                )
+    except HTTPException:
+        raise
+    except HTTPError as exc:
+        error_body = ""
+        if exc.fp:
+            try:
+                error_body = exc.fp.read().decode("utf-8", errors="replace")
+            except Exception:
+                # Response body may be unreadable
+                pass
+        raise HTTPException(
+            status_code=502,
+            detail=f"Eventory pack list rental failed (HTTP {exc.code}): {error_body or str(exc.reason)}"
+        )
+    except (URLError, Exception) as exc:
+        raise HTTPException(status_code=502, detail=f"Failed to create Eventory pack list rental: {exc}")
+
+
+def _update_eventory_job(api_url: str, headers: dict, eventory_job_id: str, job: Job) -> None:
+    job_url = urljoin(api_url.rstrip("/") + "/", f"jobs/{eventory_job_id}")
+    body = json.dumps({
+        "name": job.job_code,
+        "startDate": job.start_date.isoformat() if job.start_date else None,
+        "endDate": job.end_date.isoformat() if job.end_date else None,
+    }).encode("utf-8")
+    req = Request(job_url, data=body, headers=headers, method="PUT")
+    try:
+        with _open_outbound_integration_request(req, timeout=15) as resp:
+            pass
+    except HTTPException:
+        raise
+    except HTTPError as exc:
+        error_body = ""
+        if exc.fp:
+            try:
+                error_body = exc.fp.read().decode("utf-8", errors="replace")
+            except Exception:
+                # Response body may be unreadable
+                pass
+        raise HTTPException(
+            status_code=502,
+            detail=f"Eventory job update failed (HTTP {exc.code}): {error_body or str(exc.reason)}"
+        )
+    except (URLError, Exception) as exc:
+        raise HTTPException(status_code=502, detail=f"Failed to update Eventory job: {exc}")
+
+
+def _get_or_create_eventory_pack_list(api_url: str, headers: dict, eventory_job_id: str, job_code: str) -> str:
+    list_url = urljoin(api_url.rstrip("/") + "/", "jobs/list")
+    req = Request(list_url, headers=headers, method="GET")
+    try:
+        with _open_outbound_integration_request(req, timeout=15) as resp:
+            data = json.loads(resp.read().decode("utf-8") or "[]")
+            if isinstance(data, list):
+                for item in data:
+                    if str(item.get("id") or "") == eventory_job_id:
+                        pack_lists = item.get("packLists") or []
+                        if pack_lists:
+                            return str(pack_lists[0].get("id") or "")
+    except Exception:
+        # Best-effort: ignore errors from secondary API calls
+        pass
+
+    return _create_eventory_pack_list(api_url, headers, eventory_job_id, job_code)
+
+
+def _sync_eventory_pack_list_rentals(
+    api_url: str, headers: dict, pack_list_id: str, rental_reqs: list, instance_id: str
+) -> None:
+    list_url = urljoin(api_url.rstrip("/") + "/", f"pack-lists/details/{pack_list_id}")
+    req = Request(list_url, headers=headers, method="GET")
+    existing_rentals = {}
+    try:
+        with _open_outbound_integration_request(req, timeout=15) as resp:
+            data = json.loads(resp.read().decode("utf-8") or "{}")
+            for item in data.get("rentals") or []:
+                rental_id = str(item.get("rental_id") or item.get("id") or "")
+                if rental_id:
+                    existing_rentals[rental_id] = str(item.get("id") or "")
+    except Exception:
+        # Best-effort: ignore errors from secondary API calls
+        pass
+
+    desired_rental_ids = set()
+    for req in rental_reqs:
+        external_ref = req.product.external_reference or ""
+        eventory_rental_id = external_ref.split(":", 1)[1] if ":" in external_ref else ""
+        if eventory_rental_id:
+            desired_rental_ids.add(eventory_rental_id)
+
+    for rental_id, plr_id in existing_rentals.items():
+        if rental_id not in desired_rental_ids:
+            _delete_eventory_pack_list_rental(api_url, headers, plr_id)
+
+    for req in rental_reqs:
+        external_ref = req.product.external_reference or ""
+        eventory_rental_id = external_ref.split(":", 1)[1] if ":" in external_ref else ""
+        if not eventory_rental_id:
+            continue
+        if eventory_rental_id in existing_rentals:
+            plr_id = existing_rentals[eventory_rental_id]
+            _update_eventory_pack_list_rental(api_url, headers, plr_id, req.quantity_required)
+        else:
+            _create_eventory_pack_list_rental(
+                api_url, headers, pack_list_id, eventory_rental_id, req.quantity_required
+            )
+
+
+def _delete_eventory_pack_list_rental(api_url: str, headers: dict, plr_id: str) -> None:
+    url = urljoin(api_url.rstrip("/") + "/", f"pack-list-rentals/{plr_id}")
+    req = Request(url, headers=headers, method="DELETE")
+    try:
+        with _open_outbound_integration_request(req, timeout=10) as resp:
+            pass
+    except Exception:
+        # Best-effort: ignore errors from secondary API calls
+        pass
+
+
+def _update_eventory_pack_list_rental(api_url: str, headers: dict, plr_id: str, quantity: int) -> None:
+    url = urljoin(api_url.rstrip("/") + "/", f"pack-list-rentals/{plr_id}")
+    body = json.dumps({"quantity": quantity}).encode("utf-8")
+    req = Request(url, data=body, headers=headers, method="PUT")
+    try:
+        with _open_outbound_integration_request(req, timeout=10) as resp:
+            pass
+    except Exception:
+        # Best-effort: ignore errors from secondary API calls
+        pass

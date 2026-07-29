@@ -352,6 +352,8 @@ class IntegrationPluginConfig(BaseModel):
 class EventoryInstanceConfig(IntegrationPluginConfig):
     id: str
     name: str
+    create_jobs: bool = False
+    rental_customer_id: str = ""
 
 
 class ProductionPlannerConfig(BaseModel):

@@ -244,7 +244,7 @@ import { useI18n } from 'vue-i18n'
 
 import { useJobsStore } from '../stores/jobs'
 import { useInventoryStore } from '../stores/inventory'
-import { filterRequirementSourceProducts } from '../utils/job-requirements'
+import { filterRequirementSourceProducts, isRentalProduct } from '../utils/job-requirements'
 import ProductLocationMapDialog from './ProductLocationMapDialog.vue'
 
 const props = defineProps({
@@ -639,6 +639,9 @@ function productTotalCount(product) {
 
 function productAvailableByMap(product, reservedMap) {
   if (!product) return 0
+  if (isRentalProduct(product) && product.external_source === 'eventory') {
+    return Number(product.eventory_available_qty || 0)
+  }
   const startDate = normalizeDate(props.startDate)
   const endDate = normalizeDate(props.endDate)
   if (!startDate || !endDate) {

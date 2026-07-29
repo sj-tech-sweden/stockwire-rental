@@ -853,6 +853,14 @@
                 <q-input v-model.number="instance.price_margin_percent" type="number" min="0" step="0.01" :label="t('settings.integrations.priceMarginPercent')" outlined dense />
               </div>
             </div>
+            <div class="row q-col-gutter-sm q-mb-sm">
+              <div class="col-12 col-md-3">
+                <q-toggle v-model="instance.create_jobs" :label="t('settings.integrations.createEventoryJobs')" color="primary" />
+              </div>
+              <div v-if="instance.create_jobs" class="col-12 col-md-4">
+                <q-input v-model="instance.rental_customer_id" :label="t('settings.integrations.rentalCustomerId')" :hint="t('settings.integrations.rentalCustomerIdHint')" outlined dense />
+              </div>
+            </div>
             <div class="row items-center q-gutter-sm">
               <q-btn
                 color="secondary"
@@ -2355,6 +2363,8 @@ function addEventoryInstance() {
       supplier_name: 'Eventory',
       sync_interval_minutes: 0,
       price_margin_percent: 0,
+      create_jobs: false,
+      rental_customer_id: '',
       last_sync_at: null,
       last_sync_imported: 0,
       last_sync_updated: 0,
