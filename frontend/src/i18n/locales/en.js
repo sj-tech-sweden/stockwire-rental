@@ -2074,6 +2074,7 @@ export default {
     selectElementToEdit: 'Select a canvas element to edit.',
     brotherHint: 'Brother QL-560: choose 62mm roll media in print dialog and disable fit-to-page scaling.',
     preset62x29: '62 x 29 mm (single)',
+    preset62x100: '62 x 100 mm (single)',
     preset50x25: '50 x 25 mm (single)',
     presetA43x8: 'A4 grid 3 x 8',
     printerAuto: 'Auto / Generic printers',

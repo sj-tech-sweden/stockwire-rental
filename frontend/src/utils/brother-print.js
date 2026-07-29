@@ -6,8 +6,8 @@
  * and @thermal-label/brother-ql-core for raster encoding.
  */
 
-import { requestPrinter, WebBrotherQLPrinter } from '@thermal-label/brother-ql-web'
-import { findMedia, MEDIA } from '@thermal-label/brother-ql-core'
+import { requestPrinter } from '@thermal-label/brother-ql-web'
+import { findMedia } from '@thermal-label/brother-ql-core'
 
 /** Known Brother USB vendor ID */
 const BROTHER_VENDOR_ID = 0x04f9
@@ -157,17 +157,22 @@ export const LABEL_PRESETS = [
  */
 export function canvasToRawImage(canvas) {
   const ctx = canvas.getContext('2d')
+  if (!ctx) throw new Error('Could not get canvas 2d context')
   const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
   const { data, width, height } = imageData
 
-  // Convert to grayscale then threshold to 1-bit
   const pixels = new Uint8Array(width * height)
   for (let i = 0; i < width * height; i++) {
     const r = data[i * 4]
     const g = data[i * 4 + 1]
     const b = data[i * 4 + 2]
-    const gray = 0.299 * r + 0.587 * g + 0.114 * b
-    pixels[i] = gray < 128 ? 0 : 255
+    const a = data[i * 4 + 3]
+    if (a === 0) {
+      pixels[i] = 255
+    } else {
+      const gray = 0.299 * r + 0.587 * g + 0.114 * b
+      pixels[i] = gray < 128 ? 0 : 255
+    }
   }
 
   return { pixels, width, height }

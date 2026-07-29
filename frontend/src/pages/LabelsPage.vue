@@ -302,6 +302,7 @@ const BROTHER_QL560_HINT = computed(() => t('labels.brotherHint'))
 
 const PRINT_PRESETS = {
   '62x29': { key: '62x29', mode: 'single', labelW: 62, labelH: 29 },
+  '62x100': { key: '62x100', mode: 'single', labelW: 62, labelH: 100 },
   '50x25': { key: '50x25', mode: 'single', labelW: 50, labelH: 25 },
   'a4-3x8': {
     key: 'a4-3x8',
@@ -357,6 +358,7 @@ const directPrinting = ref(false)
 
 const printPresetOptions = computed(() => [
   { label: t('labels.preset62x29'), value: '62x29' },
+  { label: t('labels.preset62x100'), value: '62x100' },
   { label: t('labels.preset50x25'), value: '50x25' },
   { label: t('labels.presetA43x8'), value: 'a4-3x8' },
 ])
@@ -1417,7 +1419,7 @@ async function renderLabelToCanvas(ctx, row, canvasW, canvasH, labelWmm, labelHm
         ctx.drawImage(img, x, y, w, h)
       }
     } else if (el.kind === 'logo') {
-      const logoUrl = resolveLogoUrl(el.source)
+      const logoUrl = resolveLogoUrlBySource(el.source)
       if (logoUrl) {
         const img = new Image()
         img.crossOrigin = 'anonymous'
@@ -1435,20 +1437,7 @@ async function renderLabelToCanvas(ctx, row, canvasW, canvasH, labelWmm, labelHm
 }
 
 function resolveFieldValue(row, source) {
-  if (!source) return ''
-  return row[source] ?? row[source.replace(/_/g, '')] ?? ''
-}
-
-function resolveLogoUrl(source) {
-  const profile = settingsStore.companyProfile || {}
-  const map = {
-    logo_default: profile.logo_url,
-    logo_light_wide: profile.logo_light_wide_url,
-    logo_light_small: profile.logo_light_small_url,
-    logo_dark_wide: profile.logo_dark_wide_url,
-    logo_dark_small: profile.logo_dark_small_url,
-  }
-  return map[source] || profile.logo_url || ''
+  return resolveValue(row, source)
 }
 
 async function maybeAutoPrintFromQuery() {
