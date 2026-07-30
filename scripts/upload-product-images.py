@@ -37,7 +37,6 @@ def api_request(api_url, token, method, path, data=None, content_type=None):
         with urlopen(req, timeout=30, context=SSL_CTX) as resp:
             return json.loads(resp.read())
     except HTTPError as e:
-        body = e.read().decode() if e.fp else ""
         if e.code == 401:
             print(f"\nError: 401 Unauthorized from {api_url}{path}", file=sys.stderr)
             print("Your API key is invalid or the endpoint requires admin access.", file=sys.stderr)
