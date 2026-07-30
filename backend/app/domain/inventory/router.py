@@ -1733,7 +1733,7 @@ def create_maintenance_comment(
     comment = MaintenanceComment(
         maintenance_id=maintenance_id,
         comment=payload.comment.strip(),
-        created_by_user_id=current_user.id,
+        created_by_user_id=current_user.id if current_user.id else None,
     )
     db.add(comment)
     db.commit()
@@ -1835,7 +1835,7 @@ def create_defect_report(
     _validate_defect_report_payload(db, data)
     report = DefectReport(
         **data,
-        created_by_user_id=current_user.id,
+        created_by_user_id=current_user.id if current_user.id else None,
     )
     db.add(report)
     _update_device_on_defect_change(db, data["device_id"])
@@ -1932,7 +1932,7 @@ def create_defect_comment(
     comment = DefectComment(
         defect_report_id=report_id,
         comment=comment_text,
-        created_by_user_id=current_user.id,
+        created_by_user_id=current_user.id if current_user.id else None,
     )
     db.add(comment)
     db.commit()
@@ -2317,7 +2317,7 @@ def process_scan(
                 description=(payload.defect_description or "").strip() or None,
                 severity=severity,
                 status="open",
-                created_by_user_id=current_user.id,
+                created_by_user_id=current_user.id if current_user.id else None,
             )
             db.add(report)
             _update_device_on_defect_change(db, device.id)
