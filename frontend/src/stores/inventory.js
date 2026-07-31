@@ -163,6 +163,20 @@ export const useInventoryStore = defineStore('inventory', () => {
     await fetchCategories()
   }
 
+  async function fetchCategoryTranslations(categoryId) {
+    const { data } = await api.get(`/api/v1/inventory/categories/${categoryId}/translations`)
+    return Array.isArray(data) ? data : []
+  }
+
+  async function saveCategoryTranslation(categoryId, payload) {
+    const { data } = await api.post(`/api/v1/inventory/categories/${categoryId}/translations`, payload)
+    return data
+  }
+
+  async function deleteCategoryTranslation(categoryId, translationId) {
+    await api.delete(`/api/v1/inventory/categories/${categoryId}/translations/${translationId}`)
+  }
+
   async function moveCategory(id, payload) {
     const { data } = await api.post(`/api/v1/inventory/categories/${id}/move`, payload)
     await fetchCategories()
@@ -794,6 +808,9 @@ export const useInventoryStore = defineStore('inventory', () => {
     createCategory,
     updateCategory,
     deleteCategory,
+    fetchCategoryTranslations,
+    saveCategoryTranslation,
+    deleteCategoryTranslation,
     moveCategory,
     createProduct,
     updateProduct,
