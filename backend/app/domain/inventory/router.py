@@ -18,6 +18,7 @@ from app.domain.auth.deps import get_current_user, require_admin, require_editor
 from app.domain.auth.models import User
 from app.domain.audit.service import record_activity
 from app.domain.inventory.models import (
+    CategoryTranslation,
     DefectComment,
     DefectReport,
     Device,
@@ -68,6 +69,8 @@ from app.domain.inventory.schemas import (
     InventoryCategoryRead,
     InventoryCategoryTreeRead,
     InventoryCategoryUpdate,
+    CategoryTranslationCreate,
+    CategoryTranslationRead,
     InventoryScanRequest,
     InventoryScanResponse,
     InventoryCheckedOutDeviceRead,
@@ -700,6 +703,67 @@ def delete_category(
     db.delete(category)
     db.commit()
     return None
+
+
+@router.get("/categories/{category_id}/translations", response_model=list[CategoryTranslationRead])
+def list_category_translations(
+    category_id: int,
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_user),
+) -> list[CategoryTranslationRead]:
+    category = db.get(InventoryCategory, category_id)
+    if category is None:
+        raise HTTPException(status_code=404, detail="Category not found")
+    translations = db.scalars(
+        select(CategoryTranslation).where(CategoryTranslation.category_id == category_id)
+    ).all()
+    return [CategoryTranslationRead.model_validate(t) for t in translations]
+
+
+@router.post("/categories/{category_id}/translations", response_model=CategoryTranslationRead, status_code=status.HTTP_201_CREATED)
+def create_category_translation(
+    category_id: int,
+    payload: CategoryTranslationCreate,
+    db: Session = Depends(get_db),
+    _: User = Depends(require_admin),
+) -> CategoryTranslationRead:
+    category = db.get(InventoryCategory, category_id)
+    if category is None:
+        raise HTTPException(status_code=404, detail="Category not found")
+    existing = db.scalar(
+        select(CategoryTranslation).where(
+            CategoryTranslation.category_id == category_id,
+            CategoryTranslation.locale == payload.locale,
+        )
+    )
+    if existing:
+        existing.name = payload.name
+        db.commit()
+        db.refresh(existing)
+        return CategoryTranslationRead.model_validate(existing)
+    translation = CategoryTranslation(
+        category_id=category_id,
+        locale=payload.locale,
+        name=payload.name,
+    )
+    db.add(translation)
+    db.commit()
+    db.refresh(translation)
+    return CategoryTranslationRead.model_validate(translation)
+
+
+@router.delete("/categories/{category_id}/translations/{translation_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_category_translation(
+    category_id: int,
+    translation_id: int,
+    db: Session = Depends(get_db),
+    _: User = Depends(require_admin),
+) -> None:
+    translation = db.get(CategoryTranslation, translation_id)
+    if translation is None or translation.category_id != category_id:
+        raise HTTPException(status_code=404, detail="Translation not found")
+    db.delete(translation)
+    db.commit()
 
 
 @router.post("/categories/prefill", response_model=list[InventoryCategoryRead])

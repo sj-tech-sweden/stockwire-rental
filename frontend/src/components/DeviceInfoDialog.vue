@@ -125,7 +125,7 @@
             <q-item-section>
               <q-item-label>{{ deviceInfoProduct?.sku || '-' }} · {{ deviceInfoProduct?.name || '-' }}</q-item-label>
               <q-item-label caption>
-                {{ t('inventory.type') }}: {{ deviceInfoProduct?.product_type || '-' }} · {{ t('inventory.category') }}: {{ deviceInfoProduct?.category || t('inventory.uncategorized') }}
+                {{ t('inventory.type') }}: {{ translateProductType(deviceInfoProduct?.product_type, t) }} · {{ t('inventory.category') }}: {{ translateCategory(deviceInfoProduct?.category, t) }}
               </q-item-label>
               <q-item-label caption>
                 {{ t('inventory.infoDialogs.brand') }}: {{ deviceInfoProduct?.brand || '-' }} · {{ t('inventory.infoDialogs.manufacturer') }}: {{ deviceInfoProduct?.manufacturer || '-' }}
@@ -520,6 +520,7 @@ import { useSettingsStore } from '../stores/settings'
 import { useWarehouseLedsStore } from '../stores/warehouseLeds'
 import { normalizeCurrencyCode } from '../constants/currencies'
 import { buildZonePath, getEffectiveZoneId, formatMoney } from '../utils/inventory-helpers'
+import { translateProductType, translateCategory } from '../utils/translate-helpers'
 import { useProductImage } from '../composables/useProductImage'
 import EntityAttachmentsPanel from './EntityAttachmentsPanel.vue'
 import LocateDeviceMapDialog from './LocateDeviceMapDialog.vue'

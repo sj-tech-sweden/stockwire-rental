@@ -44,9 +44,9 @@
         <q-list bordered separator class="rounded-borders q-mb-md">
           <q-item>
             <q-item-section>
-              <q-item-label>Type: {{ product?.product_type || '-' }}</q-item-label>
+              <q-item-label>Type: {{ translateProductType(product?.product_type, t) }}</q-item-label>
               <q-item-label caption>
-                {{ t('inventory.infoDialogs.categoryBrandManufacturer', { category: product?.category || t('inventory.uncategorized'), brand: product?.brand || '-', manufacturer: product?.manufacturer || '-' }) }}
+                {{ t('inventory.infoDialogs.categoryBrandManufacturer', { category: translateCategory(product?.category, t), brand: product?.brand || '-', manufacturer: product?.manufacturer || '-' }) }}
               </q-item-label>
               <q-item-label caption>
                 {{
@@ -276,6 +276,7 @@ import { useCustomFieldsStore } from '../stores/customFields'
 import { useWarehouseLedsStore } from '../stores/warehouseLeds'
 import { normalizeCurrencyCode } from '../constants/currencies'
 import { buildZonePath, getEffectiveZoneId, formatMoney } from '../utils/inventory-helpers'
+import { translateProductType, translateCategory } from '../utils/translate-helpers'
 import { useProductImage } from '../composables/useProductImage'
 import EntityAttachmentsPanel from './EntityAttachmentsPanel.vue'
 import LocateDeviceMapDialog from './LocateDeviceMapDialog.vue'

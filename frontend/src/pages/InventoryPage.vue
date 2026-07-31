@@ -50,7 +50,7 @@
               <q-item-section>
                 <q-item-label>{{ item.name }}</q-item-label>
                 <q-item-label caption>
-                  {{ item.sku }} · {{ item.product_type }}
+                  {{ item.sku }} · {{ translateProductType(item.product_type, t) }}
                   · {{ t('inventory.overview.currentStock') }}: {{ item.current_count }}
                   · {{ t('inventory.overview.minimumStock') }}: {{ item.min_stock_level }}
                   <span v-if="item.primary_supplier_name"> · {{ item.primary_supplier_name }}</span>
@@ -140,7 +140,12 @@
           </template>
           <template #body-cell-category="props">
             <q-td :props="props">
-              <div class="inventory-cell-ellipsis" :title="props.row.category || ''">{{ props.row.category || '—' }}</div>
+              <div class="inventory-cell-ellipsis" :title="translateCategory(props.row.category, t)">{{ translateCategory(props.row.category, t) || '—' }}</div>
+            </q-td>
+          </template>
+          <template #body-cell-product_type="props">
+            <q-td :props="props">
+              <div class="inventory-cell-ellipsis">{{ translateProductType(props.row.product_type, t) }}</div>
             </q-td>
           </template>
           <template #body-cell-brand="props">
@@ -327,7 +332,7 @@
                   <q-card-section class="q-pb-sm">
                     <div class="text-subtitle2">{{ props.row.sku }} · {{ props.row.name }}</div>
                     <div class="text-caption text-grey-7">
-                      {{ props.row.category || '—' }}
+                      {{ translateCategory(props.row.category, t) || '—' }}
                       <span v-if="props.row.supplier_name"> · {{ props.row.supplier_name }}</span>
                     </div>
                   </q-card-section>
@@ -504,7 +509,7 @@
                 @drop="onCategoryDropOnRow(prop.node)"
               >
                 <q-icon name="drag_indicator" size="16px" class="q-mr-xs text-grey-6" />
-                <div class="col ellipsis">{{ prop.node.name }}</div>
+                <div class="col ellipsis">{{ prop.node.label }}</div>
                 <q-badge
                   size="sm"
                   class="q-mr-xs"
@@ -799,6 +804,7 @@ import {
   findMostUsedProductByUsageDays,
   isRentalProduct
 } from '../utils/inventory-overview'
+import { translateProductType, translateCategory } from '../utils/translate-helpers'
 import { api } from '../boot/axios'
 import DefectReportDialog from '../components/DefectReportDialog.vue'
 import RentalProductDialog from '../components/RentalProductDialog.vue'
@@ -1443,7 +1449,8 @@ function zonePathById(id) {
 function treeToNodes(nodes, prefix = '') {
   const output = []
   for (const node of nodes || []) {
-    const label = prefix ? `${prefix} / ${node.name}` : node.name
+    const translatedName = translateCategory(node.name, t)
+    const label = prefix ? `${prefix} / ${translatedName}` : translatedName
     output.push({ ...node, label, children: treeToNodes(node.children || [], label) })
   }
   return output
@@ -1456,7 +1463,8 @@ const allCategorySelectOptions = computed(() => {
   const flat = []
   const walk = (nodes, prefix = '') => {
     for (const node of nodes || []) {
-      const label = prefix ? `${prefix} / ${node.name}` : node.name
+      const translatedName = translateCategory(node.name, t)
+      const label = prefix ? `${prefix} / ${translatedName}` : translatedName
       flat.push({ label, value: node.id })
       walk(node.children || [], label)
     }
