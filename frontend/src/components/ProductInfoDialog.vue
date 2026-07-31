@@ -145,18 +145,16 @@
                 {{ t('inventory.infoDialogs.deviceStatusConditionLocation', {
                   status: row.status,
                   condition: row.condition || t('inventory.infoDialogs.notAvailable'),
-                  location: row.case_asset_tag
-                    ? t('inventory.infoDialogs.caseLocation', { assetTag: row.case_asset_tag })
-                    : (zonePathById(row.location_zone_id) || t('inventory.infoDialogs.unassigned')),
+                  location: getEffectiveDeviceLocation(row),
                 }) }}
               </q-item-label>
             </q-item-section>
             <q-item-section side top>
               <div class="row no-wrap items-center q-gutter-xs">
-                <q-btn v-if="row.location_zone_id" flat dense round color="primary" icon="place" size="sm" @click="openDeviceLocate(row)">
+                <q-btn v-if="getEffectiveDeviceZoneId(row)" flat dense round color="primary" icon="place" size="sm" @click="openDeviceLocate(row)">
                   <q-tooltip>{{ t('inventory.deviceDialog.locateOnMap') }}</q-tooltip>
                 </q-btn>
-                <q-btn v-if="row.location_zone_id" flat dense round color="orange" icon="lightbulb" size="sm" @click="locateDeviceLed(row.id)">
+                <q-btn v-if="getEffectiveDeviceZoneId(row)" flat dense round color="orange" icon="lightbulb" size="sm" @click="locateDeviceLed(row.id)">
                   <q-tooltip>{{ t('warehouseLeds.actions.locate') }}</q-tooltip>
                 </q-btn>
                 <q-btn
@@ -277,6 +275,7 @@ import { useSettingsStore } from '../stores/settings'
 import { useCustomFieldsStore } from '../stores/customFields'
 import { useWarehouseLedsStore } from '../stores/warehouseLeds'
 import { normalizeCurrencyCode } from '../constants/currencies'
+import { buildZonePath, getEffectiveZoneId, formatMoney } from '../utils/inventory-helpers'
 import { useProductImage } from '../composables/useProductImage'
 import EntityAttachmentsPanel from './EntityAttachmentsPanel.vue'
 import LocateDeviceMapDialog from './LocateDeviceMapDialog.vue'
@@ -341,7 +340,8 @@ const deviceLocateOpen = ref(false)
 const deviceLocateTarget = ref(null)
 
 function openDeviceLocate(row) {
-  deviceLocateTarget.value = { location_zone_id: row.location_zone_id, asset_tag: row.asset_tag, serial_number: row.serial_number, id: row.id }
+  const zoneId = getEffectiveDeviceZoneId(row)
+  deviceLocateTarget.value = { location_zone_id: zoneId, asset_tag: row.asset_tag, serial_number: row.serial_number, id: row.id }
   deviceLocateOpen.value = true
 }
 
@@ -407,35 +407,23 @@ function zoneNameById(id) {
 }
 
 function zonePathById(id) {
-  if (!id) return ''
-  const zone = zoneById.value.get(id)
-  if (!zone) return ''
-  const parts = []
-  let current = zone
-  while (current) {
-    parts.unshift(current.name || '')
-    current = store.zones.find(z => z.id === current.parent_id)
-  }
-  return parts.join(' / ')
+  return buildZonePath(id, store.zones)
 }
 
-function formatMoney(value) {
-  const amount = Number(value || 0)
-  if (!Number.isFinite(amount)) return '0.00'
-  const currentCurrency = normalizeCurrencyCode(settingsStore.companyProfile?.currency, 'SEK')
-  try {
-    return new Intl.NumberFormat('sv-SE', {
-      style: 'currency',
-      currency: currentCurrency,
-      maximumFractionDigits: 2,
-    }).format(amount)
-  } catch {
-    return new Intl.NumberFormat('sv-SE', {
-      style: 'currency',
-      currency: 'SEK',
-      maximumFractionDigits: 2,
-    }).format(amount)
-  }
+function getEffectiveDeviceZoneId(device) {
+  return getEffectiveZoneId(device, store.devices)
+}
+
+function getEffectiveDeviceLocation(device) {
+  const zoneId = getEffectiveDeviceZoneId(device)
+  if (zoneId) return zonePathById(zoneId)
+  if (device.case_asset_tag) return t('inventory.infoDialogs.caseLocation', { assetTag: device.case_asset_tag })
+  return t('inventory.infoDialogs.unassigned')
+}
+
+function formatMoneyLocal(value) {
+  const currency = normalizeCurrencyCode(settingsStore.companyProfile?.currency, 'SEK')
+  return formatMoney(value, currency)
 }
 
 const productDeviceZoneIds = computed(() => {

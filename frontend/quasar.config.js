@@ -139,7 +139,7 @@ export default configure(function () {
       config: {
         brand: {
           primary: '#3F873F',
-          secondary: '#11181D',
+          secondary: '#26A69A',
           accent: '#35A853',
           dark: '#0C1114',
           positive: '#43C36B',
