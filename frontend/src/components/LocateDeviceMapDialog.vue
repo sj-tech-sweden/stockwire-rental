@@ -10,14 +10,14 @@
       <q-card-section v-if="device" class="q-pt-none">
         <div class="q-mb-sm">
           <q-badge color="primary" outline :label="deviceLabel" class="q-mr-sm" />
-          <q-badge v-if="device.location_zone_id" color="green" outline :label="zonePath" />
+          <q-badge v-if="zone" color="green" outline :label="zonePath" />
           <q-badge v-else color="orange" outline :label="t('inventory.deviceDialog.noLocationSet')" />
         </div>
         <div class="text-caption text-grey-6 q-mb-sm">
           {{ t('inventory.locateDeviceMap.devicesInZone', { count: devicesInZoneCount }) }}
         </div>
       </q-card-section>
-      <q-card-section v-if="device?.location_zone_id" class="q-pt-none" style="height: 420px">
+      <q-card-section v-if="zone" class="q-pt-none" style="height: 420px">
         <WarehouseMap
           :zones="store.zones"
           :zone-tree="store.zoneTree"
@@ -64,8 +64,16 @@ const deviceLabel = computed(() => {
 })
 
 const zone = computed(() => {
-  if (!props.device?.location_zone_id) return null
-  return store.zones.find(z => z.id === props.device.location_zone_id) || null
+  if (props.device?.location_zone_id) {
+    return store.zones.find(z => z.id === props.device.location_zone_id) || null
+  }
+  if (props.device?.case_device_id) {
+    const caseDevice = store.devices.find(d => d.id === props.device.case_device_id)
+    if (caseDevice?.location_zone_id) {
+      return store.zones.find(z => z.id === caseDevice.location_zone_id) || null
+    }
+  }
+  return null
 })
 
 const zonePath = computed(() => {
