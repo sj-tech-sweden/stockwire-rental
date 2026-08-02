@@ -407,6 +407,8 @@ class EventoryInstanceConfig(IntegrationPluginConfig):
     name: str
     create_jobs: bool = False
     rental_customer_id: str = ""
+    auto_scan_out_on_receive: bool = False
+    auto_scan_in_on_return: bool = False
 
 
 class StockwireInstanceConfig(BaseModel):
