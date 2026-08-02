@@ -109,6 +109,8 @@ DEFAULT_INTEGRATIONS = {
             "price_margin_percent": 0,
             "create_jobs": False,
             "rental_customer_id": "",
+            "auto_scan_out_on_receive": False,
+            "auto_scan_in_on_return": False,
             "last_sync_at": None,
             "last_sync_imported": 0,
             "last_sync_updated": 0,
@@ -2087,6 +2089,8 @@ def _normalize_plugin_config(config: IntegrationPluginConfig) -> dict[str, objec
         "price_margin_percent": max(0.0, float(config.price_margin_percent or 0)),
         "create_jobs": bool(getattr(config, "create_jobs", False)),
         "rental_customer_id": str(getattr(config, "rental_customer_id", "") or ""),
+        "auto_scan_out_on_receive": bool(getattr(config, "auto_scan_out_on_receive", False)),
+        "auto_scan_in_on_return": bool(getattr(config, "auto_scan_in_on_return", False)),
         "last_sync_at": last_sync_at,
         "last_sync_imported": max(0, int(config.last_sync_imported or 0)),
         "last_sync_updated": max(0, int(config.last_sync_updated or 0)),
@@ -2525,6 +2529,32 @@ def _eventory_set_headers(headers: dict[str, str], oauth_token: str | None, api_
         headers["Authorization"] = f"Bearer {key}"
     if key:
         headers["X-API-Key"] = key
+
+
+def _eventory_scan_out_pack_list(api_url: str, headers: dict[str, str], pack_list_id: str) -> None:
+    """Mark an Eventory pack list as scanned out (items dispatched to client)."""
+    scan_url = urljoin(api_url.rstrip("/") + "/", f"pack-lists/{pack_list_id}/scan-out")
+    req = Request(scan_url, data=b"{}", headers=headers, method="POST")
+    try:
+        with _open_outbound_integration_request(req, timeout=10) as _resp:
+            pass
+    except HTTPError:
+        pass
+    except (URLError, Exception):
+        pass
+
+
+def _eventory_scan_in_pack_list(api_url: str, headers: dict[str, str], pack_list_id: str) -> None:
+    """Mark an Eventory pack list as scanned in (items returned from client)."""
+    scan_url = urljoin(api_url.rstrip("/") + "/", f"pack-lists/{pack_list_id}/scan-in")
+    req = Request(scan_url, data=b"{}", headers=headers, method="POST")
+    try:
+        with _open_outbound_integration_request(req, timeout=10) as _resp:
+            pass
+    except HTTPError:
+        pass
+    except (URLError, Exception):
+        pass
 
 
 def _fetch_eventory_products(
