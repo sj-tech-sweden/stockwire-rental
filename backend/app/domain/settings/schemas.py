@@ -409,6 +409,16 @@ class EventoryInstanceConfig(IntegrationPluginConfig):
     rental_customer_id: str = ""
 
 
+class StockwireInstanceConfig(BaseModel):
+    id: str
+    name: str
+    enabled: bool = False
+    api_url: str | None = None
+    api_key: str | None = None
+    supplier_customer_id: int | None = None
+    remote_customer_id: str | None = None
+
+
 class ProductionPlannerConfig(BaseModel):
     enabled: bool = False
     api_key: str | None = None
@@ -424,11 +434,27 @@ class ProductionPlannerReadConfig(BaseModel):
 class IntegrationsRead(BaseModel):
     eventory_instances: list[EventoryInstanceConfig] = Field(default_factory=list)
     productionplanner: ProductionPlannerReadConfig = Field(default_factory=ProductionPlannerReadConfig)
+    stockwire_instances: list[StockwireInstanceConfig] = Field(default_factory=list)
 
 
 class IntegrationsUpdate(BaseModel):
     eventory_instances: list[EventoryInstanceConfig] = Field(default_factory=list)
     productionplanner: ProductionPlannerConfig | None = None
+    stockwire_instances: list[StockwireInstanceConfig] = Field(default_factory=list)
+
+
+class StockwireCustomerRead(BaseModel):
+    id: int
+    name: str
+    email: str | None = None
+    phone: str | None = None
+    city: str | None = None
+    country: str | None = None
+
+
+class StockwireCustomersRead(BaseModel):
+    customers: list[StockwireCustomerRead] = Field(default_factory=list)
+    count: int = 0
 
 
 class IntegrationConnectionTestRequest(BaseModel):

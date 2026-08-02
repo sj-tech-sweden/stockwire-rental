@@ -624,6 +624,103 @@ def test_settings_modules_crud(client):
     integrations = client.get("/api/v1/settings/integrations")
     assert integrations.status_code == 200
     assert isinstance(integrations.json().get("eventory_instances"), list)
+    assert isinstance(integrations.json().get("stockwire_instances"), list)
+
+    # Stockwire instance CRUD
+    stockwire_integrations = client.put(
+        "/api/v1/settings/integrations",
+        json={
+            "stockwire_instances": [
+                {
+                    "id": "partner-a",
+                    "name": "Partner A",
+                    "enabled": True,
+                    "api_url": "https://partner-a.example.com",
+                    "api_key": "sw-secret-key",
+                    "supplier_customer_id": None,
+                    "remote_customer_id": "42",
+                }
+            ]
+        },
+    )
+    assert stockwire_integrations.status_code == 200
+    sw_instances = stockwire_integrations.json().get("stockwire_instances", [])
+    assert len(sw_instances) == 1
+    assert sw_instances[0]["id"] == "partner-a"
+    assert sw_instances[0]["name"] == "Partner A"
+    assert sw_instances[0]["enabled"] is True
+    assert sw_instances[0]["api_url"] == "https://partner-a.example.com"
+    assert sw_instances[0]["remote_customer_id"] == "42"
+    # api_key should not be returned in response
+    assert sw_instances[0].get("api_key") is None
+
+    # Verify stockwire instances are persisted
+    persisted_sw = client.get("/api/v1/settings/integrations")
+    assert persisted_sw.status_code == 200
+    persisted_instances = persisted_sw.json().get("stockwire_instances", [])
+    assert len(persisted_instances) == 1
+    assert persisted_instances[0]["id"] == "partner-a"
+
+    # API key is preserved when empty string is sent
+    preserved_key_update = client.put(
+        "/api/v1/settings/integrations",
+        json={
+            "stockwire_instances": [
+                {
+                    "id": "partner-a",
+                    "name": "Partner A",
+                    "enabled": True,
+                    "api_url": "https://partner-a.example.com",
+                    "api_key": "",
+                    "supplier_customer_id": None,
+                    "remote_customer_id": "42",
+                }
+            ]
+        },
+    )
+    assert preserved_key_update.status_code == 200
+
+    # Test stockwire connection - SSRF blocked IP
+    with patch("app.domain.settings.router.socket.getaddrinfo") as mock_getaddrinfo:
+        mock_getaddrinfo.return_value = [
+            (socket.AF_INET, socket.SOCK_STREAM, 0, "", ("127.0.0.1", 443)),
+        ]
+        ssrf_blocked = client.post(
+            "/api/v1/settings/integrations/stockwire/test",
+            json={"config": {"api_url": "https://partner-a.example.com", "instance_id": "partner-a"}},
+        )
+    assert ssrf_blocked.status_code == 200
+    assert ssrf_blocked.json()["ok"] is False
+    assert "non-public IP" in ssrf_blocked.json()["message"]
+
+    # Test stockwire connection - invalid URL (no scheme)
+    invalid_url_result = client.post(
+        "/api/v1/settings/integrations/stockwire/test",
+        json={"config": {"api_url": "not-a-url", "instance_id": "partner-a"}},
+    )
+    assert invalid_url_result.status_code == 200
+    assert invalid_url_result.json()["ok"] is False
+
+    # Test stockwire connection - successful connection
+    class FakeHttpxStockwireResponse:
+        status_code = 200
+
+    def fake_stockwire_get(url, headers=None, timeout=None, follow_redirects=None):
+        return FakeHttpxStockwireResponse()
+
+    with patch("app.domain.settings.router.socket.getaddrinfo") as mock_getaddrinfo, patch(
+        "app.domain.settings.router.httpx.get", side_effect=fake_stockwire_get
+    ):
+        mock_getaddrinfo.return_value = [
+            (socket.AF_INET, socket.SOCK_STREAM, 0, "", ("1.2.3.4", 443)),
+        ]
+        sw_ok = client.post(
+            "/api/v1/settings/integrations/stockwire/test",
+            json={"config": {"api_url": "https://partner-a.example.com", "instance_id": "partner-a"}},
+        )
+    assert sw_ok.status_code == 200
+    assert sw_ok.json()["ok"] is True
+    assert sw_ok.json()["plugin"] == "stockwire"
 
     updated_integrations = client.put(
         "/api/v1/settings/integrations",
