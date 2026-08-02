@@ -1283,7 +1283,14 @@ def stockwire_customers_search(
     if not api_url:
         raise HTTPException(status_code=400, detail="Stockwire instance API URL is not configured")
 
-    customers_url = f"{api_url}/api/v1/customers"
+    # Validate and reconstruct URL from parsed components to prevent SSRF via URL manipulation
+    parsed_url = urlparse(api_url)
+    if parsed_url.scheme not in {"http", "https"} or not parsed_url.hostname:
+        raise HTTPException(status_code=400, detail="Stockwire instance API URL is invalid")
+    netloc = parsed_url.hostname
+    if parsed_url.port:
+        netloc = f"{netloc}:{parsed_url.port}"
+    customers_url = f"{parsed_url.scheme}://{netloc}/api/v1/customers"
     headers: dict[str, str] = {
         "User-Agent": "stockwire-rental-integration/1.0",
         "Accept": "application/json",
@@ -2385,7 +2392,11 @@ def _test_stockwire_connection(
         except ValueError:
             pass
 
-    health_url = api_url.rstrip("/") + "/api/v1/health"
+    # Reconstruct the health URL from parsed components to prevent SSRF via URL manipulation
+    netloc = parsed_url.hostname or ""
+    if parsed_url.port:
+        netloc = f"{netloc}:{parsed_url.port}"
+    health_url = f"{parsed_url.scheme}://{netloc}/api/v1/health"
     headers: dict[str, str] = {
         "User-Agent": "stockwire-rental-settings-test/1.0",
         "Accept": "application/json",
