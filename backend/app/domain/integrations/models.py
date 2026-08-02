@@ -18,6 +18,7 @@ class TwentyConfig(Base):
     base_url: Mapped[str] = mapped_column(String(500), default="https://api.twenty.com")
     workspace_id: Mapped[str] = mapped_column(String(100), nullable=True)
     is_active: Mapped[bool] = mapped_column(default=True)
+    sync_interval_minutes: Mapped[int] = mapped_column(Integer, default=0)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow, onupdate=_utcnow)
 

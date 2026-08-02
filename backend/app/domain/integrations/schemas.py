@@ -1,7 +1,9 @@
 from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, Field, field_validator
+
+ALLOWED_TWENTY_SYNC_INTERVALS = {0, 15, 30, 60, 120, 240, 480, 1440}
 
 
 class TwentyConfigBase(BaseModel):
@@ -9,6 +11,7 @@ class TwentyConfigBase(BaseModel):
     base_url: str = "https://api.twenty.com"
     workspace_id: str | None = None
     is_active: bool = True
+    sync_interval_minutes: int = Field(default=0, ge=0)
 
     @field_validator("api_key")
     @classmethod
@@ -25,6 +28,15 @@ class TwentyConfigBase(BaseModel):
             raise ValueError("Base URL must start with http:// or https://")
         return v
 
+    @field_validator("sync_interval_minutes")
+    @classmethod
+    def sync_interval_must_be_valid(cls, v: int) -> int:
+        if v not in ALLOWED_TWENTY_SYNC_INTERVALS:
+            raise ValueError(
+                f"Invalid sync interval. Allowed values: {sorted(ALLOWED_TWENTY_SYNC_INTERVALS)}"
+            )
+        return v
+
 
 class TwentyConfigCreate(TwentyConfigBase):
     pass
@@ -35,6 +47,7 @@ class TwentyConfigUpdate(BaseModel):
     base_url: str | None = None
     workspace_id: str | None = None
     is_active: bool | None = None
+    sync_interval_minutes: int | None = None
     clear_api_key: bool = False
 
     @field_validator("base_url")
@@ -47,6 +60,17 @@ class TwentyConfigUpdate(BaseModel):
             raise ValueError("Base URL must start with http:// or https://")
         return v
 
+    @field_validator("sync_interval_minutes")
+    @classmethod
+    def sync_interval_must_be_valid(cls, v: int | None) -> int | None:
+        if v is None:
+            return v
+        if v not in ALLOWED_TWENTY_SYNC_INTERVALS:
+            raise ValueError(
+                f"Invalid sync interval. Allowed values: {sorted(ALLOWED_TWENTY_SYNC_INTERVALS)}"
+            )
+        return v
+
 
 class TwentyConfigRead(BaseModel):
     id: int
@@ -54,6 +78,7 @@ class TwentyConfigRead(BaseModel):
     workspace_id: str | None = None
     is_active: bool = True
     has_api_key: bool = False
+    sync_interval_minutes: int = 0
     created_at: datetime
     updated_at: datetime
 
@@ -83,6 +108,8 @@ class TwentySyncLogRead(BaseModel):
 class TwentySyncStatus(BaseModel):
     is_configured: bool
     last_sync_at: datetime | None = None
+    next_sync_at: datetime | None = None
+    sync_interval_minutes: int = 0
     total_synced: int = 0
     total_failed: int = 0
     recent_logs: list[TwentySyncLogRead] = []

@@ -59,6 +59,7 @@ def get_config(db: Session = Depends(get_db)):
         workspace_id=config.workspace_id,
         is_active=config.is_active,
         has_api_key=config.api_key is not None and config.api_key != "",
+        sync_interval_minutes=config.sync_interval_minutes or 0,
         created_at=config.created_at,
         updated_at=config.updated_at,
     )
@@ -82,6 +83,7 @@ def create_config(payload: TwentyConfigCreate, db: Session = Depends(get_db)):
         workspace_id=config.workspace_id,
         is_active=config.is_active,
         has_api_key=config.api_key is not None and config.api_key != "",
+        sync_interval_minutes=config.sync_interval_minutes or 0,
         created_at=config.created_at,
         updated_at=config.updated_at,
     )
@@ -112,6 +114,7 @@ def update_config(payload: TwentyConfigUpdate, db: Session = Depends(get_db)):
         workspace_id=config.workspace_id,
         is_active=config.is_active,
         has_api_key=config.api_key is not None and config.api_key != "",
+        sync_interval_minutes=config.sync_interval_minutes or 0,
         created_at=config.created_at,
         updated_at=config.updated_at,
     )
@@ -234,6 +237,8 @@ async def trigger_sync(payload: TwentySyncTrigger, db: Session = Depends(get_db)
 
 @router.get("/status", response_model=TwentySyncStatus)
 def get_sync_status(db: Session = Depends(get_db)):
+    from datetime import timedelta
+
     from app.domain.integrations.models import TwentyConfig, TwentySyncLog
 
     config = db.query(TwentyConfig).first()
@@ -257,9 +262,19 @@ def get_sync_status(db: Session = Depends(get_db)):
         .all()
     )
 
+    interval = config.sync_interval_minutes or 0
+    next_sync_at = None
+    if interval > 0 and config.is_active:
+        if last_log:
+            next_sync_at = last_log.created_at + timedelta(minutes=interval)
+        else:
+            next_sync_at = config.created_at + timedelta(minutes=interval)
+
     return TwentySyncStatus(
         is_configured=True,
         last_sync_at=last_log.created_at if last_log else None,
+        next_sync_at=next_sync_at,
+        sync_interval_minutes=interval,
         total_synced=total_synced,
         total_failed=total_failed,
         recent_logs=[TwentySyncLogRead.model_validate(log) for log in recent_logs],

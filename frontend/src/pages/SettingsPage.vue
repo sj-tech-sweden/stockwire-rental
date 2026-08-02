@@ -1005,7 +1005,7 @@
 
           <div class="q-pa-sm q-mb-sm" style="border: 1px solid #d7dee6; border-radius: 10px">
             <div class="row q-col-gutter-sm q-mb-sm">
-              <div class="col-12 col-md-6">
+              <div class="col-12 col-md-5">
                 <q-input
                   v-model="twentyDraft.api_key"
                   :label="t('settings.integrations.twenty.apiKey')"
@@ -1016,13 +1016,24 @@
                   type="password"
                 />
               </div>
-              <div class="col-12 col-md-6">
+              <div class="col-12 col-md-5">
                 <q-input
                   v-model="twentyDraft.base_url"
                   :label="t('settings.integrations.twenty.baseUrl')"
                   :placeholder="t('settings.integrations.twenty.baseUrlDefault')"
                   outlined
                   dense
+                />
+              </div>
+              <div class="col-12 col-md-2">
+                <q-select
+                  v-model="twentyDraft.sync_interval_minutes"
+                  :options="integrationSyncIntervalOptions"
+                  :label="t('settings.integrations.twenty.syncInterval')"
+                  outlined
+                  dense
+                  emit-value
+                  map-options
                 />
               </div>
             </div>
@@ -1062,6 +1073,10 @@
                 <div class="col-12 col-md-4">
                   <div class="text-caption text-grey-7">{{ t('settings.integrations.twenty.totalFailed') }}</div>
                   <div :class="twentySyncStatus.total_failed > 0 ? 'text-negative' : ''">{{ twentySyncStatus.total_failed }}</div>
+                </div>
+                <div v-if="twentySyncStatus.next_sync_at" class="col-12">
+                  <div class="text-caption text-grey-7">{{ t('settings.integrations.twenty.nextSync') }}</div>
+                  <div>{{ new Date(twentySyncStatus.next_sync_at).toLocaleString() }}</div>
                 </div>
               </div>
               <div class="row items-center q-gutter-sm q-mb-sm">
@@ -1747,6 +1762,7 @@ const twentyDraft = ref({
   api_key: '',
   base_url: 'https://api.twenty.com',
   has_api_key: false,
+  sync_interval_minutes: 0,
 })
 const twentyTesting = ref(false)
 const twentyTestResult = ref(null)
@@ -3104,10 +3120,11 @@ async function loadTwentyConfig() {
         api_key: '',
         base_url: data.base_url || 'https://api.twenty.com',
         has_api_key: data.has_api_key ?? false,
+        sync_interval_minutes: data.sync_interval_minutes ?? 0,
       }
     }
   } catch {
-    twentyDraft.value = { enabled: false, api_key: '', base_url: 'https://api.twenty.com', has_api_key: false }
+    twentyDraft.value = { enabled: false, api_key: '', base_url: 'https://api.twenty.com', has_api_key: false, sync_interval_minutes: 0 }
   }
 }
 
@@ -3123,6 +3140,7 @@ async function saveTwentyConfig() {
   const payload = {
     base_url: twentyDraft.value.base_url,
     is_active: twentyDraft.value.enabled,
+    sync_interval_minutes: twentyDraft.value.sync_interval_minutes ?? 0,
   }
   if (twentyDraft.value.api_key) {
     payload.api_key = twentyDraft.value.api_key
