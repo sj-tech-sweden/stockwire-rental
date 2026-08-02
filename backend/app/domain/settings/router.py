@@ -1298,20 +1298,38 @@ def stockwire_customers_search(
     if api_key:
         headers["X-API-Key"] = api_key
 
+    req = Request(customers_url, headers=headers, method="GET")
     try:
-        response = httpx.get(customers_url, headers=headers, timeout=10.0, follow_redirects=False)
-    except httpx.HTTPError as exc:
-        raise HTTPException(status_code=502, detail=f"Failed to reach remote instance: {exc}") from exc
-
-    if response.status_code == 401 or response.status_code == 403:
-        raise HTTPException(status_code=502, detail="Remote instance rejected credentials. Check API key.")
-    if response.status_code >= 400:
-        raise HTTPException(status_code=502, detail=f"Remote instance returned status {response.status_code}")
-
-    try:
-        raw_customers = response.json()
-    except Exception as exc:
-        raise HTTPException(status_code=502, detail="Remote instance returned invalid JSON") from exc
+        with _open_outbound_integration_request(req, timeout=10) as response:
+            _ensure_public_response_peer(response, "Remote instance")
+            status_code = int(getattr(response, "status", 0) or 0)
+            if status_code == 401 or status_code == 403:
+                raise HTTPException(status_code=502, detail="Remote instance rejected credentials. Check API key.")
+            if status_code >= 400:
+                raise HTTPException(status_code=502, detail=f"Remote instance returned status {status_code}")
+            try:
+                raw_customers = json.loads((response.read() or b"[]").decode("utf-8"))
+            except Exception as exc:
+                raise HTTPException(status_code=502, detail="Remote instance returned invalid JSON") from exc
+    except HTTPError as exc:
+        try:
+            try:
+                _ensure_public_response_peer(exc, "Remote instance")
+            except HTTPException as peer_exc:
+                raise HTTPException(status_code=502, detail=str(peer_exc.detail)) from peer_exc
+            status_code = int(getattr(exc, "code", 0) or 0)
+            if status_code == 401 or status_code == 403:
+                raise HTTPException(status_code=502, detail="Remote instance rejected credentials. Check API key.")
+            raise HTTPException(status_code=502, detail=f"Remote instance returned status {status_code}")
+        finally:
+            exc.close()
+    except URLError as exc:
+        if _is_disallowed_outbound_peer_error(exc):
+            raise HTTPException(status_code=502, detail="Remote instance connected to a non-public IP address") from exc
+        raise HTTPException(
+            status_code=502,
+            detail=f"Failed to reach remote instance: {exc.reason if hasattr(exc, 'reason') else str(exc)}",
+        ) from exc
 
     if not isinstance(raw_customers, list):
         raise HTTPException(status_code=502, detail="Unexpected response format from remote instance")
