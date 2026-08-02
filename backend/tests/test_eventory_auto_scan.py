@@ -1,9 +1,7 @@
 """Tests for the Eventory auto-scan feature (auto_scan_out_on_receive and auto_scan_in_on_return)."""
 
 import json
-from unittest.mock import MagicMock, patch, call
-
-import pytest
+from unittest.mock import MagicMock, patch
 
 from app.domain.inventory.router import _trigger_eventory_auto_scan
 from app.domain.settings.router import (

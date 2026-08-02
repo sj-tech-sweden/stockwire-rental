@@ -2538,9 +2538,9 @@ def _eventory_scan_out_pack_list(api_url: str, headers: dict[str, str], pack_lis
     try:
         with _open_outbound_integration_request(req, timeout=10) as _resp:
             pass
-    except HTTPError:
+    except HTTPError:  # non-2xx response – best-effort, ignore
         pass
-    except (URLError, Exception):
+    except (URLError, Exception):  # noqa: BLE001 – network/unexpected error; best-effort
         pass
 
 
@@ -2551,9 +2551,9 @@ def _eventory_scan_in_pack_list(api_url: str, headers: dict[str, str], pack_list
     try:
         with _open_outbound_integration_request(req, timeout=10) as _resp:
             pass
-    except HTTPError:
+    except HTTPError:  # non-2xx response – best-effort, ignore
         pass
-    except (URLError, Exception):
+    except (URLError, Exception):  # noqa: BLE001 – network/unexpected error; best-effort
         pass
 
 

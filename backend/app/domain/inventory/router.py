@@ -42,7 +42,6 @@ from app.domain.settings.router import (
     _eventory_scan_out_pack_list,
     _eventory_set_headers,
     _fetch_eventory_token,
-    _open_outbound_integration_request,
     _parse_integrations,
     INTEGRATIONS_KEY,
 )
@@ -3568,7 +3567,7 @@ def _trigger_eventory_auto_scan(db: Session, product: Product, scan_action: str)
                 _eventory_scan_out_pack_list(api_url, headers, pack_list_id)
             elif scan_action == "scan_in" and out > 0:
                 _eventory_scan_in_pack_list(api_url, headers, pack_list_id)
-    except Exception:
+    except Exception:  # noqa: BLE001 – best-effort; never disrupt the local scan
         pass
 
 
