@@ -2395,3 +2395,66 @@ def test_get_project_productionplanner_info_disabled_integration(client):
     assert data["success"] is False
     assert "disabled" in data["message"].lower()
     assert data["productionplanner_project_id"] == "pp-project-disabled-001"
+
+
+def test_twenty_config_sync_interval(client):
+    """Test that Twenty CRM config handles sync_interval_minutes correctly."""
+    # Create config with a valid sync interval
+    resp = client.post(
+        "/api/v1/integrations/twenty/config",
+        json={
+            "api_key": "test_key_123",
+            "base_url": "https://api.twenty.com",
+            "is_active": True,
+            "sync_interval_minutes": 60,
+        },
+    )
+    assert resp.status_code == 200, resp.text
+    data = resp.json()
+    assert data["sync_interval_minutes"] == 60
+    assert data["is_active"] is True
+
+    # GET returns the stored interval
+    resp = client.get("/api/v1/integrations/twenty/config")
+    assert resp.status_code == 200
+    assert resp.json()["sync_interval_minutes"] == 60
+
+    # Update the interval via PUT
+    resp = client.put(
+        "/api/v1/integrations/twenty/config",
+        json={"sync_interval_minutes": 240},
+    )
+    assert resp.status_code == 200
+    assert resp.json()["sync_interval_minutes"] == 240
+
+    # Status endpoint exposes next_sync_at when interval > 0
+    resp = client.get("/api/v1/integrations/twenty/status")
+    assert resp.status_code == 200
+    status = resp.json()
+    assert status["sync_interval_minutes"] == 240
+    assert status["next_sync_at"] is not None
+
+    # Disable auto-sync by setting interval to 0
+    resp = client.put(
+        "/api/v1/integrations/twenty/config",
+        json={"sync_interval_minutes": 0},
+    )
+    assert resp.status_code == 200
+    assert resp.json()["sync_interval_minutes"] == 0
+
+    # With interval=0 no next_sync_at is returned
+    resp = client.get("/api/v1/integrations/twenty/status")
+    assert resp.status_code == 200
+    status = resp.json()
+    assert status["sync_interval_minutes"] == 0
+    assert status["next_sync_at"] is None
+
+    # Invalid interval should be rejected
+    resp = client.put(
+        "/api/v1/integrations/twenty/config",
+        json={"sync_interval_minutes": 999},
+    )
+    assert resp.status_code == 422
+
+    # Clean up
+    client.delete("/api/v1/integrations/twenty/config")
