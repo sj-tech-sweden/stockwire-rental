@@ -66,6 +66,9 @@ from app.domain.settings.schemas import (
     SmtpSettingsRead,
     SmtpSettingsUpdate,
     ProductionPlannerConfig,
+    StockwireInstanceConfig,
+    StockwireCustomerRead,
+    StockwireCustomersRead,
 )
 from app.domain.storage.models import AssetFile
 from app.domain.storage.schemas import CompanyProfileRead, CompanyProfileUpdate
@@ -125,8 +128,9 @@ DEFAULT_INTEGRATIONS = {
         "api_key": None,
         "base_url": "https://api.productionplanner.io/v1",
     },
+    "stockwire_instances": [],
 }
-ALLOWED_INTEGRATION_PLUGINS = {"eventory", "productionplanner"}
+ALLOWED_INTEGRATION_PLUGINS = {"eventory", "productionplanner", "stockwire"}
 ALLOWED_SYNC_INTERVALS = {0, 15, 30, 60, 120, 240, 480, 1440}
 EVENTORY_SYNC_LOCK = threading.Lock()
 EVENTORY_SYNC_RUNNING: set[str] = set()
@@ -409,13 +413,56 @@ def update_integrations(
         "base_url": pp_base_url,
     }
 
+    # Process stockwire instances
+    persisted_stockwire = persisted.get("stockwire_instances") if isinstance(persisted, dict) else []
+    if not isinstance(persisted_stockwire, list):
+        persisted_stockwire = []
+    persisted_stockwire_by_id = {
+        str(item.get("id") or "").strip(): item
+        for item in persisted_stockwire
+        if isinstance(item, dict) and str(item.get("id") or "").strip()
+    }
+    normalized_stockwire: list[dict[str, object]] = []
+    for sw_instance in (payload.stockwire_instances or []):
+        api_url = str(sw_instance.api_url or "").strip()
+        if api_url:
+            _validate_url_port(api_url, "API URL")
+            parsed_sw = urlparse(api_url)
+            if parsed_sw.scheme not in {"http", "https"}:
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail="Stockwire API URL must use http or https",
+                )
+        instance_id = _normalize_instance_identifier(sw_instance.id) or "stockwire-main"
+        # Preserve persisted API key if not provided
+        persisted_sw = persisted_stockwire_by_id.get(instance_id) or {}
+        incoming_api_key = str(sw_instance.api_key or "").strip() or None
+        persisted_api_key = str(persisted_sw.get("api_key") or "").strip() or None
+        api_key = incoming_api_key if incoming_api_key is not None else persisted_api_key
+        normalized_stockwire.append({
+            "id": instance_id,
+            "name": str(sw_instance.name or "").strip() or instance_id,
+            "enabled": bool(sw_instance.enabled),
+            "api_url": api_url or None,
+            "api_key": api_key,
+            "supplier_customer_id": sw_instance.supplier_customer_id,
+            "remote_customer_id": str(sw_instance.remote_customer_id or "").strip() or None,
+        })
+
     data = {
         "eventory_instances": normalized_instances,
         "productionplanner": productionplanner,
+        "stockwire_instances": normalized_stockwire,
     }
     setting.value_json = json.dumps(data)
     db.commit()
-    return IntegrationsRead(**{**data, "productionplanner": {**productionplanner, "has_api_key": bool(pp_api_key)}})
+    return IntegrationsRead(**{
+        **data,
+        "productionplanner": {**productionplanner, "has_api_key": bool(pp_api_key)},
+        "stockwire_instances": [
+            {**sw, "api_key": None} for sw in normalized_stockwire
+        ],
+    })
 
 
 @router.get("/auth-sso", response_model=AuthSSOSettingsRead)
@@ -882,6 +929,8 @@ def test_integration_connection(
             persisted_config = persisted_pp
             if "base_url" in persisted_config and not persisted_config.get("api_url"):
                 persisted_config = {**persisted_config, "api_url": persisted_config["base_url"]}
+    elif plugin_key == "stockwire":
+        return _test_stockwire_connection(payload, persisted)
 
     incoming_config = payload.config or IntegrationPluginConfig(**persisted_config)
     normalized = _normalize_plugin_config(incoming_config)
@@ -1218,6 +1267,95 @@ def eventory_sync_status(
         total=max(0, int(config.get("last_sync_total") or 0)),
         message=str(config.get("sync_message") or "").strip() or None,
     )
+
+
+@router.get("/integrations/stockwire/{instance_id}/customers", response_model=StockwireCustomersRead)
+def stockwire_customers_search(
+    instance_id: str,
+    q: str | None = None,
+    db: Session = Depends(get_db),
+    _: User = Depends(require_admin),
+) -> StockwireCustomersRead:
+    config = _get_stockwire_instance_config(db, instance_id)
+    api_url = str(config.get("api_url") or "").strip().rstrip("/")
+    api_key = str(config.get("api_key") or "").strip()
+
+    if not api_url:
+        raise HTTPException(status_code=400, detail="Stockwire instance API URL is not configured")
+
+    # Validate and reconstruct URL from parsed components to prevent SSRF via URL manipulation
+    parsed_url = urlparse(api_url)
+    if parsed_url.scheme not in {"http", "https"} or not parsed_url.hostname:
+        raise HTTPException(status_code=400, detail="Stockwire instance API URL is invalid")
+    netloc = parsed_url.hostname
+    if parsed_url.port:
+        netloc = f"{netloc}:{parsed_url.port}"
+    customers_url = f"{parsed_url.scheme}://{netloc}/api/v1/customers"
+    headers: dict[str, str] = {
+        "User-Agent": "stockwire-rental-integration/1.0",
+        "Accept": "application/json",
+    }
+    if api_key:
+        headers["X-API-Key"] = api_key
+
+    req = Request(customers_url, headers=headers, method="GET")
+    try:
+        with _open_outbound_integration_request(req, timeout=10) as response:
+            _ensure_public_response_peer(response, "Remote instance")
+            status_code = int(getattr(response, "status", 0) or 0)
+            if status_code == 401 or status_code == 403:
+                raise HTTPException(status_code=502, detail="Remote instance rejected credentials. Check API key.")
+            if status_code >= 400:
+                raise HTTPException(status_code=502, detail=f"Remote instance returned status {status_code}")
+            try:
+                raw_customers = json.loads((response.read() or b"[]").decode("utf-8"))
+            except Exception as exc:
+                raise HTTPException(status_code=502, detail="Remote instance returned invalid JSON") from exc
+    except HTTPError as exc:
+        try:
+            try:
+                _ensure_public_response_peer(exc, "Remote instance")
+            except HTTPException as peer_exc:
+                raise HTTPException(status_code=502, detail=str(peer_exc.detail)) from peer_exc
+            status_code = int(getattr(exc, "code", 0) or 0)
+            if status_code == 401 or status_code == 403:
+                raise HTTPException(status_code=502, detail="Remote instance rejected credentials. Check API key.")
+            raise HTTPException(status_code=502, detail=f"Remote instance returned status {status_code}")
+        finally:
+            exc.close()
+    except URLError as exc:
+        if _is_disallowed_outbound_peer_error(exc):
+            raise HTTPException(status_code=502, detail="Remote instance connected to a non-public IP address") from exc
+        raise HTTPException(
+            status_code=502,
+            detail=f"Failed to reach remote instance: {exc.reason if hasattr(exc, 'reason') else str(exc)}",
+        ) from exc
+
+    if not isinstance(raw_customers, list):
+        raise HTTPException(status_code=502, detail="Unexpected response format from remote instance")
+
+    search_lower = (q or "").strip().lower()
+    results: list[StockwireCustomerRead] = []
+    for item in raw_customers:
+        if not isinstance(item, dict):
+            continue
+        name = str(item.get("name") or "").strip()
+        if not name:
+            continue
+        if search_lower and search_lower not in name.lower() and search_lower not in str(item.get("email") or "").lower():
+            continue
+        results.append(StockwireCustomerRead(
+            id=int(item.get("id") or 0),
+            name=name,
+            email=str(item.get("email") or "").strip() or None,
+            phone=str(item.get("phone") or "").strip() or None,
+            city=str(item.get("city") or "").strip() or None,
+            country=str(item.get("country") or "").strip() or None,
+        ))
+        if len(results) >= 50:
+            break
+
+    return StockwireCustomersRead(customers=results, count=len(results))
 
 
 def _run_eventory_sync_in_background(instance_id: str) -> None:
@@ -1596,6 +1734,7 @@ def _parse_integrations(raw: str | None) -> dict[str, object]:
         return {
             "eventory_instances": [_normalize_eventory_instance(EventoryInstanceConfig(**DEFAULT_INTEGRATIONS["eventory_instances"][0]))],
             "productionplanner": DEFAULT_INTEGRATIONS.get("productionplanner", {}),
+            "stockwire_instances": [],
         }
     try:
         data = json.loads(raw)
@@ -1632,9 +1771,30 @@ def _parse_integrations(raw: str | None) -> dict[str, object]:
 
     productionplanner_merged = {**DEFAULT_INTEGRATIONS.get("productionplanner", {}), **productionplanner_raw}
     productionplanner_merged["has_api_key"] = bool(productionplanner_merged.get("api_key"))
+
+    # Parse stockwire instances
+    stockwire_instances_raw = []
+    if isinstance(data, dict) and isinstance(data.get("stockwire_instances"), list):
+        stockwire_instances_raw = data.get("stockwire_instances") or []
+    normalized_stockwire = []
+    for index, item in enumerate(stockwire_instances_raw):
+        if not isinstance(item, dict):
+            continue
+        instance_id = _normalize_instance_identifier(item.get("id")) or f"stockwire-{index + 1}"
+        normalized_stockwire.append({
+            "id": instance_id,
+            "name": str(item.get("name") or "").strip() or instance_id,
+            "enabled": bool(item.get("enabled")),
+            "api_url": str(item.get("api_url") or "").strip() or None,
+            "api_key": str(item.get("api_key") or "").strip() or None,
+            "supplier_customer_id": item.get("supplier_customer_id"),
+            "remote_customer_id": str(item.get("remote_customer_id") or "").strip() or None,
+        })
+
     return {
         "eventory_instances": normalized_instances,
         "productionplanner": productionplanner_merged,
+        "stockwire_instances": normalized_stockwire,
     }
 
 
@@ -2132,6 +2292,161 @@ def _get_eventory_instance_config(db: Session, instance_id: str) -> dict[str, ob
     raise HTTPException(status_code=404, detail=f"Unknown Eventory instance: {key}")
 
 
+def _get_stockwire_instance_config(db: Session, instance_id: str) -> dict[str, object]:
+    key = str(instance_id or "").strip()
+    key_normalized = _normalize_instance_identifier(key)
+    if not key:
+        raise HTTPException(status_code=400, detail="Instance ID is required")
+
+    setting = _get_or_create_setting(db, INTEGRATIONS_KEY, DEFAULT_INTEGRATIONS)
+    parsed = _parse_integrations(setting.value_json)
+    instances = parsed.get("stockwire_instances") if isinstance(parsed, dict) else []
+    if not isinstance(instances, list):
+        instances = []
+
+    for item in instances:
+        item_id = str(item.get("id") or "").strip()
+        item_id_normalized = _normalize_instance_identifier(item_id)
+        item_name_normalized = _normalize_instance_identifier(item.get("name"))
+        if key not in {item_id, item_id_normalized, item_name_normalized} and key_normalized not in {
+            item_id,
+            item_id_normalized,
+            item_name_normalized,
+        }:
+            continue
+
+        cfg = dict(item)
+        if not bool(cfg.get("enabled")):
+            raise HTTPException(status_code=409, detail="Stockwire instance is disabled")
+
+        api_url = str(cfg.get("api_url") or "").strip()
+        if not api_url:
+            raise HTTPException(status_code=400, detail="Stockwire instance API URL is not configured")
+
+        api_key = str(cfg.get("api_key") or "").strip()
+        if api_key and not api_url.lower().startswith("https://"):
+            raise HTTPException(status_code=400, detail="API URL must use HTTPS when API key is configured")
+
+        return cfg
+
+    raise HTTPException(status_code=404, detail=f"Unknown Stockwire instance: {key}")
+
+
+def _test_stockwire_connection(
+    payload: IntegrationConnectionTestRequest,
+    persisted: dict[str, object],
+) -> IntegrationConnectionTestRead:
+    plugin_key = "stockwire"
+    config = payload.config
+    api_url = str(getattr(config, "api_url", None) or "").strip()
+    api_key = str(getattr(config, "api_key", None) or "").strip()
+
+    if not api_url:
+        return IntegrationConnectionTestRead(
+            ok=False,
+            plugin=plugin_key,
+            message="API URL is required to test connection",
+        )
+
+    parsed_url = urlparse(api_url)
+    if parsed_url.scheme not in {"http", "https"} or not parsed_url.netloc:
+        return IntegrationConnectionTestRead(
+            ok=False,
+            plugin=plugin_key,
+            message="API URL must be an absolute http(s) URL",
+        )
+
+    if parsed_url.username or parsed_url.password:
+        return IntegrationConnectionTestRead(
+            ok=False,
+            plugin=plugin_key,
+            message="API URL must not contain embedded credentials",
+        )
+
+    try:
+        port = parsed_url.port
+    except ValueError:
+        return IntegrationConnectionTestRead(
+            ok=False,
+            plugin=plugin_key,
+            message="API URL contains an invalid port",
+        )
+
+    if port is not None and port <= 0:
+        return IntegrationConnectionTestRead(
+            ok=False,
+            plugin=plugin_key,
+            message="API URL contains an invalid port",
+        )
+
+    if api_key and parsed_url.scheme != "https":
+        return IntegrationConnectionTestRead(
+            ok=False,
+            plugin=plugin_key,
+            message="API URL must use HTTPS when API key is configured",
+        )
+
+    # Validate hostname resolves to a public IP (SSRF protection)
+    hostname = parsed_url.hostname or ""
+    try:
+        resolved = socket.getaddrinfo(hostname, port or None, type=socket.SOCK_STREAM)
+    except (OSError, UnicodeError):
+        return IntegrationConnectionTestRead(
+            ok=False,
+            plugin=plugin_key,
+            message="API URL host could not be resolved",
+        )
+
+    for entry in resolved:
+        address = entry[4][0]
+        try:
+            ip_obj = ipaddress.ip_address(address)
+            if _is_disallowed_outbound_ip(ip_obj):
+                return IntegrationConnectionTestRead(
+                    ok=False,
+                    plugin=plugin_key,
+                    message="API URL resolves to a non-public IP address",
+                )
+        except ValueError:
+            # ipaddress.ip_address raises ValueError for non-IP strings (e.g. IPv6 zone IDs);
+            # skip those entries and continue checking the remaining resolved addresses
+            pass
+
+    # Reconstruct the health URL from parsed components to prevent SSRF via URL manipulation
+    netloc = parsed_url.hostname or ""
+    if parsed_url.port:
+        netloc = f"{netloc}:{parsed_url.port}"
+    health_url = f"{parsed_url.scheme}://{netloc}/api/v1/health"
+    headers: dict[str, str] = {
+        "User-Agent": "stockwire-rental-settings-test/1.0",
+        "Accept": "application/json",
+    }
+    if api_key:
+        headers["X-API-Key"] = api_key
+
+    try:
+        response = httpx.get(health_url, headers=headers, timeout=8.0, follow_redirects=False)
+        if response.status_code < 400:
+            return IntegrationConnectionTestRead(
+                ok=True,
+                plugin=plugin_key,
+                message=f"Connected to Stockwire instance (status {response.status_code})",
+                status_code=response.status_code,
+            )
+        return IntegrationConnectionTestRead(
+            ok=False,
+            plugin=plugin_key,
+            message=f"Stockwire instance returned status {response.status_code}",
+            status_code=response.status_code,
+        )
+    except httpx.HTTPError as exc:
+        return IntegrationConnectionTestRead(
+            ok=False,
+            plugin=plugin_key,
+            message=f"Connection failed: {exc}",
+        )
+
+
 def _normalize_instance_identifier(raw_value: object) -> str:
     value = str(raw_value or "").strip().lower()
     if not value:
@@ -2172,6 +2487,7 @@ def _validate_integration_url(raw_url: str, label: str) -> None:
             raise HTTPException(status_code=422, detail=f"{label} must not target private/reserved IP addresses")
         return
     except ValueError:
+        # host is not an IP-address literal; fall through to DNS resolution below
         pass
 
     try:

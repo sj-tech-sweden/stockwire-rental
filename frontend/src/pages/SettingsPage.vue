@@ -1107,6 +1107,159 @@
               <q-btn color="positive" :label="t('settings.integrations.twenty.save')" unelevated :loading="integrationsSaving" @click="saveTwentyConfig" />
             </div>
           </div>
+
+          <q-separator class="q-my-md" />
+
+          <div class="row items-center justify-between q-mb-sm">
+            <div class="text-subtitle2">{{ t('settings.integrations.stockwire.title') }}</div>
+            <q-btn color="secondary" icon="add" :label="t('settings.integrations.stockwire.addInstance')" dense unelevated @click="addStockwireInstance" />
+          </div>
+          <div class="text-caption text-grey-7 q-mb-sm">{{ t('settings.integrations.stockwire.description') }}</div>
+
+          <div
+            v-for="(instance, index) in integrationsDraft.stockwire_instances"
+            :key="instance.id || index"
+            class="q-pa-sm q-mb-sm"
+            style="border: 1px solid #d7dee6; border-radius: 10px"
+          >
+            <div class="row q-col-gutter-sm q-mb-sm">
+              <div class="col-12 col-md-4">
+                <q-input
+                  v-model="instance.name"
+                  :label="t('settings.integrations.stockwire.instanceName')"
+                  outlined
+                  dense
+                />
+              </div>
+              <div class="col-12 col-md-4">
+                <q-input
+                  v-model="instance.id"
+                  :label="t('settings.integrations.stockwire.instanceKey')"
+                  outlined
+                  dense
+                  :hint="t('settings.integrations.stockwire.instanceKeyHint')"
+                />
+              </div>
+              <div class="col-12 col-md-4 row items-center justify-end">
+                <q-toggle v-model="instance.enabled" :label="t('settings.sso.enabled')" color="primary" class="q-mr-sm" />
+                <q-btn flat dense icon="delete" color="negative" @click="removeStockwireInstance(index)" />
+              </div>
+            </div>
+            <div class="row q-col-gutter-sm q-mb-sm">
+              <div class="col-12 col-md-6">
+                <q-input
+                  v-model="instance.api_url"
+                  :label="t('settings.integrations.stockwire.apiUrl')"
+                  outlined
+                  dense
+                  :placeholder="t('settings.integrations.stockwire.apiUrlPlaceholder')"
+                />
+              </div>
+              <div class="col-12 col-md-6">
+                <q-input
+                  v-model="instance.api_key"
+                  :label="t('settings.integrations.stockwire.apiKey')"
+                  :hint="t('settings.integrations.stockwire.apiKeyHint')"
+                  outlined
+                  dense
+                  type="password"
+                />
+              </div>
+              <div class="col-12 col-md-6">
+                <q-select
+                  v-model="instance.supplier_customer_id"
+                  :options="customersStore.customers.map(c => ({ label: c.name, value: c.id }))"
+                  :label="t('settings.integrations.stockwire.supplierCustomer')"
+                  :hint="t('settings.integrations.stockwire.supplierCustomerHint')"
+                  outlined
+                  dense
+                  emit-value
+                  map-options
+                  clearable
+                />
+              </div>
+              <div class="col-12 col-md-6">
+                <q-input
+                  v-model="instance.remote_customer_id"
+                  :label="t('settings.integrations.stockwire.remoteCustomerId')"
+                  :hint="t('settings.integrations.stockwire.remoteCustomerIdHint')"
+                  outlined
+                  dense
+                />
+              </div>
+            </div>
+            <div class="row items-center q-gutter-sm q-mb-sm">
+              <q-btn
+                color="secondary"
+                icon="wifi_tethering"
+                :label="t('settings.integrations.stockwire.testConnection')"
+                unelevated
+                :loading="isStockwireTesting(instance.id)"
+                @click="testStockwireConnection(instance, instance.id)"
+              />
+              <q-badge
+                v-if="stockwireTestResult(instance.id)"
+                :color="stockwireTestResult(instance.id).ok ? 'positive' : 'negative'"
+                :label="stockwireTestResult(instance.id).ok ? t('settings.integrations.stockwire.connected') : t('settings.integrations.stockwire.failed')"
+              />
+              <span v-if="stockwireTestResult(instance.id)" class="text-caption text-grey-7">
+                {{ stockwireTestResult(instance.id).message }}
+              </span>
+            </div>
+            <div class="q-mb-sm">
+              <div class="text-caption text-grey-7 q-mb-xs">{{ t('settings.integrations.stockwire.searchRemoteCustomers') }}</div>
+              <div class="row q-col-gutter-sm">
+                <div class="col-12 col-md-8">
+                  <q-input
+                    v-model="stockwireSearchQuery[instance.id]"
+                    :placeholder="t('settings.integrations.stockwire.searchPlaceholder')"
+                    outlined
+                    dense
+                    @keyup.enter="searchStockwireCustomers(instance.id, stockwireSearchQuery[instance.id])"
+                  >
+                    <template #append>
+                      <q-btn
+                        flat
+                        dense
+                        round
+                        icon="search"
+                        :loading="stockwireSearchLoading[instance.id]"
+                        @click="instance.api_url ? searchStockwireCustomers(instance.id, stockwireSearchQuery[instance.id]) : $q.notify({ type: 'warning', message: t('settings.integrations.stockwire.noApiUrl') })"
+                      />
+                    </template>
+                  </q-input>
+                </div>
+              </div>
+              <div v-if="stockwireSearchResults[instance.id]" class="q-mt-sm">
+                <div v-if="!stockwireSearchResults[instance.id].customers.length" class="text-caption text-grey-7">
+                  {{ t('settings.integrations.stockwire.noSearchResults') }}
+                </div>
+                <div v-else class="text-caption text-grey-7 q-mb-xs">
+                  {{ t('settings.integrations.stockwire.searchResults', { count: stockwireSearchResults[instance.id].count }) }}
+                </div>
+                <q-list v-if="stockwireSearchResults[instance.id].customers.length" dense bordered separator class="rounded-borders">
+                  <q-item
+                    v-for="customer in stockwireSearchResults[instance.id].customers.slice(0, 10)"
+                    :key="customer.id"
+                    clickable
+                    @click="instance.remote_customer_id = String(customer.id)"
+                  >
+                    <q-item-section>
+                      <q-item-label>{{ customer.name }}</q-item-label>
+                      <q-item-label caption>{{ [customer.email, customer.city, customer.country].filter(Boolean).join(' · ') }}</q-item-label>
+                    </q-item-section>
+                    <q-item-section side>
+                      <q-btn flat dense size="sm" icon="person_pin" :label="t('settings.integrations.stockwire.selectAsMyId')" @click.stop="instance.remote_customer_id = String(customer.id)" />
+                    </q-item-section>
+                  </q-item>
+                </q-list>
+              </div>
+            </div>
+          </div>
+
+          <div v-if="integrationsDraft.stockwire_instances.length" class="row justify-end q-mt-sm">
+            <q-btn color="positive" :label="t('settings.integrations.stockwire.save')" unelevated :loading="integrationsSaving" @click="saveStockwireInstances" />
+          </div>
         </q-card>
       </q-tab-panel>
 
@@ -1620,6 +1773,7 @@ const categoryPrefillDraftText = ref('')
 const integrationsDraft = ref({
   eventory_instances: DEFAULT_INTEGRATIONS.eventory_instances.map(instance => ({ ...instance })),
   productionplanner: { ...DEFAULT_INTEGRATIONS.productionplanner },
+  stockwire_instances: [],
 })
 const authSsoDraft = ref({ ...DEFAULT_AUTH_SSO_SETTINGS })
 const authSsoValidationError = ref('')
@@ -2406,6 +2560,148 @@ function removeEventoryInstance(index) {
   integrationsDraft.value.eventory_instances = current
 }
 
+function addStockwireInstance() {
+  const nextIndex = (integrationsDraft.value.stockwire_instances || []).length + 1
+  const name = `Stockwire ${nextIndex}`
+  const id = name.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || `stockwire-${nextIndex}`
+  integrationsDraft.value.stockwire_instances = [
+    ...(integrationsDraft.value.stockwire_instances || []),
+    {
+      id,
+      name,
+      enabled: false,
+      api_url: null,
+      api_key: null,
+      supplier_customer_id: null,
+      remote_customer_id: null,
+    },
+  ]
+}
+
+function removeStockwireInstance(index) {
+  const current = [...(integrationsDraft.value.stockwire_instances || [])]
+  current.splice(index, 1)
+  integrationsDraft.value.stockwire_instances = current
+}
+
+async function saveStockwireInstances() {
+  integrationsSaving.value = true
+  try {
+    const stockwireInstances = (integrationsDraft.value.stockwire_instances || []).map(instance => ({
+      id: String(instance.id || '').trim() || `stockwire-${Date.now()}`,
+      name: String(instance.name || '').trim() || 'Stockwire',
+      enabled: Boolean(instance.enabled),
+      api_url: String(instance.api_url || '').trim() || null,
+      api_key: String(instance.api_key || '').trim() || null,
+      supplier_customer_id: instance.supplier_customer_id != null ? Number(instance.supplier_customer_id) : null,
+      remote_customer_id: String(instance.remote_customer_id || '').trim() || null,
+    }))
+    const saved = await settingsStore.updateIntegrations({
+      eventory_instances: (integrationsDraft.value.eventory_instances || []).map((instance, index) => {
+        const { _draftKey, _keyManuallyEdited, ...persistedFields } = instance
+        return {
+          ...persistedFields,
+          id: normalizeEventoryInstanceKey(instance.id) || prefillEventoryInstanceKey(instance.name, index),
+          name: String(instance.name || '').trim() || `Eventory ${index + 1}`,
+        }
+      }),
+      productionplanner: integrationsDraft.value.productionplanner ? {
+        enabled: Boolean(integrationsDraft.value.productionplanner.enabled),
+        api_key: String(integrationsDraft.value.productionplanner.api_key || ''),
+        base_url: String(integrationsDraft.value.productionplanner.base_url || DEFAULT_INTEGRATIONS.productionplanner.base_url),
+      } : { ...DEFAULT_INTEGRATIONS.productionplanner },
+      stockwire_instances: stockwireInstances,
+    })
+    integrationsDraft.value = {
+      ...integrationsDraft.value,
+      stockwire_instances: saved.stockwire_instances || [],
+    }
+    $q.notify({ type: 'positive', message: t('settings.integrations.stockwire.saved') })
+  } catch (error) {
+    $q.notify({ type: 'negative', message: error?.response?.data?.detail || t('settings.integrations.stockwire.failedSave') })
+  } finally {
+    integrationsSaving.value = false
+  }
+}
+
+async function testStockwireConnection(instance, instanceId) {
+  const config = {
+    api_url: String(instance.api_url || '').trim() || null,
+    api_key: String(instance.api_key || '').trim() || null,
+  }
+  integrationTesting.value = {
+    ...integrationTesting.value,
+    stockwireInstances: {
+      ...(integrationTesting.value.stockwireInstances || {}),
+      [instanceId]: true,
+    },
+  }
+  try {
+    const result = await settingsStore.testIntegrationConnection('stockwire', config)
+    integrationTestResults.value = {
+      ...integrationTestResults.value,
+      stockwireInstances: {
+        ...(integrationTestResults.value.stockwireInstances || {}),
+        [instanceId]: result,
+      },
+    }
+    $q.notify({
+      type: result.ok ? 'positive' : 'warning',
+      message: t('settings.integrations.connectionTestResult', {
+        plugin: 'Stockwire',
+        target: ` (${instance.name || instanceId})`,
+        message: result.message,
+      }),
+    })
+  } catch (error) {
+    const message = error?.response?.data?.detail || error?.message || t('settings.integrations.stockwire.connectionTestFailed')
+    integrationTestResults.value = {
+      ...integrationTestResults.value,
+      stockwireInstances: {
+        ...(integrationTestResults.value.stockwireInstances || {}),
+        [instanceId]: { ok: false, message },
+      },
+    }
+    $q.notify({ type: 'negative', message })
+  } finally {
+    integrationTesting.value = {
+      ...integrationTesting.value,
+      stockwireInstances: {
+        ...(integrationTesting.value.stockwireInstances || {}),
+        [instanceId]: false,
+      },
+    }
+  }
+}
+
+function stockwireTestResult(instanceId) {
+  return integrationTestResults.value.stockwireInstances?.[instanceId] || null
+}
+
+function isStockwireTesting(instanceId) {
+  return !!integrationTesting.value.stockwireInstances?.[instanceId]
+}
+
+const stockwireSearchQuery = ref({})
+const stockwireSearchResults = ref({})
+const stockwireSearchLoading = ref({})
+
+async function searchStockwireCustomers(instanceId, query) {
+  const key = String(instanceId || '').trim()
+  if (!key) return
+  stockwireSearchLoading.value = { ...stockwireSearchLoading.value, [key]: true }
+  try {
+    const result = await settingsStore.searchStockwireCustomers(key, query)
+    stockwireSearchResults.value = { ...stockwireSearchResults.value, [key]: result }
+  } catch (error) {
+    const message = error?.response?.data?.detail || error?.message || t('settings.integrations.stockwire.searchFailed')
+    $q.notify({ type: 'negative', message })
+    stockwireSearchResults.value = { ...stockwireSearchResults.value, [key]: { customers: [], count: 0 } }
+  } finally {
+    stockwireSearchLoading.value = { ...stockwireSearchLoading.value, [key]: false }
+  }
+}
+
 function integrationResult(plugin, target = 'default') {
   if (plugin === 'eventory') {
     return integrationTestResults.value.eventoryInstances?.[target] || null
@@ -2610,10 +2906,12 @@ async function saveProductionPlanner() {
         }
       }),
       productionplanner,
+      stockwire_instances: integrationsDraft.value.stockwire_instances || [],
     })
     integrationsDraft.value = {
       eventory_instances: withEventoryDraftMeta((saved.eventory_instances || DEFAULT_INTEGRATIONS.eventory_instances).map(instance => ({ ...instance }))),
       productionplanner: saved.productionplanner || { ...DEFAULT_INTEGRATIONS.productionplanner },
+      stockwire_instances: saved.stockwire_instances || [],
     }
     $q.notify({ type: 'positive', message: t('settings.integrations.productionplanner.saved') })
   } catch (error) {
@@ -2645,10 +2943,12 @@ async function saveIntegrations(options = {}) {
     const saved = await settingsStore.updateIntegrations({
       eventory_instances: normalizedInstances.length ? normalizedInstances : [{ ...DEFAULT_INTEGRATIONS.eventory_instances[0] }],
       productionplanner,
+      stockwire_instances: integrationsDraft.value.stockwire_instances || [],
     })
     integrationsDraft.value = {
       eventory_instances: withEventoryDraftMeta((saved.eventory_instances || DEFAULT_INTEGRATIONS.eventory_instances).map(instance => ({ ...instance }))),
       productionplanner: saved.productionplanner || { ...DEFAULT_INTEGRATIONS.productionplanner },
+      stockwire_instances: saved.stockwire_instances || [],
     }
     if (!silent) {
       $q.notify({ type: 'positive', message: t('settings.integrations.updated') })
@@ -3427,6 +3727,7 @@ onMounted(async () => {
     integrationsDraft.value = {
       eventory_instances: withEventoryDraftMeta((settingsStore.integrations?.eventory_instances || DEFAULT_INTEGRATIONS.eventory_instances).map(instance => ({ ...instance }))),
       productionplanner: settingsStore.integrations?.productionplanner ? { ...settingsStore.integrations.productionplanner } : { ...DEFAULT_INTEGRATIONS.productionplanner },
+      stockwire_instances: (settingsStore.integrations?.stockwire_instances || []).map(instance => ({ ...instance })),
     }
     loadTwentyConfig()
     loadTwentySyncStatus()
