@@ -47,6 +47,21 @@ class InventoryCategoryTreeRead(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class CategoryTranslationCreate(BaseModel):
+    locale: str
+    name: str
+
+
+class CategoryTranslationRead(BaseModel):
+    id: int
+    category_id: int
+    locale: str
+    name: str
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
 class ProductBase(BaseModel):
     sku: str
     name: str

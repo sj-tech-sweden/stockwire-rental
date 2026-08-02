@@ -24,6 +24,22 @@ class InventoryCategory(Base):
         "InventoryCategory", back_populates="parent", cascade="all, delete-orphan"
     )
     products: Mapped[list["Product"]] = relationship(back_populates="category_node")
+    translations: Mapped[list["CategoryTranslation"]] = relationship(
+        "CategoryTranslation", back_populates="category", cascade="all, delete-orphan"
+    )
+
+
+class CategoryTranslation(Base):
+    __tablename__ = "category_translations"
+    __table_args__ = (UniqueConstraint("category_id", "locale", name="uq_category_locale"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    category_id: Mapped[int] = mapped_column(ForeignKey("inventory_categories.id", ondelete="CASCADE"), nullable=False, index=True)
+    locale: Mapped[str] = mapped_column(String(5), nullable=False)
+    name: Mapped[str] = mapped_column(String(120), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
+
+    category: Mapped["InventoryCategory"] = relationship(back_populates="translations")
 
 
 class Product(Base):

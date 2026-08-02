@@ -209,7 +209,7 @@ async def upload_file(
         size_bytes=len(payload),
         storage_backend=storage.backend,
         storage_key=storage_key,
-        created_by_user_id=current_user.id,
+        created_by_user_id=current_user.id if current_user.id else None,
     )
     db.add(row)
     db.commit()

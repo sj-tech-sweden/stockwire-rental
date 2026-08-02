@@ -1,6 +1,6 @@
 <template>
   <q-dialog :model-value="modelValue" :maximized="effectiveIsPhone" @update:model-value="emit('update:modelValue', $event)">
-    <q-card :style="effectiveIsPhone ? 'width: 100vw; max-width: 100vw; height: 100vh' : 'min-width: 820px; max-width: 96vw'" class="ec-card">
+    <q-card :key="device?.id" :style="effectiveIsPhone ? 'width: 100vw; max-width: 100vw; height: 100vh' : 'min-width: 820px; max-width: 96vw'" class="ec-card">
       <q-card-section class="row items-start no-wrap">
         <q-img
           v-if="productImageUrl"
@@ -76,10 +76,10 @@
           </div>
           <div class="col-12 col-md-6 text-caption">
             {{ t('inventory.infoDialogs.location') }}: {{ deviceLocationPath || device?.location || '-' }}
-            <q-btn v-if="device?.location_zone_id" flat dense round color="primary" icon="place" size="sm" class="q-ml-xs" @click="locateDeviceMapOpen = true">
+            <q-btn v-if="effectiveLocationZoneId" flat dense round color="primary" icon="place" size="sm" class="q-ml-xs" @click="locateDeviceMapOpen = true">
               <q-tooltip>{{ t('inventory.deviceDialog.locateOnMap') }}</q-tooltip>
             </q-btn>
-            <q-btn v-if="device?.location_zone_id" flat dense round color="orange" icon="lightbulb" size="sm" class="q-ml-xs" @click="locateDeviceWithLed">
+            <q-btn v-if="effectiveLocationZoneId" flat dense round color="orange" icon="lightbulb" size="sm" class="q-ml-xs" @click="locateDeviceWithLed">
               <q-tooltip>{{ t('warehouseLeds.actions.locate') }}</q-tooltip>
             </q-btn>
           </div>
@@ -125,7 +125,7 @@
             <q-item-section>
               <q-item-label>{{ deviceInfoProduct?.sku || '-' }} · {{ deviceInfoProduct?.name || '-' }}</q-item-label>
               <q-item-label caption>
-                {{ t('inventory.type') }}: {{ deviceInfoProduct?.product_type || '-' }} · {{ t('inventory.category') }}: {{ deviceInfoProduct?.category || t('inventory.uncategorized') }}
+                {{ t('inventory.type') }}: {{ translateProductType(deviceInfoProduct?.product_type, t) }} · {{ t('inventory.category') }}: {{ translateCategory(deviceInfoProduct?.category, t) }}
               </q-item-label>
               <q-item-label caption>
                 {{ t('inventory.infoDialogs.brand') }}: {{ deviceInfoProduct?.brand || '-' }} · {{ t('inventory.infoDialogs.manufacturer') }}: {{ deviceInfoProduct?.manufacturer || '-' }}
@@ -201,48 +201,39 @@
               <q-item-label>{{ row.asset_tag }} · {{ productNameById(row.product_id) }}</q-item-label>
               <q-item-label caption>
                 {{ t('inventory.infoDialogs.deviceStatusCondition', { status: row.status, condition: row.condition || t('inventory.infoDialogs.notAvailable') }) }}
-                <span v-if="row.current_job_code"> · Job {{ row.current_job_code }}</span>
+                <span v-if="row.current_job_code"> · {{ t('inventory.infoDialogs.job') }} {{ row.current_job_code }}</span>
               </q-item-label>
             </q-item-section>
             <q-item-section side top>
               <div class="row no-wrap items-center q-gutter-xs">
-                <q-btn
-                  flat
-                  dense
-                  :round="effectiveIsPhone"
-                  :color="productActionColor"
-                  class="inventory-action-contrast"
-                  icon="inventory_2"
-              :label="effectiveIsPhone ? void 0 : t('inventory.products')"
-              :aria-label="effectiveIsPhone ? t('inventory.openProduct') : void 0"
-                  @click="emit('edit-product', row.product_id)"
-                />
-                <q-btn
-                  flat
-                  dense
-                  :round="effectiveIsPhone"
-                  :color="infoActionColor"
-                  icon="info"
-              :label="effectiveIsPhone ? void 0 : t('inventory.infoDialogs.deviceInfo')"
-              :aria-label="effectiveIsPhone ? t('inventory.infoDialogs.openDeviceInfo') : void 0"
-                  @click="emit('view-device', row.id)"
-                />
-                <q-btn
-                  flat
-                  dense
-                  :round="effectiveIsPhone"
-                  color="primary"
-                  icon="edit"
-              :label="effectiveIsPhone ? void 0 : t('app.actions.edit')"
-              :aria-label="effectiveIsPhone ? t('inventory.deviceDialog.edit') : void 0"
-                  @click="emit('edit-device', row.id)"
-                />
+                <q-btn flat dense :round="effectiveIsPhone" icon="inventory_2" color="secondary" :label="effectiveIsPhone ? undefined : t('inventory.infoDialogs.product')" @click="emit('edit-product', row.product_id)" />
+                <q-btn flat dense :round="effectiveIsPhone" icon="info" color="primary" :label="effectiveIsPhone ? undefined : t('inventory.infoDialogs.deviceInfo')" @click="emit('view-device', row.id)" />
+                <q-btn flat dense :round="effectiveIsPhone" icon="edit" color="primary" :label="effectiveIsPhone ? undefined : t('app.actions.edit')" @click="emit('edit-device', row.id)" />
               </div>
             </q-item-section>
           </q-item>
           <q-item v-if="!deviceInfoLocationDevices.length">
             <q-item-section>
               <q-item-label caption>{{ t('inventory.infoDialogs.noDevicesAtLocation') }}</q-item-label>
+            </q-item-section>
+          </q-item>
+        </q-list>
+
+        <div v-if="device?.case_device_id" class="text-subtitle2 q-mb-sm">{{ t('inventory.infoDialogs.case') }}</div>
+        <q-list v-if="device?.case_device_id" bordered separator class="rounded-borders q-mb-md">
+          <q-item>
+            <q-item-section>
+              <q-item-label>{{ device.case_asset_tag || t('inventory.infoDialogs.deviceId', { id: device.case_device_id }) }}</q-item-label>
+              <q-item-label caption v-if="caseDevice">
+                {{ productNameById(caseDevice.product_id) }}
+                <span v-if="caseDevice.location_zone_id"> · {{ caseDeviceLocationPath }}</span>
+              </q-item-label>
+            </q-item-section>
+            <q-item-section side top>
+              <div class="row no-wrap items-center q-gutter-xs">
+                <q-btn flat dense :round="effectiveIsPhone" icon="info" color="primary" :label="effectiveIsPhone ? undefined : t('inventory.infoDialogs.deviceInfo')" @click="emit('view-device', device.case_device_id)" />
+                <q-btn flat dense :round="effectiveIsPhone" icon="edit" color="primary" :label="effectiveIsPhone ? undefined : t('app.actions.edit')" @click="emit('edit-device', device.case_device_id)" />
+              </div>
             </q-item-section>
           </q-item>
         </q-list>
@@ -259,43 +250,35 @@
             </q-item-section>
             <q-item-section side top>
               <div class="row no-wrap items-center q-gutter-xs">
-                <q-btn
-                  flat
-                  dense
-                  :round="effectiveIsPhone"
-                  :color="productActionColor"
-                  class="inventory-action-contrast"
-                  icon="inventory_2"
-              :label="effectiveIsPhone ? void 0 : t('inventory.products')"
-              :aria-label="effectiveIsPhone ? t('inventory.openProduct') : void 0"
-                  @click="emit('edit-product', row.product_id)"
-                />
-                <q-btn
-                  flat
-                  dense
-                  :round="effectiveIsPhone"
-                  :color="infoActionColor"
-                  icon="info"
-              :label="effectiveIsPhone ? void 0 : t('inventory.infoDialogs.deviceInfo')"
-              :aria-label="effectiveIsPhone ? t('inventory.infoDialogs.openDeviceInfo') : void 0"
-                  @click="emit('view-device', row.id)"
-                />
-                <q-btn
-                  flat
-                  dense
-                  :round="effectiveIsPhone"
-                  color="primary"
-                  icon="edit"
-              :label="effectiveIsPhone ? void 0 : t('app.actions.edit')"
-              :aria-label="effectiveIsPhone ? t('inventory.deviceDialog.edit') : void 0"
-                  @click="emit('edit-device', row.id)"
-                />
+                <q-btn flat dense :round="effectiveIsPhone" icon="inventory_2" color="secondary" :label="effectiveIsPhone ? undefined : t('inventory.infoDialogs.product')" @click="emit('edit-product', row.product_id)" />
+                <q-btn flat dense :round="effectiveIsPhone" icon="info" color="primary" :label="effectiveIsPhone ? undefined : t('inventory.infoDialogs.deviceInfo')" @click="emit('view-device', row.id)" />
+                <q-btn flat dense :round="effectiveIsPhone" icon="edit" color="primary" :label="effectiveIsPhone ? undefined : t('app.actions.edit')" @click="emit('edit-device', row.id)" />
               </div>
             </q-item-section>
           </q-item>
           <q-item v-if="!deviceInfoContainedDevices.length">
             <q-item-section>
               <q-item-label caption>{{ t('inventory.infoDialogs.noDevicesInsideCase') }}</q-item-label>
+            </q-item-section>
+          </q-item>
+        </q-list>
+
+        <div v-if="deviceInfoSameCaseDevices.length" class="text-subtitle2 q-mb-sm">{{ t('inventory.infoDialogs.otherDevicesInCase') }}</div>
+        <q-list v-if="deviceInfoSameCaseDevices.length" bordered separator class="rounded-borders q-mb-md">
+          <q-item v-for="row in deviceInfoSameCaseDevices" :key="row.id">
+            <q-item-section>
+              <q-item-label>{{ row.asset_tag }} · {{ productNameById(row.product_id) }}</q-item-label>
+              <q-item-label caption>
+                {{ t('inventory.infoDialogs.deviceStatusCondition', { status: row.status, condition: row.condition || t('inventory.infoDialogs.notAvailable') }) }}
+                <span v-if="row.current_job_code"> · {{ t('inventory.infoDialogs.job') }} {{ row.current_job_code }}</span>
+              </q-item-label>
+            </q-item-section>
+            <q-item-section side top>
+              <div class="row no-wrap items-center q-gutter-xs">
+                <q-btn flat dense :round="effectiveIsPhone" icon="inventory_2" color="secondary" :label="effectiveIsPhone ? undefined : t('inventory.infoDialogs.product')" @click="emit('edit-product', row.product_id)" />
+                <q-btn flat dense :round="effectiveIsPhone" icon="info" color="primary" :label="effectiveIsPhone ? undefined : t('inventory.infoDialogs.deviceInfo')" @click="emit('view-device', row.id)" />
+                <q-btn flat dense :round="effectiveIsPhone" icon="edit" color="primary" :label="effectiveIsPhone ? undefined : t('app.actions.edit')" @click="emit('edit-device', row.id)" />
+              </div>
             </q-item-section>
           </q-item>
         </q-list>
@@ -312,9 +295,9 @@
             </q-item-section>
             <q-item-section side top>
               <div class="row no-wrap items-center q-gutter-xs">
-                <q-btn flat dense :round="effectiveIsPhone" :color="productActionColor" class="inventory-action-contrast" icon="inventory_2" :label="effectiveIsPhone ? void 0 : t('inventory.infoDialogs.product')" :aria-label="effectiveIsPhone ? t('inventory.infoDialogs.openProductForEdit') : void 0" @click="emit('edit-product', row.product_id)" />
-                <q-btn flat dense :round="effectiveIsPhone" :color="infoActionColor" icon="info" :label="effectiveIsPhone ? void 0 : t('inventory.infoDialogs.deviceInfo')" :aria-label="effectiveIsPhone ? t('inventory.infoDialogs.openDeviceInfo') : void 0" @click="emit('view-device', row.id)" />
-                <q-btn flat dense :round="effectiveIsPhone" color="primary" icon="edit" :label="effectiveIsPhone ? void 0 : t('app.actions.edit')" :aria-label="effectiveIsPhone ? t('inventory.deviceDialog.edit') : void 0" @click="emit('edit-device', row.id)" />
+                <q-btn flat dense :round="effectiveIsPhone" icon="inventory_2" color="secondary" :label="effectiveIsPhone ? undefined : t('inventory.infoDialogs.product')" @click="emit('edit-product', row.product_id)" />
+                <q-btn flat dense :round="effectiveIsPhone" icon="info" color="primary" :label="effectiveIsPhone ? undefined : t('inventory.infoDialogs.deviceInfo')"  @click="emit('view-device', row.id)" />
+                <q-btn flat dense :round="effectiveIsPhone" icon="edit" color="primary" :label="effectiveIsPhone ? undefined : t('app.actions.edit')" @click="emit('edit-device', row.id)" />
               </div>
             </q-item-section>
           </q-item>
@@ -468,7 +451,7 @@
                   style="min-width: 110px"
                   @update:model-value="(v) => updateDefectSeverity(defect, v)"
                 />
-                <q-btn dense flat icon="delete" color="negative" size="sm" @click="deleteDefect(defect)" />
+                <q-btn dense flat icon="delete" color="negative" @click="deleteDefect(defect)" />
               </div>
               <div v-if="defect.comments?.length" class="q-mt-sm">
                 <div v-for="comment in defect.comments" :key="comment.id" class="text-caption q-py-xs">
@@ -530,11 +513,14 @@ import { computed, ref, watch } from 'vue'
 import { useQuasar } from 'quasar'
 import { useI18n } from 'vue-i18n'
 import { useInventoryStore } from '../stores/inventory'
+import { api } from '../boot/axios'
 import { useJobsStore } from '../stores/jobs'
 import { useCustomersStore } from '../stores/customers'
 import { useSettingsStore } from '../stores/settings'
 import { useWarehouseLedsStore } from '../stores/warehouseLeds'
 import { normalizeCurrencyCode } from '../constants/currencies'
+import { buildZonePath, getEffectiveZoneId, formatMoney } from '../utils/inventory-helpers'
+import { translateProductType, translateCategory } from '../utils/translate-helpers'
 import { useProductImage } from '../composables/useProductImage'
 import EntityAttachmentsPanel from './EntityAttachmentsPanel.vue'
 import LocateDeviceMapDialog from './LocateDeviceMapDialog.vue'
@@ -561,8 +547,8 @@ const deviceInfoAudits = ref([])
 const deviceInfoDefects = ref([])
 const defectFieldTimers = {}
 
-const productActionColor = computed(() => ($q.dark.isActive ? 'green-4' : 'secondary'))
-const infoActionColor = computed(() => ($q.dark.isActive ? 'teal-4' : 'secondary'))
+const productActionColor = computed(() => ($q.dark.isActive ? 'green-3' : 'secondary'))
+const infoActionColor = computed(() => ($q.dark.isActive ? 'teal-3' : 'secondary'))
 
 const locateDeviceMapOpen = ref(false)
 
@@ -577,16 +563,11 @@ async function locateDeviceWithLed() {
 }
 
 const deviceLocationPath = computed(() => {
-  if (!props.device?.location_zone_id) return ''
-  const zone = store.zones.find(z => z.id === props.device.location_zone_id)
-  if (!zone) return ''
-  const parts = []
-  let current = zone
-  while (current) {
-    parts.unshift(current.name || '')
-    current = store.zones.find(z => z.id === current.parent_id)
-  }
-  return parts.join(' / ')
+  return buildZonePath(effectiveLocationZoneId.value, store.zones)
+})
+
+const effectiveLocationZoneId = computed(() => {
+  return getEffectiveZoneId(props.device || {}, store.devices)
 })
 
 const defectStatusOptions = [
@@ -617,8 +598,32 @@ const deviceInfoLocationDevices = computed(() => {
 
 const deviceInfoContainedDevices = computed(() => {
   if (!props.device?.id) return []
-  const caseId = props.device.id
-  return store.devices.filter(item => item.case_device_id === caseId)
+  const caseId = Number(props.device.id)
+  return store.devices.filter(item => Number(item.case_device_id) === caseId)
+})
+
+const deviceInfoSameCaseDevices = computed(() => {
+  if (!props.device?.case_device_id) return []
+  const caseId = Number(props.device.case_device_id)
+  return store.devices.filter(item => Number(item.case_device_id) === caseId && item.id !== props.device.id)
+})
+
+const caseDevice = computed(() => {
+  if (!props.device?.case_device_id) return null
+  return store.devices.find(d => d.id === props.device.case_device_id) || null
+})
+
+const caseDeviceLocationPath = computed(() => {
+  if (!caseDevice.value?.location_zone_id) return ''
+  const zone = store.zones.find(z => z.id === caseDevice.value.location_zone_id)
+  if (!zone) return ''
+  const parts = []
+  let current = zone
+  while (current) {
+    parts.unshift(current.name || '')
+    current = store.zones.find(z => z.id === current.parent_id)
+  }
+  return parts.join(' / ')
 })
 
 const deviceInfoComponentDevices = computed(() => {
@@ -693,23 +698,9 @@ function formatDateTime(value) {
   return date.toLocaleString()
 }
 
-function formatMoney(value) {
-  const amount = Number(value || 0)
-  if (!Number.isFinite(amount)) return '0.00'
-  const currentCurrency = normalizeCurrencyCode(settingsStore.companyProfile?.currency, 'SEK')
-  try {
-    return new Intl.NumberFormat('sv-SE', {
-      style: 'currency',
-      currency: currentCurrency,
-      maximumFractionDigits: 2,
-    }).format(amount)
-  } catch {
-    return new Intl.NumberFormat('sv-SE', {
-      style: 'currency',
-      currency: 'SEK',
-      maximumFractionDigits: 2,
-    }).format(amount)
-  }
+function formatMoneyLocal(value) {
+  const currency = normalizeCurrencyCode(settingsStore.companyProfile?.currency, 'SEK')
+  return formatMoney(value, currency)
 }
 
 function productNameById(productId) {
@@ -906,10 +897,13 @@ watch(() => props.device, (device) => {
   }
 })
 
-watch(() => props.modelValue, (open) => {
+watch(() => props.modelValue, async (open) => {
   if (open && props.device) {
     if (!customersStore.customers.length) {
       customersStore.fetchAll().catch(() => {})
+    }
+    if (!store.devices.length) {
+      await store.fetchAll().catch(() => {})
     }
     void loadDeviceData(props.device)
     fetchProductImage(props.device.product_id)
@@ -920,8 +914,8 @@ watch(() => props.modelValue, (open) => {
 </script>
 
 <style lang="scss" scoped>
-.comment-bubble {
-  background: #f5f5f5;
+:deep(.comment-bubble) {
+  background: var(--q-grey-3, #f5f5f5);
   border-radius: 6px;
   padding: 6px 10px;
   white-space: pre-wrap;
@@ -929,7 +923,11 @@ watch(() => props.modelValue, (open) => {
   font-size: 0.85rem;
   line-height: 1.4;
 }
+body.body--dark :deep(.comment-bubble) {
+  background: var(--q-dark-page, #1d1d1d);
+}
 :deep(.inventory-action-contrast) {
   color: var(--q-secondary, #26a69a) !important;
+  opacity: 1 !important;
 }
 </style>

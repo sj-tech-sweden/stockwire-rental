@@ -20,33 +20,86 @@ DEFAULT_CATEGORY_PREFILL_PATHS = [
     ["Audio", "Mixers"],
     ["Audio", "Playback"],
     ["Audio", "Wireless"],
+    ["Audio", "Soundcards"],
+    ["Audio", "Interfaces"],
+    ["Audio", "Headphones"],
+    ["Audio", "Amplifiers"],
     ["Audio", "Cables", "XLR"],
     ["Audio", "Cables", "PowerCon"],
     ["Audio", "Cables", "Speakon"],
+    ["Audio", "Cables", "Jack"],
+    ["Audio", "Cables", "CAT5"],
     ["Lighting", "Fixtures"],
+    ["Lighting", "LED Panels"],
+    ["Lighting", "Follow Spots"],
+    ["Lighting", "Strobes"],
+    ["Lighting", "UV Lights"],
     ["Lighting", "Control"],
     ["Lighting", "Dimmers"],
     ["Lighting", "Cables", "DMX"],
     ["Lighting", "Power"],
+    ["Lighting", "Gels"],
+    ["Lighting", "Clamps"],
     ["Rigging", "Truss"],
     ["Rigging", "Motors"],
     ["Rigging", "Hardware"],
+    ["Rigging", "Chain Hoists"],
+    ["Rigging", "Safety Lines"],
+    ["Rigging", "Shackles"],
+    ["Rigging", "Slings"],
     ["Video", "Displays"],
     ["Video", "Projectors"],
+    ["Video", "Cameras"],
     ["Video", "Switchers"],
-    ["Video", "Cables"],
+    ["Video", "Recorders"],
+    ["Video", "Cables", "HDMI"],
+    ["Video", "Cables", "SDI"],
+    ["Video", "Cables", "DisplayPort"],
+    ["Video", "Converters"],
     ["Power", "Distribution"],
     ["Power", "Cables"],
+    ["Power", "UPS"],
+    ["Power", "Generators"],
+    ["Power", "Adapters"],
     ["Staging", "Decks"],
     ["Staging", "Legs"],
+    ["Staging", "Drapes"],
+    ["Staging", "Backdrops"],
+    ["Staging", "Flooring"],
+    ["Staging", "Tables"],
     ["Accessories", "Cases"],
     ["Accessories", "Adapters"],
     ["Accessories", "Clamps"],
     ["Accessories", "Safety"],
+    ["Accessories", "Labels"],
     ["Consumables", "Tape"],
     ["Consumables", "Batteries"],
+    ["Consumables", "Cleaning"],
+    ["Consumables", "Gaffer Tape"],
+    ["Consumables", "Cable Ties"],
+    ["Effects", "Smoke Machines"],
+    ["Effects", "Haze Machines"],
+    ["Effects", "Confetti"],
+    ["Effects", "Pyro"],
+    ["Effects", "Bubble Machines"],
+    ["Effects", "Fans"],
+    ["Effects", "Fluids"],
+    ["Effects", "Smoke Fluid"],
+    ["Effects", "Haze Fluid"],
+    ["Lamps", "Lamp Bulbs"],
+    ["Tools", "Wrenches"],
+    ["Tools", "Screwdrivers"],
+    ["Tools", "Pliers"],
+    ["Tools", "Cutters"],
+    ["Tools", "Soldering"],
+    ["Tools", "Multimeters"],
+    ["Tools", "Crimpers"],
     ["Networking", "Switches"],
     ["Networking", "Cables"],
+    ["Networking", "Routers"],
+    ["Networking", "Access Points"],
+    ["Networking", "Patch Panels"],
+    ["Networking", "Connectors"],
 ]
 
 DEFAULT_BRAND_OPTIONS = [
@@ -354,6 +407,18 @@ class EventoryInstanceConfig(IntegrationPluginConfig):
     name: str
     create_jobs: bool = False
     rental_customer_id: str = ""
+    auto_scan_out_on_receive: bool = False
+    auto_scan_in_on_return: bool = False
+
+
+class StockwireInstanceConfig(BaseModel):
+    id: str
+    name: str
+    enabled: bool = False
+    api_url: str | None = None
+    api_key: str | None = Field(default=None, exclude=True)
+    supplier_customer_id: int | None = None
+    remote_customer_id: str | None = None
 
 
 class ProductionPlannerConfig(BaseModel):
@@ -371,11 +436,27 @@ class ProductionPlannerReadConfig(BaseModel):
 class IntegrationsRead(BaseModel):
     eventory_instances: list[EventoryInstanceConfig] = Field(default_factory=list)
     productionplanner: ProductionPlannerReadConfig = Field(default_factory=ProductionPlannerReadConfig)
+    stockwire_instances: list[StockwireInstanceConfig] = Field(default_factory=list)
 
 
 class IntegrationsUpdate(BaseModel):
     eventory_instances: list[EventoryInstanceConfig] = Field(default_factory=list)
     productionplanner: ProductionPlannerConfig | None = None
+    stockwire_instances: list[StockwireInstanceConfig] = Field(default_factory=list)
+
+
+class StockwireCustomerRead(BaseModel):
+    id: int
+    name: str
+    email: str | None = None
+    phone: str | None = None
+    city: str | None = None
+    country: str | None = None
+
+
+class StockwireCustomersRead(BaseModel):
+    customers: list[StockwireCustomerRead] = Field(default_factory=list)
+    count: int = 0
 
 
 class IntegrationConnectionTestRequest(BaseModel):

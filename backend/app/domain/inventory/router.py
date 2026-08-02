@@ -18,6 +18,7 @@ from app.domain.auth.deps import get_current_user, require_admin, require_editor
 from app.domain.auth.models import User
 from app.domain.audit.service import record_activity
 from app.domain.inventory.models import (
+    CategoryTranslation,
     DefectComment,
     DefectReport,
     Device,
@@ -36,6 +37,14 @@ from app.domain.jobs.models import Job, JobRequirement
 from app.domain.customers.models import Customer
 from app.domain.settings.models import AppSetting
 from app.domain.settings.schemas import DEFAULT_CATEGORY_PREFILL_PATHS
+from app.domain.settings.router import (
+    _eventory_scan_in_pack_list,
+    _eventory_scan_out_pack_list,
+    _eventory_set_headers,
+    _fetch_eventory_token,
+    _parse_integrations,
+    INTEGRATIONS_KEY,
+)
 from app.domain.realtime.events import emit_realtime_event
 from app.domain.inventory.schemas import (
     DeviceCreate,
@@ -68,6 +77,8 @@ from app.domain.inventory.schemas import (
     InventoryCategoryRead,
     InventoryCategoryTreeRead,
     InventoryCategoryUpdate,
+    CategoryTranslationCreate,
+    CategoryTranslationRead,
     InventoryScanRequest,
     InventoryScanResponse,
     InventoryCheckedOutDeviceRead,
@@ -700,6 +711,67 @@ def delete_category(
     db.delete(category)
     db.commit()
     return None
+
+
+@router.get("/categories/{category_id}/translations", response_model=list[CategoryTranslationRead])
+def list_category_translations(
+    category_id: int,
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_user),
+) -> list[CategoryTranslationRead]:
+    category = db.get(InventoryCategory, category_id)
+    if category is None:
+        raise HTTPException(status_code=404, detail="Category not found")
+    translations = db.scalars(
+        select(CategoryTranslation).where(CategoryTranslation.category_id == category_id)
+    ).all()
+    return [CategoryTranslationRead.model_validate(t) for t in translations]
+
+
+@router.post("/categories/{category_id}/translations", response_model=CategoryTranslationRead, status_code=status.HTTP_201_CREATED)
+def create_category_translation(
+    category_id: int,
+    payload: CategoryTranslationCreate,
+    db: Session = Depends(get_db),
+    _: User = Depends(require_admin),
+) -> CategoryTranslationRead:
+    category = db.get(InventoryCategory, category_id)
+    if category is None:
+        raise HTTPException(status_code=404, detail="Category not found")
+    existing = db.scalar(
+        select(CategoryTranslation).where(
+            CategoryTranslation.category_id == category_id,
+            CategoryTranslation.locale == payload.locale,
+        )
+    )
+    if existing:
+        existing.name = payload.name
+        db.commit()
+        db.refresh(existing)
+        return CategoryTranslationRead.model_validate(existing)
+    translation = CategoryTranslation(
+        category_id=category_id,
+        locale=payload.locale,
+        name=payload.name,
+    )
+    db.add(translation)
+    db.commit()
+    db.refresh(translation)
+    return CategoryTranslationRead.model_validate(translation)
+
+
+@router.delete("/categories/{category_id}/translations/{translation_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_category_translation(
+    category_id: int,
+    translation_id: int,
+    db: Session = Depends(get_db),
+    _: User = Depends(require_admin),
+) -> None:
+    translation = db.get(CategoryTranslation, translation_id)
+    if translation is None or translation.category_id != category_id:
+        raise HTTPException(status_code=404, detail="Translation not found")
+    db.delete(translation)
+    db.commit()
 
 
 @router.post("/categories/prefill", response_model=list[InventoryCategoryRead])
@@ -1733,7 +1805,7 @@ def create_maintenance_comment(
     comment = MaintenanceComment(
         maintenance_id=maintenance_id,
         comment=payload.comment.strip(),
-        created_by_user_id=current_user.id,
+        created_by_user_id=current_user.id if current_user.id else None,
     )
     db.add(comment)
     db.commit()
@@ -1835,7 +1907,7 @@ def create_defect_report(
     _validate_defect_report_payload(db, data)
     report = DefectReport(
         **data,
-        created_by_user_id=current_user.id,
+        created_by_user_id=current_user.id if current_user.id else None,
     )
     db.add(report)
     _update_device_on_defect_change(db, data["device_id"])
@@ -1932,7 +2004,7 @@ def create_defect_comment(
     comment = DefectComment(
         defect_report_id=report_id,
         comment=comment_text,
-        created_by_user_id=current_user.id,
+        created_by_user_id=current_user.id if current_user.id else None,
     )
     db.add(comment)
     db.commit()
@@ -2147,6 +2219,12 @@ def process_scan(
                 },
             )
             db.commit()
+
+            if action == "rental_receive":
+                _trigger_eventory_auto_scan(db, product, scan_action="scan_out")
+            elif action == "rental_return_supplier":
+                _trigger_eventory_auto_scan(db, product, scan_action="scan_in")
+
             return response
 
         device = _find_device_by_scan_code(db, scan_code)
@@ -2317,7 +2395,7 @@ def process_scan(
                 description=(payload.defect_description or "").strip() or None,
                 severity=severity,
                 status="open",
-                created_by_user_id=current_user.id,
+                created_by_user_id=current_user.id if current_user.id else None,
             )
             db.add(report)
             _update_device_on_defect_change(db, device.id)
@@ -3394,6 +3472,103 @@ def _rental_scan_balance(db: Session, product_id: int) -> dict[str, int]:
         "returned_supplier": returned_supplier,
         "on_hand": max(on_hand, 0),
     }
+
+
+def _trigger_eventory_auto_scan(db: Session, product: Product, scan_action: str) -> None:
+    """Trigger an automatic scan-out or scan-in on the Eventory instance linked to the product.
+
+    Called after a successful rental_receive (scan_action='scan_out') or
+    rental_return_supplier (scan_action='scan_in') scan. The call is best-effort:
+    any network or API error is silently ignored so as not to disrupt the local
+    scan operation.
+
+    For scan-out: triggers scan-out on every active pack list where fewer items
+    have been scanned out than are allocated (out < quantity), unless
+    auto_scan_out_on_receive is disabled for the instance.
+
+    For scan-in: triggers scan-in on every active pack list where at least one
+    item has already been scanned out (out > 0), unless auto_scan_in_on_return
+    is disabled for the instance.
+    """
+    try:
+        external_ref = str(product.external_reference or "").strip()
+        if not external_ref or ":" not in external_ref:
+            return
+
+        instance_id = external_ref.split(":", 1)[0]
+        if not instance_id:
+            return
+
+        setting = db.scalar(
+            select(AppSetting).where(AppSetting.key == INTEGRATIONS_KEY)
+        )
+        if setting is None:
+            return
+
+        parsed = _parse_integrations(setting.value_json)
+        instances = parsed.get("eventory_instances") if isinstance(parsed, dict) else []
+        if not isinstance(instances, list):
+            return
+
+        instance = next(
+            (i for i in instances if isinstance(i, dict) and str(i.get("id") or "").strip() == instance_id),
+            None,
+        )
+        if instance is None or not bool(instance.get("enabled")):
+            return
+
+        if scan_action == "scan_out" and not bool(instance.get("auto_scan_out_on_receive")):
+            return
+        if scan_action == "scan_in" and not bool(instance.get("auto_scan_in_on_return")):
+            return
+
+        packlists_raw = str(product.eventory_packlists_json or "").strip()
+        if not packlists_raw:
+            return
+
+        try:
+            packlists = json.loads(packlists_raw)
+        except Exception:
+            return
+
+        if not isinstance(packlists, list) or not packlists:
+            return
+
+        api_url = str(instance.get("api_url") or "").strip()
+        api_key = str(instance.get("api_key") or "").strip()
+        username = str(instance.get("username") or "").strip()
+        password = str(instance.get("password") or "").strip()
+        token_endpoint = str(instance.get("token_endpoint") or "").strip()
+
+        oauth_token = ""
+        if username and password:
+            try:
+                oauth_token = _fetch_eventory_token(api_url, token_endpoint, username, password)
+            except Exception:
+                return
+
+        headers = {"Accept": "application/json", "Content-Type": "application/json"}
+        _eventory_set_headers(headers, oauth_token, api_key)
+
+        for pl in packlists:
+            if not isinstance(pl, dict):
+                continue
+            if str(pl.get("source") or "").strip() != "active":
+                continue
+
+            pack_list_id = str(pl.get("pack_list_id") or "").strip()
+            if not pack_list_id:
+                continue
+
+            quantity = int(pl.get("quantity") or 0)
+            out = int(pl.get("out") or 0)
+
+            if scan_action == "scan_out" and out < quantity:
+                _eventory_scan_out_pack_list(api_url, headers, pack_list_id)
+            elif scan_action == "scan_in" and out > 0:
+                _eventory_scan_in_pack_list(api_url, headers, pack_list_id)
+    except Exception:  # noqa: BLE001 – best-effort; never disrupt the local scan
+        pass
 
 
 def _resolve_job_for_scan(db: Session, job_code: str | None) -> Job:

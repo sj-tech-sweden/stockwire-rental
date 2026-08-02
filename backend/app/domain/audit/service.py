@@ -34,7 +34,7 @@ def record_activity(
 
     db.add(
         ActivityLog(
-            user_id=user_id,
+            user_id=user_id if user_id else None,
             entity_type=entity_type,
             entity_id=entity_id,
             action=action,

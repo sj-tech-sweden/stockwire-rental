@@ -16,9 +16,9 @@
             <div class="col-12 col-md-2">
               <q-input v-model="productSkuPrefix" label="SKU prefix" outlined dense hint="e.g. SPK-" />
             </div>
-            <div class="col-12 col-md-8"><q-input v-model="productForm.name" label="Name" outlined dense :rules="[v => !!v || 'Required']" /></div>
+            <div class="col-12 col-md-8"><q-input v-model="productForm.name" :label="t('inventory.name')" outlined dense :rules="[v => !!v || t('common.required')]" /></div>
             <div class="col-12 col-md-4">
-              <q-select v-model="productForm.product_type" :options="productTypeOptions" label="Product type" outlined dense emit-value map-options />
+              <q-select v-model="productForm.product_type" :options="productTypeOptions" :label="t('inventory.type')" outlined dense emit-value map-options />
             </div>
             <div class="col-12 col-md-8">
               <q-select
@@ -37,7 +37,7 @@
               />
             </div>
             <div class="col-12 col-md-4">
-              <q-input v-model="productForm.supplier_name" label="Supplier" outlined dense />
+              <q-input v-model="productForm.supplier_name" :label="t('customers.supplier')" outlined dense />
             </div>
           </div>
 
@@ -126,7 +126,7 @@
                 v-model.number="productForm.daily_rate"
                 type="number"
                 step="0.01"
-                label="Daily rate"
+                :label="t('inventory.dailyRate')"
                 :suffix="activeCurrencyCode"
                 :hint="currencyHelperText"
                 outlined
@@ -138,24 +138,24 @@
                 v-model.number="productForm.replace_cost"
                 type="number"
                 step="0.01"
-                label="Replacement cost"
+                :label="t('inventory.replacementCost')"
                 :suffix="activeCurrencyCode"
                 :hint="currencyHelperText"
                 outlined
                 dense
               />
             </div>
-            <div class="col-12 col-md-4"><q-input v-model.number="productForm.maintenance_interval_days" type="number" label="Maintenance interval (days)" outlined dense /></div>
-            <div class="col-12 col-md-4"><q-input v-model.number="productForm.power_consumption_watts" type="number" step="0.01" label="Power (W)" outlined dense /></div>
+            <div class="col-12 col-md-4"><q-input v-model.number="productForm.maintenance_interval_days" type="number" :label="t('inventory.maintenanceInterval')" outlined dense /></div>
+            <div class="col-12 col-md-4"><q-input v-model.number="productForm.power_consumption_watts" type="number" step="0.01" :label="t('inventory.power')" outlined dense /></div>
           </div>
 
           <q-separator class="q-my-md" />
           <div class="text-subtitle2 q-mb-sm">Physical Specs</div>
           <div class="row q-col-gutter-sm">
-            <div class="col-12 col-md-4"><q-input v-model.number="productForm.weight_kg" type="number" step="0.001" label="Weight (kg)" outlined dense /></div>
-            <div class="col-12 col-md-3"><q-input v-model.number="productForm.height_cm" type="number" step="0.01" label="Height (cm)" outlined dense /></div>
-            <div class="col-12 col-md-3"><q-input v-model.number="productForm.width_cm" type="number" step="0.01" label="Width (cm)" outlined dense /></div>
-            <div class="col-12 col-md-3"><q-input v-model.number="productForm.depth_cm" type="number" step="0.01" label="Depth (cm)" outlined dense /></div>
+            <div class="col-12 col-md-4"><q-input v-model.number="productForm.weight_kg" type="number" step="0.001" :label="t('inventory.weight')" outlined dense /></div>
+            <div class="col-12 col-md-3"><q-input v-model.number="productForm.height_cm" type="number" step="0.01" :label="t('inventory.height')" outlined dense /></div>
+            <div class="col-12 col-md-3"><q-input v-model.number="productForm.width_cm" type="number" step="0.01" :label="t('inventory.width')" outlined dense /></div>
+            <div class="col-12 col-md-3"><q-input v-model.number="productForm.depth_cm" type="number" step="0.01" :label="t('inventory.depth')" outlined dense /></div>
             <div class="col-12 col-md-3" />
 
             <div class="col-12 q-mt-sm">
@@ -163,7 +163,7 @@
               <q-expansion-item
                 v-model="suppliersExpanded"
                 icon="local_shipping"
-                label="Suppliers"
+                :label="t('customers.suppliers')"
                 dense
                 header-class="rounded-borders"
               >
@@ -172,18 +172,18 @@
                   <div class="col-12 col-md-5">
                     <SupplierPickerInline
                       v-model="newSupplierId"
-                      label="Supplier"
+                      :label="t('customers.supplier')"
                       supplier-type="product"
                     />
                   </div>
                   <div class="col-6 col-md-2">
-                    <q-input v-model.number="newSupplierLeadTime" type="number" min="0" label="Lead time (days)" outlined dense />
+                    <q-input v-model.number="newSupplierLeadTime" type="number" min="0" :label="t('inventory.leadTime')" outlined dense />
                   </div>
                   <div class="col-6 col-md-2">
-                    <q-input v-model.number="newSupplierUnitCost" type="number" step="0.01" min="0" label="Unit cost" outlined dense />
+                    <q-input v-model.number="newSupplierUnitCost" type="number" step="0.01" min="0" :label="t('inventory.unitCost')" outlined dense />
                   </div>
                   <div class="col-6 col-md-2">
-                    <q-toggle v-model="newSupplierIsPrimary" label="Primary" color="primary" />
+                    <q-toggle v-model="newSupplierIsPrimary" :label="t('inventory.primary')" color="primary" />
                   </div>
                   <div class="col-6 col-md-1">
                     <q-btn color="primary" unelevated icon="add" @click="addSupplierRow" />
@@ -212,10 +212,10 @@
                     <q-item-section v-else>
                       <div class="row q-col-gutter-xs items-center">
                         <div class="col-auto">
-                          <q-input v-model.number="editLeadTime" type="number" min="0" label="Lead time (days)" outlined dense style="width: 140px" />
+                          <q-input v-model.number="editLeadTime" type="number" min="0" :label="t('inventory.leadTime')" outlined dense style="width: 140px" />
                         </div>
                         <div class="col-auto">
-                          <q-input v-model.number="editUnitCost" type="number" step="0.01" min="0" label="Unit cost" outlined dense style="width: 120px" />
+                          <q-input v-model.number="editUnitCost" type="number" step="0.01" min="0" :label="t('inventory.unitCost')" outlined dense style="width: 120px" />
                         </div>
                         <div class="col-auto">
                           <q-btn flat dense icon="check" color="positive" @click="saveEditSupplier" />
@@ -246,10 +246,10 @@
               <div class="text-subtitle2 q-mb-sm">Reorder Settings</div>
               <div class="row q-col-gutter-sm">
                 <div class="col-12 col-md-4">
-                  <q-input v-model.number="productForm.min_stock_level" type="number" min="0" label="Min stock level" outlined dense hint="Alert when stock falls below this" />
+                  <q-input v-model.number="productForm.min_stock_level" type="number" min="0" :label="t('inventory.minStockLevel')" outlined dense hint="Alert when stock falls below this" />
                 </div>
                 <div class="col-12 col-md-4">
-                  <q-input v-model.number="productForm.min_order_qty" type="number" min="1" label="Min order quantity" outlined dense hint="Minimum to order from supplier" />
+                  <q-input v-model.number="productForm.min_order_qty" type="number" min="1" :label="t('inventory.minOrderQty')" outlined dense hint="Minimum to order from supplier" />
                 </div>
               </div>
             </div>
@@ -259,7 +259,7 @@
               <q-expansion-item
                 v-model="accessoriesExpanded"
                 icon="extension"
-                label="Accessories"
+                :label="t('inventory.accessories')"
                 dense
                 header-class="rounded-borders"
               >
@@ -269,7 +269,7 @@
                     <q-select
                       v-model="newAccessoryProductId"
                       :options="filteredAccessoryProductOptions"
-                      label="Accessory product"
+                      :label="t('inventory.accessoryProduct')"
                       outlined
                       dense
                       emit-value
@@ -315,7 +315,7 @@
               <q-expansion-item
                 v-model="componentsExpanded"
                 icon="widgets"
-                label="Components"
+                :label="t('inventory.components')"
                 dense
                 header-class="rounded-borders"
               >
@@ -325,7 +325,7 @@
                     <q-select
                       v-model="newComponentProductId"
                       :options="filteredComponentProductOptions"
-                      label="Component product"
+                      :label="t('inventory.componentProduct')"
                       outlined
                       dense
                       emit-value
@@ -441,7 +441,7 @@
             </div>
           </div>
           <q-separator class="q-my-md" />
-          <q-expansion-item v-model="customFieldsExpanded" icon="tune" label="Custom Fields" dense header-class="rounded-borders">
+          <q-expansion-item v-model="customFieldsExpanded" icon="tune" :label="t('inventory.customFields')" dense header-class="rounded-borders">
             <div class="q-pt-sm">
               <div v-if="productFieldRows.length">
                 <div v-for="field in productFieldRows" :key="field.field_definition_id" class="q-mb-sm">
@@ -504,7 +504,7 @@
         default-category="product-document"
       />
       <q-card-actions :align="isPhone ? 'stretch' : 'right'" :class="isPhone ? 'q-pa-md bg-grey-2' : ''">
-        <q-btn flat :class="isPhone ? 'full-width q-mb-sm' : ''" label="Cancel" @click="closeProductDialog" />
+        <q-btn flat :class="isPhone ? 'full-width q-mb-sm' : ''" :label="t('app.actions.cancel')" @click="closeProductDialog" />
         <q-btn color="primary" unelevated :class="isPhone ? 'full-width' : ''" :label="productEditing ? 'Save' : 'Create'" :loading="saving" @click="saveProduct" />
       </q-card-actions>
     </q-card>
@@ -521,6 +521,7 @@ import { useSettingsStore } from '../stores/settings'
 import { useCustomFieldsStore } from '../stores/customFields'
 import { translateMaybePrefillCustomFieldLabel, translateMaybePrefillCustomFieldOption } from '../i18n/prefillContent'
 import { normalizeCurrencyCode } from '../constants/currencies'
+import { translateCategory } from '../utils/translate-helpers'
 import { isRentalProduct } from '../utils/inventory-overview'
 import { useProductImage } from '../composables/useProductImage'
 import { api } from '../boot/axios'
@@ -689,7 +690,8 @@ const allCategorySelectOptions = computed(() => {
   const flat = []
   const walk = (nodes, prefix = '') => {
     for (const node of nodes || []) {
-      const label = prefix ? `${prefix} / ${node.name}` : node.name
+      const translatedName = translateCategory(node.name, t)
+      const label = prefix ? `${prefix} / ${translatedName}` : translatedName
       flat.push({ label, value: node.id })
       walk(node.children || [], label)
     }

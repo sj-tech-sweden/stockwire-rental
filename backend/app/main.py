@@ -4,6 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.router import api_router
 from app.config import settings
 from app.domain.auth.security import validate_api_key_pepper, validate_password_pepper
+from app.domain.integrations.auto_sync import start_twenty_auto_sync, stop_twenty_auto_sync
 from app.domain.warehouse_leds.mqtt_client import start_mqtt_client, stop_mqtt_client
 import os
 from pathlib import Path
@@ -35,6 +36,8 @@ def run_startup_checks() -> None:
     validate_password_pepper()
     # Start MQTT client for warehouse LED integration
     start_mqtt_client()
+    # Start Twenty CRM periodic auto-sync scheduler
+    start_twenty_auto_sync()
     # Optionally run alembic migrations on startup when MIGRATE_ON_STARTUP=true
     if os.getenv("MIGRATE_ON_STARTUP", "").lower() == "true":
         base_dir = Path(__file__).resolve().parents[1]
@@ -51,6 +54,7 @@ def run_startup_checks() -> None:
 @app.on_event("shutdown")
 def run_shutdown() -> None:
     stop_mqtt_client()
+    stop_twenty_auto_sync()
 
 
 @app.get("/")
