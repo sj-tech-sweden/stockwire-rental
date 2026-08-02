@@ -2390,6 +2390,8 @@ def _test_stockwire_connection(
                     message="API URL resolves to a non-public IP address",
                 )
         except ValueError:
+            # ipaddress.ip_address raises ValueError for non-IP strings (e.g. IPv6 zone IDs);
+            # skip those entries and continue checking the remaining resolved addresses
             pass
 
     # Reconstruct the health URL from parsed components to prevent SSRF via URL manipulation
@@ -2467,6 +2469,7 @@ def _validate_integration_url(raw_url: str, label: str) -> None:
             raise HTTPException(status_code=422, detail=f"{label} must not target private/reserved IP addresses")
         return
     except ValueError:
+        # host is not an IP-address literal; fall through to DNS resolution below
         pass
 
     try:

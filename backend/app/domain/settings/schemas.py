@@ -414,7 +414,7 @@ class StockwireInstanceConfig(BaseModel):
     name: str
     enabled: bool = False
     api_url: str | None = None
-    api_key: str | None = None
+    api_key: str | None = Field(default=None, exclude=True)
     supplier_customer_id: int | None = None
     remote_customer_id: str | None = None
 
