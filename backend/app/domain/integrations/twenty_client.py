@@ -75,15 +75,16 @@ class TwentyClient:
         return resp.json()
 
     async def list_objects(self, object_name: str, limit: int = 100, offset: int = 0) -> dict[str, Any]:
+        params: dict[str, Any] = {
+            "limit": limit,
+            "orderBy": '[{"createdAt":"DescNullsFirst"}]',
+        }
+        if offset:
+            params["offset"] = offset
         resp = await self._request_with_retry(
-            "POST",
+            "GET",
             f"{self.base_url}/rest/{object_name}",
-            json={
-                "filter": {},
-                "orderBy": [{"createdAt": "DescNullsFirst"}],
-                "limit": limit,
-                "offset": offset,
-            },
+            params=params,
         )
         resp.raise_for_status()
         return resp.json()
