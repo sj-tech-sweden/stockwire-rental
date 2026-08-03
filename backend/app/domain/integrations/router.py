@@ -1,4 +1,7 @@
+import logging
 from datetime import datetime, timezone
+
+logger = logging.getLogger(__name__)
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
@@ -189,6 +192,19 @@ async def trigger_sync(payload: TwentySyncTrigger, db: Session = Depends(get_db)
 
     if payload.direction in ("inbound", "both"):
         if "customer" in entity_types:
+            # Pre-fetch all people once and build a company_id → person lookup to
+            # avoid one API call per company during the loop below.
+            people_by_company: dict[str, dict] = {}
+            try:
+                all_people = await client.search_people(email=None)
+                for p_edge in all_people:
+                    p_node = p_edge.get("node", p_edge)
+                    comp = p_node.get("company") or {}
+                    if isinstance(comp, dict) and comp.get("id"):
+                        people_by_company.setdefault(comp["id"], p_node)
+            except Exception:
+                logger.warning("trigger_sync: could not pre-fetch people; person matching will be skipped")
+
             offset = 0
             while True:
                 companies_data = await client.list_objects("companies", limit=SYNC_PAGE_SIZE, offset=offset)
@@ -198,14 +214,7 @@ async def trigger_sync(payload: TwentySyncTrigger, db: Session = Depends(get_db)
                 for edge in companies:
                     company = edge.get("node", edge)
                     try:
-                        person_list = await client.search_people(email=None)
-                        matched_person = None
-                        for p_edge in person_list:
-                            p_node = p_edge.get("node", p_edge)
-                            comp = p_node.get("company", {})
-                            if isinstance(comp, dict) and comp.get("id") == company.get("id"):
-                                matched_person = p_node
-                                break
+                        matched_person = people_by_company.get(company.get("id") or "")
                         await sync_customer_inbound(db, client, company, matched_person)
                         synced += 1
                     except Exception:
