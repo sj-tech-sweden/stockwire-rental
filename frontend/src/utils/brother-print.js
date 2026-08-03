@@ -89,7 +89,7 @@ export function getPrinter() {
 
 /**
  * Get the detected media (label roll/tape) info.
- * @returns {{ width: number, type: string }|null}
+ * @returns {{ width: number, type: string, name: string, length: number }|null}
  */
 export function getDetectedMedia() {
   if (!currentMedia) return null
@@ -108,6 +108,10 @@ export function getDetectedMedia() {
  */
 export function onPrinterStatus(callback) {
   if (!connectedPrinter) return () => {}
+  if (statusUnsubscribe) {
+    statusUnsubscribe()
+    statusUnsubscribe = null
+  }
   statusUnsubscribe = connectedPrinter.onStatus(callback)
   return statusUnsubscribe
 }
@@ -150,7 +154,7 @@ export const LABEL_PRESETS = [
 
 /**
  * Render a canvas element to raw image data for the printer.
- * Converts to 1-bit black and white (dithered).
+ * Converts to 1-bit black and white using a grayscale threshold.
  *
  * @param {HTMLCanvasElement} canvas - The label canvas
  * @returns {RawImageData}

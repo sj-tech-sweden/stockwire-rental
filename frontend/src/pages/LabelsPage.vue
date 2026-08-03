@@ -285,7 +285,6 @@ import {
   disconnectPrinter,
   getPrinter,
   printCanvas,
-  LABEL_PRESETS,
 } from '../utils/brother-print'
 
 const inventoryStore = useInventoryStore()
@@ -1356,6 +1355,7 @@ async function directPrintLabels() {
       offscreen.width = canvasW
       offscreen.height = canvasH
       const ctx = offscreen.getContext('2d')
+      if (!ctx) throw new Error('Could not get 2d context for offscreen canvas')
       ctx.fillStyle = '#fff'
       ctx.fillRect(0, 0, canvasW, canvasH)
       await renderLabelToCanvas(ctx, row, canvasW, canvasH, labelW, labelH)
@@ -1400,8 +1400,12 @@ async function renderLabelToCanvas(ctx, row, canvasW, canvasH, labelWmm, labelHm
         const img = new Image()
         const svgBlob = new Blob([svg.outerHTML], { type: 'image/svg+xml' })
         const url = URL.createObjectURL(svgBlob)
-        await new Promise((resolve) => {
+        await new Promise((resolve, reject) => {
           img.onload = resolve
+          img.onerror = () => {
+            URL.revokeObjectURL(url)
+            reject(new Error('Failed to load barcode SVG'))
+          }
           img.src = url
         })
         ctx.drawImage(img, x, y, w, h)
@@ -1412,8 +1416,9 @@ async function renderLabelToCanvas(ctx, row, canvasW, canvasH, labelWmm, labelHm
       if (value) {
         const dataUrl = await QRCode.toDataURL(value, { width: Math.round(w), margin: 0 })
         const img = new Image()
-        await new Promise((resolve) => {
+        await new Promise((resolve, reject) => {
           img.onload = resolve
+          img.onerror = () => reject(new Error('Failed to load QR code image'))
           img.src = dataUrl
         })
         ctx.drawImage(img, x, y, w, h)
