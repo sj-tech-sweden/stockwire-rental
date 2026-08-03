@@ -11,11 +11,11 @@ from app.domain.jobs.models import Job
 logger = logging.getLogger(__name__)
 
 STAGE_MAP = {
-    "draft": "SCREENING",
-    "confirmed": "MEETING",
-    "in_progress": "PROPOSAL",
-    "completed": "WON",
-    "cancelled": "LOST",
+    "draft": "NEW",
+    "confirmed": "SCREENING",
+    "in_progress": "MEETING",
+    "completed": "CUSTOMER",
+    "cancelled": "NEW",
 }
 
 SYNC_PAGE_SIZE = 50
@@ -74,6 +74,13 @@ def _customer_to_company_payload(customer: Customer) -> dict:
     return payload
 
 
+def _sanitize_phone(phone: str) -> str:
+    """Return phone in a format Twenty accepts (digits only, or E.164)."""
+    # Strip dashes, spaces, and parentheses
+    cleaned = "".join(c for c in phone if c.isdigit() or c == "+")
+    return cleaned
+
+
 def _customer_to_person_payload(customer: Customer) -> dict:
     parts = (customer.name or "").strip().split(None, 1)
     first_name = parts[0] if parts else ""
@@ -84,7 +91,7 @@ def _customer_to_person_payload(customer: Customer) -> dict:
     if customer.email:
         payload["emails"] = {"primaryEmail": customer.email}
     if customer.phone:
-        payload["phones"] = {"primaryPhoneNumber": customer.phone}
+        payload["phones"] = {"primaryPhoneNumber": _sanitize_phone(customer.phone)}
     return payload
 
 

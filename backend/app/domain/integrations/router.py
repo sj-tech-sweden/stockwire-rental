@@ -208,7 +208,11 @@ async def trigger_sync(payload: TwentySyncTrigger, db: Session = Depends(get_db)
             offset = 0
             while True:
                 companies_data = await client.list_objects("companies", limit=SYNC_PAGE_SIZE, offset=offset)
-                companies = companies_data.get("data", {}).get("companies", {}).get("edges", [])
+                data_val = companies_data.get("data", [])
+                if isinstance(data_val, list):
+                    companies = data_val
+                else:
+                    companies = data_val.get("companies", {}).get("edges", [])
                 if not companies:
                     break
                 for edge in companies:
@@ -227,7 +231,11 @@ async def trigger_sync(payload: TwentySyncTrigger, db: Session = Depends(get_db)
             offset = 0
             while True:
                 opps_data = await client.list_objects("opportunities", limit=SYNC_PAGE_SIZE, offset=offset)
-                opps = opps_data.get("data", {}).get("opportunities", {}).get("edges", [])
+                data_val = opps_data.get("data", [])
+                if isinstance(data_val, list):
+                    opps = data_val
+                else:
+                    opps = data_val.get("opportunities", {}).get("edges", [])
                 if not opps:
                     break
                 for edge in opps:
