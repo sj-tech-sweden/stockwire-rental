@@ -15,6 +15,8 @@
     "@orbit/indexeddb": "^0.17.2",
     "@orbit/memory": "^0.17.2",
     "@quasar/extras": "^2.0.0",
+    "@thermal-label/brother-ql-core": "^0.6.1",
+    "@thermal-label/brother-ql-web": "^0.6.1",
     "axios": "^1.9.0",
     "jsbarcode": "^3.12.3",
     "pinia": "^4.0.0",
