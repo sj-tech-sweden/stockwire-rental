@@ -172,8 +172,6 @@ async def test_do_sync_fetches_people_once_not_per_company():
     }
     empty_resp: dict = {"data": {"companies": {"edges": []}, "opportunities": {"edges": []}}}
 
-    call_count = 0
-
     async def _list_objects(object_name, limit=100, offset=0):
         if object_name == "companies" and offset == 0:
             return companies_resp
