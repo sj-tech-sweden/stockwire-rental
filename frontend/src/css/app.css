@@ -529,6 +529,19 @@ body.body--dark .ec-card .q-table tbody td {
   border-color: rgba(110, 150, 145, 0.22) !important;
 }
 
+/* ── Safe area / PWA insets (iOS viewport-fit=cover) ─────────────────────── */
+
+/* Pad the fixed header so toolbar content clears the iOS status bar */
+.q-header {
+  padding-top: env(safe-area-inset-top);
+}
+
+/* Keep left/right page padding within device display cutouts */
+.q-page-container {
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+}
+
 /* ── Mobile overrides ─────────────────────────────────────────────────────── */
 
 @media (max-width: 599px) {

@@ -24,7 +24,7 @@ describe('PWA configuration', () => {
     expect(manifestJson).toMatchObject({
       display: 'standalone',
       background_color: '#11181D',
-      theme_color: '#3F873F',
+      theme_color: '#182228',
     })
   })
 
