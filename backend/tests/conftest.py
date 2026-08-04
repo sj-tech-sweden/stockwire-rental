@@ -49,8 +49,10 @@ def client(test_engine) -> Generator[TestClient, None, None]:
         password_hash="irrelevant",
         full_name="Test Admin",
         role="admin",
+        notification_channel="both",
         is_active=True,
         is_admin=True,
+        auth_source="local",
         created_at=datetime.now(timezone.utc),
     )
 

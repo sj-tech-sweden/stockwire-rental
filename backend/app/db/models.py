@@ -1,5 +1,5 @@
 from app.domain.audit.models import ActivityLog
-from app.domain.auth.models import User
+from app.domain.auth.models import PushSubscription, User
 from app.domain.calendar_feeds.models import CalendarFeed
 from app.domain.custom_fields.models import CustomFieldDefinition, CustomFieldValue
 from app.domain.customers.models import Customer
@@ -34,12 +34,14 @@ from app.domain.inventory.models import (
     Zone,
 )
 from app.domain.jobs.models import Job, JobRequirement
+from app.domain.notifications.models import NotificationLog, NotificationTemplate
 from app.domain.settings.models import AppSetting
 from app.domain.storage.models import AssetFile
 from app.domain.venues.models import Venue
 
 __all__ = [
     "User",
+    "PushSubscription",
     "ActivityLog",
     "InventoryCategory",
     "Product",
@@ -60,6 +62,8 @@ __all__ = [
     "CustomFieldValue",
     "Job",
     "JobRequirement",
+    "NotificationTemplate",
+    "NotificationLog",
     "FinancialTransaction",
     "AppSetting",
     "AssetFile",

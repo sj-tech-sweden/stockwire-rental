@@ -223,6 +223,14 @@
               class="q-mt-sm"
               :disable="!authStore.canEdit"
             />
+
+            <div class="q-mt-sm">
+              <q-toggle
+                v-model="form.email_notifications_enabled"
+                :label="t('jobs.emailNotificationsEnabled')"
+                :disable="!authStore.canEdit"
+              />
+            </div>
           </q-form>
         </q-card-section>
       </q-card>
@@ -736,6 +744,7 @@ function emptyForm() {
     sales_price: null,
     invoice_paid: false,
     invoice_paid_at: null,
+    email_notifications_enabled: true,
     notes: '',
   }
 }
@@ -1079,6 +1088,7 @@ function syncFromJob(job) {
     sales_price: job.sales_price == null ? null : Number(job.sales_price),
     invoice_paid: Boolean(job.invoice_paid),
     invoice_paid_at: normalizeDate(job.invoice_paid_at),
+    email_notifications_enabled: job.email_notifications_enabled !== false,
     notes: job.notes ?? '',
   }
 
@@ -1191,6 +1201,7 @@ async function createJob() {
       sales_price: form.value.sales_price == null || form.value.sales_price === '' ? null : Number(form.value.sales_price),
       invoice_paid: Boolean(form.value.invoice_paid),
       invoice_paid_at: form.value.invoice_paid ? normalizeDate(form.value.invoice_paid_at) : null,
+      email_notifications_enabled: !!form.value.email_notifications_enabled,
     }
 
     const savedJob = await jobsStore.createJob(payload)
@@ -1225,6 +1236,7 @@ async function saveChanges() {
       sales_price: form.value.sales_price == null || form.value.sales_price === '' ? null : Number(form.value.sales_price),
       invoice_paid: Boolean(form.value.invoice_paid),
       invoice_paid_at: form.value.invoice_paid ? normalizeDate(form.value.invoice_paid_at) : null,
+      email_notifications_enabled: !!form.value.email_notifications_enabled,
     }
 
     const savedJob = await jobsStore.updateJob(currentJob.value.id, payload)

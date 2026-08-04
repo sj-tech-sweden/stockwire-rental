@@ -120,6 +120,14 @@
               :disable="!authStore.canEdit"
             />
 
+            <div class="q-mt-sm">
+              <q-toggle
+                v-model="form.email_notifications_enabled"
+                :label="t('customers.emailNotificationsEnabled')"
+                :disable="!authStore.canEdit"
+              />
+            </div>
+
             <q-separator class="q-my-md" />
             <div class="text-subtitle2 q-mb-sm">{{ t('customers.supplierTypes') }}</div>
             <div class="row q-col-gutter-sm">
@@ -807,6 +815,7 @@ function syncFromCustomer(customer) {
     is_product_supplier: customer.is_product_supplier ?? false,
     is_rental_supplier: customer.is_rental_supplier ?? false,
     is_crew_supplier: customer.is_crew_supplier ?? false,
+    email_notifications_enabled: customer.email_notifications_enabled !== false,
   }
   void loadFieldRows()
   void loadInfo()
@@ -853,6 +862,7 @@ async function createCustomer() {
       postal_code: form.value.postal_code?.trim() || null,
       country: form.value.country?.trim() || null,
       notes: form.value.notes?.trim() || null,
+      email_notifications_enabled: !!form.value.email_notifications_enabled,
     }
 
     const saved = await customersStore.createCustomer(payload)
@@ -888,6 +898,7 @@ async function saveChanges() {
       postal_code: form.value.postal_code?.trim() || null,
       country: form.value.country?.trim() || null,
       notes: form.value.notes?.trim() || null,
+      email_notifications_enabled: !!form.value.email_notifications_enabled,
     }
 
     const saved = await customersStore.updateCustomer(currentCustomer.value.id, payload)
