@@ -19,6 +19,7 @@ class JobBase(BaseModel):
     sales_price: Decimal | None = Field(default=None, ge=Decimal("0.00"))
     invoice_paid: bool = False
     invoice_paid_at: date | None = None
+    email_notifications_enabled: bool = True
     notes: str | None = None
 
 
@@ -41,6 +42,7 @@ class JobUpdate(BaseModel):
     sales_price: Decimal | None = Field(default=None, ge=Decimal("0.00"))
     invoice_paid: bool | None = None
     invoice_paid_at: date | None = None
+    email_notifications_enabled: bool | None = None
     notes: str | None = None
 
 

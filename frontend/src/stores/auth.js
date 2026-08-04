@@ -160,6 +160,7 @@ export const useAuthStore = defineStore('auth', () => {
       email: String(payload?.email || '').trim(),
       full_name: String(payload?.full_name || '').trim(),
       password: String(payload?.password || '').trim() || null,
+      notification_channel: String(payload?.notification_channel || me.value?.notification_channel || 'both'),
     }
     const { data } = await api.put('/api/v1/auth/me', body)
     me.value = data || null

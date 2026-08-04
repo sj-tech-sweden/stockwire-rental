@@ -412,6 +412,7 @@ def update_me(
 
     current_user.email = normalized_email
     current_user.full_name = str(payload.full_name or "").strip() or current_user.full_name
+    current_user.notification_channel = payload.notification_channel
 
     new_password = str(payload.password or "").strip()
     if new_password:
@@ -445,6 +446,7 @@ def create_user(
         password_hash=hash_password(payload.password),
         full_name=payload.full_name,
         role=payload.role,
+        notification_channel=payload.notification_channel,
         is_active=payload.is_active,
         is_admin=payload.role == "admin",
         created_at=datetime.now(timezone.utc),

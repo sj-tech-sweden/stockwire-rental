@@ -54,6 +54,9 @@ class Settings(BaseSettings):
     smtp_use_tls: bool = True
 
     resend_api_key: str = ""
+    web_push_vapid_public_key: str = ""
+    web_push_vapid_private_key: str = ""
+    web_push_vapid_subject: str = "mailto:noreply@stockwire.app"
 
     password_reset_expire_minutes: int = 15
     password_reset_base_url: str = "http://localhost:9000"
