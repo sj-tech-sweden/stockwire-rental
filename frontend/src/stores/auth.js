@@ -136,11 +136,13 @@ export const useAuthStore = defineStore('auth', () => {
   async function deleteUser(id) {
     if (!isOnline()) {
       users.value = users.value.filter(u => u.id !== id)
+      await cacheSnapshot('auth.users', users.value)
       await queueMutation({ method: 'delete', url: `/api/v1/auth/users/${id}`, conflictPolicy: 'lww' })
       return
     }
     await api.delete(`/api/v1/auth/users/${id}`)
     users.value = users.value.filter(u => u.id !== id)
+    await cacheSnapshot('auth.users', users.value)
   }
 
   async function checkBootstrap() {
@@ -247,11 +249,13 @@ export const useAuthStore = defineStore('auth', () => {
   async function deleteApiKey(id) {
     if (!isOnline()) {
       apiKeys.value = apiKeys.value.filter(k => k.id !== id)
+      await cacheSnapshot('auth.apiKeys', apiKeys.value)
       await queueMutation({ method: 'delete', url: `/api/v1/auth/api-keys/${id}`, conflictPolicy: 'lww' })
       return
     }
     await api.delete(`/api/v1/auth/api-keys/${id}`)
     apiKeys.value = apiKeys.value.filter(k => k.id !== id)
+    await cacheSnapshot('auth.apiKeys', apiKeys.value)
   }
 
   return {

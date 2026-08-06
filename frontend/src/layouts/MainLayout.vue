@@ -31,6 +31,15 @@
               :style="{ color: headerStyle.color }"
               :aria-label="t('app.toggleDarkMode')"
             />
+          <q-btn
+              flat
+              round
+              icon="smart_toy"
+              :color="assistantStore.isOpen ? 'primary' : undefined"
+              @click="assistantStore.toggle()"
+              :style="{ color: assistantStore.isOpen ? undefined : headerStyle.color }"
+              :aria-label="t('assistant.title')"
+            />
         </div>
         <div v-if="authStore.me" class="row items-center q-gutter-sm">
           <q-btn
@@ -139,6 +148,19 @@
       </q-scroll-area>
     </q-drawer>
 
+    <q-drawer
+      v-model="assistantStore.isOpen"
+      side="right"
+      bordered
+      :width="380"
+      :mini-width="0"
+      :overlay="isPhone"
+      :behavior="isPhone ? 'mobile' : 'desktop'"
+      class="ec-assistant-drawer"
+    >
+      <AssistantDrawer />
+    </q-drawer>
+
     <q-page-container>
       <router-view />
     </q-page-container>
@@ -152,13 +174,16 @@ import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '../stores/auth'
 import { useSettingsStore } from '../stores/settings'
+import { useAssistantStore } from '../stores/assistantStore'
 import { getUserLocalePreference, resolveAppLocale, setLocale } from '../i18n'
+import AssistantDrawer from '../components/AssistantDrawer.vue'
 
 const drawerOpen = ref(false)
 const drawerExpanded = ref(false)
 const forceMini = ref(false)
 const authStore = useAuthStore()
 const settingsStore = useSettingsStore()
+const assistantStore = useAssistantStore()
 const router = useRouter()
 const $q = useQuasar()
 const { t } = useI18n()

@@ -517,7 +517,7 @@ class APIKeyOut(BaseModel):
 
 @router.get("/api-keys", response_model=list[APIKeyOut])
 def list_api_keys(db: Session = Depends(get_db), _: User = Depends(require_admin)):
-    return list(db.scalars(select(APIKey).order_by(APIKey.id)).all())
+    return list(db.scalars(select(APIKey).where(APIKey.is_active.is_(True)).order_by(APIKey.id)).all())
 
 
 @router.post("/api-keys", response_model=APIKeyOut, status_code=status.HTTP_201_CREATED)

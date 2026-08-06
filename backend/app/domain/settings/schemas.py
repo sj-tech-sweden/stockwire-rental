@@ -424,11 +424,19 @@ class ProductionPlannerReadConfig(BaseModel):
 class IntegrationsRead(BaseModel):
     eventory_instances: list[EventoryInstanceConfig] = Field(default_factory=list)
     productionplanner: ProductionPlannerReadConfig = Field(default_factory=ProductionPlannerReadConfig)
+    llm: LlmConfig | None = None
+
+
+class LlmConfig(BaseModel):
+    base_url: str = "http://localhost:11434/v1"
+    api_key: str = "ollama"
+    model: str = "qwen2.5-coder"
 
 
 class IntegrationsUpdate(BaseModel):
     eventory_instances: list[EventoryInstanceConfig] = Field(default_factory=list)
     productionplanner: ProductionPlannerConfig | None = None
+    llm: LlmConfig | None = None
 
 
 class IntegrationConnectionTestRequest(BaseModel):

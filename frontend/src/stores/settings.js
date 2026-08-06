@@ -575,21 +575,26 @@ export const useSettingsStore = defineStore('settings', () => {
   }
 
   async function updateIntegrations(payload) {
-    const normalized = normalizeIntegrations(payload)
-    if (!isOnline()) {
-      integrations.value = normalized
-      await queueMutation({
-        method: 'put',
-        url: '/api/v1/settings/integrations',
-        data: normalized,
-        conflictPolicy: 'guarded',
-      })
-      return integrations.value
-    }
+    try {
+      const normalized = normalizeIntegrations(payload)
+      if (!isOnline()) {
+        integrations.value = normalized
+        await queueMutation({
+          method: 'put',
+          url: '/api/v1/settings/integrations',
+          data: normalized,
+          conflictPolicy: 'guarded',
+        })
+        return integrations.value
+      }
 
-    const { data } = await api.put('/api/v1/settings/integrations', normalized)
-    integrations.value = normalizeIntegrations(data)
-    return integrations.value
+      const { data } = await api.put('/api/v1/settings/integrations', normalized)
+      integrations.value = normalizeIntegrations(data)
+      return integrations.value
+    } catch (error) {
+      console.error('Failed to update integrations:', error)
+      throw error
+    }
   }
 
   async function testIntegrationConnection(plugin, config) {
@@ -1012,14 +1017,20 @@ export const useSettingsStore = defineStore('settings', () => {
   }
 
   function normalizeIntegrations(value) {
+    if (!value || typeof value !== 'object') {
+      value = {}
+    }
+
     const rawInstances = Array.isArray(value?.eventory_instances)
-      ? value.eventory_instances
-      : (value?.eventory ? [{ id: 'eventory-main', name: 'Eventory Main', ...value.eventory }] : [])
+      ? value.eventory_instances.filter(i => typeof i === 'object' && i !== null)
+      : (value?.eventory && typeof value.eventory === 'object' ? [{ id: 'eventory-main', name: 'Eventory Main', ...value.eventory }] : [])
     const eventoryInstances = rawInstances
       .map((instance, index) => normalizeEventoryInstance(instance, index))
       .filter(instance => instance.id)
 
-    const productionplanner = value?.productionplanner || DEFAULT_INTEGRATIONS.productionplanner
+    const productionplanner = (value?.productionplanner && typeof value.productionplanner === 'object') ? value.productionplanner : DEFAULT_INTEGRATIONS.productionplanner
+    const llmRaw = value?.llm
+    const llm = (llmRaw && typeof llmRaw === 'object') ? llmRaw : { base_url: 'http://localhost:11434/v1', api_key: 'ollama', model: 'qwen2.5-coder' }
 
     return {
       eventory_instances: eventoryInstances.length ? eventoryInstances : [normalizeEventoryInstance(DEFAULT_INTEGRATIONS.eventory_instances[0], 0)],
@@ -1029,6 +1040,11 @@ export const useSettingsStore = defineStore('settings', () => {
         base_url: String(productionplanner.base_url || DEFAULT_INTEGRATIONS.productionplanner.base_url),
         has_api_key: Boolean(productionplanner.has_api_key ?? productionplanner.api_key),
       },
+      llm: {
+        base_url: llm.base_url ? String(llm.base_url).trim() : 'http://localhost:11434/v1',
+        api_key: llm.api_key != null ? String(llm.api_key).trim() : 'ollama',
+        model: llm.model ? String(llm.model).trim() : 'qwen2.5-coder',
+      },
     }
   }
 
@@ -1036,6 +1052,7 @@ export const useSettingsStore = defineStore('settings', () => {
     return {
       eventory_instances: (value.eventory_instances || []).map(instance => ({ ...instance })),
       productionplanner: value.productionplanner ? { ...value.productionplanner } : { ...DEFAULT_INTEGRATIONS.productionplanner },
+      llm: value.llm ? { ...value.llm } : { base_url: 'http://localhost:11434/v1', api_key: 'ollama', model: 'qwen2.5-coder' },
     }
   }
 
