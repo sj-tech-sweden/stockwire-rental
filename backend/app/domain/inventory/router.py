@@ -37,6 +37,14 @@ from app.domain.jobs.models import Job, JobRequirement
 from app.domain.customers.models import Customer
 from app.domain.settings.models import AppSetting
 from app.domain.settings.schemas import DEFAULT_CATEGORY_PREFILL_PATHS
+from app.domain.settings.router import (
+    _eventory_scan_in_pack_list,
+    _eventory_scan_out_pack_list,
+    _eventory_set_headers,
+    _fetch_eventory_token,
+    _parse_integrations,
+    INTEGRATIONS_KEY,
+)
 from app.domain.realtime.events import emit_realtime_event
 from app.domain.inventory.schemas import (
     DeviceCreate,
@@ -2211,6 +2219,12 @@ def process_scan(
                 },
             )
             db.commit()
+
+            if action == "rental_receive":
+                _trigger_eventory_auto_scan(db, product, scan_action="scan_out")
+            elif action == "rental_return_supplier":
+                _trigger_eventory_auto_scan(db, product, scan_action="scan_in")
+
             return response
 
         device = _find_device_by_scan_code(db, scan_code)
@@ -3458,6 +3472,103 @@ def _rental_scan_balance(db: Session, product_id: int) -> dict[str, int]:
         "returned_supplier": returned_supplier,
         "on_hand": max(on_hand, 0),
     }
+
+
+def _trigger_eventory_auto_scan(db: Session, product: Product, scan_action: str) -> None:
+    """Trigger an automatic scan-out or scan-in on the Eventory instance linked to the product.
+
+    Called after a successful rental_receive (scan_action='scan_out') or
+    rental_return_supplier (scan_action='scan_in') scan. The call is best-effort:
+    any network or API error is silently ignored so as not to disrupt the local
+    scan operation.
+
+    For scan-out: triggers scan-out on every active pack list where fewer items
+    have been scanned out than are allocated (out < quantity), unless
+    auto_scan_out_on_receive is disabled for the instance.
+
+    For scan-in: triggers scan-in on every active pack list where at least one
+    item has already been scanned out (out > 0), unless auto_scan_in_on_return
+    is disabled for the instance.
+    """
+    try:
+        external_ref = str(product.external_reference or "").strip()
+        if not external_ref or ":" not in external_ref:
+            return
+
+        instance_id = external_ref.split(":", 1)[0]
+        if not instance_id:
+            return
+
+        setting = db.scalar(
+            select(AppSetting).where(AppSetting.key == INTEGRATIONS_KEY)
+        )
+        if setting is None:
+            return
+
+        parsed = _parse_integrations(setting.value_json)
+        instances = parsed.get("eventory_instances") if isinstance(parsed, dict) else []
+        if not isinstance(instances, list):
+            return
+
+        instance = next(
+            (i for i in instances if isinstance(i, dict) and str(i.get("id") or "").strip() == instance_id),
+            None,
+        )
+        if instance is None or not bool(instance.get("enabled")):
+            return
+
+        if scan_action == "scan_out" and not bool(instance.get("auto_scan_out_on_receive")):
+            return
+        if scan_action == "scan_in" and not bool(instance.get("auto_scan_in_on_return")):
+            return
+
+        packlists_raw = str(product.eventory_packlists_json or "").strip()
+        if not packlists_raw:
+            return
+
+        try:
+            packlists = json.loads(packlists_raw)
+        except Exception:
+            return
+
+        if not isinstance(packlists, list) or not packlists:
+            return
+
+        api_url = str(instance.get("api_url") or "").strip()
+        api_key = str(instance.get("api_key") or "").strip()
+        username = str(instance.get("username") or "").strip()
+        password = str(instance.get("password") or "").strip()
+        token_endpoint = str(instance.get("token_endpoint") or "").strip()
+
+        oauth_token = ""
+        if username and password:
+            try:
+                oauth_token = _fetch_eventory_token(api_url, token_endpoint, username, password)
+            except Exception:
+                return
+
+        headers = {"Accept": "application/json", "Content-Type": "application/json"}
+        _eventory_set_headers(headers, oauth_token, api_key)
+
+        for pl in packlists:
+            if not isinstance(pl, dict):
+                continue
+            if str(pl.get("source") or "").strip() != "active":
+                continue
+
+            pack_list_id = str(pl.get("pack_list_id") or "").strip()
+            if not pack_list_id:
+                continue
+
+            quantity = int(pl.get("quantity") or 0)
+            out = int(pl.get("out") or 0)
+
+            if scan_action == "scan_out" and out < quantity:
+                _eventory_scan_out_pack_list(api_url, headers, pack_list_id)
+            elif scan_action == "scan_in" and out > 0:
+                _eventory_scan_in_pack_list(api_url, headers, pack_list_id)
+    except Exception:  # noqa: BLE001 – best-effort; never disrupt the local scan
+        pass
 
 
 def _resolve_job_for_scan(db: Session, job_code: str | None) -> Job:

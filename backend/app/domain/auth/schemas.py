@@ -12,6 +12,7 @@ class UserSummary(BaseModel):
     full_name: str
     is_active: bool
     role: str
+    notification_channel: str
     auth_source: str
     external_provider: str | None = None
     created_at: datetime
@@ -25,6 +26,7 @@ class UserCreate(BaseModel):
     full_name: str
     is_active: bool = True
     role: Literal["admin", "manager", "viewer"] = "viewer"
+    notification_channel: Literal["email", "web_push", "both", "none"] = "both"
 
 
 class UserLogin(BaseModel):
@@ -36,6 +38,7 @@ class UserSelfUpdate(BaseModel):
     email: EmailStr
     full_name: str
     password: str | None = None
+    notification_channel: Literal["email", "web_push", "both", "none"] = "both"
 
 
 class Token(BaseModel):

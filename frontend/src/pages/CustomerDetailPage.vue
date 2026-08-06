@@ -48,6 +48,18 @@
             {{ [form.address, form.postal_code, form.city, form.country].filter(Boolean).join(', ') }}
           </div>
           <div class="text-caption text-grey-7" v-if="!isNewCustomer">{{ t('customers.createdAt') }}: {{ formatDate(currentCustomer?.created_at) }}</div>
+          <q-btn
+            v-if="twentyCustomerUrl"
+            flat
+            dense
+            no-caps
+            color="primary"
+            icon="open_in_new"
+            :label="t('customers.openInTwenty')"
+            :href="twentyCustomerUrl"
+            target="_blank"
+            class="q-mt-sm"
+          />
         </q-card-section>
       </q-card>
 
@@ -119,6 +131,14 @@
               class="q-mt-sm"
               :disable="!authStore.canEdit"
             />
+
+            <div class="q-mt-sm">
+              <q-toggle
+                v-model="form.email_notifications_enabled"
+                :label="t('customers.emailNotificationsEnabled')"
+                :disable="!authStore.canEdit"
+              />
+            </div>
 
             <q-separator class="q-my-md" />
             <div class="text-subtitle2 q-mb-sm">{{ t('customers.supplierTypes') }}</div>
@@ -444,6 +464,7 @@ import { useSettingsStore } from '../stores/settings'
 import { COUNTRIES } from '../constants/countries'
 import { normalizeCurrencyCode } from '../constants/currencies'
 import { translateMaybePrefillCustomFieldLabel, translateMaybePrefillCustomFieldOption } from '../i18n/prefillContent'
+import { getTwentyCustomerUrl } from '../utils/twenty-links'
 import CustomerDeleteDialog from '../components/CustomerDeleteDialog.vue'
 import CustomerCustomFieldsDialog from '../components/CustomerCustomFieldsDialog.vue'
 import ProductInfoDialog from '../components/ProductInfoDialog.vue'
@@ -494,6 +515,7 @@ const rentalInfoDialogOpen = ref(false)
 const selectedRentalForInfo = ref(null)
 const rentalEditDialogOpen = ref(false)
 const selectedRentalForEdit = ref(null)
+const twentyConfig = ref(null)
 
 const isNewCustomer = computed(() => route.path === '/companies/new')
 
@@ -502,6 +524,7 @@ const currentCustomer = computed(() => {
   if (!id) return null
   return customersStore.customers.find(c => c.id === id) || null
 })
+const twentyCustomerUrl = computed(() => getTwentyCustomerUrl(currentCustomer.value, twentyConfig.value))
 
 const emptyForm = () => ({
   name: '',
@@ -807,6 +830,7 @@ function syncFromCustomer(customer) {
     is_product_supplier: customer.is_product_supplier ?? false,
     is_rental_supplier: customer.is_rental_supplier ?? false,
     is_crew_supplier: customer.is_crew_supplier ?? false,
+    email_notifications_enabled: customer.email_notifications_enabled !== false,
   }
   void loadFieldRows()
   void loadInfo()
@@ -819,6 +843,7 @@ async function loadData() {
       customersStore.fetchAll(),
       customFieldsStore.fetchDefinitions('customer'),
       settingsStore.fetchCompanyProfile(),
+      settingsStore.fetchTwentyConfig().then(data => { twentyConfig.value = data }).catch(() => { twentyConfig.value = null }),
       inventoryStore.fetchAll(),
       crewStore.fetchSkills(),
       crewStore.fetchCertifications(),
@@ -853,6 +878,7 @@ async function createCustomer() {
       postal_code: form.value.postal_code?.trim() || null,
       country: form.value.country?.trim() || null,
       notes: form.value.notes?.trim() || null,
+      email_notifications_enabled: !!form.value.email_notifications_enabled,
     }
 
     const saved = await customersStore.createCustomer(payload)
@@ -888,6 +914,7 @@ async function saveChanges() {
       postal_code: form.value.postal_code?.trim() || null,
       country: form.value.country?.trim() || null,
       notes: form.value.notes?.trim() || null,
+      email_notifications_enabled: !!form.value.email_notifications_enabled,
     }
 
     const saved = await customersStore.updateCustomer(currentCustomer.value.id, payload)

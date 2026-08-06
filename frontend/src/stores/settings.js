@@ -309,6 +309,7 @@ export const DEFAULT_INTEGRATIONS = {
     api_key: '',
     base_url: 'https://api.productionplanner.io/v1',
   },
+  stockwire_instances: [],
 }
 
 export const DEFAULT_SMTP_SETTINGS = {
@@ -651,6 +652,19 @@ export const useSettingsStore = defineStore('settings', () => {
       skipped: Number(data?.skipped || 0),
       total: Number(data?.total || 0),
       message: String(data?.message || '').trim() || null,
+    }
+  }
+
+  async function searchStockwireCustomers(instanceId, query) {
+    const key = String(instanceId || '').trim()
+    if (!key) {
+      throw new Error('Stockwire instance is required')
+    }
+    const params = query ? { q: String(query).trim() } : {}
+    const { data } = await api.get(`/api/v1/settings/integrations/stockwire/${encodeURIComponent(key)}/customers`, { params })
+    return {
+      count: Number(data?.count || 0),
+      customers: Array.isArray(data?.customers) ? data.customers : [],
     }
   }
 
@@ -1032,6 +1046,19 @@ export const useSettingsStore = defineStore('settings', () => {
     const llmRaw = value?.llm
     const llm = (llmRaw && typeof llmRaw === 'object') ? llmRaw : { base_url: 'http://localhost:11434/v1', api_key: 'ollama', model: 'qwen2.5-coder' }
 
+    const rawStockwire = Array.isArray(value?.stockwire_instances) ? value.stockwire_instances : []
+    const stockwireInstances = rawStockwire
+      .filter(instance => instance && typeof instance === 'object' && String(instance.id || '').trim())
+      .map(instance => ({
+        id: String(instance.id || '').trim(),
+        name: String(instance.name || '').trim() || String(instance.id || '').trim(),
+        enabled: Boolean(instance.enabled),
+        api_url: String(instance.api_url || '').trim() || null,
+        api_key: String(instance.api_key || '').trim() || null,
+        supplier_customer_id: instance.supplier_customer_id != null ? Number(instance.supplier_customer_id) : null,
+        remote_customer_id: String(instance.remote_customer_id || '').trim() || null,
+      }))
+
     return {
       eventory_instances: eventoryInstances.length ? eventoryInstances : [normalizeEventoryInstance(DEFAULT_INTEGRATIONS.eventory_instances[0], 0)],
       productionplanner: {
@@ -1045,6 +1072,7 @@ export const useSettingsStore = defineStore('settings', () => {
         api_key: llm.api_key != null ? String(llm.api_key).trim() : 'ollama',
         model: llm.model ? String(llm.model).trim() : 'qwen2.5-coder',
       },
+      stockwire_instances: stockwireInstances,
     }
   }
 
@@ -1053,6 +1081,7 @@ export const useSettingsStore = defineStore('settings', () => {
       eventory_instances: (value.eventory_instances || []).map(instance => ({ ...instance })),
       productionplanner: value.productionplanner ? { ...value.productionplanner } : { ...DEFAULT_INTEGRATIONS.productionplanner },
       llm: value.llm ? { ...value.llm } : { base_url: 'http://localhost:11434/v1', api_key: 'ollama', model: 'qwen2.5-coder' },
+      stockwire_instances: (value.stockwire_instances || []).map(instance => ({ ...instance })),
     }
   }
 
@@ -1215,6 +1244,7 @@ export const useSettingsStore = defineStore('settings', () => {
     previewEventoryProducts,
     syncEventoryProducts,
     getEventorySyncStatus,
+    searchStockwireCustomers,
     fetchAuthSsoSettings,
     updateAuthSsoSettings,
     fetchCompanyProfile,

@@ -44,6 +44,18 @@
               <div class="text-caption text-grey-7">{{ t('jobs.venue') }}: {{ venueDisplayName }}</div>
               <div class="text-caption text-grey-7">{{ t('jobs.project') }}: {{ projectDisplayName }}</div>
               <div class="text-caption text-grey-7">{{ formattedDateRange }}</div>
+              <q-btn
+                v-if="twentyJobUrl"
+                flat
+                dense
+                no-caps
+                color="primary"
+                icon="open_in_new"
+                :label="t('jobs.openInTwenty')"
+                :href="twentyJobUrl"
+                target="_blank"
+                class="q-mt-sm"
+              />
             </div>
             <div class="col-12 col-md-auto">
               <div class="row q-gutter-sm">
@@ -223,6 +235,14 @@
               class="q-mt-sm"
               :disable="!authStore.canEdit"
             />
+
+            <div class="q-mt-sm">
+              <q-toggle
+                v-model="form.email_notifications_enabled"
+                :label="t('jobs.emailNotificationsEnabled')"
+                :disable="!authStore.canEdit"
+              />
+            </div>
           </q-form>
         </q-card-section>
       </q-card>
@@ -538,6 +558,7 @@ import { normalizeCurrencyCode } from '../constants/currencies'
 import { isRentalProduct } from '../utils/job-requirements'
 import { buildScanJobLink } from '../utils/scan-workflow'
 import { googleMapsEmbedUrl, googleMapsSearchUrl, locationQueryFromParts } from '../utils/maps'
+import { getTwentyJobUrl } from '../utils/twenty-links'
 import { translateMaybePrefillCustomFieldLabel } from '../i18n/prefillContent'
 import { useCustomFieldsStore } from '../stores/customFields'
 import { api } from '../boot/axios'
@@ -587,6 +608,7 @@ const crewRequirementRows = ref([])
 const crewAssignmentRows = ref([])
 const filteredCustomerOptions = ref([])
 const filteredVenueOptions = ref([])
+const twentyConfig = ref(null)
 const form = ref(emptyForm())
 const requirementRows = ref([])
 const rentalRequirementRows = ref([])
@@ -596,6 +618,7 @@ const activeCurrencyCode = computed(() => normalizeCurrencyCode(settingsStore.co
 const currentJobId = computed(() => Number(route.params.jobId || 0))
 const isNewJob = computed(() => route.path.endsWith('/new'))
 const currentJob = computed(() => jobsStore.jobs.find(job => job.id === currentJobId.value) || null)
+const twentyJobUrl = computed(() => getTwentyJobUrl(currentJob.value, twentyConfig.value))
 
 const eventoryInstances = computed(() => settingsStore.integrations?.eventory_instances || [])
 const eventorySyncInstances = computed(() => {
@@ -736,6 +759,7 @@ function emptyForm() {
     sales_price: null,
     invoice_paid: false,
     invoice_paid_at: null,
+    email_notifications_enabled: true,
     notes: '',
   }
 }
@@ -1079,6 +1103,7 @@ function syncFromJob(job) {
     sales_price: job.sales_price == null ? null : Number(job.sales_price),
     invoice_paid: Boolean(job.invoice_paid),
     invoice_paid_at: normalizeDate(job.invoice_paid_at),
+    email_notifications_enabled: job.email_notifications_enabled !== false,
     notes: job.notes ?? '',
   }
 
@@ -1139,6 +1164,7 @@ async function loadData() {
       projectsStore.fetchAll(),
       settingsStore.fetchCompanyProfile(),
       settingsStore.fetchIntegrations(),
+      settingsStore.fetchTwentyConfig().then(data => { twentyConfig.value = data }).catch(() => { twentyConfig.value = null }),
     ])
 
     if (isNewJob.value) {
@@ -1191,6 +1217,7 @@ async function createJob() {
       sales_price: form.value.sales_price == null || form.value.sales_price === '' ? null : Number(form.value.sales_price),
       invoice_paid: Boolean(form.value.invoice_paid),
       invoice_paid_at: form.value.invoice_paid ? normalizeDate(form.value.invoice_paid_at) : null,
+      email_notifications_enabled: !!form.value.email_notifications_enabled,
     }
 
     const savedJob = await jobsStore.createJob(payload)
@@ -1225,6 +1252,7 @@ async function saveChanges() {
       sales_price: form.value.sales_price == null || form.value.sales_price === '' ? null : Number(form.value.sales_price),
       invoice_paid: Boolean(form.value.invoice_paid),
       invoice_paid_at: form.value.invoice_paid ? normalizeDate(form.value.invoice_paid_at) : null,
+      email_notifications_enabled: !!form.value.email_notifications_enabled,
     }
 
     const savedJob = await jobsStore.updateJob(currentJob.value.id, payload)

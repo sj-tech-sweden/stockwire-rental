@@ -98,10 +98,12 @@ export default configure(function () {
         name: 'Stockwire Rental',
         short_name: 'Stockwire',
         description: 'Offline-capable rental inventory management for Stockwire.',
+        start_url: '/',
+        scope: '/',
         display: 'standalone',
         orientation: 'any',
         background_color: '#11181D',
-        theme_color: '#3F873F',
+        theme_color: '#182228',
         icons: [
           {
             src: 'icons/icon-192x192.png',
@@ -126,6 +128,32 @@ export default configure(function () {
             sizes: '512x512',
             type: 'image/png',
             purpose: 'maskable'
+          }
+        ],
+        shortcuts: [
+          {
+            name: 'New job',
+            short_name: 'New job',
+            description: 'Create a new job',
+            url: '/jobs?new=1'
+          },
+          {
+            name: 'Scan',
+            short_name: 'Scan',
+            description: 'Scan a barcode or QR code',
+            url: '/scan'
+          },
+          {
+            name: 'Inventory',
+            short_name: 'Inventory',
+            description: 'Browse the equipment inventory',
+            url: '/inventory'
+          },
+          {
+            name: 'Maintenance',
+            short_name: 'Maintenance',
+            description: 'View maintenance tasks',
+            url: '/maintenance'
           }
         ]
       }

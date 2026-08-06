@@ -25,6 +25,7 @@ class Job(Base):
     sales_price: Mapped[float] = mapped_column(Numeric(10, 2), nullable=True)
     invoice_paid: Mapped[bool] = mapped_column(Boolean, default=False)
     invoice_paid_at: Mapped[date] = mapped_column(Date, nullable=True)
+    email_notifications_enabled: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     notes: Mapped[str] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
 

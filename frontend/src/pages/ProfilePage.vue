@@ -63,6 +63,33 @@
               @update:model-value="onUserLocaleChange"
             />
           </div>
+          <div class="col-12 col-md-6">
+            <q-select
+              v-model="form.notification_channel"
+              :options="notificationChannelOptions"
+              emit-value
+              map-options
+              dense
+              outlined
+              :label="t('profile.notificationChannel')"
+              :disable="saving"
+            />
+          </div>
+        </div>
+
+        <div class="q-mt-md">
+          <div class="text-subtitle2 q-mb-sm">{{ t('profile.webNotifications') }}</div>
+          <div class="text-caption text-grey-7 q-mb-sm">{{ t('profile.webNotificationsDescription') }}</div>
+          <div class="row items-center q-gutter-sm">
+            <q-btn
+              color="secondary"
+              icon="notifications"
+              :label="t('profile.enableWebNotifications')"
+              :disable="saving || !canUseWebPush"
+              @click="enableWebNotifications"
+            />
+            <span class="text-caption text-grey-7">{{ webPushStatus }}</span>
+          </div>
         </div>
 
         <div class="row items-center q-gutter-sm q-mt-md">
@@ -119,13 +146,22 @@ const form = ref({
   full_name: '',
   email: '',
   password: '',
+  notification_channel: 'both',
 })
 const localeOptions = computed(() => [
   { label: t('app.language.english'), value: 'en' },
   { label: t('app.language.swedish'), value: 'sv' },
 ])
+const notificationChannelOptions = computed(() => [
+  { label: t('profile.notificationChannels.both'), value: 'both' },
+  { label: t('profile.notificationChannels.email'), value: 'email' },
+  { label: t('profile.notificationChannels.webPush'), value: 'web_push' },
+  { label: t('profile.notificationChannels.none'), value: 'none' },
+])
 
 const crewCalendarUrl = ref('')
+const webPushStatus = ref('')
+const canUseWebPush = typeof window !== 'undefined' && 'Notification' in window && 'serviceWorker' in navigator
 
 function copyCrewCalendarUrl() {
   if (!crewCalendarUrl.value) return
@@ -168,7 +204,45 @@ function applyFormFromMe() {
     full_name: String(authStore.me?.full_name || '').trim(),
     email: String(authStore.me?.email || '').trim(),
     password: '',
+    notification_channel: String(authStore.me?.notification_channel || 'both'),
   }
+}
+
+function urlBase64ToUint8Array(base64String) {
+  const padding = '='.repeat((4 - (base64String.length % 4)) % 4)
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/')
+  const rawData = window.atob(base64)
+  return Uint8Array.from([...rawData].map(char => char.charCodeAt(0)))
+}
+
+async function enableWebNotifications() {
+  if (!canUseWebPush) {
+    webPushStatus.value = t('profile.webNotificationsUnavailable')
+    return
+  }
+  const permission = await Notification.requestPermission()
+  if (permission !== 'granted') {
+    webPushStatus.value = t('profile.webNotificationsDenied')
+    return
+  }
+  const [{ data: vapid }, registration] = await Promise.all([
+    api.get('/api/v1/notifications/vapid-public-key'),
+    navigator.serviceWorker.ready,
+  ])
+  if (!vapid?.public_key) {
+    webPushStatus.value = t('profile.webNotificationsUnavailable')
+    return
+  }
+  const subscription = await registration.pushManager.subscribe({
+    userVisibleOnly: true,
+    applicationServerKey: urlBase64ToUint8Array(vapid.public_key),
+  })
+  await api.post('/api/v1/notifications/subscriptions', {
+    endpoint: subscription.endpoint,
+    keys: subscription.toJSON().keys,
+    user_agent: navigator.userAgent,
+  })
+  webPushStatus.value = t('profile.webNotificationsEnabled')
 }
 
 function onUserLocaleChange(value) {
@@ -187,6 +261,7 @@ async function saveProfile() {
       full_name: form.value.full_name,
       email: form.value.email,
       password: form.value.password,
+      notification_channel: form.value.notification_channel,
     })
     form.value.password = ''
     $q.notify({ type: 'positive', message: t('profile.updated') })
@@ -213,5 +288,10 @@ onMounted(async () => {
     : localStorage.getItem('sw_locale') || resolveAppLocale(null)
   userLocale.value = setLocale(preferred)
   fetchCrewCalendarUrl()
+  webPushStatus.value = canUseWebPush
+    ? (Notification.permission === 'granted'
+        ? t('profile.webNotificationsEnabled')
+        : t('profile.webNotificationsPrompt'))
+    : t('profile.webNotificationsUnavailable')
 })
 </script>

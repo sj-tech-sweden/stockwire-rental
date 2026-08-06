@@ -407,6 +407,18 @@ class EventoryInstanceConfig(IntegrationPluginConfig):
     name: str
     create_jobs: bool = False
     rental_customer_id: str = ""
+    auto_scan_out_on_receive: bool = False
+    auto_scan_in_on_return: bool = False
+
+
+class StockwireInstanceConfig(BaseModel):
+    id: str
+    name: str
+    enabled: bool = False
+    api_url: str | None = None
+    api_key: str | None = Field(default=None, exclude=True)
+    supplier_customer_id: int | None = None
+    remote_customer_id: str | None = None
 
 
 class ProductionPlannerConfig(BaseModel):
@@ -425,6 +437,7 @@ class IntegrationsRead(BaseModel):
     eventory_instances: list[EventoryInstanceConfig] = Field(default_factory=list)
     productionplanner: ProductionPlannerReadConfig = Field(default_factory=ProductionPlannerReadConfig)
     llm: LlmConfig | None = None
+    stockwire_instances: list[StockwireInstanceConfig] = Field(default_factory=list)
 
 
 class LlmConfig(BaseModel):
@@ -437,6 +450,21 @@ class IntegrationsUpdate(BaseModel):
     eventory_instances: list[EventoryInstanceConfig] = Field(default_factory=list)
     productionplanner: ProductionPlannerConfig | None = None
     llm: LlmConfig | None = None
+    stockwire_instances: list[StockwireInstanceConfig] = Field(default_factory=list)
+
+
+class StockwireCustomerRead(BaseModel):
+    id: int
+    name: str
+    email: str | None = None
+    phone: str | None = None
+    city: str | None = None
+    country: str | None = None
+
+
+class StockwireCustomersRead(BaseModel):
+    customers: list[StockwireCustomerRead] = Field(default_factory=list)
+    count: int = 0
 
 
 class IntegrationConnectionTestRequest(BaseModel):
