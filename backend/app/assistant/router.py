@@ -178,10 +178,15 @@ async def chat(request: ChatRequest, db=Depends(get_db), _user=Depends(require_a
                     except json.JSONDecodeError:
                         args = {}
 
-                    yield f"data: {json.dumps({'type': 'tool_call', 'tool': tc['function']['name'], 'args': args})}\n\n"
+yield f"data: {json.dumps({'type': 'tool_call', 'tool': tc['function']['name'], 'args': args})}\n\n"
 
-                    result = execute_tool(tc["function"]["name"], args, db)
-                    result_str = json.dumps(result, default=str)
+tool_name = tc["function"]["name"]
+write_tools = {"update_product_manufacturer", "update_product_category", "batch_update_manufacturers"}
+if tool_name in write_tools and getattr(_user, "role", None) != "admin":
+    result = {"error": "Admin privileges required for this tool"}
+else:
+    result = execute_tool(tool_name, args, db)
+result_str = json.dumps(result, default=str)
 
                     messages.append({
                         "role": "tool",
