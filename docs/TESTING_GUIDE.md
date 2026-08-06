@@ -57,7 +57,7 @@ pytest -x
 ### Test Structure
 
 ```python
-# tests/conftest.py
+# backend/tests/conftest.py (simplified example; see the real file for current fixtures/auth overrides)
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
