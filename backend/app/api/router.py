@@ -11,6 +11,7 @@ from app.domain.finance.router import router as finance_router
 from app.domain.integrations.router import router as integrations_router
 from app.domain.route_planner.router import router as route_planner_router
 from app.domain.calendar_feeds.router import router as calendar_feeds_router
+from app.assistant.router import router as assistant_router
 from app.domain.warehouse_leds.router import router as warehouse_leds_router
 from app.domain.inventory.router import router as inventory_router
 from app.domain.jobs.router import router as jobs_router
@@ -42,3 +43,4 @@ api_router.include_router(integrations_router)
 api_router.include_router(route_planner_router)
 api_router.include_router(warehouse_leds_router)
 api_router.include_router(calendar_feeds_router)
+api_router.include_router(assistant_router)

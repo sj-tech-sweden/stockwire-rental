@@ -358,7 +358,20 @@ def update_product_defaults(
 def get_integrations(db: Session = Depends(get_db)) -> IntegrationsRead:
     setting = _get_or_create_setting(db, INTEGRATIONS_KEY, DEFAULT_INTEGRATIONS)
     data = _parse_integrations(setting.value_json)
-    return IntegrationsRead(**data)
+
+    # Ensure llm is always a dict
+    if "llm" not in data or not isinstance(data["llm"], dict):
+        data["llm"] = {}
+
+    try:
+        return IntegrationsRead(**data)
+    except Exception:
+        # If parsing fails, return with defaults
+        return IntegrationsRead(
+            eventory_instances=data.get("eventory_instances", []),
+            productionplanner=data.get("productionplanner", {}),
+            llm=data.get("llm", {}),
+        )
 
 
 @router.put("/integrations", response_model=IntegrationsRead)
@@ -454,17 +467,29 @@ def update_integrations(
     data = {
         "eventory_instances": normalized_instances,
         "productionplanner": productionplanner,
+        "llm": {
+            "base_url": str(payload.llm.base_url).strip() if payload.llm and payload.llm.base_url else persisted.get("llm", {}).get("base_url", "http://localhost:11434/v1"),
+            "api_key": str(payload.llm.api_key).strip() if payload.llm and payload.llm.api_key is not None else persisted.get("llm", {}).get("api_key", "ollama"),
+            "model": str(payload.llm.model).strip() if payload.llm and payload.llm.model else persisted.get("llm", {}).get("model", "qwen2.5-coder"),
+        } if payload.llm else persisted.get("llm", {"base_url": "http://localhost:11434/v1", "api_key": "ollama", "model": "qwen2.5-coder"}),
         "stockwire_instances": normalized_stockwire,
     }
     setting.value_json = json.dumps(data)
     db.commit()
-    return IntegrationsRead(**{
-        **data,
-        "productionplanner": {**productionplanner, "has_api_key": bool(pp_api_key)},
-        "stockwire_instances": [
-            {**sw, "api_key": None} for sw in normalized_stockwire
-        ],
-    })
+
+    # Ensure llm is always a dict for the response
+    if "llm" not in data or not isinstance(data["llm"], dict):
+        data["llm"] = {}
+
+    try:
+        return IntegrationsRead(**{**data, "productionplanner": {**productionplanner, "has_api_key": bool(pp_api_key)}})
+    except Exception:
+        return IntegrationsRead(
+            eventory_instances=data.get("eventory_instances", []),
+            productionplanner=data.get("productionplanner", {}),
+            llm=data.get("llm", {}),
+            stockwire_instances=data.get("stockwire_instances", []),
+        )
 
 
 @router.get("/auth-sso", response_model=AuthSSOSettingsRead)
@@ -1736,6 +1761,7 @@ def _parse_integrations(raw: str | None) -> dict[str, object]:
         return {
             "eventory_instances": [_normalize_eventory_instance(EventoryInstanceConfig(**DEFAULT_INTEGRATIONS["eventory_instances"][0]))],
             "productionplanner": DEFAULT_INTEGRATIONS.get("productionplanner", {}),
+            "llm": {},
             "stockwire_instances": [],
         }
     try:
@@ -1758,12 +1784,18 @@ def _parse_integrations(raw: str | None) -> dict[str, object]:
             ]
     normalized_instances = []
     for index, item in enumerate(eventory_instances_raw):
+        if not isinstance(item, dict):
+            item = {}
         payload = item if isinstance(item, dict) else {}
         if not payload.get("id"):
             payload = {**payload, "id": f"eventory-{index + 1}"}
         if not payload.get("name"):
             payload = {**payload, "name": f"Eventory {index + 1}"}
-        normalized_instances.append(_normalize_eventory_instance(EventoryInstanceConfig(**payload)))
+        try:
+            normalized_instances.append(_normalize_eventory_instance(EventoryInstanceConfig(**payload)))
+        except Exception:
+            # Skip malformed entries
+            continue
     if not normalized_instances:
         normalized_instances.append(_normalize_eventory_instance(EventoryInstanceConfig(**DEFAULT_INTEGRATIONS["eventory_instances"][0])))
 
@@ -1773,6 +1805,15 @@ def _parse_integrations(raw: str | None) -> dict[str, object]:
 
     productionplanner_merged = {**DEFAULT_INTEGRATIONS.get("productionplanner", {}), **productionplanner_raw}
     productionplanner_merged["has_api_key"] = bool(productionplanner_merged.get("api_key"))
+
+    llm_raw = {}
+    if isinstance(data, dict):
+        llm_val = data.get("llm")
+        if isinstance(llm_val, dict):
+            llm_raw = llm_val
+        elif isinstance(llm_val, str) and llm_val:
+            # Handle edge case where llm was stored as a string
+            llm_raw = {"base_url": llm_val}
 
     # Parse stockwire instances
     stockwire_instances_raw = []
@@ -1796,6 +1837,7 @@ def _parse_integrations(raw: str | None) -> dict[str, object]:
     return {
         "eventory_instances": normalized_instances,
         "productionplanner": productionplanner_merged,
+        "llm": llm_raw,
         "stockwire_instances": normalized_stockwire,
     }
 

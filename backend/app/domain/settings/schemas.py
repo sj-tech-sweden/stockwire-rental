@@ -433,15 +433,23 @@ class ProductionPlannerReadConfig(BaseModel):
     has_api_key: bool = False
 
 
+class LlmConfig(BaseModel):
+    base_url: str = "http://localhost:11434/v1"
+    api_key: str = "ollama"
+    model: str = "qwen2.5-coder"
+
+
 class IntegrationsRead(BaseModel):
     eventory_instances: list[EventoryInstanceConfig] = Field(default_factory=list)
     productionplanner: ProductionPlannerReadConfig = Field(default_factory=ProductionPlannerReadConfig)
+    llm: LlmConfig | None = None
     stockwire_instances: list[StockwireInstanceConfig] = Field(default_factory=list)
 
 
 class IntegrationsUpdate(BaseModel):
     eventory_instances: list[EventoryInstanceConfig] = Field(default_factory=list)
     productionplanner: ProductionPlannerConfig | None = None
+    llm: LlmConfig | None = None
     stockwire_instances: list[StockwireInstanceConfig] = Field(default_factory=list)
 
 

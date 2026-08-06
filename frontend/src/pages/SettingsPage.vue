@@ -12,6 +12,8 @@
       <q-tab name="offline-queue" icon="sync" :label="t('settings.tabs.offlineQueue')" />
       <q-tab name="calendar-feeds" icon="calendar_month" :label="t('settings.tabs.calendarFeeds')" />
       <q-tab name="warehouse-leds" icon="developer_board" :label="t('settings.tabs.warehouseLeds')" />
+
+      <q-tab name="llm" icon="smart_toy" :label="t('settings.tabs.llm')" />
       <q-tab name="about" icon="info" :label="t('settings.tabs.about')" />
     </q-tabs>
 
@@ -103,7 +105,7 @@
           </div>
 
           <q-table
-            :rows="authStore.apiKeys"
+            :rows="authStore.apiKeys.filter(k => k.is_active !== false)"
             :columns="apiKeyColumns"
             row-key="id"
             :grid="compactGrid"
@@ -1492,6 +1494,99 @@
         <CalendarFeedsSettings />
       </q-tab-panel>
 
+      <q-tab-panel name="llm" class="q-pa-none">
+        <q-card class="ec-card q-pa-md">
+          <div class="text-subtitle1 q-mb-sm">{{ t('settings.llm.title') }}</div>
+          <div class="text-caption text-grey-7 q-mb-md">{{ t('settings.llm.description') }}</div>
+
+          <div class="row q-col-gutter-sm q-mb-md">
+            <div class="col-12 col-md-6">
+              <q-input v-model="llmDraft.base_url" :label="t('settings.llm.baseUrl')" outlined dense :placeholder="t('settings.llm.baseUrlPlaceholder')" />
+            </div>
+            <div class="col-12 col-md-6">
+              <q-input v-model="llmDraft.api_key" :label="t('settings.llm.apiKey')" outlined dense :type="showLlmApiKey ? 'text' : 'password'">
+                <template #append>
+                  <q-btn flat dense round :icon="showLlmApiKey ? 'visibility_off' : 'visibility'" @click="showLlmApiKey = !showLlmApiKey" />
+                </template>
+              </q-input>
+            </div>
+          </div>
+
+          <div class="q-mb-md">
+            <div class="text-subtitle2 q-mb-xs">{{ t('settings.llm.model') }}</div>
+            <div v-if="llmModels.length" class="q-mb-xs">
+              <q-select
+                v-model="llmDraft.model"
+                :options="llmModels.map(m => ({ label: m.id, value: m.id }))"
+                :label="t('settings.llm.selectModel')"
+                outlined
+                dense
+                emit-value
+                map-options
+                use-input
+                fill-input
+              />
+              <div class="row q-gutter-sm q-mt-xs">
+                <q-btn
+                  v-if="llmDraft.model"
+                  flat
+                  dense
+                  color="secondary"
+                  icon="play_arrow"
+                  :label="t('settings.llm.testModel')"
+                  :loading="testingModel"
+                  @click="testModel"
+                />
+                <q-banner v-if="modelTestResult" :color="modelTestResult.ok ? 'positive' : 'negative'" class="text-white col" dense>
+                  {{ modelTestResult.ok ? modelTestResult.response : modelTestResult.error }}
+                </q-banner>
+              </div>
+            </div>
+            <div v-else>
+              <q-input v-model="llmDraft.model" :label="t('settings.llm.model')" outlined dense :placeholder="t('settings.llm.modelPlaceholder')" :hint="t('settings.llm.modelHint')" />
+            </div>
+          </div>
+
+          <div class="q-mb-md">
+            <div class="text-subtitle2 q-mb-sm">{{ t('settings.llm.presets') }}</div>
+            <div class="row q-gutter-sm">
+              <q-btn outline color="primary" label="Ollama (Local)" @click="applyLlmPreset('ollama')" />
+              <q-btn outline color="primary" label="Google Gemini" @click="applyLlmPreset('gemini')" />
+              <q-btn outline color="primary" label="OpenAI" @click="applyLlmPreset('openai')" />
+              <q-btn outline color="primary" label="OpenCode" @click="applyLlmPreset('opencode')" />
+            </div>
+          </div>
+
+          <div class="row q-gutter-sm q-mb-md">
+            <q-btn color="secondary" icon="wifi_tethering" :label="t('settings.llm.testConnection')" unelevated :loading="llmTesting" @click="testLlmConnection" />
+            <q-btn color="secondary" icon="list" :label="t('settings.llm.fetchModels')" unelevated :loading="llmFetchingModels" @click="fetchLlmModels" />
+          </div>
+
+          <q-banner v-if="llmTestResult" :color="llmTestResult.ok ? 'positive' : 'negative'" class="text-white q-mb-md rounded-borders">
+            {{ llmTestResult.message }}
+          </q-banner>
+
+          <div v-if="llmModels.length" class="q-mb-md">
+            <div class="text-subtitle2 q-mb-sm">{{ t('settings.llm.availableModels') }} ({{ llmModels.length }})</div>
+            <q-select
+              v-model="llmDraft.model"
+              :options="llmModels.map(m => ({ label: m.id, value: m.id }))"
+              :label="t('settings.llm.model')"
+              outlined
+              dense
+              emit-value
+              map-options
+              use-input
+              fill-input
+            />
+          </div>
+
+          <div class="row justify-end">
+            <q-btn color="positive" :label="t('settings.llm.save')" unelevated :loading="llmSaving" @click="saveLlmSettings" />
+          </div>
+        </q-card>
+      </q-tab-panel>
+
       <q-tab-panel name="about" class="q-pa-none">
         <q-card class="ec-card q-pa-md">
           <div class="text-subtitle1 q-mb-sm">{{ t('settings.about.title') }}</div>
@@ -1669,7 +1764,7 @@ import CalendarFeedsSettings from '../components/CalendarFeedsSettings.vue'
 
 const route = useRoute()
 const apiBaseUrl = getApiBaseUrl()
-const knownTabs = new Set(['auth', 'company', 'custom-fields', 'inventory', 'integrations', 'offline-queue', 'calendar-feeds', 'warehouse-leds', 'about'])
+const knownTabs = new Set(['auth', 'company', 'custom-fields', 'inventory', 'integrations', 'offline-queue', 'calendar-feeds', 'warehouse-leds', 'llm', 'about'])
 const requestedTab = String(route.query.tab || '')
 const tab = ref(knownTabs.has(requestedTab) ? requestedTab : 'auth')
 const $q = useQuasar()
@@ -1775,6 +1870,100 @@ const integrationsDraft = ref({
   productionplanner: { ...DEFAULT_INTEGRATIONS.productionplanner },
   stockwire_instances: [],
 })
+
+const DEFAULT_LLM_SETTINGS = {
+  base_url: 'http://localhost:11434/v1',
+  api_key: 'ollama',
+  model: 'qwen2.5-coder',
+}
+
+const llmDraft = ref({ ...DEFAULT_LLM_SETTINGS })
+const llmSaving = ref(false)
+const showLlmApiKey = ref(false)
+const llmTesting = ref(false)
+const llmFetchingModels = ref(false)
+const llmTestResult = ref(null)
+const llmModels = ref([])
+const testingModel = ref(false)
+const modelTestResult = ref(null)
+
+function applyLlmPreset(preset) {
+  const presets = {
+    ollama: { base_url: 'http://localhost:11434/v1', api_key: 'ollama', model: 'qwen2.5-coder' },
+    gemini: { base_url: 'https://generativelanguage.googleapis.com/v1beta/openai/', api_key: '', model: 'gemini-2.0-flash' },
+    openai: { base_url: 'https://api.openai.com/v1', api_key: '', model: 'gpt-4o' },
+    opencode: { base_url: 'https://opencode.ai/zen/go/v1', api_key: '', model: 'kimi-k2.7-code' },
+  }
+  llmDraft.value = { ...presets[preset] }
+}
+
+async function saveLlmSettings() {
+  llmSaving.value = true
+  try {
+    await api.put('/api/v1/settings/integrations', {
+      ...integrationsDraft.value,
+      llm: {
+        base_url: llmDraft.value.base_url,
+        api_key: llmDraft.value.api_key,
+        model: llmDraft.value.model,
+      },
+    })
+    $q.notify({ type: 'positive', message: t('settings.llm.saved') })
+  } catch (err) {
+    $q.notify({ type: 'negative', message: err?.response?.data?.detail || t('settings.llm.saveFailed') })
+  } finally {
+    llmSaving.value = false
+  }
+}
+
+async function testLlmConnection() {
+  llmTesting.value = true
+  llmTestResult.value = null
+  try {
+    const { data } = await api.get('/api/v1/assistant/test-connection')
+    llmTestResult.value = data
+  } catch (err) {
+    llmTestResult.value = { ok: false, message: err?.response?.data?.detail || err.message || 'Connection failed' }
+  } finally {
+    llmTesting.value = false
+  }
+}
+
+async function fetchLlmModels() {
+  llmFetchingModels.value = true
+  llmModels.value = []
+  modelTestResult.value = null
+  try {
+    const { data } = await api.get('/api/v1/assistant/models')
+    const models = data.models || []
+    llmModels.value = models.map(m => ({
+      ...m,
+      id: m.id,
+    }))
+    if (!llmModels.value.length && data.error) {
+      $q.notify({ type: 'warning', message: data.error })
+    }
+  } catch (err) {
+    $q.notify({ type: 'negative', message: err?.response?.data?.detail || 'Failed to fetch models' })
+  } finally {
+    llmFetchingModels.value = false
+  }
+}
+
+async function testModel() {
+  if (!llmDraft.value.model) return
+  testingModel.value = true
+  modelTestResult.value = null
+  try {
+    const { data } = await api.post('/api/v1/assistant/test-model', { model: llmDraft.value.model })
+    modelTestResult.value = data
+  } catch (err) {
+    modelTestResult.value = { ok: false, error: err?.response?.data?.detail || 'Test failed' }
+  } finally {
+    testingModel.value = false
+  }
+}
+
 const authSsoDraft = ref({ ...DEFAULT_AUTH_SSO_SETTINGS })
 const authSsoValidationError = ref('')
 const authSsoSaving = ref(false)
@@ -3728,6 +3917,9 @@ onMounted(async () => {
       eventory_instances: withEventoryDraftMeta((settingsStore.integrations?.eventory_instances || DEFAULT_INTEGRATIONS.eventory_instances).map(instance => ({ ...instance }))),
       productionplanner: settingsStore.integrations?.productionplanner ? { ...settingsStore.integrations.productionplanner } : { ...DEFAULT_INTEGRATIONS.productionplanner },
       stockwire_instances: (settingsStore.integrations?.stockwire_instances || []).map(instance => ({ ...instance })),
+    }
+    if (settingsStore.integrations?.llm) {
+      llmDraft.value = { ...settingsStore.integrations.llm }
     }
     loadTwentyConfig()
     loadTwentySyncStatus()
