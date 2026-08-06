@@ -201,12 +201,13 @@ async def chat(request: ChatRequest, db=Depends(get_db), _user=Depends(get_curre
 
         except Exception as e:
             logger.exception("Assistant chat error")
-            error_msg = str(e)
-            if "Connection" in error_msg or "connect" in error_msg.lower() or "Errno" in error_msg:
+            raw_error_msg = str(e)
+            error_msg = "An internal error occurred while processing your request."
+            if "Connection" in raw_error_msg or "connect" in raw_error_msg.lower() or "Errno" in raw_error_msg:
                 error_msg = f"Cannot connect to LLM at {base_url}. Is the server running?"
-            elif "401" in error_msg or "unauthorized" in error_msg.lower() or "Invalid API Key" in error_msg:
+            elif "401" in raw_error_msg or "unauthorized" in raw_error_msg.lower() or "Invalid API Key" in raw_error_msg:
                 error_msg = f"Authentication failed. Check your API key for {base_url}."
-            elif "403" in error_msg or "forbidden" in error_msg.lower():
+            elif "403" in raw_error_msg or "forbidden" in raw_error_msg.lower():
                 try:
                     import httpx
                     resp = httpx.post(
@@ -221,13 +222,13 @@ async def chat(request: ChatRequest, db=Depends(get_db), _user=Depends(get_curre
                     error_msg = f"Access denied: {api_msg}" if api_msg else f"Access denied by {base_url}. Check model availability."
                 except Exception:
                     error_msg = f"Access denied by {base_url}. Check your API key permissions and model availability."
-            elif "404" in error_msg:
+            elif "404" in raw_error_msg:
                 error_msg = f"Model '{model}' not found. Fetch models in Settings > AI Assistant to see available options."
-            elif "429" in error_msg or "rate" in error_msg.lower():
+            elif "429" in raw_error_msg or "rate" in raw_error_msg.lower():
                 error_msg = "Rate limited by the LLM provider. Try again shortly."
-            elif "timeout" in error_msg.lower():
+            elif "timeout" in raw_error_msg.lower():
                 error_msg = f"Connection to {base_url} timed out."
-            elif "str" in error_msg and "_set_private_attributes" in error_msg:
+            elif "str" in raw_error_msg and "_set_private_attributes" in raw_error_msg:
                 error_msg = f"API at {base_url} returned an incompatible response format."
             yield f"data: {json.dumps({'type': 'error', 'content': error_msg})}\n\n"
             yield "data: [DONE]\n\n"
