@@ -5,8 +5,6 @@ Tools are defined in OpenAI function-calling format and executed
 against the Stockwire database via SQLAlchemy.
 """
 
-import json
-
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 

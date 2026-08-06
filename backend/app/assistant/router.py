@@ -273,7 +273,7 @@ async def test_connection(db=Depends(get_db), _user=Depends(get_current_user)):
                 resp = httpx.get(base_url + "/models", headers={"Authorization": f"Bearer {llm.get('api_key', '')}"}, timeout=10, follow_redirects=True)
                 extra = f" (status={resp.status_code}, body={resp.text[:300]})"
             except Exception:
-                pass
+                pass  # Debug request failed, continue with original error
             error_msg = f"API at {base_url}/models returned incompatible response.{extra}"
         elif "connection" in raw_error_lower or "connect" in raw_error_lower or "errno" in raw_error_lower:
             error_msg = f"Cannot connect to {base_url}. Is the server running?"
@@ -290,21 +290,23 @@ async def test_connection(db=Depends(get_db), _user=Depends(get_current_user)):
                 )
                 extra = f" (status={resp.status_code}, body={resp.text[:300]})"
             except Exception:
-                pass
+                pass  # Debug request failed, continue with original error
             error_msg = f"Authentication failed for {base_url}.{extra}"
         elif "403" in raw_error_msg or "forbidden" in raw_error_lower:
-            extra = ""
             try:
                 import httpx
                 resp = httpx.post(
                     base_url + "/chat/completions",
-                    headers={"Authorization": f"Bearer {llm.get('api_key', '')}", "Content-Type": "application/json"},
+                    headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
                     json={"model": model, "messages": [{"role": "user", "content": "test"}], "max_tokens": 1},
                     timeout=10,
                     follow_redirects=True,
                 )
                 body = resp.json() if resp.status_code >= 400 else {}
                 api_msg = body.get("error", {}).get("message", "") if isinstance(body.get("error"), dict) else ""
+                error_msg = f"Access denied: {api_msg}" if api_msg else f"Access denied by {base_url}. Check your API key permissions and model availability."
+            except Exception:
+                error_msg = f"Access denied by {base_url}. Check your API key permissions and model availability."
                 if api_msg:
                     error_msg = f"Access denied: {api_msg}"
                 else:
