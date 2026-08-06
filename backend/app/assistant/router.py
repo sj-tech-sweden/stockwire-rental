@@ -271,8 +271,10 @@ async def test_connection(db=Depends(get_db), _user=Depends(get_current_user)):
         import logging
         logger = logging.getLogger(__name__)
         logger.exception("test_connection error")
-        error_msg = str(e)
-        if "str" in error_msg and "_set_private_attributes" in error_msg:
+        raw_error_msg = str(e)
+        raw_error_lower = raw_error_msg.lower()
+        error_msg = "Unable to complete connection test due to an internal error."
+        if "str" in raw_error_msg and "_set_private_attributes" in raw_error_msg:
             # Try to get the actual response body for debugging
             extra = ""
             try:
@@ -282,9 +284,9 @@ async def test_connection(db=Depends(get_db), _user=Depends(get_current_user)):
             except Exception:
                 pass
             error_msg = f"API at {base_url}/models returned incompatible response.{extra}"
-        elif "Connection" in error_msg or "connect" in error_msg.lower() or "Errno" in error_msg:
+        elif "connection" in raw_error_lower or "connect" in raw_error_lower or "errno" in raw_error_lower:
             error_msg = f"Cannot connect to {base_url}. Is the server running?"
-        elif "401" in error_msg or "unauthorized" in error_msg.lower() or "Invalid API Key" in error_msg:
+        elif "401" in raw_error_msg or "unauthorized" in raw_error_lower or "invalid api key" in raw_error_lower:
             extra = ""
             try:
                 import httpx
@@ -299,7 +301,7 @@ async def test_connection(db=Depends(get_db), _user=Depends(get_current_user)):
             except Exception:
                 pass
             error_msg = f"Authentication failed for {base_url}.{extra}"
-        elif "403" in error_msg or "forbidden" in error_msg.lower():
+        elif "403" in raw_error_msg or "forbidden" in raw_error_lower:
             extra = ""
             try:
                 import httpx
@@ -318,11 +320,11 @@ async def test_connection(db=Depends(get_db), _user=Depends(get_current_user)):
                     error_msg = f"Access denied by {base_url}. Check your API key permissions and model availability."
             except Exception:
                 error_msg = f"Access denied by {base_url}. Check your API key permissions and model availability."
-        elif "404" in error_msg:
+        elif "404" in raw_error_msg:
             error_msg = f"Model '{model}' not found. Fetch models to see available options."
-        elif "429" in error_msg or "rate" in error_msg.lower():
+        elif "429" in raw_error_msg or "rate" in raw_error_lower:
             error_msg = "Rate limited by the LLM provider. Try again shortly."
-        elif "timeout" in error_msg.lower():
+        elif "timeout" in raw_error_lower:
             error_msg = f"Connection to {base_url} timed out."
         return {
             "ok": False,
