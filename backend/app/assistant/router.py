@@ -220,6 +220,7 @@ async def chat(request: ChatRequest, db=Depends(get_db), _user=Depends(require_a
                     api_msg = body.get("error", {}).get("message", "") if isinstance(body.get("error"), dict) else ""
                     error_msg = f"Access denied: {api_msg}" if api_msg else f"Access denied by {base_url}. Check model availability."
                 except Exception:
+                    # Catches httpx errors from the debug request, not the outer exception
                     error_msg = f"Access denied by {base_url}. Check your API key permissions and model availability."
             elif "404" in raw_error_msg:
                 error_msg = f"Model '{model}' not found. Fetch models in Settings > AI Assistant to see available options."
