@@ -358,7 +358,8 @@ async def list_models(db=Depends(get_db), _user=Depends(get_current_user)):
         error_msg = str(e)
         if "str" in error_msg and "_set_private_attributes" in error_msg:
             return {"models": [], "count": 0, "error": f"API returned an unexpected response format. The server may not be fully OpenAI-compatible."}
-        return {"models": [], "count": 0, "error": error_msg}
+        logger.exception("Failed to list models from configured LLM backend")
+        return {"models": [], "count": 0, "error": "Unable to list models at this time."}
 
 
 @router.post("/test-model")
