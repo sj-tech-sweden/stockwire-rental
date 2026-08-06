@@ -403,4 +403,5 @@ async def test_model(
                 return {"ok": False, "error": api_msg or f"Model {model_id} not available"}
             except Exception:
                 return {"ok": False, "error": f"Model {model_id} not available or restricted"}
-        return {"ok": False, "error": str(e)}
+        logger.exception("Unexpected error while testing model '%s'", model_id)
+        return {"ok": False, "error": "Unable to test model due to an internal error"}
