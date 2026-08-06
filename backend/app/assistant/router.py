@@ -63,7 +63,6 @@ def _get_llm_settings(db) -> dict:
             return default
         integrations = _parse_integrations(setting.value_json)
         llm = integrations.get("llm")
-        logger.info("LLM config from DB: %s", json.dumps(llm) if llm else "None")
         if isinstance(llm, dict) and llm.get("base_url"):
             result = {
                 "base_url": str(llm.get("base_url", "")).strip() or default["base_url"],

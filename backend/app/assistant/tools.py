@@ -168,12 +168,31 @@ def execute_tool(name: str, arguments: dict, db: Session) -> dict:
 
 
 def _find_product(query: str, db: Session) -> Product | None:
-    q = f"%{query}%"
-    return db.scalar(
+    # Prefer exact SKU or exact name match first to avoid ambiguous partial matches.
+    exact = db.scalar(
         select(Product).where(
-            (Product.name.ilike(q)) | (Product.sku.ilike(q))
+            (Product.sku == query) | (Product.name == query)
         )
     )
+    if exact:
+        return exact
+    # Fall back to case-insensitive exact match.
+    exact_ilike = db.scalar(
+        select(Product).where(
+            (Product.sku.ilike(query)) | (Product.name.ilike(query))
+        )
+    )
+    if exact_ilike:
+        return exact_ilike
+    # Last resort: partial match. Return None if multiple products match to avoid
+    # modifying the wrong product; callers should handle the None case.
+    q = f"%{query}%"
+    matches = db.scalars(
+        select(Product).where(
+            (Product.name.ilike(q)) | (Product.sku.ilike(q))
+        ).limit(2)
+    ).all()
+    return matches[0] if len(matches) == 1 else None
 
 
 def _check_stock(args: dict, db: Session) -> dict:
