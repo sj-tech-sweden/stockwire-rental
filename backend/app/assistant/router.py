@@ -5,10 +5,9 @@ Supports OpenAI-compatible APIs (Ollama, Gemini, OpenAI, OpenCode).
 """
 
 import json
-import asyncio
 import logging
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
 from openai import AsyncOpenAI
 from sqlalchemy import select
@@ -22,8 +21,6 @@ from app.assistant.schemas import ChatRequest
 from app.assistant.tools import TOOLS, execute_tool
 
 logger = logging.getLogger(__name__)
-
-router = APIRouter(prefix="/assistant", tags=["assistant"])
 
 router = APIRouter(prefix="/assistant", tags=["assistant"])
 
@@ -97,12 +94,10 @@ def _get_client(db=None) -> AsyncOpenAI:
 
 
 @router.post("/chat")
-async def chat(request: ChatRequest, db=Depends(get_db), _user=Depends(get_current_user)):
+async def chat(request: ChatRequest, db=Depends(get_db), _user=Depends(require_admin)):
     """Stream a chat response with optional tool calling."""
 
     llm = _get_llm_settings(db)
-    import logging
-    logger = logging.getLogger(__name__)
     base_url = str(llm.get("base_url") or "").strip()
     api_key = str(llm.get("api_key") or "").strip()
     model = str(llm.get("model") or "").strip()
@@ -251,8 +246,6 @@ async def test_connection(db=Depends(get_db), _user=Depends(get_current_user)):
     base_url = llm.get("base_url", "")
     model = llm.get("model", "")
     try:
-        import logging
-        logger = logging.getLogger(__name__)
         logger.info("Creating AsyncOpenAI client: base_url=%s api_key_type=%s", base_url, type(llm.get("api_key")).__name__)
         client = AsyncOpenAI(
             base_url=str(base_url or ""),
@@ -269,8 +262,6 @@ async def test_connection(db=Depends(get_db), _user=Depends(get_current_user)):
             "message": f"Connected to {base_url}. {model_count} model(s) available.",
         }
     except Exception as e:
-        import logging
-        logger = logging.getLogger(__name__)
         logger.exception("test_connection error")
         raw_error_msg = str(e)
         raw_error_lower = raw_error_msg.lower()
@@ -336,10 +327,11 @@ async def test_connection(db=Depends(get_db), _user=Depends(get_current_user)):
 
 
 @router.get("/debug/llm-settings")
-async def debug_llm_settings(db=Depends(get_db), _user=Depends(get_current_user)):
-    """Debug endpoint to see raw LLM settings from DB."""
+async def debug_llm_settings(db=Depends(get_db), _user=Depends(require_admin)):
+    """Debug endpoint to see raw LLM settings from DB (admin only)."""
     llm = _get_llm_settings(db)
-    return {"llm": llm, "llm_type": str(type(llm))}
+    masked = {**llm, "api_key": "***" if llm.get("api_key") else ""}
+    return {"llm": masked, "llm_type": str(type(llm))}
 
 
 @router.get("/models")

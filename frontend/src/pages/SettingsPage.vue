@@ -1901,6 +1901,7 @@ async function saveLlmSettings() {
   llmSaving.value = true
   try {
     await api.put('/api/v1/settings/integrations', {
+      ...integrationsDraft.value,
       llm: {
         base_url: llmDraft.value.base_url,
         api_key: llmDraft.value.api_key,

@@ -6,14 +6,13 @@ against the Stockwire database via SQLAlchemy.
 """
 
 import json
-from datetime import date
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.domain.inventory.models import Product, InventoryCategory
 from app.domain.customers.models import Customer
-from app.domain.jobs.models import Job, JobRequirement
+from app.domain.jobs.models import Job
 
 TOOLS = [
     {
