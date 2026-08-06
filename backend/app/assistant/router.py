@@ -207,21 +207,7 @@ async def chat(request: ChatRequest, db=Depends(get_db), _user=Depends(require_a
             elif "401" in raw_error_msg or "unauthorized" in raw_error_msg.lower() or "Invalid API Key" in raw_error_msg:
                 error_msg = f"Authentication failed. Check your API key for {base_url}."
             elif "403" in raw_error_msg or "forbidden" in raw_error_msg.lower():
-                try:
-                    import httpx
-                    resp = httpx.post(
-                        base_url + "/chat/completions",
-                        headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
-                        json={"model": model, "messages": [{"role": "user", "content": "test"}], "max_tokens": 1},
-                        timeout=10,
-                        follow_redirects=True,
-                    )
-                    body = resp.json() if resp.status_code >= 400 else {}
-                    api_msg = body.get("error", {}).get("message", "") if isinstance(body.get("error"), dict) else ""
-                    error_msg = f"Access denied: {api_msg}" if api_msg else f"Access denied by {base_url}. Check model availability."
-                except Exception:
-                    # Catches httpx errors from the debug request, not the outer exception
-                    error_msg = f"Access denied by {base_url}. Check your API key permissions and model availability."
+                error_msg = _get_403_detail(base_url, api_key, model)
             elif "404" in raw_error_msg:
                 error_msg = f"Model '{model}' not found. Fetch models in Settings > AI Assistant to see available options."
             elif "429" in raw_error_msg or "rate" in raw_error_msg.lower():
@@ -242,6 +228,24 @@ async def chat(request: ChatRequest, db=Depends(get_db), _user=Depends(require_a
             "X-Accel-Buffering": "no",
         },
     )
+
+
+def _get_403_detail(base_url: str, api_key: str, model: str) -> str:
+    """Make a debug request to get the actual 403 error message."""
+    try:
+        import httpx
+        resp = httpx.post(
+            base_url + "/chat/completions",
+            headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+            json={"model": model, "messages": [{"role": "user", "content": "test"}], "max_tokens": 1},
+            timeout=10,
+            follow_redirects=True,
+        )
+        body = resp.json() if resp.status_code >= 400 else {}
+        api_msg = body.get("error", {}).get("message", "") if isinstance(body.get("error"), dict) else ""
+        return f"Access denied: {api_msg}" if api_msg else "Access denied. Check your API key permissions and model availability."
+    except Exception:
+        return "Access denied. Check your API key permissions and model availability."
 
 
 @router.get("/test-connection")
