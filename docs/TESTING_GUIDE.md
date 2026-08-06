@@ -458,7 +458,7 @@ open coverage/index.html
 
 ### Frontend
 
-- **IndexDB errors** - Ensure setup file loaded
+- **IndexedDB errors** - Ensure setup file loaded
 - **Component not found** - Check import path
 - **Async issues** - Use `await` properly
 
