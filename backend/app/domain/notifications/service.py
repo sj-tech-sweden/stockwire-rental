@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from jinja2 import Template
+from jinja2.sandbox import SandboxedEnvironment
 from pywebpush import WebPushException, webpush
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -16,10 +16,13 @@ from app.domain.notifications.schemas import NotificationDispatchRequest
 from app.services.email import EmailMessage, send_email
 
 
+_SANDBOXED_ENV = SandboxedEnvironment()
+
+
 def _render_template(value: str | None, context: dict) -> str:
     if not value:
         return ""
-    return Template(value).render(**context)
+    return _SANDBOXED_ENV.from_string(value).render(**context)
 
 
 def _create_log(
