@@ -30,7 +30,7 @@ dependencies = [
   "boto3==1.43.65",
   "prometheus-fastapi-instrumentator==8.1.0",
   "icalendar==7.2.2",
-  "openai>=1.0.0,<2.0.0"
+  "openai>=2.53.0,<2.54.0"
 ]
 
 [project.optional-dependencies]
