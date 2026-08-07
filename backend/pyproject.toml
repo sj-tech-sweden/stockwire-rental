@@ -27,7 +27,7 @@ dependencies = [
   "python-multipart==0.0.32",
   "httpx==0.28.1",
   "paho-mqtt==2.1.0",
-  "boto3==1.43.65",
+  "boto3==1.43.66",
   "prometheus-fastapi-instrumentator==8.1.0",
   "icalendar==7.2.2",
   "openai>=2.53.0,<2.54.0"
