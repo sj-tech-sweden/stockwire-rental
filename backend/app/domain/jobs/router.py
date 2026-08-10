@@ -7,9 +7,10 @@ from urllib.error import HTTPError, URLError
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from pydantic import BaseModel
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session, selectinload
 
+from app.api.pagination import PaginationParams, PaginatedResponse, paginate_query
 from app.db.session import get_db
 from app.domain.auth.deps import get_current_user, require_editor
 from app.domain.auth.models import User
@@ -53,12 +54,23 @@ def bootstrap_status() -> dict[str, str]:
     return {"module": "jobs", "status": "scaffolded"}
 
 
-@router.get("", response_model=list[JobRead])
-def list_jobs(db: Session = Depends(get_db), project_id: int | None = None) -> list[Job]:
+@router.get("", response_model=PaginatedResponse[JobRead])
+def list_jobs(
+    db: Session = Depends(get_db),
+    project_id: int | None = None,
+    pagination: PaginationParams = Depends(),
+) -> PaginatedResponse[JobRead]:
     stmt = select(Job).order_by(Job.id)
     if project_id is not None:
         stmt = stmt.where(Job.project_id == project_id)
-    return list(db.scalars(stmt).all())
+    items, total = paginate_query(db, stmt, pagination.skip, pagination.limit)
+    return PaginatedResponse(
+        items=items,
+        total=total,
+        skip=pagination.skip,
+        limit=pagination.limit,
+        has_more=(pagination.skip + pagination.limit) < total,
+    )
 
 
 @router.get("/generate-code")

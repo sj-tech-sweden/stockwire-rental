@@ -3,6 +3,8 @@ from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from jose import jwt
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
@@ -16,6 +18,7 @@ from app.domain.auth.schemas import Token, UserCreate, UserLogin, UserSummary, U
 from app.domain.auth.security import create_access_token, generate_refresh_token, compute_refresh_token_hash, hash_password, verify_password, hash_api_key, hash_api_key_lookup, decode_token
 from app.domain.auth.sso import (
     build_oidc_authorize_url,
+    verify_oidc_state,
     claims_to_identity,
     exchange_oidc_code,
     get_runtime_sso_config,
@@ -28,6 +31,8 @@ from app.domain.auth.sso import (
 from pydantic import BaseModel
 
 router = APIRouter(prefix="/auth", tags=["auth"])
+
+limiter = Limiter(key_func=get_remote_address)
 
 
 def _set_refresh_cookie(response: Response, refresh_token: str) -> None:
@@ -106,21 +111,37 @@ def saml_provider_config(provider: str, db: Session = Depends(get_db)) -> dict:
 
 
 @router.get("/sso/oidc/authorize/{provider}")
-def oidc_authorize(provider: str, redirect_uri: str, db: Session = Depends(get_db)) -> dict:
+def oidc_authorize(
+    provider: str,
+    redirect_uri: str,
+    db: Session = Depends(get_db),
+) -> dict:
     runtime = get_runtime_sso_config(db)
     if not runtime.enabled:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="SSO not enabled")
     oidc = get_oidc_provider(provider, db)
     if not redirect_uri:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="redirect_uri is required")
-    return {"authorize_url": build_oidc_authorize_url(oidc, redirect_uri)}
+    authorize_url, state = build_oidc_authorize_url(oidc, redirect_uri)
+    # State is embedded in the authorize URL and returned to the frontend,
+    # which passes it back in the exchange request. The state is cryptographically
+    # signed so the backend can verify it without storing it.
+    return {"authorize_url": authorize_url, "state": state}
 
 
 @router.post("/sso/oidc/exchange", response_model=Token)
-def oidc_exchange(payload: OIDCExchangeRequest, response: Response, db: Session = Depends(get_db)) -> Token:
+def oidc_exchange(
+    payload: OIDCExchangeRequest,
+    response: Response,
+    db: Session = Depends(get_db),
+) -> Token:
     runtime = get_runtime_sso_config(db)
     if not runtime.enabled:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="SSO not enabled")
+
+    # Verify OIDC state parameter to prevent CSRF attacks
+    if not verify_oidc_state(payload.state, None):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Invalid or expired OIDC state")
 
     oidc = get_oidc_provider(payload.provider, db)
     claims = exchange_oidc_code(oidc, payload.code, payload.redirect_uri)
@@ -169,7 +190,8 @@ def bootstrap_status(db: Session = Depends(get_db)) -> dict:
 
 
 @router.post("/setup", response_model=Token, status_code=status.HTTP_201_CREATED)
-def setup_admin(payload: UserCreate, response: Response, db: Session = Depends(get_db)) -> Token:
+@limiter.limit("3/minute")
+def setup_admin(request: Request, payload: UserCreate, response: Response, db: Session = Depends(get_db)) -> Token:
     """Create the first admin account. Only works when no users exist."""
     count = db.scalar(select(func.count()).select_from(User))
     if count and count > 0:
@@ -190,7 +212,8 @@ def setup_admin(payload: UserCreate, response: Response, db: Session = Depends(g
 
 
 @router.post("/login", response_model=Token)
-def login(payload: UserLogin, response: Response, db: Session = Depends(get_db)) -> Token:
+@limiter.limit("5/minute")
+def login(request: Request, payload: UserLogin, response: Response, db: Session = Depends(get_db)) -> Token:
     identifier = str(payload.email or "").strip().lower()
     user = None
 
@@ -228,7 +251,9 @@ def login(payload: UserLogin, response: Response, db: Session = Depends(get_db))
 
 
 @router.post("/forgot-password", status_code=status.HTTP_204_NO_CONTENT)
+@limiter.limit("3/minute")
 def forgot_password(
+    request: Request,
     payload: ForgotPasswordRequest,
     db: Session = Depends(get_db),
 ) -> None:

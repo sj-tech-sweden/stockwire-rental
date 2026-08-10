@@ -13,7 +13,7 @@ class CalendarFeed(Base):
     name: Mapped[str] = mapped_column(String(255))
     token: Mapped[str] = mapped_column(String(64), unique=True, index=True)
     feed_type: Mapped[str] = mapped_column(String(20))
-    crew_member_id: Mapped[int | None] = mapped_column(ForeignKey("crew_members.id"), nullable=True, index=True)
+    crew_member_id: Mapped[int | None] = mapped_column(ForeignKey("crew_members.id", ondelete="SET NULL"), nullable=True, index=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     updated_at: Mapped[datetime] = mapped_column(

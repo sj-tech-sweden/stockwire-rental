@@ -15,6 +15,9 @@ export const useCrewStore = defineStore('crew', () => {
     try {
       const { data } = await api.get('/api/v1/crew/roles')
       roles.value = data
+    } catch (error) {
+      console.error('Failed to fetch crew roles:', error)
+      throw error
     } finally {
       loadingRoles.value = false
     }
@@ -43,6 +46,9 @@ export const useCrewStore = defineStore('crew', () => {
     try {
       const { data } = await api.get('/api/v1/crew/members', { params })
       members.value = data
+    } catch (error) {
+      console.error('Failed to fetch crew members:', error)
+      throw error
     } finally {
       loadingMembers.value = false
     }

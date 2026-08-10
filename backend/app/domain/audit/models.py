@@ -11,7 +11,7 @@ class ActivityLog(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow, index=True)
-    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=True, index=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
     entity_type: Mapped[str] = mapped_column(String(80), index=True)
     entity_id: Mapped[int] = mapped_column(nullable=True, index=True)
     action: Mapped[str] = mapped_column(String(40), index=True)

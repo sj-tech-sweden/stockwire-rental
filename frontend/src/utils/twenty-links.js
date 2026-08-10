@@ -21,14 +21,20 @@ function normalizeTwentyRecordId(recordId) {
   return value || null
 }
 
+const ENTITY_TYPE_MAP = {
+  companies: 'company',
+  opportunities: 'opportunity',
+}
+
 export function getTwentyRecordUrl(entityType, recordId, baseUrl) {
   const id = normalizeTwentyRecordId(recordId)
   if (!id) return null
 
   const entity = String(entityType || '').trim().toLowerCase()
-  if (entity !== 'companies' && entity !== 'opportunities') return null
+  const mapped = ENTITY_TYPE_MAP[entity]
+  if (!mapped) return null
 
-  return `${normalizeTwentyBaseUrl(baseUrl)}/${entity}/${encodeURIComponent(id)}`
+  return `${normalizeTwentyBaseUrl(baseUrl)}/object/${mapped}/${encodeURIComponent(id)}`
 }
 
 export function getTwentyCustomerUrl(customer, config) {

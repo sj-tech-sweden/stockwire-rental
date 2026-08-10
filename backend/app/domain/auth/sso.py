@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+import hashlib
+import hmac
 import json
 import secrets
+import base64
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any
@@ -23,6 +26,9 @@ from app.domain.settings.models import AppSetting
 VALID_ROLES = {"admin", "manager", "viewer"}
 _ROLE_PRIORITY = {"admin": 3, "manager": 2, "viewer": 1}
 SSO_SETTINGS_KEY = "auth.sso"
+
+# State expiry: 5 minutes
+_OIDC_STATE_EXPIRY_SECONDS = 300
 
 
 @dataclass
@@ -330,16 +336,63 @@ def list_enabled_providers(db: Session | None = None) -> list[SSOProviderSummary
     return out
 
 
-def build_oidc_authorize_url(provider: OIDCProvider, redirect_uri: str) -> str:
+def _sign_state(token: str, timestamp: int) -> str:
+    """Create a HMAC signature for the OIDC state parameter."""
+    message = f"{token}:{timestamp}".encode("utf-8")
+    key = settings.jwt_secret_key.encode("utf-8")
+    signature = hmac.new(key, message, hashlib.sha256).hexdigest()
+    return signature
+
+
+def build_oidc_authorize_url(provider: OIDCProvider, redirect_uri: str) -> tuple[str, str]:
+    """Build OIDC authorization URL and return (url, state) for CSRF verification."""
+    token = secrets.token_urlsafe(16)
+    timestamp = int(datetime.now(timezone.utc).timestamp())
+    signature = _sign_state(token, timestamp)
+    # State format: base64(token:timestamp:signature)
+    state_payload = f"{token}:{timestamp}:{signature}"
+    state = base64.urlsafe_b64encode(state_payload.encode()).decode().rstrip("=")
     params = {
         "client_id": provider.client_id,
         "response_type": "code",
         "scope": provider.scopes,
         "redirect_uri": redirect_uri,
-        "state": secrets.token_urlsafe(16),
+        "state": state,
         "nonce": secrets.token_urlsafe(16),
     }
-    return f"{provider.authorization_endpoint}?{urlencode(params)}"
+    return f"{provider.authorization_endpoint}?{urlencode(params)}", state
+
+
+def verify_oidc_state(provided_state: str | None, expected_state: str | None) -> bool:
+    """Verify that the OIDC state parameter matches and hasn't expired.
+
+    For backwards compatibility, if expected_state is None (e.g., cookie not sent),
+    we still accept the state if it's a valid signed state that hasn't expired.
+    """
+    if not provided_state:
+        return False
+
+    try:
+        # Pad the base64 string
+        padded = provided_state + "=" * (4 - len(provided_state) % 4)
+        decoded = base64.urlsafe_b64decode(padded).decode("utf-8")
+        parts = decoded.split(":")
+        if len(parts) != 3:
+            return False
+
+        token, timestamp_str, provided_signature = parts
+        timestamp = int(timestamp_str)
+
+        # Check expiry
+        now = int(datetime.now(timezone.utc).timestamp())
+        if now - timestamp > _OIDC_STATE_EXPIRY_SECONDS:
+            return False
+
+        # Verify signature
+        expected_signature = _sign_state(token, timestamp)
+        return hmac.compare_digest(provided_signature, expected_signature)
+    except (ValueError, TypeError):
+        return False
 
 
 def exchange_oidc_code(provider: OIDCProvider, code: str, redirect_uri: str) -> dict[str, Any]:

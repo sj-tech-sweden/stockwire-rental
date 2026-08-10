@@ -52,10 +52,15 @@ export const useCustomersStore = defineStore('customers', () => {
       await cacheSnapshot('customers.fetchAll', customers.value)
       return optimistic
     }
-    const { data } = await api.post('/api/v1/customers', payload)
-    customers.value = [...customers.value, data]
-    await cacheSnapshot('customers.fetchAll', customers.value)
-    return data
+    try {
+      const { data } = await api.post('/api/v1/customers', payload)
+      customers.value = [...customers.value, data]
+      await cacheSnapshot('customers.fetchAll', customers.value)
+      return data
+    } catch (error) {
+      console.error('Failed to create customer:', error)
+      throw error
+    }
   }
 
   async function updateCustomer(id, payload) {
@@ -65,10 +70,15 @@ export const useCustomersStore = defineStore('customers', () => {
       await cacheSnapshot('customers.fetchAll', customers.value)
       return customers.value.find(customer => customer.id === id) || { id, ...payload, _offline_queued: true }
     }
-    const { data } = await api.put(`/api/v1/customers/${id}`, payload)
-    customers.value = customers.value.map(customer => customer.id === id ? data : customer)
-    await cacheSnapshot('customers.fetchAll', customers.value)
-    return data
+    try {
+      const { data } = await api.put(`/api/v1/customers/${id}`, payload)
+      customers.value = customers.value.map(customer => customer.id === id ? data : customer)
+      await cacheSnapshot('customers.fetchAll', customers.value)
+      return data
+    } catch (error) {
+      console.error('Failed to update customer:', error)
+      throw error
+    }
   }
 
   async function deleteCustomer(id) {
@@ -78,14 +88,24 @@ export const useCustomersStore = defineStore('customers', () => {
       await cacheSnapshot('customers.fetchAll', customers.value)
       return
     }
-    await api.delete(`/api/v1/customers/${id}`)
-    customers.value = customers.value.filter(customer => customer.id !== id)
-    await cacheSnapshot('customers.fetchAll', customers.value)
+    try {
+      await api.delete(`/api/v1/customers/${id}`)
+      customers.value = customers.value.filter(customer => customer.id !== id)
+      await cacheSnapshot('customers.fetchAll', customers.value)
+    } catch (error) {
+      console.error('Failed to delete customer:', error)
+      throw error
+    }
   }
 
   async function fetchCustomerInfo(id) {
-    const { data } = await api.get(`/api/v1/customers/${id}/info`)
-    return data
+    try {
+      const { data } = await api.get(`/api/v1/customers/${id}/info`)
+      return data
+    } catch (error) {
+      console.error('Failed to fetch customer info:', error)
+      throw error
+    }
   }
 
   return {

@@ -1,4 +1,6 @@
 import json
+import os
+import secrets
 from typing import Any
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -137,3 +139,67 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
+
+# ---------------------------------------------------------------------------
+# JWT Secret Validation & Migration Helper
+# ---------------------------------------------------------------------------
+
+_JWT_SECRET_PLACEHOLDER = "change-me-in-production-use-a-long-random-string"
+
+
+def validate_jwt_secret() -> None:
+    """Fail fast at startup if JWT_SECRET_KEY is the default placeholder in non-dev environments."""
+    raw = os.getenv("JWT_SECRET_KEY", "")
+    app_env = (os.getenv("APP_ENV") or "development").strip().lower()
+    if app_env in {"development", "test"}:
+        return
+    if not raw or raw == _JWT_SECRET_PLACEHOLDER:
+        raise RuntimeError(
+            "JWT_SECRET_KEY must be set to a strong random value in production. "
+            "Run: python -m app.config --generate-jwt-secret"
+        )
+
+
+def generate_jwt_secret() -> str:
+    """Generate a cryptographically secure JWT secret key."""
+    return secrets.token_urlsafe(64)
+
+
+def rotate_jwt_secret_in_env(new_secret: str) -> str:
+    """Update or create JWT_SECRET_KEY in the .env file.
+
+    Returns the path to the updated .env file.
+    """
+    env_path = os.getenv("ENV_FILE", ".env")
+    env_lines: list[str] = []
+    found = False
+
+    if os.path.exists(env_path):
+        with open(env_path, "r") as f:
+            for line in f:
+                if line.strip().startswith("JWT_SECRET_KEY="):
+                    env_lines.append(f"JWT_SECRET_KEY={new_secret}\n")
+                    found = True
+                else:
+                    env_lines.append(line)
+
+    if not found:
+        env_lines.append(f"JWT_SECRET_KEY={new_secret}\n")
+
+    with open(env_path, "w") as f:
+        f.writelines(env_lines)
+
+    return env_path
+
+
+if __name__ == "__main__":
+    import sys
+
+    if "--generate-jwt-secret" in sys.argv:
+        secret = generate_jwt_secret()
+        print(f"Generated JWT_SECRET_KEY: {secret[:8]}...{secret[-8:]}")
+        path = rotate_jwt_secret_in_env(secret)
+        print(f"Updated {path}")
+        print("Restart the application to apply the new secret.")
+    else:
+        print("Usage: python -m app.config --generate-jwt-secret")

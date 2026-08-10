@@ -61,8 +61,8 @@ class CrewMember(Base):
     name: Mapped[str] = mapped_column(String(255), index=True)
     email: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
     phone: Mapped[str | None] = mapped_column(String(50), nullable=True)
-    user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True, index=True)
-    supplier_id: Mapped[int | None] = mapped_column(ForeignKey("customers.id"), nullable=True, index=True)
+    user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
+    supplier_id: Mapped[int | None] = mapped_column(ForeignKey("customers.id", ondelete="SET NULL"), nullable=True, index=True)
     hourly_rate: Mapped[float | None] = mapped_column(Numeric(10, 2), nullable=True)
     daily_rate: Mapped[float | None] = mapped_column(Numeric(10, 2), nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -126,7 +126,7 @@ class JobCrewRequirement(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     job_id: Mapped[int] = mapped_column(ForeignKey("jobs.id", ondelete="CASCADE"), index=True)
-    crew_role_id: Mapped[int | None] = mapped_column(ForeignKey("crew_roles.id"), nullable=True, index=True)
+    crew_role_id: Mapped[int | None] = mapped_column(ForeignKey("crew_roles.id", ondelete="SET NULL"), nullable=True, index=True)
     custom_role_name: Mapped[str | None] = mapped_column(String(120), nullable=True)
     quantity: Mapped[int] = mapped_column(Integer, default=1)
     quantity_assigned: Mapped[int] = mapped_column(Integer, default=0)
@@ -166,7 +166,7 @@ class JobCrewAssignment(Base):
     job_crew_requirement_id: Mapped[int] = mapped_column(
         ForeignKey("job_crew_requirements.id", ondelete="CASCADE"), index=True
     )
-    crew_member_id: Mapped[int] = mapped_column(ForeignKey("crew_members.id"), index=True)
+    crew_member_id: Mapped[int] = mapped_column(ForeignKey("crew_members.id", ondelete="CASCADE"), index=True)
     status: Mapped[str] = mapped_column(String(30), default="assigned", index=True)
     hourly_rate_override: Mapped[float | None] = mapped_column(Numeric(10, 2), nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)

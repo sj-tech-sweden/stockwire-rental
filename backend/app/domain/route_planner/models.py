@@ -41,7 +41,7 @@ class DeliveryRoute(Base):
     status: Mapped[str] = mapped_column(String(50), default="planned", index=True)
     start_date: Mapped[date] = mapped_column(Date)
     notes: Mapped[str] = mapped_column(Text, nullable=True)
-    created_by_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=True)
+    created_by_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -55,7 +55,7 @@ class RouteVehicle(Base):
     __table_args__ = (PrimaryKeyConstraint("route_id", "vehicle_id"),)
 
     route_id: Mapped[int] = mapped_column(ForeignKey("delivery_routes.id", ondelete="CASCADE"))
-    vehicle_id: Mapped[int] = mapped_column(ForeignKey("vehicles.id"))
+    vehicle_id: Mapped[int] = mapped_column(ForeignKey("vehicles.id", ondelete="CASCADE"))
     load_order: Mapped[int] = mapped_column(Integer, default=0)  # lower = loaded first
     notes: Mapped[str] = mapped_column(Text, nullable=True)
 
@@ -68,8 +68,8 @@ class RouteStop(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     route_id: Mapped[int] = mapped_column(ForeignKey("delivery_routes.id", ondelete="CASCADE"))
-    job_id: Mapped[int] = mapped_column(ForeignKey("jobs.id"))
-    vehicle_id: Mapped[int] = mapped_column(ForeignKey("vehicles.id"), nullable=True)
+    job_id: Mapped[int] = mapped_column(ForeignKey("jobs.id", ondelete="SET NULL"))
+    vehicle_id: Mapped[int] = mapped_column(ForeignKey("vehicles.id", ondelete="SET NULL"), nullable=True)
     stop_order: Mapped[int] = mapped_column(Integer)
     notes: Mapped[str] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)

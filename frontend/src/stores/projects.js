@@ -36,10 +36,15 @@ export const useProjectsStore = defineStore('projects', () => {
       await cacheSnapshot('projects.fetchAll', projects.value)
       return optimistic
     }
-    const { data } = await api.post('/api/v1/projects', payload)
-    projects.value = [...projects.value, data]
-    await cacheSnapshot('projects.fetchAll', projects.value)
-    return data
+    try {
+      const { data } = await api.post('/api/v1/projects', payload)
+      projects.value = [...projects.value, data]
+      await cacheSnapshot('projects.fetchAll', projects.value)
+      return data
+    } catch (error) {
+      console.error('Failed to create project:', error)
+      throw error
+    }
   }
 
   async function updateProject(id, payload) {
@@ -49,10 +54,15 @@ export const useProjectsStore = defineStore('projects', () => {
       await cacheSnapshot('projects.fetchAll', projects.value)
       return projects.value.find(p => p.id === id) || { id, ...payload, _offline_queued: true }
     }
-    const { data } = await api.put(`/api/v1/projects/${id}`, payload)
-    projects.value = projects.value.map(p => p.id === id ? data : p)
-    await cacheSnapshot('projects.fetchAll', projects.value)
-    return data
+    try {
+      const { data } = await api.put(`/api/v1/projects/${id}`, payload)
+      projects.value = projects.value.map(p => p.id === id ? data : p)
+      await cacheSnapshot('projects.fetchAll', projects.value)
+      return data
+    } catch (error) {
+      console.error('Failed to update project:', error)
+      throw error
+    }
   }
 
   async function deleteProject(id) {
@@ -62,9 +72,14 @@ export const useProjectsStore = defineStore('projects', () => {
       await cacheSnapshot('projects.fetchAll', projects.value)
       return
     }
-    await api.delete(`/api/v1/projects/${id}`)
-    projects.value = projects.value.filter(p => p.id !== id)
-    await cacheSnapshot('projects.fetchAll', projects.value)
+    try {
+      await api.delete(`/api/v1/projects/${id}`)
+      projects.value = projects.value.filter(p => p.id !== id)
+      await cacheSnapshot('projects.fetchAll', projects.value)
+    } catch (error) {
+      console.error('Failed to delete project:', error)
+      throw error
+    }
   }
 
   async function syncProjectToProductionPlanner(projectId) {
@@ -77,14 +92,22 @@ export const useProjectsStore = defineStore('projects', () => {
         await cacheSnapshot('projects.fetchAll', projects.value)
       }
       return data
+    } catch (error) {
+      console.error('Failed to sync project to ProductionPlanner:', error)
+      throw error
     } finally {
       loading.value = false
     }
   }
 
   async function getProjectProductionPlannerInfo(projectId) {
-    const { data } = await api.get(`/api/v1/projects/${projectId}/productionplanner`)
-    return data
+    try {
+      const { data } = await api.get(`/api/v1/projects/${projectId}/productionplanner`)
+      return data
+    } catch (error) {
+      console.error('Failed to get ProductionPlanner info:', error)
+      throw error
+    }
   }
 
   function getProductionPlannerUrl(productionPlannerProjectId) {

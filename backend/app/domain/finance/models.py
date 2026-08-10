@@ -10,7 +10,7 @@ class FinancialTransaction(Base):
     __tablename__ = "financial_transactions"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    job_id: Mapped[int] = mapped_column(ForeignKey("jobs.id"), nullable=True, index=True)
+    job_id: Mapped[int] = mapped_column(ForeignKey("jobs.id", ondelete="SET NULL"), nullable=True, index=True)
     transaction_type: Mapped[str] = mapped_column(String(50), default="payment", index=True)
     status: Mapped[str] = mapped_column(String(50), default="pending", index=True)
     amount: Mapped[float] = mapped_column(Numeric(12, 2), default=0)

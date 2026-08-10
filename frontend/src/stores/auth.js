@@ -6,7 +6,14 @@ import { cacheSnapshot, isOnline, queueMutation, readSnapshot } from '../service
 
 export const useAuthStore = defineStore('auth', () => {
   const token = ref(localStorage.getItem('sw_token') || null)
-  const me = ref(JSON.parse(localStorage.getItem('sw_user') || 'null'))
+  let parsedUser = null
+  try {
+    const raw = localStorage.getItem('sw_user')
+    parsedUser = raw ? JSON.parse(raw) : null
+  } catch {
+    localStorage.removeItem('sw_user')
+  }
+  const me = ref(parsedUser)
   let _refreshToken = sessionStorage.getItem('sw_refresh_token') || null
 
   const isAuthenticated = computed(() => !!token.value)
@@ -185,14 +192,22 @@ export const useAuthStore = defineStore('auth', () => {
     const { data } = await api.get(`/api/v1/auth/sso/oidc/authorize/${encodeURIComponent(provider)}`, {
       params: { redirect_uri: redirectUri },
     })
+    // Store the state in sessionStorage so it survives the redirect
+    if (data?.state) {
+      sessionStorage.setItem('oidc_state', data.state)
+    }
     return data?.authorize_url || ''
   }
 
-  async function oidcExchange(provider, code, redirectUri) {
+  async function oidcExchange(provider, code, redirectUri, state) {
+    // Use provided state, or fall back to stored state from sessionStorage
+    const oidcState = state || sessionStorage.getItem('oidc_state') || undefined
+    sessionStorage.removeItem('oidc_state')
     const { data } = await api.post('/api/v1/auth/sso/oidc/exchange', {
       provider,
       code,
       redirect_uri: redirectUri,
+      state: oidcState,
     })
     _setSession(data)
   }

@@ -6,12 +6,13 @@ from decimal import Decimal, InvalidOperation
 
 from collections import defaultdict
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 from fastapi import UploadFile, File, Query
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import DataError, IntegrityError, SQLAlchemyError
 
+from app.api.pagination import PaginationParams, PaginatedResponse, paginate_query
 from app.db.session import get_db
 from app.config import settings
 from app.domain.auth.deps import get_current_user, require_admin, require_editor
@@ -857,10 +858,150 @@ def _resolve_hirehop_category(db: Session, product_data: dict[str, Any]) -> Inve
     return None
 
 
-@router.get("/products", response_model=list[ProductRead])
-def list_products(db: Session = Depends(get_db)) -> list[ProductRead]:
-    products = list(db.scalars(select(Product).order_by(Product.id)).all())
-    return [_to_product_read(db, product) for product in products]
+@router.get("/products", response_model=PaginatedResponse[ProductRead])
+def list_products(
+    db: Session = Depends(get_db),
+    pagination: PaginationParams = Depends(),
+) -> PaginatedResponse[ProductRead]:
+    stmt = select(Product).order_by(Product.id)
+    products, total = paginate_query(db, stmt, pagination.skip, pagination.limit)
+    if not products:
+        return PaginatedResponse(items=[], total=total, skip=pagination.skip, limit=pagination.limit, has_more=False)
+
+    product_ids = [p.id for p in products]
+
+    # Batch-load device counts per product in a single query
+    device_count_rows = db.execute(
+        select(
+            Device.product_id,
+            func.count().label("total"),
+            func.count().filter(Device.status.in_(["available", "reserved", "maintenance"])).label("in_store"),
+            func.count().filter(Device.status == "in_use").label("on_site"),
+            func.count().filter(Device.condition == "damaged").label("damaged"),
+        )
+        .where(Device.product_id.in_(product_ids))
+        .group_by(Device.product_id)
+    ).all()
+    device_counts = {row.product_id: row for row in device_count_rows}
+
+    # Batch-load all accessories
+    all_accessories = list(db.scalars(
+        select(ProductAccessory)
+        .where(ProductAccessory.parent_product_id.in_(product_ids))
+        .order_by(ProductAccessory.required.desc(), ProductAccessory.id)
+    ).all())
+    accessories_by_product: dict[int, list[ProductAccessory]] = {}
+    for acc in all_accessories:
+        accessories_by_product.setdefault(acc.parent_product_id, []).append(acc)
+
+    # Batch-load all components
+    all_components = list(db.scalars(
+        select(ProductComponent)
+        .where(ProductComponent.parent_product_id.in_(product_ids))
+        .order_by(ProductComponent.id)
+    ).all())
+    components_by_product: dict[int, list[ProductComponent]] = {}
+    for comp in all_components:
+        components_by_product.setdefault(comp.parent_product_id, []).append(comp)
+
+    # Batch-load all supplier links
+    all_supplier_rows = list(db.scalars(
+        select(ProductSupplier).where(ProductSupplier.product_id.in_(product_ids))
+    ).all())
+    suppliers_by_product: dict[int, list[ProductSupplier]] = {}
+    for sr in all_supplier_rows:
+        suppliers_by_product.setdefault(sr.product_id, []).append(sr)
+
+    # Pre-fetch all referenced products (for accessories/components)
+    ref_product_ids = set()
+    for acc in all_accessories:
+        ref_product_ids.add(acc.accessory_product_id)
+    for comp in all_components:
+        ref_product_ids.add(comp.component_product_id)
+    product_cache: dict[int, Product] = {}
+    if ref_product_ids:
+        ref_products = db.scalars(select(Product).where(Product.id.in_(ref_product_ids))).all()
+        product_cache = {p.id: p for p in ref_products}
+
+    # Pre-fetch all referenced customers (for suppliers)
+    supplier_ids = {sr.supplier_id for sr in all_supplier_rows if sr.supplier_id}
+    customer_cache: dict[int, Customer] = {}
+    if supplier_ids:
+        customers = db.scalars(select(Customer).where(Customer.id.in_(supplier_ids))).all()
+        customer_cache = {c.id: c for c in customers}
+
+    results = []
+    for product in products:
+        counts = device_counts.get(product.id)
+        accessories = accessories_by_product.get(product.id, [])
+        components = components_by_product.get(product.id, [])
+        supplier_rows = suppliers_by_product.get(product.id, [])
+
+        eventory_packlists: list[dict[str, object]] = []
+        if product.eventory_packlists_json:
+            try:
+                parsed = json.loads(product.eventory_packlists_json)
+                if isinstance(parsed, list):
+                    eventory_packlists = [item for item in parsed if isinstance(item, dict)]
+            except Exception:
+                eventory_packlists = []
+
+        suppliers_list = []
+        for sr in supplier_rows:
+            sup = customer_cache.get(sr.supplier_id)
+            suppliers_list.append(ProductSupplierRead(
+                id=sr.id,
+                product_id=sr.product_id,
+                supplier_id=sr.supplier_id,
+                supplier_name=sup.name if sup else None,
+                is_primary=sr.is_primary,
+                lead_time_days=sr.lead_time_days,
+                unit_cost=sr.unit_cost,
+                notes=sr.notes,
+                created_at=sr.created_at,
+            ))
+
+        results.append(ProductRead.model_validate({
+            "id": product.id,
+            "sku": product.sku,
+            "name": product.name,
+            "category": product.category,
+            "category_id": product.category_id,
+            "brand": product.brand,
+            "manufacturer": product.manufacturer,
+            "product_type": product.product_type,
+            "is_rental_product": product.is_rental_product,
+            "supplier_name": product.supplier_name,
+            "rental_price": product.rental_price,
+            "external_source": product.external_source,
+            "external_reference": product.external_reference,
+            "weight_kg": product.weight_kg,
+            "height_cm": product.height_cm,
+            "width_cm": product.width_cm,
+            "depth_cm": product.depth_cm,
+            "maintenance_interval_days": product.maintenance_interval_days,
+            "power_consumption_watts": product.power_consumption_watts,
+            "daily_rate": product.daily_rate,
+            "replace_cost": product.replace_cost,
+            "eventory_available_qty": product.eventory_available_qty,
+            "created_at": product.created_at,
+            "total_devices": int(counts.total) if counts else 0,
+            "in_store_devices": int(counts.in_store) if counts else 0,
+            "on_site_devices": int(counts.on_site) if counts else 0,
+            "damaged_devices": int(counts.damaged) if counts else 0,
+            "eventory_packlists": eventory_packlists,
+            "accessories": [_to_product_accessory_read(db, row, product_cache) for row in accessories],
+            "components": [_to_product_component_read(db, row, product_cache) for row in components],
+            "suppliers": suppliers_list,
+        }))
+
+    return PaginatedResponse(
+        items=results,
+        total=total,
+        skip=pagination.skip,
+        limit=pagination.limit,
+        has_more=(pagination.skip + pagination.limit) < total,
+    )
 
 
 @router.get("/products/generate-sku")
@@ -1225,10 +1366,65 @@ def create_devices_for_product(
     return created
 
 
-@router.get("/devices", response_model=list[DeviceRead])
-def list_devices(db: Session = Depends(get_db)) -> list[DeviceRead]:
-    rows = list(db.scalars(select(Device).order_by(Device.id)).all())
-    return [_to_device_read(db, row) for row in rows]
+@router.get("/devices", response_model=PaginatedResponse[DeviceRead])
+def list_devices(
+    db: Session = Depends(get_db),
+    pagination: PaginationParams = Depends(),
+) -> PaginatedResponse[DeviceRead]:
+    stmt = select(Device).order_by(Device.id)
+    rows, total = paginate_query(db, stmt, pagination.skip, pagination.limit)
+    if not rows:
+        return PaginatedResponse(items=[], total=total, skip=pagination.skip, limit=pagination.limit, has_more=False)
+
+    # Batch-load referenced devices (case and parent component)
+    ref_device_ids = set()
+    for d in rows:
+        if d.case_device_id:
+            ref_device_ids.add(d.case_device_id)
+        if d.parent_component_device_id:
+            ref_device_ids.add(d.parent_component_device_id)
+    device_cache: dict[int, Device] = {}
+    if ref_device_ids:
+        ref_devices = db.scalars(select(Device).where(Device.id.in_(ref_device_ids))).all()
+        device_cache = {d.id: d for d in ref_devices}
+
+    # Batch-load job codes for in-use devices
+    in_use_ids = [d.id for d in rows if str(d.status or "").lower() == "in_use"]
+    job_cache: dict[int, dict] = {}
+    if in_use_ids:
+        audit_rows = db.execute(
+            select(InventoryAuditLog)
+            .where(InventoryAuditLog.device_id.in_(in_use_ids))
+            .where(InventoryAuditLog.success.is_(True))
+            .where(InventoryAuditLog.job_id.is_not(None))
+            .where(InventoryAuditLog.action == "job_out")
+            .order_by(InventoryAuditLog.created_at.desc(), InventoryAuditLog.id.desc())
+        ).all()
+        # Keep only the latest audit per device
+        seen_devices: set[int] = set()
+        job_ids_needed: set[int] = set()
+        latest_audit_by_device: dict[int, InventoryAuditLog] = {}
+        for row in audit_rows:
+            if row.device_id not in seen_devices:
+                seen_devices.add(row.device_id)
+                latest_audit_by_device[row.device_id] = row
+                job_ids_needed.add(row.job_id)
+
+        if job_ids_needed:
+            jobs = db.scalars(select(Job).where(Job.id.in_(job_ids_needed))).all()
+            job_cache = {j.id: {"job_code": j.job_code} for j in jobs}
+
+    results = []
+    for device in rows:
+        results.append(_to_device_read(db, device, device_cache, job_cache))
+
+    return PaginatedResponse(
+        items=results,
+        total=total,
+        skip=pagination.skip,
+        limit=pagination.limit,
+        has_more=(pagination.skip + pagination.limit) < total,
+    )
 
 
 @router.get("/devices/{device_id}", response_model=DeviceRead)
@@ -1847,7 +2043,7 @@ def delete_maintenance_comment(
     db.delete(row)
     db.commit()
     emit_realtime_event("inventory.updated", {"entity": "maintenance_comment", "action": "delete", "id": comment_id})
-    return {"ok": True}
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.get("/defect-reports", response_model=list[DefectReportRead])
@@ -1974,7 +2170,7 @@ def delete_defect_report(
     _update_device_on_defect_change(db, device_id)
     db.commit()
     emit_realtime_event("inventory.updated", {"entity": "defect_report", "action": "delete", "id": report_id})
-    return {"ok": True}
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.get("/defect-reports/{report_id}/comments", response_model=list[DefectCommentRead])
@@ -2051,7 +2247,7 @@ def delete_defect_comment(
     db.delete(row)
     db.commit()
     emit_realtime_event("inventory.updated", {"entity": "defect_comment", "action": "delete", "id": comment_id})
-    return {"ok": True}
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.get("/defect-timeline", response_model=list[DefectTimelineEntry])
@@ -3724,8 +3920,11 @@ def _collect_case_devices(db: Session, case_device: Device) -> list[Device]:
     return rows
 
 
-def _to_product_component_read(db: Session, row: ProductComponent) -> ProductComponentRead:
-    component = db.get(Product, row.component_product_id)
+def _to_product_component_read(db: Session, row: ProductComponent, product_cache: dict[int, Product] | None = None) -> ProductComponentRead:
+    if product_cache is not None:
+        component = product_cache.get(row.component_product_id)
+    else:
+        component = db.get(Product, row.component_product_id)
     return ProductComponentRead(
         id=row.id,
         parent_product_id=row.parent_product_id,
@@ -3736,8 +3935,11 @@ def _to_product_component_read(db: Session, row: ProductComponent) -> ProductCom
     )
 
 
-def _to_product_accessory_read(db: Session, row: ProductAccessory) -> ProductAccessoryRead:
-    accessory = db.get(Product, row.accessory_product_id)
+def _to_product_accessory_read(db: Session, row: ProductAccessory, product_cache: dict[int, Product] | None = None) -> ProductAccessoryRead:
+    if product_cache is not None:
+        accessory = product_cache.get(row.accessory_product_id)
+    else:
+        accessory = db.get(Product, row.accessory_product_id)
     return ProductAccessoryRead(
         id=row.id,
         parent_product_id=row.parent_product_id,
@@ -3749,15 +3951,26 @@ def _to_product_accessory_read(db: Session, row: ProductAccessory) -> ProductAcc
     )
 
 
-def _to_device_read(db: Session, device: Device) -> DeviceRead:
+def _to_device_read(db: Session, device: Device, device_cache: dict[int, Device] | None = None, job_cache: dict[int, dict] | None = None) -> DeviceRead:
+    if device_cache is None:
+        device_cache = {}
+
     case_asset_tag = None
     if device.case_device_id:
-        case_device = db.get(Device, device.case_device_id)
+        if device.case_device_id in device_cache:
+            case_device = device_cache[device.case_device_id]
+        else:
+            case_device = db.get(Device, device.case_device_id)
+            device_cache[device.case_device_id] = case_device
         case_asset_tag = case_device.asset_tag if case_device else None
 
     parent_component_asset_tag = None
     if device.parent_component_device_id:
-        comp_device = db.get(Device, device.parent_component_device_id)
+        if device.parent_component_device_id in device_cache:
+            comp_device = device_cache[device.parent_component_device_id]
+        else:
+            comp_device = db.get(Device, device.parent_component_device_id)
+            device_cache[device.parent_component_device_id] = comp_device
         parent_component_asset_tag = comp_device.asset_tag if comp_device else None
 
     current_job_id = None
@@ -3772,8 +3985,17 @@ def _to_device_read(db: Session, device: Device) -> DeviceRead:
         )
         if latest_job_audit and latest_job_audit.action == "job_out":
             current_job_id = latest_job_audit.job_id
-            job = db.get(Job, latest_job_audit.job_id)
-            current_job_code = job.job_code if job else None
+            if job_cache is not None:
+                if current_job_id in job_cache:
+                    job_info = job_cache[current_job_id]
+                else:
+                    job = db.get(Job, current_job_id)
+                    job_info = {"job_code": job.job_code if job else None}
+                    job_cache[current_job_id] = job_info
+            else:
+                job = db.get(Job, current_job_id)
+                job_info = {"job_code": job.job_code if job else None}
+            current_job_code = job_info["job_code"]
 
     return DeviceRead.model_validate(
         {
