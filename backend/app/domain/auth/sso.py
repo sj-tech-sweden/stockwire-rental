@@ -373,8 +373,12 @@ def verify_oidc_state(provided_state: str | None, expected_state: str | None) ->
         return False
 
     try:
-        # Pad the base64 string
-        padded = provided_state + "=" * (4 - len(provided_state) % 4)
+        if expected_state is not None and not hmac.compare_digest(provided_state, expected_state):
+            return False
+
+        # Pad the base64 string (urlsafe) to a multiple of 4 characters
+        missing_padding = (-len(provided_state)) % 4
+        padded = provided_state + ("=" * missing_padding)
         decoded = base64.urlsafe_b64decode(padded).decode("utf-8")
         parts = decoded.split(":")
         if len(parts) != 3:
@@ -391,7 +395,7 @@ def verify_oidc_state(provided_state: str | None, expected_state: str | None) ->
         # Verify signature
         expected_signature = _sign_state(token, timestamp)
         return hmac.compare_digest(provided_signature, expected_signature)
-    except (ValueError, TypeError):
+    except Exception:
         return False
 
 
