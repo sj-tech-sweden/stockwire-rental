@@ -218,11 +218,10 @@ if __name__ == "__main__":
     import sys
     if "--generate-jwt-secret" in sys.argv:
         secret = generate_jwt_secret()
-        print(f"Generated JWT secret: {secret[:8]}...{secret[-8:]}")
+        print("JWT secret generated and written to file.")
         secret_file = write_jwt_secret_to_file(secret)
         path = rotate_jwt_secret_in_env(secret_file)
-        print(f"Using pre-provisioned JWT secret file at {secret_file}")
-        print(f"Updated {path} with JWT_SECRET_KEY_FILE reference")
+        print("Environment file updated with JWT_SECRET_KEY_FILE reference.")
         print("Restart the application to apply the new secret.")
     else:
         print("Usage: python -m app.config --generate-jwt-secret")
