@@ -7,7 +7,7 @@ from urllib.error import HTTPError, URLError
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from pydantic import BaseModel
-from sqlalchemy import func, select
+from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
 from app.api.pagination import PaginationParams, PaginatedResponse, paginate_query
