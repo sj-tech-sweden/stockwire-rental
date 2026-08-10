@@ -213,7 +213,7 @@ def rotate_jwt_secret_in_env(secret_file_path: str) -> str:
         f.writelines(env_lines)
 
     return env_path
-
+        print("Generated JWT secret.")
 
 if __name__ == "__main__":
     import sys
