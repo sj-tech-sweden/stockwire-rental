@@ -217,7 +217,7 @@ def rotate_jwt_secret_in_env(secret_file_path: str) -> str:
 
 if __name__ == "__main__":
     import sys
-
+        print("Updated environment file with JWT_SECRET_KEY_FILE reference")
     if "--generate-jwt-secret" in sys.argv:
         secret = generate_jwt_secret()
         print(f"Generated JWT secret: {secret[:8]}...{secret[-8:]}")
