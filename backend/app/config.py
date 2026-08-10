@@ -165,8 +165,21 @@ def generate_jwt_secret() -> str:
     return secrets.token_urlsafe(64)
 
 
-def rotate_jwt_secret_in_env(new_secret: str) -> str:
-    """Update or create JWT_SECRET_KEY in the .env file.
+def write_jwt_secret_to_file(new_secret: str) -> str:
+    """Persist JWT secret to a dedicated file with restrictive permissions.
+
+    Returns the path to the secret file.
+    """
+    secret_file_path = os.getenv("JWT_SECRET_FILE", ".jwt_secret")
+    with open(secret_file_path, "w") as sf:
+        sf.write(new_secret)
+        sf.write("\n")
+    os.chmod(secret_file_path, 0o600)
+    return secret_file_path
+
+
+def rotate_jwt_secret_in_env(secret_file_path: str) -> str:
+    """Update or create JWT_SECRET_KEY_FILE in the .env file.
 
     Returns the path to the updated .env file.
     """
@@ -177,14 +190,17 @@ def rotate_jwt_secret_in_env(new_secret: str) -> str:
     if os.path.exists(env_path):
         with open(env_path, "r") as f:
             for line in f:
-                if line.strip().startswith("JWT_SECRET_KEY="):
-                    env_lines.append(f"JWT_SECRET_KEY={new_secret}\n")
+                if line.strip().startswith("JWT_SECRET_KEY_FILE="):
+                    env_lines.append(f"JWT_SECRET_KEY_FILE={secret_file_path}\n")
+                    found = True
+                elif line.strip().startswith("JWT_SECRET_KEY="):
+                    env_lines.append(f"JWT_SECRET_KEY_FILE={secret_file_path}\n")
                     found = True
                 else:
                     env_lines.append(line)
 
     if not found:
-        env_lines.append(f"JWT_SECRET_KEY={new_secret}\n")
+        env_lines.append(f"JWT_SECRET_KEY_FILE={secret_file_path}\n")
 
     with open(env_path, "w") as f:
         f.writelines(env_lines)
@@ -197,9 +213,11 @@ if __name__ == "__main__":
 
     if "--generate-jwt-secret" in sys.argv:
         secret = generate_jwt_secret()
-        print(f"Generated JWT_SECRET_KEY: {secret[:8]}...{secret[-8:]}")
-        path = rotate_jwt_secret_in_env(secret)
-        print(f"Updated {path}")
+        print(f"Generated JWT secret: {secret[:8]}...{secret[-8:]}")
+        secret_file = write_jwt_secret_to_file(secret)
+        path = rotate_jwt_secret_in_env(secret_file)
+        print(f"Wrote JWT secret to {secret_file}")
+        print(f"Updated {path} with JWT_SECRET_KEY_FILE reference")
         print("Restart the application to apply the new secret.")
     else:
         print("Usage: python -m app.config --generate-jwt-secret")
