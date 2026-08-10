@@ -32,7 +32,7 @@ from pydantic import BaseModel
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
-limiter = Limiter(key_func=get_remote_address)
+limiter = Limiter(key_func=get_remote_address, enabled=settings.app_env != "test")
 
 
 def _set_refresh_cookie(response: Response, refresh_token: str) -> None:

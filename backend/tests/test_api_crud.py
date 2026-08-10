@@ -154,12 +154,12 @@ def test_inventory_crud(client):
     list_zones = client.get("/api/v1/inventory/zones")
     zone_tree = client.get("/api/v1/inventory/zones/tree")
 
-    assert list_products.status_code == 200 and len(list_products.json()) == 1
-    assert list_devices.status_code == 200 and len(list_devices.json()) == 3
+    assert list_products.status_code == 200 and list_products.json()["total"] == 1
+    assert list_devices.status_code == 200 and list_devices.json()["total"] == 3
     assert list_zones.status_code == 200 and len(list_zones.json()) == 2
     assert zone_tree.status_code == 200 and len(zone_tree.json()) >= 1
-    assert list_products.json()[0]["total_devices"] == 3
-    assert list_products.json()[0]["in_store_devices"] == 3
+    assert list_products.json()["items"][0]["total_devices"] == 3
+    assert list_products.json()["items"][0]["in_store_devices"] == 3
 
 
 def test_eventory_connection_get_fallback_treats_http_error_as_reachable(client):
@@ -311,8 +311,8 @@ def test_customers_and_venues_crud(client):
     customers = client.get("/api/v1/customers")
     venues = client.get("/api/v1/venues")
 
-    assert customers.status_code == 200 and len(customers.json()) == 1
-    assert venues.status_code == 200 and len(venues.json()) == 1
+    assert customers.status_code == 200 and customers.json()["total"] == 1
+    assert venues.status_code == 200 and venues.json()["total"] == 1
 
 
 def test_jobs_and_finance_crud(client):
@@ -537,7 +537,7 @@ def test_jobs_and_finance_crud(client):
     reqs = client.get("/api/v1/jobs/requirements")
     txs = client.get("/api/v1/finance/transactions")
 
-    assert jobs.status_code == 200 and len(jobs.json()) == 1
+    assert jobs.status_code == 200 and jobs.json()["total"] == 1
     assert reqs.status_code == 200 and len(reqs.json()) == 1
     assert txs.status_code == 200 and len(txs.json()) == 1
 
@@ -982,7 +982,7 @@ def test_settings_modules_crud(client):
     assert updated_template.json()["name"] == "Default Product Label v2"
 
     deleted_template = client.delete(f"/api/v1/settings/label-templates/{template_id}")
-    assert deleted_template.status_code == 200
+    assert deleted_template.status_code == 204
 
 
 def test_inventory_category_move_and_custom_fields(client):
@@ -1395,12 +1395,10 @@ def test_inventory_defect_reports_comments_timeline(client):
     assert len(by_service_timeline.json()) == 2
 
     deleted_comment = client.delete(f"/api/v1/inventory/defect-comments/{comment_id}")
-    assert deleted_comment.status_code == 200
-    assert deleted_comment.json() == {"ok": True}
+    assert deleted_comment.status_code == 204
 
     deleted_report = client.delete(f"/api/v1/inventory/defect-reports/{report_id}")
-    assert deleted_report.status_code == 200
-    assert deleted_report.json() == {"ok": True}
+    assert deleted_report.status_code == 204
 
 
 def test_inventory_maintenance_comments_crud(client):
@@ -1458,8 +1456,7 @@ def test_inventory_maintenance_comments_crud(client):
     assert invalid_update.status_code == 400
 
     deleted_comment = client.delete(f"/api/v1/inventory/maintenance-comments/{comment_id}")
-    assert deleted_comment.status_code == 200
-    assert deleted_comment.json() == {"ok": True}
+    assert deleted_comment.status_code == 204
 
     listed_after_delete = client.get(f"/api/v1/inventory/maintenance/{maintenance_id}/comments")
     assert listed_after_delete.status_code == 200
@@ -2010,7 +2007,7 @@ def test_bulk_delete_products_skips_when_linked_devices_and_flag_false(client):
 
     # Verify product still exists in list
     products_list = client.get("/api/v1/inventory/products")
-    assert any(p["id"] == product_id for p in products_list.json())
+    assert any(p["id"] == product_id for p in products_list.json()["items"])
 
 
 def test_bulk_delete_products_cascades_devices_and_requirements(client):
@@ -2060,9 +2057,9 @@ def test_bulk_delete_products_cascades_devices_and_requirements(client):
 
     # Verify product and device are deleted (not present in list)
     products_list = client.get("/api/v1/inventory/products")
-    assert not any(p["id"] == product_id for p in products_list.json())
+    assert not any(p["id"] == product_id for p in products_list.json()["items"])
     devices_list = client.get("/api/v1/inventory/devices")
-    assert not any(d["id"] == device_id for d in devices_list.json())
+    assert not any(d["id"] == device_id for d in devices_list.json()["items"])
 
     # Verify linked job requirements are also deleted
     reqs_list = client.get("/api/v1/jobs/requirements")
