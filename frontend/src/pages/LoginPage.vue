@@ -183,8 +183,9 @@ onMounted(async () => {
 
   const oidcProvider = String(route.query.oidc_provider || '').trim()
   const code = String(route.query.code || '').trim()
+  const oidcState = String(route.query.state || '').trim()
   if (oidcProvider && code) {
-    await completeOidcLogin(oidcProvider, code)
+    await completeOidcLogin(oidcProvider, code, oidcState)
   }
 
   const samlProvider = String(route.query.saml_provider || '').trim()
@@ -221,11 +222,11 @@ function callbackRedirectUri(provider) {
   return `${origin}/login?oidc_provider=${encodeURIComponent(provider)}`
 }
 
-async function completeOidcLogin(provider, code) {
+async function completeOidcLogin(provider, code, state) {
   error.value = ''
   ssoLoading.value = true
   try {
-    await authStore.oidcExchange(provider, code, callbackRedirectUri(provider))
+    await authStore.oidcExchange(provider, code, callbackRedirectUri(provider), state)
     const redirect = resolveRedirect()
     sessionStorage.removeItem('sw_login_redirect')
     router.replace(redirect)

@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
+from app.api.pagination import PaginationParams, PaginatedResponse, paginate_query
 from app.db.session import get_db
 from app.domain.audit.service import record_activity
 from app.domain.auth.deps import get_current_user, require_editor
@@ -31,9 +32,20 @@ def bootstrap_status() -> dict[str, str]:
     return {"module": "projects", "status": "scaffolded"}
 
 
-@router.get("", response_model=list[ProjectRead])
-def list_projects(db: Session = Depends(get_db)) -> list[Project]:
-    return list(db.scalars(select(Project).order_by(Project.created_at.desc())).all())
+@router.get("", response_model=PaginatedResponse[ProjectRead])
+def list_projects(
+    db: Session = Depends(get_db),
+    pagination: PaginationParams = Depends(),
+) -> PaginatedResponse[ProjectRead]:
+    stmt = select(Project).order_by(Project.created_at.desc())
+    items, total = paginate_query(db, stmt, pagination.skip, pagination.limit)
+    return PaginatedResponse(
+        items=items,
+        total=total,
+        skip=pagination.skip,
+        limit=pagination.limit,
+        has_more=(pagination.skip + pagination.limit) < total,
+    )
 
 
 @router.post("", response_model=ProjectRead)

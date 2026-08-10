@@ -26,6 +26,11 @@ COPY scripts /app/scripts
 # Write build-time VERSION into the image so the running app can expose it
 RUN /bin/sh -c 'echo "${VERSION}" > /app/VERSION'
 
+# Create non-root user and switch to it
+RUN useradd -m -d /app -s /bin/bash appuser && \
+    chown -R appuser:appuser /app
+USER appuser
+
 EXPOSE 8000
 
 CMD ["sh", "-c", "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000"]

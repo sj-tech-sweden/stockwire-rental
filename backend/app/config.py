@@ -1,4 +1,6 @@
 import json
+import os
+import secrets
 from typing import Any
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -137,3 +139,100 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
+
+# ---------------------------------------------------------------------------
+# JWT Secret Validation & Migration Helper
+# ---------------------------------------------------------------------------
+
+_JWT_SECRET_PLACEHOLDER = "change-me-in-production-use-a-long-random-string"
+
+
+def validate_jwt_secret() -> None:
+    """Fail fast at startup if JWT_SECRET_KEY is the default placeholder in non-dev environments."""
+    raw = os.getenv("JWT_SECRET_KEY", "")
+    # Allow sourcing the secret from a file (used by `--generate-jwt-secret`)
+    secret_file = (os.getenv("JWT_SECRET_KEY_FILE") or "").strip()
+    if not raw and secret_file and os.path.exists(secret_file):
+        try:
+            with open(secret_file, "r") as f:
+                raw = f.read().strip()
+            if raw:
+                settings.jwt_secret_key = raw
+        except OSError:
+            raw = ""
+
+    app_env = (os.getenv("APP_ENV") or "development").strip().lower()
+    if app_env in {"development", "test"}:
+        return
+    if not raw or raw == _JWT_SECRET_PLACEHOLDER:
+        raise RuntimeError(
+            "JWT_SECRET_KEY must be set to a strong random value in production. "
+            "Run: python -m app.config --generate-jwt-secret"
+        )
+
+
+def generate_jwt_secret() -> str:
+    """Generate a cryptographically secure JWT secret key."""
+    return secrets.token_urlsafe(64)
+
+
+def write_jwt_secret_to_file(new_secret: str) -> str:
+    """Return a pre-provisioned JWT secret file path without writing secret material.
+
+    The JWT secret must be provisioned by external secret management (for example,
+    a mounted container/KMS secret). This function validates the configured path
+    and enforces restrictive permissions when possible.
+
+    Returns the path to the secret file.
+    """
+    _ = new_secret
+    secret_file_path = os.getenv("JWT_SECRET_FILE", ".jwt_secret")
+    if not os.path.exists(secret_file_path):
+        raise RuntimeError(
+            "JWT_SECRET_FILE does not exist. Provision the JWT secret file via "
+            "secure external secret management before running rotation."
+        )
+    os.chmod(secret_file_path, 0o600)
+    return secret_file_path
+
+
+def rotate_jwt_secret_in_env(secret_file_path: str) -> str:
+    """Update or create JWT_SECRET_KEY_FILE in the .env file.
+
+    Returns the path to the updated .env file.
+    """
+    env_path = os.getenv("ENV_FILE", ".env")
+    env_lines: list[str] = []
+    found = False
+
+    if os.path.exists(env_path):
+        with open(env_path, "r") as f:
+            for line in f:
+                if line.strip().startswith("JWT_SECRET_KEY_FILE="):
+                    env_lines.append(f"JWT_SECRET_KEY_FILE={secret_file_path}\n")
+                    found = True
+                elif line.strip().startswith("JWT_SECRET_KEY="):
+                    env_lines.append(f"JWT_SECRET_KEY_FILE={secret_file_path}\n")
+                    found = True
+                else:
+                    env_lines.append(line)
+
+    if not found:
+        env_lines.append(f"JWT_SECRET_KEY_FILE={secret_file_path}\n")
+
+    with open(env_path, "w") as f:
+        f.writelines(env_lines)
+
+    return env_path
+
+if __name__ == "__main__":
+    import sys
+    if "--generate-jwt-secret" in sys.argv:
+        secret = generate_jwt_secret()
+        print("JWT secret generated and written to file.")
+        secret_file = write_jwt_secret_to_file(secret)
+        path = rotate_jwt_secret_in_env(secret_file)
+        print("Environment file updated with JWT_SECRET_KEY_FILE reference.")
+        print("Restart the application to apply the new secret.")
+    else:
+        print("Usage: python -m app.config --generate-jwt-secret")

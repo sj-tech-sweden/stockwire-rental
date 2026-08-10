@@ -47,7 +47,7 @@ export const useJobsStore = defineStore('jobs', () => {
         api.get('/api/v1/jobs'),
         api.get('/api/v1/jobs/requirements')
       ])
-      jobs.value = jobsRes.data
+      jobs.value = jobsRes.data?.items ?? jobsRes.data
       requirements.value = reqRes.data
       await persistSnapshot()
       fetchSource.value = 'live'

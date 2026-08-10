@@ -60,6 +60,7 @@ class OIDCExchangeRequest(BaseModel):
     provider: str
     code: str
     redirect_uri: str
+    state: str | None = None
 
 
 class SAMLAssertionRequest(BaseModel):

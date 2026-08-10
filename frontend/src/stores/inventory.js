@@ -79,8 +79,8 @@ export const useInventoryStore = defineStore('inventory', () => {
         api.get('/api/v1/inventory/maintenance'),
         api.get('/api/v1/inventory/maintenance-schedules'),
       ])
-      const productsData = Array.isArray(productsRes?.data) ? productsRes.data : []
-      const devicesData = Array.isArray(devicesRes?.data) ? devicesRes.data : []
+      const productsData = productsRes?.data?.items ?? (Array.isArray(productsRes?.data) ? productsRes.data : [])
+      const devicesData = devicesRes?.data?.items ?? (Array.isArray(devicesRes?.data) ? devicesRes.data : [])
       const zonesData = Array.isArray(zonesRes?.data) ? zonesRes.data : []
       const zoneTreeData = Array.isArray(zoneTreeRes?.data) ? zoneTreeRes.data : []
       const categoriesData = Array.isArray(categoriesRes?.data) ? categoriesRes.data : []

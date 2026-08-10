@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session, selectinload
 
@@ -252,7 +252,7 @@ def delete_crew_role(role_id: int, db: Session = Depends(get_db)) -> dict:
         )
     db.delete(role)
     db.commit()
-    return {"ok": True}
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 # ── Skills Registry ─────────────────────────────────────────────────────────
@@ -295,7 +295,7 @@ def delete_skill(skill_id: int, db: Session = Depends(get_db)) -> dict:
         raise HTTPException(status_code=404, detail="Skill not found")
     db.delete(skill)
     db.commit()
-    return {"ok": True}
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 # ── Certifications Registry ─────────────────────────────────────────────────
@@ -338,7 +338,7 @@ def delete_certification(cert_id: int, db: Session = Depends(get_db)) -> dict:
         raise HTTPException(status_code=404, detail="Certification not found")
     db.delete(cert)
     db.commit()
-    return {"ok": True}
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 # ── Crew Members ─────────────────────────────────────────────────────────────
@@ -505,7 +505,7 @@ def delete_crew_member(member_id: int, db: Session = Depends(get_db)) -> dict:
         )
     db.delete(member)
     db.commit()
-    return {"ok": True}
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 # ── Job Crew Requirements ────────────────────────────────────────────────────
@@ -604,7 +604,7 @@ def delete_job_crew_requirement(job_id: int, req_id: int, db: Session = Depends(
         )
     db.delete(req)
     db.commit()
-    return {"ok": True}
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.put("/jobs/{job_id}/crew-requirements/bulk", response_model=list[JobCrewRequirementRead])
@@ -757,7 +757,7 @@ def delete_crew_assignment(assignment_id: int, db: Session = Depends(get_db)) ->
     db.flush()
     _recalc_quantity_assigned(db, req_id)
     db.commit()
-    return {"ok": True}
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 # ── Suggestions ──────────────────────────────────────────────────────────────

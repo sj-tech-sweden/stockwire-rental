@@ -15,7 +15,7 @@ import os
 from pathlib import Path
 
 import httpx
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Response, status
 from pydantic import BaseModel
 import redis
 from sqlalchemy import select, text
@@ -929,7 +929,7 @@ def delete_label_template(
             "id": removed_id,
         },
     )
-    return {"ok": True}
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.post("/integrations/{plugin}/test", response_model=IntegrationConnectionTestRead)

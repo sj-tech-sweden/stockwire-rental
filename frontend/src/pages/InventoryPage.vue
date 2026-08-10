@@ -1894,18 +1894,25 @@ function onBulkProductsSaved() {
 async function runBulkDeleteProducts() {
   const ids = selectedRowIds(selectedProducts.value)
   if (!ids.length) return
-  if (!window.confirm(`Delete ${ids.length} selected products? All linked devices and job requirements for these products will also be deleted.`)) return
 
-  saving.value = true
-  try {
-    const result = await store.bulkDeleteProducts(ids, { deleteLinkedDevices: true })
-    selectedProducts.value = []
-    $q.notify({ type: 'positive', message: `Products deleted: ${result?.deleted || 0}, skipped: ${result?.skipped || 0}` })
-  } catch (error) {
-    $q.notify({ type: 'negative', message: error?.response?.data?.detail || 'Bulk product delete failed' })
-  } finally {
-    saving.value = false
-  }
+  $q.dialog({
+    title: 'Delete Products',
+    message: `Delete ${ids.length} selected products? All linked devices and job requirements for these products will also be deleted.`,
+    cancel: { label: 'Cancel', flat: true },
+    ok: { label: 'Delete', color: 'negative' },
+    persistent: true,
+  }).onOk(async () => {
+    saving.value = true
+    try {
+      const result = await store.bulkDeleteProducts(ids, { deleteLinkedDevices: true })
+      selectedProducts.value = []
+      $q.notify({ type: 'positive', message: `Products deleted: ${result?.deleted || 0}, skipped: ${result?.skipped || 0}` })
+    } catch (error) {
+      $q.notify({ type: 'negative', message: error?.response?.data?.detail || 'Bulk product delete failed' })
+    } finally {
+      saving.value = false
+    }
+  })
 }
 
 function openBulkEditDevices() {
@@ -1919,18 +1926,25 @@ function onBulkDevicesSaved() {
 async function runBulkDeleteDevices() {
   const ids = selectedRowIds(selectedDevices.value)
   if (!ids.length) return
-  if (!window.confirm(`Delete ${ids.length} selected devices?`)) return
 
-  saving.value = true
-  try {
-    const result = await store.bulkDeleteDevices(ids)
-    selectedDevices.value = []
-    $q.notify({ type: 'positive', message: `Devices deleted: ${result?.deleted || 0}` })
-  } catch (error) {
-    $q.notify({ type: 'negative', message: error?.response?.data?.detail || 'Bulk device delete failed' })
-  } finally {
-    saving.value = false
-  }
+  $q.dialog({
+    title: 'Delete Devices',
+    message: `Delete ${ids.length} selected devices?`,
+    cancel: { label: 'Cancel', flat: true },
+    ok: { label: 'Delete', color: 'negative' },
+    persistent: true,
+  }).onOk(async () => {
+    saving.value = true
+    try {
+      const result = await store.bulkDeleteDevices(ids)
+      selectedDevices.value = []
+      $q.notify({ type: 'positive', message: `Devices deleted: ${result?.deleted || 0}` })
+    } catch (error) {
+      $q.notify({ type: 'negative', message: error?.response?.data?.detail || 'Bulk device delete failed' })
+    } finally {
+      saving.value = false
+    }
+  })
 }
 
 const categoryDialogOpen = ref(false)

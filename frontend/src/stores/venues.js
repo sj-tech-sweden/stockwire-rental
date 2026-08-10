@@ -12,8 +12,8 @@ export const useVenuesStore = defineStore('venues', () => {
     loading.value = true
     try {
       const { data } = await api.get('/api/v1/venues')
-      venues.value = data
-      await cacheSnapshot('venues.fetchAll', data)
+      venues.value = data?.items ?? data
+      await cacheSnapshot('venues.fetchAll', venues.value)
     } catch (error) {
       if (!isOnline()) {
         const cached = await readSnapshot('venues.fetchAll')

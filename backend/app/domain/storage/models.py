@@ -22,6 +22,6 @@ class AssetFile(Base):
     storage_backend: Mapped[str] = mapped_column(String(20), default="local")
     storage_key: Mapped[str] = mapped_column(String(500), unique=True, index=True)
 
-    created_by_user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=True, index=True)
+    created_by_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
     is_deleted: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)

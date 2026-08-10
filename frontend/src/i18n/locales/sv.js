@@ -1256,6 +1256,7 @@ export default {
     calendarFeed: 'Kalender',
     calendarFeedCopied: 'Jobb-kalender-URL kopierad till urklipp',
     calendarFeedCopyFailed: 'Kunde inte kopiera kalender-URL',
+    emailNotificationsEnabled: 'Aktivera kundmailutskick',
   },
   projects: {
     title: 'Projekt',

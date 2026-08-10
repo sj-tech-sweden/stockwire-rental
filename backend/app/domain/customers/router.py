@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
+from app.api.pagination import PaginationParams, PaginatedResponse, paginate_query
 from app.db.session import get_db
 from app.domain.auth.deps import get_current_user, require_editor
 from app.domain.auth.models import User
@@ -29,11 +30,12 @@ def bootstrap_status() -> dict[str, str]:
     return {"module": "customers", "status": "scaffolded"}
 
 
-@router.get("", response_model=list[CustomerRead])
+@router.get("", response_model=PaginatedResponse[CustomerRead])
 def list_customers(
     type: str | None = Query(None, description="Filter by type: customer, product_supplier, rental_supplier, crew_supplier"),
     db: Session = Depends(get_db),
-) -> list[Customer]:
+    pagination: PaginationParams = Depends(),
+) -> PaginatedResponse[CustomerRead]:
     stmt = select(Customer).order_by(Customer.name, Customer.id)
     if type == "customer":
         stmt = stmt.where(Customer.is_customer.is_(True))
@@ -43,7 +45,14 @@ def list_customers(
         stmt = stmt.where(Customer.is_rental_supplier.is_(True))
     elif type == "crew_supplier":
         stmt = stmt.where(Customer.is_crew_supplier.is_(True))
-    return list(db.scalars(stmt).all())
+    items, total = paginate_query(db, stmt, pagination.skip, pagination.limit)
+    return PaginatedResponse(
+        items=items,
+        total=total,
+        skip=pagination.skip,
+        limit=pagination.limit,
+        has_more=(pagination.skip + pagination.limit) < total,
+    )
 
 
 @router.get("/{customer_id}/info", response_model=CustomerInfoRead)

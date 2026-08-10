@@ -1261,6 +1261,7 @@ export default {
     calendarFeed: 'Calendar',
     calendarFeedCopied: 'Jobs calendar URL copied to clipboard',
     calendarFeedCopyFailed: 'Failed to copy calendar URL',
+    emailNotificationsEnabled: 'Enable customer email notifications',
   },
   projects: {
     title: 'Projects',

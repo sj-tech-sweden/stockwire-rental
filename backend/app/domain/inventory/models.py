@@ -12,7 +12,7 @@ class InventoryCategory(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(120), index=True)
-    parent_id: Mapped[int | None] = mapped_column(ForeignKey("inventory_categories.id"), nullable=True, index=True)
+    parent_id: Mapped[int | None] = mapped_column(ForeignKey("inventory_categories.id", ondelete="SET NULL"), nullable=True, index=True)
     sort_order: Mapped[int] = mapped_column(Integer, default=0)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
@@ -49,7 +49,7 @@ class Product(Base):
     sku: Mapped[str] = mapped_column(String(64), unique=True, index=True)
     name: Mapped[str] = mapped_column(String(255), index=True)
     category: Mapped[str] = mapped_column(String(100), default="general")
-    category_id: Mapped[int | None] = mapped_column(ForeignKey("inventory_categories.id"), nullable=True, index=True)
+    category_id: Mapped[int | None] = mapped_column(ForeignKey("inventory_categories.id", ondelete="SET NULL"), nullable=True, index=True)
     brand: Mapped[str | None] = mapped_column(String(120), nullable=True, index=True)
     manufacturer: Mapped[str | None] = mapped_column(String(120), nullable=True, index=True)
     product_type: Mapped[str] = mapped_column(String(50), default="equipment", index=True)
@@ -114,16 +114,16 @@ class Device(Base):
     __tablename__ = "devices"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    product_id: Mapped[int] = mapped_column(ForeignKey("products.id"), index=True)
+    product_id: Mapped[int] = mapped_column(ForeignKey("products.id", ondelete="CASCADE"), index=True)
     asset_tag: Mapped[str] = mapped_column(String(64), unique=True, index=True)
     serial_number: Mapped[str | None] = mapped_column(String(255), nullable=True)
     barcode: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
     source_serial_id: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
     qr_code: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
     rfid: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
-    location_zone_id: Mapped[int | None] = mapped_column(ForeignKey("zones.id"), nullable=True, index=True)
-    case_device_id: Mapped[int | None] = mapped_column(ForeignKey("devices.id"), nullable=True, index=True)
-    parent_component_device_id: Mapped[int | None] = mapped_column(ForeignKey("devices.id"), nullable=True, index=True)
+    location_zone_id: Mapped[int | None] = mapped_column(ForeignKey("zones.id", ondelete="SET NULL"), nullable=True, index=True)
+    case_device_id: Mapped[int | None] = mapped_column(ForeignKey("devices.id", ondelete="SET NULL"), nullable=True, index=True)
+    parent_component_device_id: Mapped[int | None] = mapped_column(ForeignKey("devices.id", ondelete="SET NULL"), nullable=True, index=True)
     status: Mapped[str] = mapped_column(String(50), default="available", index=True)
     condition: Mapped[str] = mapped_column(String(50), default="good", index=True)
     purchase_date: Mapped[date | None] = mapped_column(Date, nullable=True)
@@ -256,7 +256,7 @@ class DeviceMaintenance(Base):
     __tablename__ = "device_maintenance"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    device_id: Mapped[int] = mapped_column(ForeignKey("devices.id"), index=True)
+    device_id: Mapped[int] = mapped_column(ForeignKey("devices.id", ondelete="CASCADE"), index=True)
     schedule_id: Mapped[int | None] = mapped_column(ForeignKey("device_maintenance_schedules.id", ondelete="SET NULL"), nullable=True, index=True)
     maintenance_type: Mapped[str] = mapped_column(String(80), default="scheduled")
     status: Mapped[str] = mapped_column(String(40), default="scheduled", index=True)
@@ -288,7 +288,7 @@ class MaintenanceComment(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     maintenance_id: Mapped[int] = mapped_column(ForeignKey("device_maintenance.id", ondelete="CASCADE"), index=True)
     comment: Mapped[str] = mapped_column(Text)
-    created_by_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True, index=True)
+    created_by_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow, index=True)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
@@ -313,7 +313,7 @@ class DefectReport(Base):
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     status: Mapped[str] = mapped_column(String(40), default="open", index=True)
     severity: Mapped[str] = mapped_column(String(20), default="medium", index=True)
-    created_by_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True, index=True)
+    created_by_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow, index=True)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
@@ -336,7 +336,7 @@ class DefectComment(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     defect_report_id: Mapped[int] = mapped_column(ForeignKey("defect_reports.id", ondelete="CASCADE"), index=True)
     comment: Mapped[str] = mapped_column(Text)
-    created_by_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True, index=True)
+    created_by_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow, index=True)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
@@ -357,7 +357,7 @@ class Zone(Base):
     barcode: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
     qr_code: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
     rfid: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
-    parent_id: Mapped[int | None] = mapped_column(ForeignKey("zones.id"), nullable=True, index=True)
+    parent_id: Mapped[int | None] = mapped_column(ForeignKey("zones.id", ondelete="SET NULL"), nullable=True, index=True)
     sort_order: Mapped[int] = mapped_column(Integer, default=0)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     pos_x: Mapped[int | None] = mapped_column(Integer, nullable=True)
@@ -379,14 +379,14 @@ class InventoryAuditLog(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow, index=True)
-    user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True, index=True)
+    user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
     source: Mapped[str] = mapped_column(String(40), default="scan", index=True)
     action: Mapped[str] = mapped_column(String(80), index=True)
     success: Mapped[bool] = mapped_column(Boolean, default=True, index=True)
     message: Mapped[str] = mapped_column(String(500))
     scan_code: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
-    device_id: Mapped[int | None] = mapped_column(ForeignKey("devices.id"), nullable=True, index=True)
-    product_id: Mapped[int | None] = mapped_column(ForeignKey("products.id"), nullable=True, index=True)
-    zone_id: Mapped[int | None] = mapped_column(ForeignKey("zones.id"), nullable=True, index=True)
-    job_id: Mapped[int | None] = mapped_column(ForeignKey("jobs.id"), nullable=True, index=True)
+    device_id: Mapped[int | None] = mapped_column(ForeignKey("devices.id", ondelete="SET NULL"), nullable=True, index=True)
+    product_id: Mapped[int | None] = mapped_column(ForeignKey("products.id", ondelete="SET NULL"), nullable=True, index=True)
+    zone_id: Mapped[int | None] = mapped_column(ForeignKey("zones.id", ondelete="SET NULL"), nullable=True, index=True)
+    job_id: Mapped[int | None] = mapped_column(ForeignKey("jobs.id", ondelete="SET NULL"), nullable=True, index=True)
     details_json: Mapped[str | None] = mapped_column(Text, nullable=True)
