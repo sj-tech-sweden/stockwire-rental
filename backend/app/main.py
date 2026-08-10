@@ -18,7 +18,7 @@ from alembic import command as alembic_command
 # ---------------------------------------------------------------------------
 # Rate Limiter
 # ---------------------------------------------------------------------------
-limiter = Limiter(key_func=get_remote_address)
+limiter = Limiter(key_func=get_remote_address, enabled=settings.app_env != "test")
 
 app = FastAPI(title=settings.app_name)
 app.state.limiter = limiter
@@ -67,8 +67,9 @@ def run_startup_checks() -> None:
     validate_jwt_secret()
     # Start MQTT client for warehouse LED integration
     start_mqtt_client()
-    # Start Twenty CRM periodic auto-sync scheduler
-    start_twenty_auto_sync()
+    # Start Twenty CRM periodic auto-sync scheduler (skip in test environment)
+    if settings.app_env != "test":
+        start_twenty_auto_sync()
     # Optionally run alembic migrations on startup when MIGRATE_ON_STARTUP=true
     if os.getenv("MIGRATE_ON_STARTUP", "").lower() == "true":
         base_dir = Path(__file__).resolve().parents[1]
