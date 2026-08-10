@@ -166,14 +166,21 @@ def generate_jwt_secret() -> str:
 
 
 def write_jwt_secret_to_file(new_secret: str) -> str:
-    """Persist JWT secret to a dedicated file with restrictive permissions.
+    """Return a pre-provisioned JWT secret file path without writing secret material.
+
+    The JWT secret must be provisioned by external secret management (for example,
+    a mounted container/KMS secret). This function validates the configured path
+    and enforces restrictive permissions when possible.
 
     Returns the path to the secret file.
     """
+    _ = new_secret
     secret_file_path = os.getenv("JWT_SECRET_FILE", ".jwt_secret")
-    with open(secret_file_path, "w") as sf:
-        sf.write(new_secret)
-        sf.write("\n")
+    if not os.path.exists(secret_file_path):
+        raise RuntimeError(
+            "JWT_SECRET_FILE does not exist. Provision the JWT secret file via "
+            "secure external secret management before running rotation."
+        )
     os.chmod(secret_file_path, 0o600)
     return secret_file_path
 
@@ -216,7 +223,7 @@ if __name__ == "__main__":
         print(f"Generated JWT secret: {secret[:8]}...{secret[-8:]}")
         secret_file = write_jwt_secret_to_file(secret)
         path = rotate_jwt_secret_in_env(secret_file)
-        print(f"Wrote JWT secret to {secret_file}")
+        print(f"Using pre-provisioned JWT secret file at {secret_file}")
         print(f"Updated {path} with JWT_SECRET_KEY_FILE reference")
         print("Restart the application to apply the new secret.")
     else:
