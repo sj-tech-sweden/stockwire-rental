@@ -366,14 +366,15 @@ def build_oidc_authorize_url(provider: OIDCProvider, redirect_uri: str) -> tuple
 def verify_oidc_state(provided_state: str | None, expected_state: str | None) -> bool:
     """Verify that the OIDC state parameter matches and hasn't expired.
 
-    For backwards compatibility, if expected_state is None (e.g., cookie not sent),
-    we still accept the state if it's a valid signed state that hasn't expired.
+    Both provided_state (from the exchange request) and expected_state (from the
+    HttpOnly cookie set during authorize) must be present and identical, and the
+    state must be a valid HMAC-signed token that hasn't expired.
     """
     if not provided_state:
         return False
 
     try:
-        if expected_state is not None and not hmac.compare_digest(provided_state, expected_state):
+        if expected_state is None or not hmac.compare_digest(provided_state, expected_state):
             return False
 
         # Pad the base64 string (urlsafe) to a multiple of 4 characters

@@ -69,7 +69,7 @@ class RouteStop(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     route_id: Mapped[int] = mapped_column(ForeignKey("delivery_routes.id", ondelete="CASCADE"))
     job_id: Mapped[int | None] = mapped_column(ForeignKey("jobs.id", ondelete="SET NULL"), nullable=True)
-    vehicle_id: Mapped[int] = mapped_column(ForeignKey("vehicles.id", ondelete="SET NULL"), nullable=True)
+    vehicle_id: Mapped[int | None] = mapped_column(ForeignKey("vehicles.id", ondelete="SET NULL"), nullable=True)
     stop_order: Mapped[int] = mapped_column(Integer)
     notes: Mapped[str] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
