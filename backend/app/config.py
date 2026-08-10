@@ -150,6 +150,17 @@ _JWT_SECRET_PLACEHOLDER = "change-me-in-production-use-a-long-random-string"
 def validate_jwt_secret() -> None:
     """Fail fast at startup if JWT_SECRET_KEY is the default placeholder in non-dev environments."""
     raw = os.getenv("JWT_SECRET_KEY", "")
+    # Allow sourcing the secret from a file (used by `--generate-jwt-secret`)
+    secret_file = (os.getenv("JWT_SECRET_KEY_FILE") or "").strip()
+    if not raw and secret_file and os.path.exists(secret_file):
+        try:
+            with open(secret_file, "r") as f:
+                raw = f.read().strip()
+            if raw:
+                settings.jwt_secret_key = raw
+        except OSError:
+            raw = ""
+
     app_env = (os.getenv("APP_ENV") or "development").strip().lower()
     if app_env in {"development", "test"}:
         return
