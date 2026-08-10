@@ -10,6 +10,11 @@ on:
         description: 'release type (major, minor, patch)'
         required: true
         default: 'patch'
+        type: choice
+        options:
+         - patch
+         - minor
+         - major
 
 jobs:
   create-release:
