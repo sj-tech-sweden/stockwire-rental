@@ -67,6 +67,8 @@ jobs:
           npx playwright install --with-deps
 
       - name: Start services with docker-compose
+        env:
+          APP_ENV: test
         run: |
           docker compose -f infra/compose/docker-compose.dev.yml up -d --build
 
