@@ -202,13 +202,13 @@ export const useAuthStore = defineStore('auth', () => {
   async function oidcExchange(provider, code, redirectUri, state) {
     // Use provided state, or fall back to stored state from sessionStorage
     const oidcState = state || sessionStorage.getItem('oidc_state') || undefined
-    sessionStorage.removeItem('oidc_state')
     const { data } = await api.post('/api/v1/auth/sso/oidc/exchange', {
       provider,
       code,
       redirect_uri: redirectUri,
       state: oidcState,
     })
+    sessionStorage.removeItem('oidc_state')
     _setSession(data)
   }
 
