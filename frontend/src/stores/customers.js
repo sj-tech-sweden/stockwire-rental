@@ -28,8 +28,8 @@ export const useCustomersStore = defineStore('customers', () => {
     loading.value = true
     try {
       const { data } = await api.get('/api/v1/customers')
-      customers.value = data
-      await cacheSnapshot('customers.fetchAll', data)
+      customers.value = data?.items ?? data
+      await cacheSnapshot('customers.fetchAll', customers.value)
     } catch (error) {
       if (!isOnline()) {
         const cached = await readSnapshot('customers.fetchAll')

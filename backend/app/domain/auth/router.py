@@ -114,6 +114,7 @@ def saml_provider_config(provider: str, db: Session = Depends(get_db)) -> dict:
 def oidc_authorize(
     provider: str,
     redirect_uri: str,
+    response: Response,
     db: Session = Depends(get_db),
 ) -> dict:
     runtime = get_runtime_sso_config(db)
@@ -123,15 +124,23 @@ def oidc_authorize(
     if not redirect_uri:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="redirect_uri is required")
     authorize_url, state = build_oidc_authorize_url(oidc, redirect_uri)
-    # State is embedded in the authorize URL and returned to the frontend,
-    # which passes it back in the exchange request. The state is cryptographically
-    # signed so the backend can verify it without storing it.
+    # Bind the state to the browser session via a Secure, HttpOnly, SameSite cookie
+    # so that the exchange endpoint can verify the state originated from this browser.
+    response.set_cookie(
+        key="oidc_state",
+        value=state,
+        httponly=True,
+        secure=True,
+        samesite="lax",
+        max_age=600,
+    )
     return {"authorize_url": authorize_url, "state": state}
 
 
 @router.post("/sso/oidc/exchange", response_model=Token)
 def oidc_exchange(
     payload: OIDCExchangeRequest,
+    request: Request,
     response: Response,
     db: Session = Depends(get_db),
 ) -> Token:
@@ -139,9 +148,14 @@ def oidc_exchange(
     if not runtime.enabled:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="SSO not enabled")
 
-    # Verify OIDC state parameter to prevent CSRF attacks
-    if not verify_oidc_state(payload.state, None):
+    # Verify OIDC state parameter to prevent CSRF attacks.
+    # Use the state stored in the HttpOnly cookie as the expected value so the
+    # state is bound to the browser session that initiated the authorize request.
+    expected_state = request.cookies.get("oidc_state")
+    if not verify_oidc_state(payload.state, expected_state):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Invalid or expired OIDC state")
+    # Clear the one-time state cookie after successful verification
+    response.delete_cookie("oidc_state")
 
     oidc = get_oidc_provider(payload.provider, db)
     claims = exchange_oidc_code(oidc, payload.code, payload.redirect_uri)

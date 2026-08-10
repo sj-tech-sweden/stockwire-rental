@@ -12,8 +12,8 @@ export const useProjectsStore = defineStore('projects', () => {
     loading.value = true
     try {
       const { data } = await api.get('/api/v1/projects')
-      projects.value = data
-      await cacheSnapshot('projects.fetchAll', data)
+      projects.value = data?.items ?? data
+      await cacheSnapshot('projects.fetchAll', projects.value)
     } catch (error) {
       if (!isOnline()) {
         const cached = await readSnapshot('projects.fetchAll')

@@ -129,6 +129,7 @@ def upgrade() -> None:
     op.create_foreign_key("route_vehicles_vehicle_id_fkey", "route_vehicles", "vehicles", ["vehicle_id"], ["id"], ondelete="CASCADE")
 
     op.drop_constraint("route_stops_job_id_fkey", "route_stops", type_="foreignkey")
+    op.alter_column("route_stops", "job_id", existing_type=sa.Integer(), nullable=True)
     op.create_foreign_key("route_stops_job_id_fkey", "route_stops", "jobs", ["job_id"], ["id"], ondelete="SET NULL")
 
     op.drop_constraint("route_stops_vehicle_id_fkey", "route_stops", type_="foreignkey")
@@ -174,6 +175,7 @@ def downgrade() -> None:
     op.create_foreign_key("route_stops_vehicle_id_fkey", "route_stops", "vehicles", ["vehicle_id"], ["id"])
 
     op.drop_constraint("route_stops_job_id_fkey", "route_stops", type_="foreignkey")
+    op.alter_column("route_stops", "job_id", existing_type=sa.Integer(), nullable=False)
     op.create_foreign_key("route_stops_job_id_fkey", "route_stops", "jobs", ["job_id"], ["id"])
 
     op.drop_constraint("route_vehicles_vehicle_id_fkey", "route_vehicles", type_="foreignkey")
