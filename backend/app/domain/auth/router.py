@@ -132,6 +132,7 @@ def oidc_authorize(
         httponly=True,
         secure=True,
         samesite="lax",
+        path="/api/v1/auth",
         max_age=600,
     )
     return {"authorize_url": authorize_url, "state": state}
