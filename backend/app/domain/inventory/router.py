@@ -1392,7 +1392,7 @@ def list_devices(
     in_use_ids = [d.id for d in rows if str(d.status or "").lower() == "in_use"]
     job_cache: dict[int, dict] = {}
     if in_use_ids:
-        audit_rows = db.execute(
+        audit_rows = db.scalars(
             select(InventoryAuditLog)
             .where(InventoryAuditLog.device_id.in_(in_use_ids))
             .where(InventoryAuditLog.success.is_(True))
