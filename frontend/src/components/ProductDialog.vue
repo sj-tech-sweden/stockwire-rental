@@ -281,7 +281,7 @@
                     />
                   </div>
                   <div class="col-auto">
-                    <q-btn flat dense icon="add_circle" color="primary" :aria-label="t('inventory.newAccessory')" @click="openQuickCreate('accessory')" />
+                    <q-btn flat dense icon="add_circle" color="primary" :aria-label="t('inventory.newAccessory')" @click="emit('create-for-association', 'accessory')" />
                   </div>
                   <div class="col-6 col-md-2">
                     <q-input v-model.number="newAccessoryQty" type="number" min="1" label="Qty" outlined dense />
@@ -340,7 +340,7 @@
                     />
                   </div>
                   <div class="col-auto">
-                    <q-btn flat dense icon="add_circle" color="primary" :aria-label="t('inventory.newComponent')" @click="openQuickCreate('component')" />
+                    <q-btn flat dense icon="add_circle" color="primary" :aria-label="t('inventory.newComponent')" @click="emit('create-for-association', 'component')" />
                   </div>
                   <div class="col-6 col-md-2">
                     <q-input v-model.number="newComponentQty" type="number" min="1" label="Qty" outlined dense />
@@ -516,38 +516,6 @@
     </q-card>
   </q-dialog>
 
-  <!-- Quick-create product dialog (for accessories / components) -->
-  <q-dialog v-model="quickCreateOpen" persistent>
-    <q-card style="width: 480px; max-width: 95vw" class="ec-card">
-      <q-card-section>
-        <div class="text-h6">{{ quickCreatePurpose === 'accessory' ? t('inventory.newAccessory') : t('inventory.newComponent') }}</div>
-      </q-card-section>
-      <q-card-section class="q-pt-none">
-        <div class="row q-col-gutter-sm">
-          <div class="col-5">
-            <q-input v-model="quickCreateForm.sku" :label="t('inventory.columnSku')" outlined dense autofocus :rules="[v => !!String(v || '').trim() || t('login.required')]" />
-          </div>
-          <div class="col-7">
-            <q-input v-model="quickCreateForm.name" :label="t('inventory.productName')" outlined dense :rules="[v => !!String(v || '').trim() || t('login.required')]" />
-          </div>
-          <div class="col-12">
-            <q-select v-model="quickCreateForm.category_id" :options="allCategorySelectOptions" :label="t('inventory.category')" outlined dense clearable emit-value map-options />
-          </div>
-          <div class="col-6">
-            <q-select v-model="quickCreateForm.product_type" :options="productTypeOptions" label="Type" outlined dense emit-value map-options />
-          </div>
-          <div class="col-6">
-            <q-input v-model.number="quickCreateForm.daily_rate" type="number" min="0" step="0.01" :label="t('inventory.dailyRate')" outlined dense />
-          </div>
-        </div>
-        <q-banner v-if="quickCreateError" class="bg-negative text-white q-mt-sm rounded-borders" dense>{{ quickCreateError }}</q-banner>
-      </q-card-section>
-      <q-card-actions align="right">
-        <q-btn flat :label="t('app.actions.cancel')" @click="quickCreateOpen = false" />
-        <q-btn color="primary" unelevated :label="t('app.actions.create')" :loading="quickCreateSaving" @click="submitQuickCreate" />
-      </q-card-actions>
-    </q-card>
-  </q-dialog>
 </template>
 
 <script setup>
@@ -570,6 +538,7 @@ import SupplierPickerInline from './SupplierPickerInline.vue'
 const props = defineProps({
   modelValue: Boolean,
   product: { type: Object, default: null },
+  createForType: { type: String, default: null },
 })
 
 const emit = defineEmits([
@@ -578,6 +547,7 @@ const emit = defineEmits([
   'edit-device',
   'view-device',
   'edit-product',
+  'create-for-association',
 ])
 
 const $q = useQuasar()
@@ -915,66 +885,6 @@ function removeComponentRow(componentProductId) {
   )
 }
 
-// ── Quick-create product (accessories / components) ──────────────────────────
-
-const quickCreateOpen = ref(false)
-const quickCreatePurpose = ref('accessory')
-const quickCreateSaving = ref(false)
-const quickCreateError = ref('')
-const quickCreateForm = ref({
-  sku: '',
-  name: '',
-  category_id: null,
-  product_type: 'accessory',
-  daily_rate: 0,
-})
-
-function openQuickCreate(purpose) {
-  quickCreatePurpose.value = purpose
-  quickCreateForm.value = {
-    sku: '',
-    name: '',
-    category_id: null,
-    product_type: purpose === 'accessory' ? 'accessory' : 'equipment',
-    daily_rate: 0,
-  }
-  quickCreateError.value = ''
-  quickCreateOpen.value = true
-}
-
-async function submitQuickCreate() {
-  const sku = String(quickCreateForm.value.sku || '').trim()
-  const name = String(quickCreateForm.value.name || '').trim()
-  if (!sku || !name) {
-    quickCreateError.value = 'SKU and name are required'
-    return
-  }
-
-  quickCreateSaving.value = true
-  quickCreateError.value = ''
-  try {
-    const created = await store.createProduct({
-      sku,
-      name,
-      category_id: quickCreateForm.value.category_id,
-      product_type: quickCreateForm.value.product_type,
-      daily_rate: quickCreateForm.value.daily_rate || 0,
-    })
-    quickCreateOpen.value = false
-    if (quickCreatePurpose.value === 'accessory') {
-      newAccessoryProductId.value = created.id
-      addAccessoryRow()
-    } else {
-      newComponentProductId.value = created.id
-      addComponentRow()
-    }
-  } catch (err) {
-    quickCreateError.value = err?.response?.data?.detail || 'Failed to create product'
-  } finally {
-    quickCreateSaving.value = false
-  }
-}
-
 function supplierNameById(id) {
   const supplier = customersStore.productSuppliers.find(s => s.id === id)
   return supplier?.name || `Supplier #${id}`
@@ -1102,9 +1012,12 @@ function applySkuPrefixForType(type) {
 
 loadPrefixMemory()
 
-function openCreateProduct() {
+function openCreateProduct(presetType) {
   productEditing.value = null
   productForm.value = emptyProductForm()
+  if (presetType) {
+    productForm.value.product_type = presetType
+  }
   applySkuPrefixForType(productForm.value.product_type)
   productDialogError.value = ''
   accessoriesExpanded.value = !isPhone.value
@@ -1425,11 +1338,11 @@ watch(() => props.modelValue, async (open) => {
     if (!customersStore.customers.length) {
       customersStore.fetchAll().catch(() => {})
     }
-    if (props.product) {
+    if (props.product && !props.product._createForType) {
       await openEditProduct(props.product)
       await loadExistingProductImage(props.product.id)
     } else {
-      openCreateProduct()
+      openCreateProduct(props.product?._createForType || props.createForType)
     }
   } else {
     cleanupProductImage()
