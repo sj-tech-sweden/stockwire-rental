@@ -130,7 +130,7 @@ def oidc_authorize(
         key="oidc_state",
         value=state,
         httponly=True,
-        secure=True,
+        secure=settings.app_env not in ("development", "test"),
         samesite="lax",
         path="/api/v1/auth",
         max_age=600,
