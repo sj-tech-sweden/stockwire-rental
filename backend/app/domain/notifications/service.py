@@ -185,7 +185,7 @@ def _create_log(
     db.flush()
 
 
-def send_notification(db: Session, payload: dict[str, Any]) -> None:
+def send_notification(db: Session, payload: dict[str, Any]) -> list[dict[str, Any]]:
     """Dispatch a notification to a recipient via the appropriate channel(s).
 
     payload keys:
@@ -248,7 +248,7 @@ def send_notification(db: Session, payload: dict[str, Any]) -> None:
     if requested in ("web_push", "both") and pref_web and _coarse_allows("web_push"):
         channels.append("web_push")
     if not channels:
-        return
+        return []
 
     template = _resolve_template(db, template_key, locale)
     if template and template.recipient_type not in ("both", recipient_type):
@@ -259,7 +259,10 @@ def send_notification(db: Session, payload: dict[str, Any]) -> None:
             status="skipped_by_preference",
             error_message=f"Template recipient_type '{template.recipient_type}' does not match '{recipient_type}'",
         )
-        return
+        db.flush()
+        return [{"channel": channel or "both", "status": "skipped_by_preference"}]
+
+    results: list[dict] = []
     for ch in channels:
         if ch == "email":
             if recipient_type == "customer":
@@ -270,6 +273,7 @@ def send_notification(db: Session, payload: dict[str, Any]) -> None:
                         template_key=template_key, locale=locale,
                         status="skipped_by_preference",
                     )
+                    results.append({"channel": ch, "status": "skipped_by_preference"})
                     continue
                 to_email = customer.email
             else:
@@ -283,6 +287,7 @@ def send_notification(db: Session, payload: dict[str, Any]) -> None:
                     template_key=template_key, locale=locale,
                     status="failed", error_message="No email address",
                 )
+                results.append({"channel": ch, "status": "failed"})
                 continue
 
             subject = _render_template(template.subject_template if template else None, context)
@@ -304,6 +309,7 @@ def send_notification(db: Session, payload: dict[str, Any]) -> None:
                     template_key=template_key, locale=locale,
                     status="failed", error_message=error,
                 )
+                results.append({"channel": ch, "status": "failed"})
             else:
                 _create_log(
                     db, job_id=job_id, recipient_id=recipient_id,
@@ -311,6 +317,8 @@ def send_notification(db: Session, payload: dict[str, Any]) -> None:
                     template_key=template_key, locale=locale,
                     status="sent",
                 )
+                results.append({"channel": ch, "status": "sent"})
+            continue
 
         elif ch == "web_push":
             if recipient_type == "customer":
@@ -320,6 +328,7 @@ def send_notification(db: Session, payload: dict[str, Any]) -> None:
                     template_key=template_key, locale=locale,
                     status="skipped_by_preference",
                 )
+                results.append({"channel": ch, "status": "skipped_by_preference"})
                 continue
 
             from app.domain.auth.models import PushSubscription
@@ -333,11 +342,13 @@ def send_notification(db: Session, payload: dict[str, Any]) -> None:
                     template_key=template_key, locale=locale,
                     status="skipped_by_preference",
                 )
+                results.append({"channel": ch, "status": "skipped_by_preference"})
                 continue
 
             text = _render_template(template.text_template if template else template_key, context)
             payload_data = {"title": template_key, "body": text}
 
+            sent_ok = False
             for sub in subs:
                 try:
                     webpush(
@@ -346,14 +357,18 @@ def send_notification(db: Session, payload: dict[str, Any]) -> None:
                         vapid_private_key=settings.web_push_vapid_private_key,
                         vapid_claims={"sub": settings.web_push_vapid_subject},
                     )
+                    sent_ok = True
                 except (WebPushException, ValueError) as exc:
                     logger.warning("Web push failed for user %s: %s", recipient_id, exc)
 
+            status = "sent" if sent_ok else "failed"
             _create_log(
                 db, job_id=job_id, recipient_id=recipient_id,
                 recipient_type=recipient_type, channel=ch,
                 template_key=template_key, locale=locale,
-                status="sent",
+                status=status,
             )
+            results.append({"channel": ch, "status": status})
 
     db.flush()
+    return results

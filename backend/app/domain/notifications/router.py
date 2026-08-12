@@ -371,6 +371,6 @@ def dispatch_notification(
     db: Session = Depends(get_db),
     _: User = Depends(require_admin),
 ) -> dict:
-    send_notification(db, payload.model_dump())
+    results = send_notification(db, payload.model_dump())
     db.commit()
-    return {"ok": True}
+    return {"results": results}

@@ -4,10 +4,13 @@ Revision ID: 0063
 Revises: 0062
 Create Date: 2026-08-12
 
+NOTE: This revision previously added the `recipient_type` column, but that column
+is now created by migration 0062. It is retained only as a placeholder so the
+alembic version chain stays consistent for deployments that already applied it.
+It must not re-create or drop the column.
 """
 
 from alembic import op
-import sqlalchemy as sa
 
 revision = "0063"
 down_revision = "0062"
@@ -16,19 +19,8 @@ depends_on = None
 
 
 def upgrade() -> None:
-    conn = op.get_bind()
-    result = conn.execute(
-        sa.text(
-            "SELECT column_name FROM information_schema.columns "
-            "WHERE table_name='notification_templates' AND column_name='recipient_type'"
-        )
-    )
-    if not result.fetchone():
-        op.add_column(
-            "notification_templates",
-            sa.Column("recipient_type", sa.String(20), nullable=False, server_default="both"),
-        )
+    pass
 
 
 def downgrade() -> None:
-    op.drop_column("notification_templates", "recipient_type")
+    pass

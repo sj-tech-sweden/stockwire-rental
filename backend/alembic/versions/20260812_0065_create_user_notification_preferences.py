@@ -4,6 +4,10 @@ Revision ID: 0065
 Revises: 0064
 Create Date: 2026-08-12
 
+NOTE: The `user_notification_preferences` table is now created by migration 0062.
+This revision is retained only as a placeholder so the alembic version chain stays
+consistent for deployments that already applied it. It must not create or drop the
+table.
 """
 
 from alembic import op
@@ -15,27 +19,8 @@ depends_on = None
 
 
 def upgrade() -> None:
-    conn = op.get_bind()
-    result = conn.exec_driver_sql(
-        "SELECT 1 FROM pg_tables WHERE schemaname='public' "
-        "AND tablename='user_notification_preferences'"
-    )
-    if not result.fetchone():
-        conn.exec_driver_sql(
-            """
-            CREATE TABLE user_notification_preferences (
-                id SERIAL PRIMARY KEY,
-                user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-                event_type VARCHAR(80) NOT NULL,
-                email_enabled BOOLEAN NOT NULL DEFAULT true,
-                web_push_enabled BOOLEAN NOT NULL DEFAULT true,
-                created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
-                UNIQUE(user_id, event_type)
-            )
-            """
-        )
+    pass
 
 
 def downgrade() -> None:
-    conn = op.get_bind()
-    conn.exec_driver_sql("DROP TABLE IF EXISTS user_notification_preferences")
+    pass

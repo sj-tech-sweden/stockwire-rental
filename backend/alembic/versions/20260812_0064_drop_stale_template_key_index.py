@@ -4,10 +4,13 @@ Revision ID: 0064
 Revises: 0063
 Create Date: 2026-08-12
 
+NOTE: The stale single-column unique index `ix_notification_templates_template_key`
+is now dropped by migration 0062. This revision is retained only as a placeholder
+so the alembic version chain stays consistent for deployments that already applied
+it. It must not recreate the index/constraint.
 """
 
 from alembic import op
-import sqlalchemy as sa
 
 revision = "0064"
 down_revision = "0063"
@@ -16,17 +19,8 @@ depends_on = None
 
 
 def upgrade() -> None:
-    conn = op.get_bind()
-    result = conn.execute(
-        sa.text("SELECT 1 FROM pg_indexes WHERE indexname='ix_notification_templates_template_key'")
-    )
-    if result.fetchone():
-        op.drop_index("ix_notification_templates_template_key", table_name="notification_templates")
+    pass
 
 
 def downgrade() -> None:
-    op.create_unique_constraint(
-        "ix_notification_templates_template_key",
-        "notification_templates",
-        ["template_key"],
-    )
+    pass
