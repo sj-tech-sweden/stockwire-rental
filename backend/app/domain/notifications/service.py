@@ -251,7 +251,15 @@ def send_notification(db: Session, payload: dict[str, Any]) -> None:
         return
 
     template = _resolve_template(db, template_key, locale)
-
+    if template and template.recipient_type not in ("both", recipient_type):
+        _create_log(
+            db, job_id=job_id, recipient_id=recipient_id,
+            recipient_type=recipient_type, channel=channel or "both",
+            template_key=template_key, locale=locale,
+            status="skipped_by_preference",
+            error_message=f"Template recipient_type '{template.recipient_type}' does not match '{recipient_type}'",
+        )
+        return
     for ch in channels:
         if ch == "email":
             if recipient_type == "customer":
