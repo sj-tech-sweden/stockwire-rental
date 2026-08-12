@@ -81,10 +81,10 @@ def _ensure_notification_columns() -> None:
                 conn.execute(text("ALTER TABLE notification_logs ADD COLUMN IF NOT EXISTS locale VARCHAR(10)"))
                 conn.execute(text("ALTER TABLE customers ADD COLUMN IF NOT EXISTS preferred_language VARCHAR(10) DEFAULT 'en'"))
 
-                # Drop old unique constraint
+                # Drop old single-column unique index/constraint
+                conn.execute(text("DROP INDEX IF EXISTS ix_notification_templates_template_key"))
                 conn.execute(text("ALTER TABLE notification_templates DROP CONSTRAINT IF EXISTS ix_notification_templates_template_key"))
                 conn.execute(text("ALTER TABLE notification_templates ADD CONSTRAINT uq_template_key_locale UNIQUE (template_key, locale)"))
-
                 # Create notification_preferences table if not exists
                 conn.execute(text("""
                     CREATE TABLE IF NOT EXISTS notification_preferences (
