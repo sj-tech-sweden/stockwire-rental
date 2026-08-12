@@ -91,7 +91,14 @@ def downgrade() -> None:
     op.drop_table("user_notification_preferences")
     op.drop_table("notification_preferences")
     op.drop_constraint("uq_template_key_locale", "notification_templates", type_="unique")
-    op.create_unique_constraint("ix_notification_templates_template_key", "notification_templates", ["template_key"])
+    # Restore the pre-0062 single-column unique index (created by 0060 as a unique
+    # index, not a constraint) so that 0060's downgrade can drop it consistently.
+    op.create_index(
+        op.f("ix_notification_templates_template_key"),
+        "notification_templates",
+        ["template_key"],
+        unique=True,
+    )
     op.drop_column("notification_templates", "updated_at")
     op.drop_column("notification_templates", "recipient_type")
     op.drop_column("notification_templates", "is_enabled")
