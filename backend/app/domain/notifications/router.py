@@ -75,7 +75,11 @@ def create_subscription(
         )
         db.add(sub)
     db.commit()
-    return {"ok": True}
+    return Response(
+        content='{"ok": true}',
+        status_code=status.HTTP_201_CREATED,
+        media_type="application/json",
+    )
 
 
 @router.delete("/subscriptions/{subscription_id}")
