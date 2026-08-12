@@ -1289,21 +1289,23 @@ async function saveProduct() {
     }
 
     if (associationMode.value && savedProduct?.id) {
-      const { purpose, savedForm, savedEditing, savedImageFile } = associationMode.value
+      const { purpose, savedEditing } = associationMode.value
       associationMode.value = null
-      const existingItems = purpose === 'accessory' ? (savedForm.accessories || []) : (savedForm.components || [])
-      let newItems
-      if (purpose === 'accessory') {
-        newItems = [...existingItems, { accessory_product_id: savedProduct.id, quantity: 1, required: false }]
-        await store.updateProductAccessories(savedEditing.id, newItems)
-      } else {
-        newItems = [...existingItems, { component_product_id: savedProduct.id, quantity: 1 }]
-        await store.updateProductComponents(savedEditing.id, newItems)
+      const updatedParent = store.products.find(p => p.id === savedEditing.id)
+      if (updatedParent) {
+        const existingItems = purpose === 'accessory'
+          ? (updatedParent.accessories || [])
+          : (updatedParent.components || [])
+        if (purpose === 'accessory') {
+          await store.updateProductAccessories(savedEditing.id, [...existingItems, { accessory_product_id: savedProduct.id, quantity: 1, required: false }])
+        } else {
+          await store.updateProductComponents(savedEditing.id, [...existingItems, { component_product_id: savedProduct.id, quantity: 1 }])
+        }
       }
-      productEditing.value = savedEditing
-      productForm.value = savedForm
-      productImageFile.value = savedImageFile
-      await loadExistingProductImage(savedEditing.id)
+      const refreshed = store.products.find(p => p.id === savedEditing.id)
+      if (refreshed) {
+        await openEditProduct(refreshed)
+      }
       return
     }
 
