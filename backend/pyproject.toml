@@ -30,7 +30,7 @@ dependencies = [
   "boto3==1.43.69",
   "prometheus-fastapi-instrumentator==8.1.0",
   "icalendar==7.2.2",
-  "openai>=2.54.0,<2.55.0",
+  "openai>=3.0.0,<3.1.0",
   "slowapi>=0.1.9",
 ]
 
