@@ -281,7 +281,7 @@
                     />
                   </div>
                   <div class="col-auto">
-                    <q-btn flat dense icon="add_circle" color="primary" :aria-label="t('inventory.newAccessory')" @click="emit('create-for-association', 'accessory')" />
+                    <q-btn flat dense icon="add_circle" color="primary" :aria-label="t('inventory.newAccessory')" @click="enterAssociationMode('accessory')" />
                   </div>
                   <div class="col-6 col-md-2">
                     <q-input v-model.number="newAccessoryQty" type="number" min="1" label="Qty" outlined dense />
@@ -340,7 +340,7 @@
                     />
                   </div>
                   <div class="col-auto">
-                    <q-btn flat dense icon="add_circle" color="primary" :aria-label="t('inventory.newComponent')" @click="emit('create-for-association', 'component')" />
+                    <q-btn flat dense icon="add_circle" color="primary" :aria-label="t('inventory.newComponent')" @click="enterAssociationMode('component')" />
                   </div>
                   <div class="col-6 col-md-2">
                     <q-input v-model.number="newComponentQty" type="number" min="1" label="Qty" outlined dense />
@@ -538,7 +538,6 @@ import SupplierPickerInline from './SupplierPickerInline.vue'
 const props = defineProps({
   modelValue: Boolean,
   product: { type: Object, default: null },
-  createForType: { type: String, default: null },
 })
 
 const emit = defineEmits([
@@ -591,6 +590,9 @@ const newAccessoryRequired = ref(false)
 const componentsExpanded = ref(true)
 const newComponentProductId = ref(null)
 const newComponentQty = ref(1)
+
+// ── Association mode (create accessory/component without losing parent edits) ──
+const associationMode = ref(null) // null | { purpose, savedForm, savedEditing, savedImageFile }
 
 const suppliersExpanded = ref(true)
 const newSupplierId = ref(null)
@@ -883,6 +885,30 @@ function removeComponentRow(componentProductId) {
   productForm.value.components = (productForm.value.components || []).filter(
     item => item.component_product_id !== componentProductId
   )
+}
+
+// ── Association mode: create accessory/component without losing parent edits ──
+
+function enterAssociationMode(purpose) {
+  if (!productEditing.value?.id) return
+  associationMode.value = {
+    purpose,
+    savedForm: JSON.parse(JSON.stringify(productForm.value)),
+    savedEditing: { ...productEditing.value },
+    savedImageFile: productImageFile.value,
+  }
+  productEditing.value = null
+  productForm.value = emptyProductForm()
+  productForm.value.product_type = purpose === 'accessory' ? 'accessory' : 'equipment'
+  applySkuPrefixForType(productForm.value.product_type)
+  productDialogError.value = ''
+  newAccessoryProductId.value = null
+  newAccessoryQty.value = 1
+  newAccessoryRequired.value = false
+  newComponentProductId.value = null
+  newComponentQty.value = 1
+  createEmptyProductFieldRows()
+  generateProductSku()
 }
 
 function supplierNameById(id) {
@@ -1263,6 +1289,25 @@ async function saveProduct() {
       }
     }
 
+    if (associationMode.value && savedProduct?.id) {
+      const { purpose, savedForm, savedEditing, savedImageFile } = associationMode.value
+      associationMode.value = null
+      const existingItems = purpose === 'accessory' ? (savedForm.accessories || []) : (savedForm.components || [])
+      let newItems
+      if (purpose === 'accessory') {
+        newItems = [...existingItems, { accessory_product_id: savedProduct.id, quantity: 1, required: false }]
+        await store.updateProductAccessories(savedEditing.id, newItems)
+      } else {
+        newItems = [...existingItems, { component_product_id: savedProduct.id, quantity: 1 }]
+        await store.updateProductComponents(savedEditing.id, newItems)
+      }
+      productEditing.value = savedEditing
+      productForm.value = savedForm
+      productImageFile.value = savedImageFile
+      await loadExistingProductImage(savedEditing.id)
+      return
+    }
+
     emit('update:modelValue', false)
     emit('saved')
   } catch (error) {
@@ -1338,11 +1383,11 @@ watch(() => props.modelValue, async (open) => {
     if (!customersStore.customers.length) {
       customersStore.fetchAll().catch(() => {})
     }
-    if (props.product && !props.product._createForType) {
+    if (props.product) {
       await openEditProduct(props.product)
       await loadExistingProductImage(props.product.id)
     } else {
-      openCreateProduct(props.product?._createForType || props.createForType)
+      openCreateProduct()
     }
   } else {
     cleanupProductImage()

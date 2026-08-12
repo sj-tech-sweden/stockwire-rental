@@ -697,12 +697,10 @@
     <ProductDialog
       v-model="productDialogOpen"
       :product="productEditing"
-      :create-for-type="productEditing?._createForType || null"
       @saved="onProductDialogSaved"
       @edit-device="openDeviceEditorFromLink"
       @view-device="openDeviceInfoFromLink"
       @edit-product="openProductEditorFromLink"
-      @create-for-association="onCreateForAssociation"
     />
 
     <DeviceDialog
@@ -1699,10 +1697,9 @@ function getManufacturerLink(manufacturer) {
 
 const productDialogOpen = ref(false)
 const productEditing = ref(null)
-const pendingAssociation = ref(null) // { productId, purpose, items }
 
-function openCreateProduct(presetType) {
-  productEditing.value = presetType ? { _createForType: presetType } : null
+function openCreateProduct() {
+  productEditing.value = null
   productDialogOpen.value = true
 }
 
@@ -1711,37 +1708,7 @@ function openEditProduct(product) {
   productDialogOpen.value = true
 }
 
-function onCreateForAssociation(purpose) {
-  const parentProduct = productEditing.value
-  if (!parentProduct?.id) return
-  const existingItems = purpose === 'accessory'
-    ? (parentProduct.accessories || [])
-    : (parentProduct.components || [])
-  pendingAssociation.value = { productId: parentProduct.id, purpose, existingItems }
-  productDialogOpen.value = false
-  openCreateProduct(purpose === 'accessory' ? 'accessory' : 'equipment')
-}
-
-async function onProductDialogSaved() {
-  if (pendingAssociation.value) {
-    const { productId, purpose, existingItems } = pendingAssociation.value
-    pendingAssociation.value = null
-    const savedProduct = store.products[store.products.length - 1]
-    if (savedProduct) {
-      if (purpose === 'accessory') {
-        const newItems = [...existingItems, { accessory_product_id: savedProduct.id, quantity: 1, required: false }]
-        await store.updateProductAccessories(productId, newItems)
-      } else {
-        const newItems = [...existingItems, { component_product_id: savedProduct.id, quantity: 1 }]
-        await store.updateProductComponents(productId, newItems)
-      }
-    }
-    const originalProduct = store.products.find(p => p.id === productId)
-    if (originalProduct) {
-      openEditProduct(originalProduct)
-    }
-    return
-  }
+function onProductDialogSaved() {
   restorePendingInfoDialog()
 }
 
