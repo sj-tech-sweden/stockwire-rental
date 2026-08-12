@@ -546,7 +546,6 @@ const emit = defineEmits([
   'edit-device',
   'view-device',
   'edit-product',
-  'create-for-association',
 ])
 
 const $q = useQuasar()

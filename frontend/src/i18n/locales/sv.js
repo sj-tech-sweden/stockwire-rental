@@ -1408,7 +1408,6 @@ export default {
     inZone: 'i',
     zone: 'Zon',
     newProduct: 'Ny produkt',
-    createNewProduct: 'Skapa ny produkt',
     newAccessory: 'Ny tillbehörsprodukt',
     newComponent: 'Ny komponentprodukt',
     selectedCount: '{count} valda',
