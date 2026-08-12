@@ -34,7 +34,7 @@ from app.domain.inventory.models import (
     Zone,
 )
 from app.domain.jobs.models import Job, JobRequirement
-from app.domain.notifications.models import NotificationLog, NotificationTemplate
+from app.domain.notifications.models import NotificationLog, NotificationPreference, NotificationTemplate, UserNotificationPreference
 from app.domain.settings.models import AppSetting
 from app.domain.storage.models import AssetFile
 from app.domain.venues.models import Venue
@@ -63,6 +63,8 @@ __all__ = [
     "Job",
     "JobRequirement",
     "NotificationTemplate",
+    "NotificationPreference",
+    "UserNotificationPreference",
     "NotificationLog",
     "FinancialTransaction",
     "AppSetting",

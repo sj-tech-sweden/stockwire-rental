@@ -25,6 +25,7 @@ class Customer(Base):
     is_rental_supplier: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     is_crew_supplier: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     email_notifications_enabled: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    preferred_language: Mapped[str | None] = mapped_column(String(10), nullable=True, default="en")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
 
     jobs: Mapped[list["Job"]] = relationship(back_populates="customer")

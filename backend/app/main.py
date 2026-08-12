@@ -3,17 +3,22 @@ from fastapi.middleware.cors import CORSMiddleware
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
+from sqlalchemy import text
 
 from app.api.router import api_router
 from app.config import settings, validate_jwt_secret
+from app.db.session import engine
 from app.domain.auth.security import validate_api_key_pepper, validate_password_pepper
 from app.domain.integrations.auto_sync import start_twenty_auto_sync, stop_twenty_auto_sync
 from app.domain.warehouse_leds.mqtt_client import start_mqtt_client, stop_mqtt_client
 import os
+import logging
 from pathlib import Path
 
 from alembic.config import Config as AlembicConfig
 from alembic import command as alembic_command
+
+logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # Rate Limiter
@@ -58,6 +63,61 @@ if os.environ.get("PROMETHEUS_ENABLED", "true").lower() == "true" and settings.p
     setup_metrics(app)
 
 
+def _ensure_notification_columns() -> None:
+    """Ensure notification system columns exist (fallback if migration hasn't run)."""
+    try:
+        with engine.connect() as conn:
+            # Check for recipient_type column
+            result = conn.execute(text(
+                "SELECT column_name FROM information_schema.columns "
+                "WHERE table_name='notification_templates' AND column_name='recipient_type'"
+            ))
+            if not result.fetchone():
+                logger.info("Adding missing notification system columns...")
+                conn.execute(text("ALTER TABLE notification_templates ADD COLUMN IF NOT EXISTS locale VARCHAR(10) NOT NULL DEFAULT 'en'"))
+                conn.execute(text("ALTER TABLE notification_templates ADD COLUMN IF NOT EXISTS is_enabled BOOLEAN NOT NULL DEFAULT true"))
+                conn.execute(text("ALTER TABLE notification_templates ADD COLUMN IF NOT EXISTS recipient_type VARCHAR(20) NOT NULL DEFAULT 'both'"))
+                conn.execute(text("ALTER TABLE notification_templates ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP WITH TIME ZONE"))
+                conn.execute(text("ALTER TABLE notification_logs ADD COLUMN IF NOT EXISTS locale VARCHAR(10)"))
+                conn.execute(text("ALTER TABLE customers ADD COLUMN IF NOT EXISTS preferred_language VARCHAR(10) DEFAULT 'en'"))
+
+                # Drop old single-column unique index/constraint
+                conn.execute(text("DROP INDEX IF EXISTS ix_notification_templates_template_key"))
+                conn.execute(text("ALTER TABLE notification_templates DROP CONSTRAINT IF EXISTS ix_notification_templates_template_key"))
+                conn.execute(text("ALTER TABLE notification_templates ADD CONSTRAINT uq_template_key_locale UNIQUE (template_key, locale)"))
+                # Create notification_preferences table if not exists
+                conn.execute(text("""
+                    CREATE TABLE IF NOT EXISTS notification_preferences (
+                        id SERIAL PRIMARY KEY,
+                        event_type VARCHAR(80) NOT NULL UNIQUE,
+                        label VARCHAR(120) NOT NULL,
+                        description VARCHAR(500),
+                        email_enabled BOOLEAN NOT NULL DEFAULT true,
+                        web_push_enabled BOOLEAN NOT NULL DEFAULT true,
+                        created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+                        updated_at TIMESTAMP WITH TIME ZONE
+                    )
+                """))
+
+                # Create user_notification_preferences table if not exists
+                conn.execute(text("""
+                    CREATE TABLE IF NOT EXISTS user_notification_preferences (
+                        id SERIAL PRIMARY KEY,
+                        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                        event_type VARCHAR(80) NOT NULL,
+                        email_enabled BOOLEAN NOT NULL DEFAULT true,
+                        web_push_enabled BOOLEAN NOT NULL DEFAULT true,
+                        created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+                        UNIQUE(user_id, event_type)
+                    )
+                """))
+
+                conn.commit()
+                logger.info("Notification system columns added successfully")
+    except Exception as e:
+        logger.warning(f"Failed to ensure notification columns: {e}")
+
+
 @app.on_event("startup")
 def run_startup_checks() -> None:
     # Fail fast if API_KEY_PEPPER or PASSWORD_PEPPER are misconfigured in non-dev/test environments
@@ -65,6 +125,10 @@ def run_startup_checks() -> None:
     validate_password_pepper()
     # Fail fast if JWT_SECRET_KEY is the default placeholder in production
     validate_jwt_secret()
+    # Ensure notification system columns exist (dev/test fallback only; production
+    # should rely on Alembic migrations to avoid startup DDL on every boot).
+    if settings.app_env in ("development", "test"):
+        _ensure_notification_columns()
     # Start MQTT client for warehouse LED integration
     start_mqtt_client()
     # Start Twenty CRM periodic auto-sync scheduler (skip in test environment)

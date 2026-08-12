@@ -19,6 +19,7 @@ class CustomerBase(BaseModel):
     is_rental_supplier: bool = False
     is_crew_supplier: bool = False
     email_notifications_enabled: bool = True
+    preferred_language: str | None = "en"
 
 
 class CustomerCreate(CustomerBase):
@@ -41,6 +42,7 @@ class CustomerUpdate(BaseModel):
     is_rental_supplier: bool | None = None
     is_crew_supplier: bool | None = None
     email_notifications_enabled: bool | None = None
+    preferred_language: str | None = None
 
 
 class CustomerRead(CustomerBase):

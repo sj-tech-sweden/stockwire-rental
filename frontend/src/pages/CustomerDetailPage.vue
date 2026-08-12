@@ -140,6 +140,18 @@
               />
             </div>
 
+            <q-select
+              v-model="form.preferred_language"
+              :options="languageOptions"
+              :label="t('customers.preferredLanguage')"
+              emit-value
+              map-options
+              outlined
+              dense
+              class="q-mt-sm"
+              :disable="!authStore.canEdit"
+            />
+
             <q-separator class="q-my-md" />
             <div class="text-subtitle2 q-mb-sm">{{ t('customers.supplierTypes') }}</div>
             <div class="row q-col-gutter-sm">
@@ -517,6 +529,11 @@ const rentalEditDialogOpen = ref(false)
 const selectedRentalForEdit = ref(null)
 const twentyConfig = ref(null)
 
+const languageOptions = [
+  { label: 'English', value: 'en' },
+  { label: 'Swedish', value: 'sv' },
+]
+
 const isNewCustomer = computed(() => route.path === '/companies/new')
 
 const currentCustomer = computed(() => {
@@ -831,6 +848,7 @@ function syncFromCustomer(customer) {
     is_rental_supplier: customer.is_rental_supplier ?? false,
     is_crew_supplier: customer.is_crew_supplier ?? false,
     email_notifications_enabled: customer.email_notifications_enabled !== false,
+    preferred_language: customer.preferred_language ?? 'en',
   }
   void loadFieldRows()
   void loadInfo()
