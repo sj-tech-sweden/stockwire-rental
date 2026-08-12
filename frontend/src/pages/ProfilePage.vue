@@ -122,6 +122,63 @@
         </div>
       </template>
     </q-card>
+
+    <!-- Per-user notification preferences (start from company defaults) -->
+    <q-card class="ec-card q-pa-md q-mt-md" style="max-width: 720px; margin: 0 auto;">
+      <div class="text-subtitle1 q-mb-sm">{{ t('profile.myNotificationPreferences') }}</div>
+      <div class="text-caption text-grey-7 q-mb-md">{{ t('profile.myNotificationPreferencesHint') }}</div>
+      <q-table
+        :rows="myPrefs"
+        :columns="myPrefColumns"
+        row-key="event_type"
+        flat
+        dense
+        :loading="loadingMyPrefs"
+        hide-bottom
+      >
+        <template #body-cell-event_type="props">
+          <q-td :props="props">{{ translateEventType(props.row.event_type) }}</q-td>
+        </template>
+        <template #body-cell-email_enabled="props">
+          <q-td :props="props">
+            <q-toggle
+              :model-value="props.row.email_enabled"
+              @update:model-value="toggleMyPref(props.row, 'email_enabled', $event)"
+              color="primary"
+              dense
+            />
+          </q-td>
+        </template>
+        <template #body-cell-web_push_enabled="props">
+          <q-td :props="props">
+            <q-toggle
+              :model-value="props.row.web_push_enabled"
+              @update:model-value="toggleMyPref(props.row, 'web_push_enabled', $event)"
+              color="primary"
+              dense
+            />
+          </q-td>
+        </template>
+        <template #body-cell-source="props">
+          <q-td :props="props">
+            <q-badge
+              :color="props.row.is_override ? 'warning' : 'grey'"
+              :label="props.row.is_override ? t('profile.myPrefOverridden') : t('profile.myPrefGlobalDefault')"
+            />
+            <q-btn
+              v-if="props.row.is_override"
+              flat
+              dense
+              size="sm"
+              icon="restart_alt"
+              :label="t('profile.myPrefReset')"
+              class="q-ml-sm"
+              @click="resetMyPref(props.row)"
+            />
+          </q-td>
+        </template>
+      </q-table>
+    </q-card>
   </q-page>
 </template>
 
@@ -162,6 +219,66 @@ const notificationChannelOptions = computed(() => [
 const crewCalendarUrl = ref('')
 const webPushStatus = ref('')
 const canUseWebPush = typeof window !== 'undefined' && 'Notification' in window && 'serviceWorker' in navigator
+
+// Per-user notification preferences (start from company defaults)
+const loadingMyPrefs = ref(false)
+const myPrefs = ref([])
+const myPrefColumns = [
+  { name: 'event_type', label: t('profile.myPrefEvent'), field: 'event_type', align: 'left' },
+  { name: 'email_enabled', label: t('profile.myPrefEmail'), field: 'email_enabled', align: 'center' },
+  { name: 'web_push_enabled', label: t('profile.myPrefWebPush'), field: 'web_push_enabled', align: 'center' },
+  { name: 'source', label: t('profile.myPrefStatus'), field: 'is_override', align: 'left' },
+]
+
+function translateEventType(key) {
+  const map = {
+    'job.created': t('settings.notifications.eventJobCreated'),
+    'job.updated': t('settings.notifications.eventJobUpdated'),
+    'job.completed': t('settings.notifications.eventJobCompleted'),
+    'maintenance.scheduled': t('settings.notifications.eventMaintenanceScheduled'),
+    'defect.reported': t('settings.notifications.eventDefectReported'),
+    'crew.assigned': t('settings.notifications.eventCrewAssigned'),
+    'invoice.sent': t('settings.notifications.eventInvoiceSent'),
+  }
+  return map[key] || key
+}
+
+async function loadMyPrefs() {
+  loadingMyPrefs.value = true
+  try {
+    const { data } = await api.get('/api/v1/notifications/my-preferences')
+    myPrefs.value = data
+  } catch (error) {
+    console.error('Failed to load notification preferences:', error)
+  } finally {
+    loadingMyPrefs.value = false
+  }
+}
+
+async function toggleMyPref(row, field, value) {
+  row[field] = value
+  row.is_override = true
+  try {
+    await api.put(`/api/v1/notifications/my-preferences/${row.event_type}`, {
+      email_enabled: row.email_enabled,
+      web_push_enabled: row.web_push_enabled,
+    })
+    $q.notify({ type: 'positive', message: t('profile.myPrefUpdated') })
+  } catch (error) {
+    await loadMyPrefs()
+    $q.notify({ type: 'negative', message: error?.response?.data?.detail || t('profile.myPrefUpdateFailed') })
+  }
+}
+
+async function resetMyPref(row) {
+  try {
+    await api.delete(`/api/v1/notifications/my-preferences/${row.event_type}`)
+    await loadMyPrefs()
+    $q.notify({ type: 'positive', message: t('profile.myPrefUpdated') })
+  } catch (error) {
+    $q.notify({ type: 'negative', message: error?.response?.data?.detail || t('profile.myPrefUpdateFailed') })
+  }
+}
 
 function copyCrewCalendarUrl() {
   if (!crewCalendarUrl.value) return
@@ -288,6 +405,7 @@ onMounted(async () => {
     : localStorage.getItem('sw_locale') || resolveAppLocale(null)
   userLocale.value = setLocale(preferred)
   fetchCrewCalendarUrl()
+  loadMyPrefs()
   webPushStatus.value = canUseWebPush
     ? (Notification.permission === 'granted'
         ? t('profile.webNotificationsEnabled')

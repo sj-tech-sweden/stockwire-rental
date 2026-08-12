@@ -9,6 +9,7 @@
       <q-tab name="inventory" icon="account_tree" :label="t('settings.tabs.inventory')" />
       <q-tab name="integrations" icon="hub" :label="t('settings.tabs.integrations')" />
       <q-tab name="email" icon="email" :label="t('settings.tabs.email')" />
+      <q-tab name="notifications" icon="notifications" :label="t('settings.tabs.notifications')" />
       <q-tab name="offline-queue" icon="sync" :label="t('settings.tabs.offlineQueue')" />
       <q-tab name="calendar-feeds" icon="calendar_month" :label="t('settings.tabs.calendarFeeds')" />
       <q-tab name="warehouse-leds" icon="developer_board" :label="t('settings.tabs.warehouseLeds')" />
@@ -1405,6 +1406,10 @@
         </q-card>
       </q-tab-panel>
 
+      <q-tab-panel name="notifications" class="q-pa-none">
+        <NotificationsSettings />
+      </q-tab-panel>
+
       <q-tab-panel name="offline-queue" class="q-pa-none">
         <q-card class="ec-card q-pa-md">
           <div class="row items-center q-mb-sm">
@@ -1761,6 +1766,7 @@ import ApiKeyDialog from '../components/ApiKeyDialog.vue'
 import FieldDialog from '../components/FieldDialog.vue'
 import WarehouseLedsSettings from '../components/WarehouseLedsSettings.vue'
 import CalendarFeedsSettings from '../components/CalendarFeedsSettings.vue'
+import NotificationsSettings from '../components/NotificationsSettings.vue'
 
 const route = useRoute()
 const apiBaseUrl = getApiBaseUrl()
