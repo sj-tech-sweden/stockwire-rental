@@ -281,7 +281,7 @@
                     />
                   </div>
                   <div class="col-auto">
-                    <q-btn flat dense icon="add_circle" color="primary" :aria-label="t('inventory.createNewProduct')" @click="openQuickCreate('accessory')" />
+                    <q-btn flat dense icon="add_circle" color="primary" :aria-label="t('inventory.newAccessory')" @click="openQuickCreate('accessory')" />
                   </div>
                   <div class="col-6 col-md-2">
                     <q-input v-model.number="newAccessoryQty" type="number" min="1" label="Qty" outlined dense />
@@ -340,7 +340,7 @@
                     />
                   </div>
                   <div class="col-auto">
-                    <q-btn flat dense icon="add_circle" color="primary" :aria-label="t('inventory.createNewProduct')" @click="openQuickCreate('component')" />
+                    <q-btn flat dense icon="add_circle" color="primary" :aria-label="t('inventory.newComponent')" @click="openQuickCreate('component')" />
                   </div>
                   <div class="col-6 col-md-2">
                     <q-input v-model.number="newComponentQty" type="number" min="1" label="Qty" outlined dense />
