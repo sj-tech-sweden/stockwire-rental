@@ -280,6 +280,9 @@
                       @filter="filterAccessoryProductOptions"
                     />
                   </div>
+                  <div class="col-auto">
+                    <q-btn flat dense icon="add_circle" color="primary" :aria-label="t('inventory.createNewProduct')" @click="openQuickCreate('accessory')" />
+                  </div>
                   <div class="col-6 col-md-2">
                     <q-input v-model.number="newAccessoryQty" type="number" min="1" label="Qty" outlined dense />
                   </div>
@@ -335,6 +338,9 @@
                       input-debounce="0"
                       @filter="filterComponentProductOptions"
                     />
+                  </div>
+                  <div class="col-auto">
+                    <q-btn flat dense icon="add_circle" color="primary" :aria-label="t('inventory.createNewProduct')" @click="openQuickCreate('component')" />
                   </div>
                   <div class="col-6 col-md-2">
                     <q-input v-model.number="newComponentQty" type="number" min="1" label="Qty" outlined dense />
@@ -506,6 +512,39 @@
       <q-card-actions :align="isPhone ? 'stretch' : 'right'" :class="isPhone ? 'q-pa-md bg-grey-2' : ''">
         <q-btn flat :class="isPhone ? 'full-width q-mb-sm' : ''" :label="t('app.actions.cancel')" @click="closeProductDialog" />
         <q-btn color="primary" unelevated :class="isPhone ? 'full-width' : ''" :label="productEditing ? 'Save' : 'Create'" :loading="saving" @click="saveProduct" />
+      </q-card-actions>
+    </q-card>
+  </q-dialog>
+
+  <!-- Quick-create product dialog (for accessories / components) -->
+  <q-dialog v-model="quickCreateOpen" persistent>
+    <q-card style="width: 480px; max-width: 95vw" class="ec-card">
+      <q-card-section>
+        <div class="text-h6">{{ quickCreatePurpose === 'accessory' ? t('inventory.newAccessory') : t('inventory.newComponent') }}</div>
+      </q-card-section>
+      <q-card-section class="q-pt-none">
+        <div class="row q-col-gutter-sm">
+          <div class="col-5">
+            <q-input v-model="quickCreateForm.sku" :label="t('inventory.columnSku')" outlined dense autofocus :rules="[v => !!String(v || '').trim() || t('login.required')]" />
+          </div>
+          <div class="col-7">
+            <q-input v-model="quickCreateForm.name" :label="t('inventory.productName')" outlined dense :rules="[v => !!String(v || '').trim() || t('login.required')]" />
+          </div>
+          <div class="col-12">
+            <q-select v-model="quickCreateForm.category_id" :options="allCategorySelectOptions" :label="t('inventory.category')" outlined dense clearable emit-value map-options />
+          </div>
+          <div class="col-6">
+            <q-select v-model="quickCreateForm.product_type" :options="productTypeOptions" label="Type" outlined dense emit-value map-options />
+          </div>
+          <div class="col-6">
+            <q-input v-model.number="quickCreateForm.daily_rate" type="number" min="0" step="0.01" :label="t('inventory.dailyRate')" outlined dense />
+          </div>
+        </div>
+        <q-banner v-if="quickCreateError" class="bg-negative text-white q-mt-sm rounded-borders" dense>{{ quickCreateError }}</q-banner>
+      </q-card-section>
+      <q-card-actions align="right">
+        <q-btn flat :label="t('app.actions.cancel')" @click="quickCreateOpen = false" />
+        <q-btn color="primary" unelevated :label="t('app.actions.create')" :loading="quickCreateSaving" @click="submitQuickCreate" />
       </q-card-actions>
     </q-card>
   </q-dialog>
@@ -874,6 +913,66 @@ function removeComponentRow(componentProductId) {
   productForm.value.components = (productForm.value.components || []).filter(
     item => item.component_product_id !== componentProductId
   )
+}
+
+// ── Quick-create product (accessories / components) ──────────────────────────
+
+const quickCreateOpen = ref(false)
+const quickCreatePurpose = ref('accessory')
+const quickCreateSaving = ref(false)
+const quickCreateError = ref('')
+const quickCreateForm = ref({
+  sku: '',
+  name: '',
+  category_id: null,
+  product_type: 'accessory',
+  daily_rate: 0,
+})
+
+function openQuickCreate(purpose) {
+  quickCreatePurpose.value = purpose
+  quickCreateForm.value = {
+    sku: '',
+    name: '',
+    category_id: null,
+    product_type: purpose === 'accessory' ? 'accessory' : 'equipment',
+    daily_rate: 0,
+  }
+  quickCreateError.value = ''
+  quickCreateOpen.value = true
+}
+
+async function submitQuickCreate() {
+  const sku = String(quickCreateForm.value.sku || '').trim()
+  const name = String(quickCreateForm.value.name || '').trim()
+  if (!sku || !name) {
+    quickCreateError.value = 'SKU and name are required'
+    return
+  }
+
+  quickCreateSaving.value = true
+  quickCreateError.value = ''
+  try {
+    const created = await store.createProduct({
+      sku,
+      name,
+      category_id: quickCreateForm.value.category_id,
+      product_type: quickCreateForm.value.product_type,
+      daily_rate: quickCreateForm.value.daily_rate || 0,
+    })
+    quickCreateOpen.value = false
+    if (quickCreatePurpose.value === 'accessory') {
+      newAccessoryProductId.value = created.id
+      addAccessoryRow()
+    } else {
+      newComponentProductId.value = created.id
+      addComponentRow()
+    }
+  } catch (err) {
+    quickCreateError.value = err?.response?.data?.detail || 'Failed to create product'
+  } finally {
+    quickCreateSaving.value = false
+  }
 }
 
 function supplierNameById(id) {
