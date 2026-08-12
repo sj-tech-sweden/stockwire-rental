@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import logging
 from typing import Any
 
@@ -143,6 +144,7 @@ def _company_default_locale(db: Session) -> str:
             profile = json.loads(row.value_json) if isinstance(row.value_json, str) else row.value_json
             return profile.get("default_language", "en")
     except Exception:
+        # Settings lookup is best-effort; fall back to English if anything fails.
         pass
     return "en"
 
@@ -203,7 +205,11 @@ def send_notification(db: Session, payload: dict[str, Any]) -> None:
     context = payload.get("context", {})
     event_type = payload.get("event_type")
 
-    job = db.get("Job", job_id) if job_id else None
+    job = None
+    if job_id:
+        from app.domain.jobs.models import Job
+
+        job = db.get(Job, job_id)
 
     # Determine recipient + locale
     locale = None
@@ -312,7 +318,7 @@ def send_notification(db: Session, payload: dict[str, Any]) -> None:
             from pywebpush import webpush, WebPushException
 
             subs = list(db.scalars(select(PushSubscription).where(PushSubscription.user_id == recipient_id)).all())
-            if not subs or not settings.web_push_vapid_public_key:
+            if not subs or not settings.web_push_vapid_private_key:
                 _create_log(
                     db, job_id=job_id, recipient_id=recipient_id,
                     recipient_type=recipient_type, channel=ch,
@@ -328,7 +334,7 @@ def send_notification(db: Session, payload: dict[str, Any]) -> None:
                 try:
                     webpush(
                         subscription_info={"endpoint": sub.endpoint, "keys": {"p256dh": sub.p256dh_key, "auth": sub.auth_key}},
-                        data=str(payload_data),
+                        data=json.dumps(payload_data),
                         vapid_private_key=settings.web_push_vapid_private_key,
                         vapid_claims={"sub": settings.web_push_vapid_subject},
                     )

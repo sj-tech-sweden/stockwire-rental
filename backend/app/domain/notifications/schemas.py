@@ -5,10 +5,15 @@ from datetime import datetime
 from pydantic import BaseModel
 
 
+class PushSubscriptionKeys(BaseModel):
+    p256dh: str
+    auth: str
+
+
 class PushSubscriptionCreate(BaseModel):
     endpoint: str
-    p256dh_key: str
-    auth_key: str
+    keys: PushSubscriptionKeys
+    user_agent: str | None = None
 
 
 class NotificationTemplateCreate(BaseModel):

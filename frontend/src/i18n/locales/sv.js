@@ -378,6 +378,8 @@ export default {
       quickActionsHint: 'Ladda standardmallar eller skicka ett testmeddelande för att verifiera din e-postkonfiguration.',
       sendTest: 'Skicka test',
       loadDefaults: 'Ladda standarder',
+      loadDefaultsTitle: 'Ladda standardmallar',
+      loadDefaultsMessage: 'Detta lägger till standardmallar och inställningar för aviseringar. Befintliga mallar skrivs inte över.',
       preferences: 'Aviseringsinställningar',
       preferencesHint: 'Aktivera eller inaktivera olika typer av aviseringar för e-post och webbpush.',
       eventType: 'Händelse',

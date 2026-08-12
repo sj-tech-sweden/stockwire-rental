@@ -47,7 +47,6 @@
                 @update:model-value="togglePref(props.row, 'email_enabled', $event)"
                 color="primary"
                 dense
-                :disable="!emailSupported(props.row.event_type)"
               />
             </q-td>
           </template>
@@ -58,7 +57,6 @@
                 @update:model-value="togglePref(props.row, 'web_push_enabled', $event)"
                 color="primary"
                 dense
-                :disable="!webPushSupported(props.row.event_type)"
               />
             </q-td>
           </template>
@@ -161,9 +159,9 @@
           </template>
           <template #body-cell-actions="props">
             <q-td :props="props">
-              <q-btn flat dense icon="send" size="sm" color="primary" @click="sendTestForTemplate(props.row.id)" :loading="testingTemplateId === props.row.id" />
-              <q-btn flat dense icon="edit" size="sm" @click="editTemplate(props.row)" />
-              <q-btn flat dense icon="delete" size="sm" color="negative" @click="confirmDeleteTemplate(props.row)" />
+              <q-btn flat dense icon="send" size="sm" color="primary" :aria-label="t('settings.notifications.sendTest')" @click="sendTestForTemplate(props.row.id)" :loading="testingTemplateId === props.row.id" />
+              <q-btn flat dense icon="edit" size="sm" :aria-label="t('app.actions.edit')" @click="editTemplate(props.row)" />
+              <q-btn flat dense icon="delete" size="sm" color="negative" :aria-label="t('app.actions.delete')" @click="confirmDeleteTemplate(props.row)" />
             </q-td>
           </template>
         </q-table>
@@ -331,7 +329,7 @@ const prefColumns = [
 
 const tplColumns = [
   { name: 'template_key', label: t('settings.notifications.eventType'), field: 'template_key', align: 'left' },
-  { name: 'recipient', label: t('settings.notifications.recipient'), field: 'template_key', align: 'center' },
+  { name: 'recipient', label: t('settings.notifications.recipient'), field: 'recipient_type', align: 'center' },
   { name: 'locale', label: t('settings.notifications.locale'), field: 'locale', align: 'center' },
   { name: 'subject_template', label: t('settings.notifications.subject'), field: 'subject_template', align: 'left' },
   { name: 'is_enabled', label: t('settings.notifications.enabled'), field: 'is_enabled', align: 'center' },
@@ -365,14 +363,6 @@ function recipientHint(recipientType) {
   if (recipientType === 'customer') return t('settings.notifications.recipientHintCustomer')
   if (recipientType === 'staff') return t('settings.notifications.recipientHintStaff')
   return t('settings.notifications.recipientHintBoth')
-}
-
-function emailSupported(recipientType) {
-  return recipientType !== 'staff'
-}
-
-function webPushSupported(recipientType) {
-  return recipientType !== 'customer'
 }
 
 function translateKey(key) {
@@ -419,10 +409,10 @@ async function loadTemplates() {
 
 async function seedDefaults() {
   $q.dialog({
-    title: 'Load Default Templates',
-    message: 'This will add default notification templates and preferences. Existing templates will not be overwritten.',
-    cancel: { label: 'Cancel', flat: true },
-    ok: { label: 'Load Defaults', color: 'primary' },
+    title: t('settings.notifications.loadDefaultsTitle'),
+    message: t('settings.notifications.loadDefaultsMessage'),
+    cancel: { label: t('app.actions.cancel'), flat: true },
+    ok: { label: t('settings.notifications.loadDefaults'), color: 'primary' },
     persistent: true,
   }).onOk(async () => {
     seedingDefaults.value = true

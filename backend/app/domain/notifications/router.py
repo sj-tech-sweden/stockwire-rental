@@ -2,8 +2,7 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
-from pydantic import BaseModel
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -64,15 +63,15 @@ def create_subscription(
         select(PushSubscription).where(PushSubscription.endpoint == payload.endpoint)
     )
     if existing:
-        existing.p256dh_key = payload.p256dh_key
-        existing.auth_key = payload.auth_key
+        existing.p256dh_key = payload.keys.p256dh
+        existing.auth_key = payload.keys.auth
         existing.user_id = current_user.id
     else:
         sub = PushSubscription(
             user_id=current_user.id,
             endpoint=payload.endpoint,
-            p256dh_key=payload.p256dh_key,
-            auth_key=payload.auth_key,
+            p256dh_key=payload.keys.p256dh,
+            auth_key=payload.keys.auth,
         )
         db.add(sub)
     db.commit()
@@ -307,30 +306,24 @@ def test_notification(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_admin),
 ) -> dict:
-    """Send a test notification. If template_id is provided, use that template."""
-    template_key = "job.created"
-    locale = "en"
+    """Send a test notification to the current admin user over the staff channel.
+
+    If template_id is provided, that template's key is used; otherwise the default
+    job.created template is used.
+    """
     recipient_type = "staff"
+    channel = "both"
+    template_key = "job.created"
 
     if template_id:
         template = db.get(NotificationTemplate, template_id)
         if template:
             template_key = template.template_key
-            locale = template.locale
-            recipient_type = template.recipient_type
-
-    # Determine channel based on recipient type
-    if recipient_type == "customer":
-        channel = "email"
-    elif recipient_type == "staff":
-        channel = "both"
-    else:
-        channel = "both"
 
     send_notification(db, {
         "template_key": template_key,
         "recipient_id": current_user.id,
-        "recipient_type": "staff",
+        "recipient_type": recipient_type,
         "channel": channel,
         "context": {
             "job_code": "TEST-001",

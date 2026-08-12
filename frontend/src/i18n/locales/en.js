@@ -378,6 +378,8 @@ export default {
       quickActionsHint: 'Load default templates or send a test notification to verify your email setup.',
       sendTest: 'Send Test',
       loadDefaults: 'Load Defaults',
+      loadDefaultsTitle: 'Load Default Templates',
+      loadDefaultsMessage: 'This will add default notification templates and preferences. Existing templates will not be overwritten.',
       preferences: 'Notification Preferences',
       preferencesHint: 'Enable or disable different types of notifications for email and web push.',
       eventType: 'Event Type',

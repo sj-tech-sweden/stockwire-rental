@@ -125,8 +125,10 @@ def run_startup_checks() -> None:
     validate_password_pepper()
     # Fail fast if JWT_SECRET_KEY is the default placeholder in production
     validate_jwt_secret()
-    # Ensure notification system columns exist
-    _ensure_notification_columns()
+    # Ensure notification system columns exist (dev/test fallback only; production
+    # should rely on Alembic migrations to avoid startup DDL on every boot).
+    if settings.app_env in ("development", "test"):
+        _ensure_notification_columns()
     # Start MQTT client for warehouse LED integration
     start_mqtt_client()
     # Start Twenty CRM periodic auto-sync scheduler (skip in test environment)
