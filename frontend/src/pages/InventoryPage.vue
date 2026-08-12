@@ -200,8 +200,13 @@
             <div class="q-pa-xs col-12">
               <q-card flat bordered>
                 <q-card-section class="q-pb-sm">
-                  <div class="text-subtitle2">{{ props.row.sku }} · {{ props.row.name }}</div>
-                  <div class="text-caption text-grey-7">{{ props.row.brand || t('inventory.noBrand') }} · {{ props.row.manufacturer || t('inventory.noManufacturer') }}</div>
+                  <div class="row items-center no-wrap">
+                    <q-checkbox v-model="props.selected" dense class="q-mr-sm" />
+                    <div class="col ellipsis">
+                      <div class="text-subtitle2">{{ props.row.sku }} · {{ props.row.name }}</div>
+                      <div class="text-caption text-grey-7">{{ props.row.brand || t('inventory.noBrand') }} · {{ props.row.manufacturer || t('inventory.noManufacturer') }}</div>
+                    </div>
+                  </div>
                 </q-card-section>
                 <q-card-section class="q-pt-none q-pb-sm">
                   <div class="row q-col-gutter-xs">
@@ -465,8 +470,13 @@
             <div class="q-pa-xs col-12">
               <q-card flat bordered>
                 <q-card-section class="q-pb-sm">
-                  <div class="text-subtitle2">{{ props.row.asset_tag }}</div>
-                  <div class="text-caption text-grey-7">{{ store.products.find(item => item.id === props.row.product_id)?.name || `Product #${props.row.product_id}` }}</div>
+                  <div class="row items-center no-wrap">
+                    <q-checkbox v-model="props.selected" dense class="q-mr-sm" />
+                    <div class="col ellipsis">
+                      <div class="text-subtitle2">{{ props.row.asset_tag }}</div>
+                      <div class="text-caption text-grey-7">{{ store.products.find(item => item.id === props.row.product_id)?.name || `Product #${props.row.product_id}` }}</div>
+                    </div>
+                  </div>
                 </q-card-section>
                 <q-card-section class="q-pt-none q-pb-sm">
                   <div class="row q-col-gutter-xs">
