@@ -7,6 +7,7 @@ from sqlalchemy import text
 
 from app.api.router import api_router
 from app.config import settings, validate_jwt_secret
+from app.domain.integrations.twenty_webhook import router as twenty_webhook_router  # noqa: F401
 from app.db.session import engine
 from app.domain.auth.security import validate_api_key_pepper, validate_password_pepper
 from app.domain.integrations.auto_sync import start_twenty_auto_sync, stop_twenty_auto_sync
@@ -56,6 +57,7 @@ async def security_headers_middleware(request: Request, call_next) -> Response:
     return response
 
 
+app.include_router(twenty_webhook_router)
 app.include_router(api_router)
 
 if os.environ.get("PROMETHEUS_ENABLED", "true").lower() == "true" and settings.prometheus_enabled:

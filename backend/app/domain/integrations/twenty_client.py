@@ -171,3 +171,117 @@ class TwentyClient:
         query = '{ opportunities(filter: %s) { edges { node { id name stage } } } }' % filter_str
         result = await self.graphql(query)
         return result.get("data", {}).get("opportunities", {}).get("edges", [])
+
+    async def provision_schema(self) -> dict[str, Any]:
+        """Create custom fields and objects in Twenty via Metadata API.
+
+        Returns a summary of what was created/already existed.
+        """
+        results: dict[str, Any] = {"custom_fields_created": [], "custom_objects_created": [], "errors": []}
+
+        # Create stockwire_url field on Company
+        try:
+            await self._ensure_custom_field("company", "stockwire_url", "url", "Stockwire URL")
+            results["custom_fields_created"].append("company.stockwire_url")
+        except Exception as exc:
+            results["errors"].append(f"company.stockwire_url: {exc}")
+
+        # Create stockwire_url field on Opportunity
+        try:
+            await self._ensure_custom_field("opportunity", "stockwire_url", "url", "Stockwire URL")
+            results["custom_fields_created"].append("opportunity.stockwire_url")
+        except Exception as exc:
+            results["errors"].append(f"opportunity.stockwire_url: {exc}")
+
+        # Create Rental Job custom object
+        try:
+            await self._ensure_custom_object("rentalJob", "Rental Job", [
+                {"name": "jobStatus", "type": "text", "label": "Job Status"},
+                {"name": "startDate", "type": "date", "label": "Start Date"},
+                {"name": "endDate", "type": "date", "label": "End Date"},
+                {"name": "totalAmount", "type": "number", "label": "Total Amount"},
+                {"name": "stockwireJobUrl", "type": "url", "label": "Stockwire Job URL"},
+            ])
+            results["custom_objects_created"].append("rentalJob")
+        except Exception as exc:
+            results["errors"].append(f"rentalJob: {exc}")
+
+        return results
+
+    async def _ensure_custom_field(self, object_name: str, field_name: str, field_type: str, label: str) -> None:
+        """Create a custom field on an object if it doesn't already exist."""
+        # Check if field exists
+        query = '{ %s { fields { name } } }' % object_name
+        try:
+            result = await self.graphql(query)
+            existing_fields = [f.get("name", "") for f in result.get("data", {}).get(object_name, {}).get("fields", [])]
+            if field_name in existing_fields:
+                return
+        except Exception:
+            pass
+
+        # Create the field via metadata API
+        await self._request_with_retry(
+            "POST",
+            f"{self.base_url}/rest/metadata/objectFields",
+            json={
+                "objectName": object_name,
+                "name": field_name,
+                "type": field_type,
+                "label": label,
+                "isCustom": True,
+            },
+        )
+
+    async def _ensure_custom_object(self, object_name: str, label: str, fields: list[dict[str, Any]]) -> None:
+        """Create a custom object with fields if it doesn't already exist."""
+        # Check if object exists
+        try:
+            resp = await self._request_with_retry("GET", f"{self.base_url}/rest/{object_name}?limit=1")
+            if resp.status_code == 200:
+                return
+        except Exception:
+            pass
+
+        # Create the custom object via metadata API
+        await self._request_with_retry(
+            "POST",
+            f"{self.base_url}/rest/metadata/object",
+            json={
+                "name": object_name,
+                "label": label,
+                "fields": fields,
+            },
+        )
+
+    async def sync_job_to_twenty(self, job_id: int, job_data: dict[str, Any], deep_link: str) -> str | None:
+        """Upsert a Rental Job custom object in Twenty and return its ID."""
+        existing_id = job_data.get("twenty_rental_job_id")
+        payload = {
+            "jobStatus": job_data.get("status", "draft"),
+            "startDate": job_data.get("start_date"),
+            "endDate": job_data.get("end_date"),
+            "totalAmount": job_data.get("sales_price", 0),
+            "stockwireJobUrl": deep_link,
+        }
+
+        if existing_id:
+            await self.update_object("rentalJob", existing_id, payload)
+            return existing_id
+
+        result = await self.create_object("rentalJob", payload)
+        twenty_id = result.get("data", {}).get("createRentalJob", {}).get("id")
+        return twenty_id
+
+    async def post_activity_note(self, twenty_entity_id: str, entity_type: str, text: str) -> bool:
+        """Post a note/activity on a Twenty record (Company or Opportunity)."""
+        try:
+            await self._request_with_retry(
+                "POST",
+                f"{self.base_url}/rest/{entity_type}/{twenty_entity_id}/notes",
+                json={"body": text},
+            )
+            return True
+        except Exception as exc:
+            logger.error("Failed to post note to %s/%s: %s", entity_type, twenty_entity_id, exc)
+            return False

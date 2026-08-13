@@ -48,6 +48,7 @@ class CustomerUpdate(BaseModel):
 class CustomerRead(CustomerBase):
     id: int
     created_at: datetime
+    twenty_person_id: str | None = None
 
     model_config = {"from_attributes": True}
 
