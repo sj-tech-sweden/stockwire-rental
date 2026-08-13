@@ -1408,6 +1408,8 @@ export default {
     inZone: 'i',
     zone: 'Zon',
     newProduct: 'Ny produkt',
+    newAccessory: 'Ny tillbehörsprodukt',
+    newComponent: 'Ny komponentprodukt',
     selectedCount: '{count} valda',
     exportData: 'Exportera data',
     exportAllCsv: 'Exportera alla (CSV)',

@@ -280,6 +280,9 @@
                       @filter="filterAccessoryProductOptions"
                     />
                   </div>
+                  <div class="col-auto">
+                    <q-btn flat dense icon="add_circle" color="primary" :aria-label="t('inventory.newAccessory')" @click="enterAssociationMode('accessory')" />
+                  </div>
                   <div class="col-6 col-md-2">
                     <q-input v-model.number="newAccessoryQty" type="number" min="1" label="Qty" outlined dense />
                   </div>
@@ -335,6 +338,9 @@
                       input-debounce="0"
                       @filter="filterComponentProductOptions"
                     />
+                  </div>
+                  <div class="col-auto">
+                    <q-btn flat dense icon="add_circle" color="primary" :aria-label="t('inventory.newComponent')" @click="enterAssociationMode('component')" />
                   </div>
                   <div class="col-6 col-md-2">
                     <q-input v-model.number="newComponentQty" type="number" min="1" label="Qty" outlined dense />
@@ -509,6 +515,7 @@
       </q-card-actions>
     </q-card>
   </q-dialog>
+
 </template>
 
 <script setup>
@@ -582,6 +589,9 @@ const newAccessoryRequired = ref(false)
 const componentsExpanded = ref(true)
 const newComponentProductId = ref(null)
 const newComponentQty = ref(1)
+
+// ── Association mode (create accessory/component without losing parent edits) ──
+const associationMode = ref(null) // null | { purpose, savedForm, savedEditing, savedImageFile }
 
 const suppliersExpanded = ref(true)
 const newSupplierId = ref(null)
@@ -876,6 +886,30 @@ function removeComponentRow(componentProductId) {
   )
 }
 
+// ── Association mode: create accessory/component without losing parent edits ──
+
+function enterAssociationMode(purpose) {
+  if (!productEditing.value?.id) return
+  associationMode.value = {
+    purpose,
+    savedForm: JSON.parse(JSON.stringify(productForm.value)),
+    savedEditing: { ...productEditing.value },
+    savedImageFile: productImageFile.value,
+  }
+  productEditing.value = null
+  productForm.value = emptyProductForm()
+  productForm.value.product_type = purpose === 'accessory' ? 'accessory' : 'equipment'
+  applySkuPrefixForType(productForm.value.product_type)
+  productDialogError.value = ''
+  newAccessoryProductId.value = null
+  newAccessoryQty.value = 1
+  newAccessoryRequired.value = false
+  newComponentProductId.value = null
+  newComponentQty.value = 1
+  createEmptyProductFieldRows()
+  generateProductSku()
+}
+
 function supplierNameById(id) {
   const supplier = customersStore.productSuppliers.find(s => s.id === id)
   return supplier?.name || `Supplier #${id}`
@@ -1003,9 +1037,12 @@ function applySkuPrefixForType(type) {
 
 loadPrefixMemory()
 
-function openCreateProduct() {
+function openCreateProduct(presetType) {
   productEditing.value = null
   productForm.value = emptyProductForm()
+  if (presetType) {
+    productForm.value.product_type = presetType
+  }
   applySkuPrefixForType(productForm.value.product_type)
   productDialogError.value = ''
   accessoriesExpanded.value = !isPhone.value
@@ -1249,6 +1286,39 @@ async function saveProduct() {
         }
         await uploadProductImage(savedProduct.id)
       }
+    }
+
+    if (associationMode.value && savedProduct?.id) {
+      const { purpose, savedEditing } = associationMode.value
+      associationMode.value = null
+
+      // Ensure the newly created product is in the store (fetchAll may have replaced it)
+      if (!store.products.find(p => p.id === savedProduct.id)) {
+        store.products = [...store.products, savedProduct]
+      }
+
+      const updatedParent = store.products.find(p => p.id === savedEditing.id)
+      if (updatedParent) {
+        const existingItems = purpose === 'accessory'
+          ? (updatedParent.accessories || [])
+          : (updatedParent.components || [])
+        if (purpose === 'accessory') {
+          await store.updateProductAccessories(savedEditing.id, [...existingItems, { accessory_product_id: savedProduct.id, quantity: 1, required: false }])
+        } else {
+          await store.updateProductComponents(savedEditing.id, [...existingItems, { component_product_id: savedProduct.id, quantity: 1 }])
+        }
+      }
+
+      // Re-ensure the new product is in the store (fetchAll inside updateProduct* may have replaced it again)
+      if (!store.products.find(p => p.id === savedProduct.id)) {
+        store.products = [...store.products, savedProduct]
+      }
+
+      const refreshed = store.products.find(p => p.id === savedEditing.id)
+      if (refreshed) {
+        await openEditProduct(refreshed)
+      }
+      return
     }
 
     emit('update:modelValue', false)

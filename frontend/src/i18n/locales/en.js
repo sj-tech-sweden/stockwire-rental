@@ -1429,6 +1429,8 @@ export default {
     minOrderQty: 'Min order quantity',
     accessoryProduct: 'Accessory product',
     componentProduct: 'Component product',
+    newAccessory: 'New accessory product',
+    newComponent: 'New component product',
     suppliers: 'Suppliers',
     supplier: 'Supplier',
     exportData: 'Export data',
