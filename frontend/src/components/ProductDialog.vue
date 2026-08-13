@@ -1291,6 +1291,12 @@ async function saveProduct() {
     if (associationMode.value && savedProduct?.id) {
       const { purpose, savedEditing } = associationMode.value
       associationMode.value = null
+
+      // Ensure the newly created product is in the store (fetchAll may have replaced it)
+      if (!store.products.find(p => p.id === savedProduct.id)) {
+        store.products = [...store.products, savedProduct]
+      }
+
       const updatedParent = store.products.find(p => p.id === savedEditing.id)
       if (updatedParent) {
         const existingItems = purpose === 'accessory'
@@ -1302,6 +1308,12 @@ async function saveProduct() {
           await store.updateProductComponents(savedEditing.id, [...existingItems, { component_product_id: savedProduct.id, quantity: 1 }])
         }
       }
+
+      // Re-ensure the new product is in the store (fetchAll inside updateProduct* may have replaced it again)
+      if (!store.products.find(p => p.id === savedProduct.id)) {
+        store.products = [...store.products, savedProduct]
+      }
+
       const refreshed = store.products.find(p => p.id === savedEditing.id)
       if (refreshed) {
         await openEditProduct(refreshed)
