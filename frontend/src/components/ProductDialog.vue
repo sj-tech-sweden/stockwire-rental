@@ -383,19 +383,19 @@
               </div>
               <div class="row q-col-gutter-sm q-mb-sm" v-if="productEditing">
                 <div class="col-auto">
-                  <q-badge color="primary" text-color="white" :label="`Total: ${productLinkedDevices.length}`" />
+                  <q-badge color="primary" text-color="white" :label="`${t('inventory.totalDevices')}: ${productLinkedDevices.length}`" />
                 </div>
                 <div class="col-auto">
-                  <q-badge color="positive" text-color="white" :label="`Available: ${productLinkedAvailability.available}`" />
+                  <q-badge color="positive" text-color="white" :label="`${t('inventory.availableDevices')}: ${productLinkedAvailability.available}`" />
                 </div>
                 <div class="col-auto">
-                  <q-badge color="warning" text-color="black" :label="`Reserved: ${productLinkedAvailability.reserved}`" />
+                  <q-badge color="warning" text-color="black" :label="`${t('inventory.reservedDevices')}: ${productLinkedAvailability.reserved}`" />
                 </div>
                 <div class="col-auto">
-                  <q-badge color="info" text-color="white" :label="`In Use: ${productLinkedAvailability.in_use}`" />
+                  <q-badge color="info" text-color="white" :label="`${t('inventory.inUseDevices')}: ${productLinkedAvailability.in_use}`" />
                 </div>
                 <div class="col-auto">
-                  <q-badge color="negative" text-color="white" :label="`Maintenance: ${productLinkedAvailability.maintenance}`" />
+                  <q-badge color="negative" text-color="white" :label="`${t('inventory.maintenanceDevices')}: ${productLinkedAvailability.maintenance}`" />
                 </div>
               </div>
 
@@ -417,8 +417,8 @@
                         :color="productActionColor"
                         class="inventory-action-contrast"
                         icon="inventory_2"
-                        :label="isPhone ? void 0 : 'Product'"
-                        :aria-label="isPhone ? 'Open product' : void 0"
+                        :label="isPhone ? void 0 : t('inventory.product')"
+                        :aria-label="t('inventory.openProduct')"
                         @click="emit('edit-product', row.product_id)"
                       />
                       <q-btn
@@ -427,8 +427,8 @@
                         :round="isPhone"
                         :color="infoActionColor"
                         icon="info"
-                        :label="isPhone ? void 0 : 'Info'"
-                        :aria-label="isPhone ? 'Open device info' : void 0"
+                        :label="isPhone ? void 0 : t('app.actions.info')"
+                        :aria-label="t('inventory.openDeviceInfo')"
                         @click="emit('view-device', row.id)"
                       />
                       <q-btn
@@ -437,8 +437,8 @@
                         :round="isPhone"
                         color="primary"
                         icon="edit"
-                        :label="isPhone ? void 0 : 'Edit'"
-                        :aria-label="isPhone ? 'Edit device' : void 0"
+                        :label="isPhone ? void 0 : t('app.actions.edit')"
+                        :aria-label="t('inventory.editDevice')"
                         @click="emit('edit-device', row.id)"
                       />
                     </div>
@@ -446,7 +446,7 @@
                 </q-item>
                 <q-item v-if="!productLinkedDevices.length">
                   <q-item-section>
-                    <q-item-label caption>No devices linked to this product yet.</q-item-label>
+                    <q-item-label caption>{{ t('inventory.noDevicesLinked') }}</q-item-label>
                   </q-item-section>
                 </q-item>
               </q-list>
