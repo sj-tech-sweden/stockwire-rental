@@ -648,17 +648,18 @@ function expandProductChildren(parentProductId, parentQty) {
   const accessories = product.accessories || []
   for (const acc of accessories) {
     if (!acc.required) continue
+    if (acc.is_scannable === false) continue
     const childProductId = acc.accessory_product_id
     const existing = localRows.value.find(r => r.product_id === childProductId)
     if (existing) {
       existing.quantity_required = Math.max(existing.quantity_required, acc.quantity * parentQty)
-      existing.is_scannable = acc.is_scannable !== false
+      existing.is_scannable = true
     } else {
       localRows.value.push({
         product_id: childProductId,
         quantity_required: acc.quantity * parentQty,
         quantity_picked: 0,
-        is_scannable: acc.is_scannable !== false,
+        is_scannable: true,
         notes: null,
       })
     }
@@ -666,17 +667,18 @@ function expandProductChildren(parentProductId, parentQty) {
 
   const components = product.components || []
   for (const comp of components) {
+    if (comp.is_scannable === false) continue
     const childProductId = comp.component_product_id
     const existing = localRows.value.find(r => r.product_id === childProductId)
     if (existing) {
       existing.quantity_required = Math.max(existing.quantity_required, comp.quantity * parentQty)
-      existing.is_scannable = !!comp.is_scannable
+      existing.is_scannable = true
     } else {
       localRows.value.push({
         product_id: childProductId,
         quantity_required: comp.quantity * parentQty,
         quantity_picked: 0,
-        is_scannable: !!comp.is_scannable,
+        is_scannable: true,
         notes: null,
       })
     }
