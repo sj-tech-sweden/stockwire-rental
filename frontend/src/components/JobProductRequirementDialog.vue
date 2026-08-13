@@ -158,12 +158,12 @@
           {{ t('jobs.requirementsHelp') }}
         </div>
 
-        <q-list v-if="requirementCategoryGroups.length" bordered separator class="rounded-borders jobs-category-list">
+        <q-list v-if="requirementCategoryGroups.length" bordered separator class="rounded-borders">
           <q-expansion-item
             v-for="group in requirementCategoryGroups"
             :key="group.key"
             :label="`${group.label} (${group.subtreeCount})`"
-            :default-opened="group.depth === 0"
+            :default-opened="group.depth === 0 || !!requirementProductSearch"
             expand-separator
             dense
             :header-style="{ paddingLeft: `${Math.min(group.depth * 14, 56)}px` }"
@@ -876,8 +876,4 @@ watch(() => props.jobId, (jobId, previousJobId) => {
 })
 </script>
 
-<style scoped>
-.jobs-category-list {
-  background: var(--jobs-category-bg, #ffffff);
-}
-</style>
+
