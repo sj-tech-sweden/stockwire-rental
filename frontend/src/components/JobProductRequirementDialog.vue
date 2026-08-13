@@ -239,6 +239,34 @@
     v-model="productLocationMapOpen"
     :product="productLocationMapProduct"
   />
+
+  <q-dialog v-model="optionalAccessoryDialogOpen" persistent>
+    <q-card style="min-width: 400px; max-width: 95vw" class="ec-card">
+      <q-card-section>
+        <div class="text-h6">{{ t('jobs.optionalAccessories') }}</div>
+        <div class="text-caption text-grey-7">
+          {{ t('jobs.optionalAccessoriesHint', { product: optionalAccessoryProduct?.name || '' }) }}
+        </div>
+      </q-card-section>
+      <q-card-section class="q-pt-none">
+        <q-list bordered separator class="rounded-borders">
+          <q-item v-for="item in optionalAccessorySelections" :key="`opt-${item.accessory_product_id}`" tag="label" clickable v-ripple>
+            <q-item-section avatar>
+              <q-checkbox v-model="item.selected" color="primary" />
+            </q-item-section>
+            <q-item-section>
+              <q-item-label>{{ item.name }}</q-item-label>
+              <q-item-label caption>Qty {{ item.quantity }} · {{ item.is_scannable ? t('jobs.scannable') : t('jobs.inspection') }}</q-item-label>
+            </q-item-section>
+          </q-item>
+        </q-list>
+      </q-card-section>
+      <q-card-actions align="right">
+        <q-btn flat :label="t('app.actions.cancel')" @click="optionalAccessoryDialogOpen = false" />
+        <q-btn color="primary" unelevated :label="t('app.actions.confirm')" @click="confirmOptionalAccessories" />
+      </q-card-actions>
+    </q-card>
+  </q-dialog>
 </template>
 
 <script setup>
@@ -649,6 +677,51 @@ function expandProductChildren(parentProductId, parentQty) {
   }
 }
 
+const optionalAccessoryDialogOpen = ref(false)
+const optionalAccessoryProduct = ref(null)
+const optionalAccessoryQty = ref(1)
+const optionalAccessorySelections = ref([])
+
+function addOptionalAccessories(parentProductId, parentQty) {
+  const product = productById.value.get(parentProductId)
+  if (!product) return
+  const optionals = (product.accessories || []).filter(a => !a.required)
+  if (!optionals.length) return
+
+  optionalAccessoryProduct.value = product
+  optionalAccessoryQty.value = parentQty
+  optionalAccessorySelections.value = optionals.map(acc => ({
+    accessory_product_id: acc.accessory_product_id,
+    name: productNameById(acc.accessory_product_id),
+    quantity: acc.quantity,
+    is_scannable: acc.is_scannable !== false,
+    selected: false,
+  }))
+  optionalAccessoryDialogOpen.value = true
+}
+
+function confirmOptionalAccessories() {
+  const parentQty = optionalAccessoryQty.value
+  for (const item of optionalAccessorySelections.value) {
+    if (!item.selected) continue
+    const existing = localRows.value.find(r => r.product_id === item.accessory_product_id)
+    if (existing) {
+      existing.quantity_required = Math.max(existing.quantity_required, item.quantity * parentQty)
+      existing.is_scannable = item.is_scannable
+    } else {
+      localRows.value.push({
+        product_id: item.accessory_product_id,
+        quantity_required: item.quantity * parentQty,
+        quantity_picked: 0,
+        is_scannable: item.is_scannable,
+        notes: null,
+      })
+    }
+  }
+  optionalAccessoryDialogOpen.value = false
+  syncRows()
+}
+
 function productAccessoryScanCount(product) {
   const accessories = product?.accessories || []
   return accessories.filter(a => a.required && a.is_scannable !== false).length
@@ -678,6 +751,7 @@ function setProductRequirementQty(productId, value) {
     localRows.value.push({ product_id: productId, quantity_required: qty, quantity_picked: 0, is_scannable: true, notes: null })
     expandProductChildren(productId, qty)
     syncRows()
+    addOptionalAccessories(productId, qty)
   }
 }
 
