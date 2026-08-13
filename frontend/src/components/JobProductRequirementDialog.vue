@@ -674,9 +674,22 @@ const addedRequirementProducts = computed(() => (
     .sort((a, b) => compareProducts(a.product, b.product, requirementSort.value))
 ))
 
+function resetFilters() {
+  requirementProductSearch.value = ''
+  requirementCategoryFilter.value = null
+  requirementBrandFilter.value = null
+  requirementManufacturerFilter.value = null
+  requirementTypeFilter.value = null
+  requirementSort.value = 'category_name'
+}
+
 watch(() => props.modelValue, (open) => {
   if (open) {
+    resetFilters()
     resetLocalRows()
+    if (!inventoryStore.products?.length) {
+      inventoryStore.fetchAll()
+    }
   }
 })
 
