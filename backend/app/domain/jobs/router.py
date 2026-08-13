@@ -482,6 +482,7 @@ def bulk_upsert_requirements(job_id: int, payload: JobRequirementBulkUpsert, db:
                     product_id=product_id,
                     quantity_required=item.quantity_required,
                     quantity_picked=item.quantity_picked,
+                    is_scannable=item.is_scannable,
                     notes=item.notes,
                 )
             )
@@ -489,6 +490,7 @@ def bulk_upsert_requirements(job_id: int, payload: JobRequirementBulkUpsert, db:
 
         existing_req.quantity_required = item.quantity_required
         existing_req.quantity_picked = item.quantity_picked
+        existing_req.is_scannable = item.is_scannable
         existing_req.notes = item.notes
 
     for req in existing:

@@ -26,7 +26,15 @@
               class="bg-white"
             >
               <q-card-section class="q-pb-xs">
-                <div class="text-subtitle2">{{ item.product.sku }} · {{ item.product.name }}</div>
+                <div class="text-subtitle2">
+                  {{ item.product.sku }} · {{ item.product.name }}
+                  <q-badge v-if="item.row.is_scannable" color="positive" text-color="white" label="Scan" class="q-ml-xs" />
+                  <q-badge v-else color="warning" text-color="white" label="Check" class="q-ml-xs" />
+                </div>
+                <div v-if="item.parentProduct" class="text-caption text-primary q-mb-xs">
+                  <q-icon name="link" size="12px" />
+                  {{ t('jobs.packWith') }} {{ item.parentProduct.sku }} · {{ item.parentProduct.name }}
+                </div>
                 <div class="text-caption text-grey-7">
                   {{ productCategoryPath(item.product) }} · {{ item.product.brand || t('jobs.noBrand') }}
                 </div>
@@ -150,18 +158,18 @@
           {{ t('jobs.requirementsHelp') }}
         </div>
 
-        <q-list v-if="requirementCategoryGroups.length" bordered separator class="rounded-borders jobs-category-list">
+        <q-list v-if="requirementCategoryGroups.length" bordered separator class="rounded-borders">
           <q-expansion-item
             v-for="group in requirementCategoryGroups"
             :key="group.key"
             :label="`${group.label} (${group.subtreeCount})`"
-            :default-opened="group.depth === 0"
+            :default-opened="group.depth === 0 || !!requirementProductSearch"
             expand-separator
             dense
             :header-style="{ paddingLeft: `${Math.min(group.depth * 14, 56)}px` }"
           >
             <div class="q-pa-sm">
-              <div v-if="!group.products.length" class="text-caption text-grey-6 q-mb-sm">
+              <div v-if="!group.products.length && !group.subtreeCount" class="text-caption text-grey-6 q-mb-sm">
                 {{ t('jobs.noProductsInCategory') }}
               </div>
               <q-card
@@ -175,6 +183,8 @@
                   <div class="text-subtitle2">{{ product.sku }} · {{ product.name }}</div>
                   <div class="text-caption text-grey-7">
                     {{ product.brand || t('jobs.noBrand') }} · {{ product.manufacturer || t('jobs.noManufacturer') }} · {{ product.product_type || t('jobs.typeEquipment') }}
+                    <q-badge v-if="productAccessoryScanCount(product)" color="positive" text-color="white" :label="`${productAccessoryScanCount(product)} scan`" class="q-ml-xs" />
+                    <q-badge v-if="productInspectionCount(product)" color="warning" text-color="white" :label="`${productInspectionCount(product)} check`" class="q-ml-xs" />
                   </div>
                 </q-card-section>
 
@@ -235,6 +245,34 @@
     v-model="productLocationMapOpen"
     :product="productLocationMapProduct"
   />
+
+  <q-dialog v-model="optionalAccessoryDialogOpen" persistent>
+    <q-card style="min-width: 400px; max-width: 95vw" class="ec-card">
+      <q-card-section>
+        <div class="text-h6">{{ t('jobs.optionalAccessories') }}</div>
+        <div class="text-caption text-grey-7">
+          {{ t('jobs.optionalAccessoriesHint', { product: optionalAccessoryProduct?.name || '' }) }}
+        </div>
+      </q-card-section>
+      <q-card-section class="q-pt-none">
+        <q-list bordered separator class="rounded-borders">
+          <q-item v-for="item in optionalAccessorySelections" :key="`opt-${item.accessory_product_id}`" tag="label" clickable v-ripple>
+            <q-item-section avatar>
+              <q-checkbox v-model="item.selected" color="primary" />
+            </q-item-section>
+            <q-item-section>
+              <q-item-label>{{ item.name }}</q-item-label>
+              <q-item-label caption>Qty {{ item.quantity }} · {{ item.is_scannable ? t('jobs.scannable') : t('jobs.inspection') }}</q-item-label>
+            </q-item-section>
+          </q-item>
+        </q-list>
+      </q-card-section>
+      <q-card-actions align="right">
+        <q-btn flat :label="t('app.actions.cancel')" @click="optionalAccessoryDialogOpen = false" />
+        <q-btn color="primary" unelevated :label="t('app.actions.confirm')" @click="confirmOptionalAccessories" />
+      </q-card-actions>
+    </q-card>
+  </q-dialog>
 </template>
 
 <script setup>
@@ -304,6 +342,7 @@ function cloneRequirementRows(rows = []) {
     product_id: Number(item.product_id),
     quantity_required: Number(item.quantity_required || 0),
     quantity_picked: Number(item.quantity_picked || 0),
+    is_scannable: item.is_scannable !== false,
     notes: item.notes || null,
   }))
 }
@@ -421,7 +460,7 @@ const requirementCategoryFilterOptions = computed(() => {
 })
 
 const filteredRequirementProducts = computed(() => {
-  const term = requirementProductSearch.value.trim().toLowerCase()
+  const term = String(requirementProductSearch.value || '').trim().toLowerCase()
   const categoryFilter = requirementCategoryFilter.value
   const brandFilter = requirementBrandFilter.value
   const manufacturerFilter = requirementManufacturerFilter.value
@@ -602,6 +641,114 @@ function productRequirementQty(productId) {
   return Number(localRows.value.find(item => item.product_id === productId)?.quantity_required || 0)
 }
 
+function expandProductChildren(parentProductId, parentQty) {
+  const product = productById.value.get(parentProductId)
+  if (!product) return
+
+  const accessories = product.accessories || []
+  for (const acc of accessories) {
+    if (!acc.required) continue
+    if (acc.is_scannable === false) continue
+    const childProductId = acc.accessory_product_id
+    const existing = localRows.value.find(r => r.product_id === childProductId)
+    if (existing) {
+      existing.quantity_required = Math.max(existing.quantity_required, acc.quantity * parentQty)
+      existing.is_scannable = true
+    } else {
+      localRows.value.push({
+        product_id: childProductId,
+        quantity_required: acc.quantity * parentQty,
+        quantity_picked: 0,
+        is_scannable: true,
+        notes: null,
+      })
+    }
+  }
+
+  const components = product.components || []
+  for (const comp of components) {
+    if (comp.is_scannable === false) continue
+    const childProductId = comp.component_product_id
+    const existing = localRows.value.find(r => r.product_id === childProductId)
+    if (existing) {
+      existing.quantity_required = Math.max(existing.quantity_required, comp.quantity * parentQty)
+      existing.is_scannable = true
+    } else {
+      localRows.value.push({
+        product_id: childProductId,
+        quantity_required: comp.quantity * parentQty,
+        quantity_picked: 0,
+        is_scannable: true,
+        notes: null,
+      })
+    }
+  }
+}
+
+const optionalAccessoryDialogOpen = ref(false)
+const optionalAccessoryProduct = ref(null)
+const optionalAccessoryQty = ref(1)
+const optionalAccessorySelections = ref([])
+
+function addOptionalAccessories(parentProductId, parentQty) {
+  const product = productById.value.get(parentProductId)
+  if (!product) return
+  const optionals = (product.accessories || []).filter(a => !a.required)
+  if (!optionals.length) return
+
+  optionalAccessoryProduct.value = product
+  optionalAccessoryQty.value = parentQty
+  optionalAccessorySelections.value = optionals.map(acc => ({
+    accessory_product_id: acc.accessory_product_id,
+    name: productNameById(acc.accessory_product_id),
+    quantity: acc.quantity,
+    is_scannable: acc.is_scannable !== false,
+    selected: false,
+  }))
+  optionalAccessoryDialogOpen.value = true
+}
+
+function confirmOptionalAccessories() {
+  const parentQty = optionalAccessoryQty.value
+  for (const item of optionalAccessorySelections.value) {
+    if (!item.selected) continue
+    const existing = localRows.value.find(r => r.product_id === item.accessory_product_id)
+    if (existing) {
+      existing.quantity_required = Math.max(existing.quantity_required, item.quantity * parentQty)
+      existing.is_scannable = item.is_scannable
+    } else {
+      localRows.value.push({
+        product_id: item.accessory_product_id,
+        quantity_required: item.quantity * parentQty,
+        quantity_picked: 0,
+        is_scannable: item.is_scannable,
+        notes: null,
+      })
+    }
+  }
+  optionalAccessoryDialogOpen.value = false
+  syncRows()
+}
+
+function productNameById(productId) {
+  const item = productById.value.get(productId)
+  if (!item) return `Product #${productId}`
+  return `${item.sku} - ${item.name}`
+}
+
+function productAccessoryScanCount(product) {
+  const accessories = product?.accessories || []
+  return accessories.filter(a => a.required && a.is_scannable !== false).length
+}
+
+function productInspectionCount(product) {
+  const accessories = product?.accessories || []
+  const components = product?.components || []
+  const accInspection = accessories.filter(a => a.required && a.is_scannable === false).length
+  const compInspection = components.filter(c => !c.is_scannable).length
+  return accInspection + compInspection
+}
+
 function setProductRequirementQty(productId, value) {
   const qty = Math.max(0, Number(value || 0))
   const row = localRows.value.find(item => item.product_id === productId)
@@ -615,8 +762,10 @@ function setProductRequirementQty(productId, value) {
     return
   }
   if (qty > 0) {
-    localRows.value.push({ product_id: productId, quantity_required: qty, quantity_picked: 0, notes: null })
+    localRows.value.push({ product_id: productId, quantity_required: qty, quantity_picked: 0, is_scannable: true, notes: null })
+    expandProductChildren(productId, qty)
     syncRows()
+    addOptionalAccessories(productId, qty)
   }
 }
 
@@ -666,13 +815,42 @@ const productById = computed(() => {
   return map
 })
 
-const addedRequirementProducts = computed(() => (
-  localRows.value
+const parentByChildId = computed(() => {
+  const map = new Map()
+  for (const product of requirementSourceProducts.value) {
+    for (const acc of product.accessories || []) {
+      if (!acc.required) continue
+      map.set(acc.accessory_product_id, product.id)
+    }
+    for (const comp of product.components || []) {
+      map.set(comp.component_product_id, product.id)
+    }
+  }
+  return map
+})
+
+const addedRequirementProducts = computed(() => {
+  const addedIds = new Set(
+    localRows.value
+      .filter(row => Number(row.quantity_required || 0) > 0)
+      .map(row => row.product_id)
+  )
+  return localRows.value
     .filter(row => Number(row.quantity_required || 0) > 0)
-    .map(row => ({ row, product: productById.value.get(row.product_id) }))
+    .map(row => {
+      const product = productById.value.get(row.product_id)
+      const parentId = parentByChildId.value.get(row.product_id)
+      const parentProduct = parentId && addedIds.has(parentId) ? productById.value.get(parentId) : null
+      return { row, product, parentProduct }
+    })
     .filter(item => item.product)
-    .sort((a, b) => compareProducts(a.product, b.product, requirementSort.value))
-))
+    .sort((a, b) => {
+      const aParentId = parentByChildId.value.get(a.row.product_id) || 0
+      const bParentId = parentByChildId.value.get(b.row.product_id) || 0
+      if (aParentId !== bParentId) return aParentId - bParentId
+      return compareProducts(a.product, b.product, requirementSort.value)
+    })
+})
 
 function resetFilters() {
   requirementProductSearch.value = ''
@@ -700,8 +878,4 @@ watch(() => props.jobId, (jobId, previousJobId) => {
 })
 </script>
 
-<style scoped>
-.jobs-category-list {
-  background: var(--jobs-category-bg, #ffffff);
-}
-</style>
+

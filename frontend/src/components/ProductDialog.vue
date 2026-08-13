@@ -289,7 +289,10 @@
                   <div class="col-6 col-md-2">
                     <q-toggle v-model="newAccessoryRequired" label="Required" color="primary" />
                   </div>
-                  <div class="col-12 col-md-1">
+                  <div class="col-6 col-md-1">
+                    <q-toggle v-model="newAccessoryScannable" label="Scan" color="secondary" />
+                  </div>
+                  <div class="col-6 col-md-1">
                     <q-btn color="primary" unelevated icon="add" @click="addAccessoryRow" />
                   </div>
                 </div>
@@ -298,7 +301,7 @@
                   <q-item v-for="row in productForm.accessories" :key="`acc-${row.accessory_product_id}`">
                     <q-item-section>
                       <q-item-label>{{ productNameById(row.accessory_product_id) }}</q-item-label>
-                      <q-item-label caption>{{ row.required ? 'Required' : 'Optional' }} · Qty {{ row.quantity }}</q-item-label>
+                      <q-item-label caption>{{ row.required ? 'Required' : 'Optional' }} · Qty {{ row.quantity }} · {{ row.is_scannable ? 'Scannable' : 'Inspection' }}</q-item-label>
                     </q-item-section>
                     <q-item-section side>
                       <q-btn flat dense icon="delete" color="negative" @click="removeAccessoryRow(row.accessory_product_id)" />
@@ -345,7 +348,10 @@
                   <div class="col-6 col-md-2">
                     <q-input v-model.number="newComponentQty" type="number" min="1" label="Qty" outlined dense />
                   </div>
-                  <div class="col-12 col-md-1">
+                  <div class="col-6 col-md-1">
+                    <q-toggle v-model="newComponentScannable" label="Scan" color="secondary" />
+                  </div>
+                  <div class="col-6 col-md-1">
                     <q-btn color="primary" unelevated icon="add" @click="addComponentRow" />
                   </div>
                 </div>
@@ -354,7 +360,7 @@
                   <q-item v-for="row in productForm.components" :key="`cmp-${row.component_product_id}`">
                     <q-item-section>
                       <q-item-label>{{ productNameById(row.component_product_id) }}</q-item-label>
-                      <q-item-label caption>Qty {{ row.quantity }}</q-item-label>
+                      <q-item-label caption>Qty {{ row.quantity }} · {{ row.is_scannable ? 'Scannable' : 'Inspection' }}</q-item-label>
                     </q-item-section>
                     <q-item-section side>
                       <q-btn flat dense icon="delete" color="negative" @click="removeComponentRow(row.component_product_id)" />
@@ -586,9 +592,11 @@ const accessoriesExpanded = ref(true)
 const newAccessoryProductId = ref(null)
 const newAccessoryQty = ref(1)
 const newAccessoryRequired = ref(false)
+const newAccessoryScannable = ref(true)
 const componentsExpanded = ref(true)
 const newComponentProductId = ref(null)
 const newComponentQty = ref(1)
+const newComponentScannable = ref(false)
 
 // ── Association mode (create accessory/component without losing parent edits) ──
 const associationMode = ref(null) // null | { purpose, savedForm, savedEditing, savedImageFile }
@@ -836,6 +844,7 @@ function addAccessoryRow() {
   if (existing) {
     existing.quantity = quantity
     existing.required = !!newAccessoryRequired.value
+    existing.is_scannable = !!newAccessoryScannable.value
   } else {
     productForm.value.accessories = [
       ...(productForm.value.accessories || []),
@@ -843,6 +852,7 @@ function addAccessoryRow() {
         accessory_product_id: accessoryId,
         quantity,
         required: !!newAccessoryRequired.value,
+        is_scannable: !!newAccessoryScannable.value,
       },
     ]
   }
@@ -850,6 +860,7 @@ function addAccessoryRow() {
   newAccessoryProductId.value = null
   newAccessoryQty.value = 1
   newAccessoryRequired.value = false
+  newAccessoryScannable.value = true
 }
 
 function removeAccessoryRow(accessoryProductId) {
@@ -866,18 +877,21 @@ function addComponentRow() {
   const existing = (productForm.value.components || []).find(item => item.component_product_id === componentId)
   if (existing) {
     existing.quantity = quantity
+    existing.is_scannable = !!newComponentScannable.value
   } else {
     productForm.value.components = [
       ...(productForm.value.components || []),
       {
         component_product_id: componentId,
         quantity,
+        is_scannable: !!newComponentScannable.value,
       },
     ]
   }
 
   newComponentProductId.value = null
   newComponentQty.value = 1
+  newComponentScannable.value = false
 }
 
 function removeComponentRow(componentProductId) {
@@ -904,8 +918,10 @@ function enterAssociationMode(purpose) {
   newAccessoryProductId.value = null
   newAccessoryQty.value = 1
   newAccessoryRequired.value = false
+  newAccessoryScannable.value = true
   newComponentProductId.value = null
   newComponentQty.value = 1
+  newComponentScannable.value = false
   createEmptyProductFieldRows()
   generateProductSku()
 }
@@ -1050,9 +1066,11 @@ function openCreateProduct(presetType) {
   newAccessoryProductId.value = null
   newAccessoryQty.value = 1
   newAccessoryRequired.value = false
+  newAccessoryScannable.value = true
   componentsExpanded.value = !isPhone.value
   newComponentProductId.value = null
   newComponentQty.value = 1
+  newComponentScannable.value = false
   createEmptyProductFieldRows()
   generateProductSku()
 }
@@ -1095,12 +1113,14 @@ function openEditProduct(product) {
           accessory_product_id: item.accessory_product_id,
           quantity: Number(item.quantity || 1),
           required: !!item.required,
+          is_scannable: item.is_scannable !== false,
         }))
       : [],
     components: Array.isArray(product.components)
       ? product.components.map(item => ({
           component_product_id: item.component_product_id,
           quantity: Number(item.quantity || 1),
+          is_scannable: !!item.is_scannable,
         }))
       : [],
     suppliers: Array.isArray(product.suppliers)

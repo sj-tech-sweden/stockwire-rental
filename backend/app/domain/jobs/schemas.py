@@ -62,6 +62,7 @@ class JobRequirementBase(BaseModel):
     product_id: int
     quantity_required: int = 1
     quantity_picked: int = 0
+    is_scannable: bool = True
     notes: str | None = None
 
 
@@ -87,6 +88,7 @@ class JobRequirementBulkItem(BaseModel):
     product_id: int
     quantity_required: int = 1
     quantity_picked: int = 0
+    is_scannable: bool = True
     notes: str | None = None
 
 

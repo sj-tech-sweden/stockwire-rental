@@ -53,6 +53,7 @@ class JobRequirement(Base):
     product_id: Mapped[int] = mapped_column(ForeignKey("products.id", ondelete="CASCADE"), index=True)
     quantity_required: Mapped[int] = mapped_column(default=1)
     quantity_picked: Mapped[int] = mapped_column(default=0)
+    is_scannable: Mapped[bool] = mapped_column(default=True)
     notes: Mapped[str] = mapped_column(Text, nullable=True)
 
     job: Mapped[Job] = relationship(back_populates="requirements")

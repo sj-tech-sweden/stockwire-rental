@@ -515,7 +515,7 @@
         <div class="text-caption text-grey-5 q-mb-sm">
           {{ t(workflowHelpKey) }}
         </div>
-        <div class="row items-center q-mb-sm">
+        <div class="row items-center q-gutter-sm q-mb-sm">
           <q-select
             v-model="workflowSortMode"
             :options="workflowSortOptions"
@@ -524,9 +524,28 @@
             class="col-auto"
             style="min-width: 180px"
           />
+          <q-toggle v-model="groupByParent" :label="t('scan.groupByParent')" color="primary" dense />
         </div>
+        <div v-if="pendingInspectionRequirements.length" class="q-mb-md">
+          <div class="text-caption text-grey-7 q-mb-xs">{{ t('scan.inspectionItems') }}</div>
+          <q-list bordered separator class="rounded-borders">
+            <q-item v-for="row in pendingInspectionRequirements" :key="`insp-${row.product_id}`">
+              <q-item-section avatar>
+                <q-badge color="warning" text-color="white" label="Check" />
+              </q-item-section>
+              <q-item-section>
+                <q-item-label>{{ row.product_name }}</q-item-label>
+                <q-item-label caption>{{ t('scan.remainingCount', { count: row.remaining }) }}</q-item-label>
+              </q-item-section>
+              <q-item-section side>
+                <q-badge :color="row.remaining > 0 ? 'amber-7' : 'green-8'" text-color="black" :label="`${row.quantity_picked}/${row.quantity_required}`" />
+              </q-item-section>
+            </q-item>
+          </q-list>
+        </div>
+
         <q-table
-          :rows="sortedPendingWorkflowRequirements"
+          :rows="sortedPendingScannableRequirements"
           :columns="workflowColumns"
           row-key="product_id"
           flat
@@ -545,6 +564,8 @@
                   <div class="row items-center">
                     <div class="col text-subtitle2">{{ props.row.product_name }}</div>
                     <div class="col-auto">
+                      <q-badge v-if="props.row.is_scannable" color="positive" text-color="white" label="Scan" class="q-mr-xs" />
+                      <q-badge v-else color="warning" text-color="white" label="Check" class="q-mr-xs" />
                       <q-btn flat dense round color="primary" icon="place" size="sm" @click="openWorkflowProductLocationMap(props.row)">
                         <q-tooltip>{{ t('inventory.deviceDialog.locateOnMap') }}</q-tooltip>
                       </q-btn>
@@ -583,6 +604,15 @@
                       </div>
                       <q-linear-progress rounded size="10px" color="positive" track-color="grey-4" :value="workflowRowProgress(props.row).percent / 100" />
                     </div>
+                    <div v-if="productInspectionChildrenByParent.get(props.row.product_id)?.length" class="col-12">
+                      <q-separator class="q-my-xs" />
+                      <div class="text-caption text-grey-6 q-mb-xs">{{ t('scan.includes') }}</div>
+                      <div v-for="child in productInspectionChildrenByParent.get(props.row.product_id)" :key="`child-${child.product_id}`" class="row items-center q-gutter-xs q-mb-xs">
+                        <q-badge color="warning" text-color="white" label="Check" />
+                        <span class="text-caption">{{ child.name }}</span>
+                        <span class="text-caption text-grey-6">×{{ child.quantity }}</span>
+                      </div>
+                    </div>
                     <div v-if="showWorkflowDeviceSelector(props.row)" class="col-12">
                       <q-select
                         :model-value="workflowDeviceSelections[props.row.product_id] || null"
@@ -612,6 +642,18 @@
                 </q-card-section>
               </q-card>
             </div>
+          </template>
+          <template #body-cell-product="props">
+            <q-td :props="props">
+              <div class="text-weight-medium">{{ props.row.product_name }}</div>
+              <div v-if="productInspectionChildrenByParent.get(props.row.product_id)?.length" class="text-caption text-grey-6 q-mt-xs">
+                <span>{{ t('scan.includes') }}: </span>
+                <span v-for="(child, idx) in productInspectionChildrenByParent.get(props.row.product_id)" :key="`child-${child.product_id}`">
+                  <q-badge color="warning" text-color="white" label="Check" class="q-mr-xs" style="font-size:9px" />
+                  {{ child.name }} ({{ child.quantity }})<span v-if="idx < productInspectionChildrenByParent.get(props.row.product_id).length - 1">, </span>
+                </span>
+              </div>
+            </q-td>
           </template>
           <template #body-cell-progress="props">
             <q-td :props="props">
@@ -1504,6 +1546,62 @@ const productById = computed(() => {
   return out
 })
 
+const productChildrenByParent = computed(() => {
+  const map = new Map()
+  for (const product of store.products) {
+    const children = []
+    for (const acc of product.accessories || []) {
+      if (!acc.required) continue
+      const childProduct = productById.value.get(acc.accessory_product_id)
+      children.push({
+        product_id: acc.accessory_product_id,
+        name: childProduct?.name || `Product #${acc.accessory_product_id}`,
+        is_scannable: acc.is_scannable !== false,
+        quantity: acc.quantity,
+      })
+    }
+    for (const comp of product.components || []) {
+      const childProduct = productById.value.get(comp.component_product_id)
+      children.push({
+        product_id: comp.component_product_id,
+        name: childProduct?.name || `Product #${comp.component_product_id}`,
+        is_scannable: !!comp.is_scannable,
+        quantity: comp.quantity,
+      })
+    }
+    if (children.length) map.set(product.id, children)
+  }
+  return map
+})
+
+const productInspectionChildrenByParent = computed(() => {
+  const map = new Map()
+  for (const [parentId, children] of productChildrenByParent.value) {
+    const inspection = children.filter(c => !c.is_scannable)
+    if (inspection.length) map.set(parentId, inspection)
+  }
+  return map
+})
+
+const productScannableChildrenByParent = computed(() => {
+  const map = new Map()
+  for (const [parentId, children] of productChildrenByParent.value) {
+    const scannable = children.filter(c => c.is_scannable)
+    if (scannable.length) map.set(parentId, scannable)
+  }
+  return map
+})
+
+const childParentId = computed(() => {
+  const map = new Map()
+  for (const [parentId, children] of productChildrenByParent.value) {
+    for (const child of children) {
+      map.set(child.product_id, parentId)
+    }
+  }
+  return map
+})
+
 const zoneById = computed(() => {
   const map = new Map()
   for (const zone of store.zones) map.set(zone.id, zone)
@@ -1714,16 +1812,20 @@ const workflowRequirements = computed(() => {
       quantity_picked: picked,
       checked_out: checkedOut,
       available,
+      is_scannable: item.is_scannable !== false,
     }, { mode: scanAction.value })
   })
 })
 
 const workflowSections = computed(() => splitWorkflowRequirements(workflowRequirements.value))
 const pendingWorkflowRequirements = computed(() => workflowSections.value.pending)
+const pendingScannableRequirements = computed(() => pendingWorkflowRequirements.value.filter(r => r.is_scannable !== false))
+const pendingInspectionRequirements = computed(() => pendingWorkflowRequirements.value.filter(r => r.is_scannable === false))
 const completedWorkflowRequirements = computed(() => workflowSections.value.completed)
 const workflowSummary = computed(() => summarizeWorkflowRequirements(workflowRequirements.value))
 
 const workflowSortMode = ref('warehouse')
+const groupByParent = ref(false)
 const workflowSortOptions = computed(() => [
   { label: t('scan.sortWarehouseOrder'), value: 'warehouse' },
   { label: t('scan.sortCategory'), value: 'category' },
@@ -1762,6 +1864,15 @@ function compareWorkflowRequirements(a, b, mode) {
 
 const sortedPendingWorkflowRequirements = computed(() => {
   const items = [...pendingWorkflowRequirements.value]
+  return items.sort((a, b) => compareWorkflowRequirements(a, b, workflowSortMode.value))
+})
+
+const sortedPendingScannableRequirements = computed(() => {
+  let items = [...pendingScannableRequirements.value]
+  if (groupByParent.value) {
+    const childIds = new Set(childParentId.value.keys())
+    items = items.filter(r => !childIds.has(r.product_id))
+  }
   return items.sort((a, b) => compareWorkflowRequirements(a, b, workflowSortMode.value))
 })
 

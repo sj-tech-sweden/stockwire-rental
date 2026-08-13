@@ -288,12 +288,14 @@ class ProductAccessoryRead(BaseModel):
     accessory_name: str | None = None
     quantity: int = 1
     required: bool = False
+    is_scannable: bool = True
 
 
 class ProductAccessoryUpsertItem(BaseModel):
     accessory_product_id: int
     quantity: int = 1
     required: bool = False
+    is_scannable: bool = True
 
 
 class ProductAccessoryUpsertRequest(BaseModel):
@@ -307,11 +309,13 @@ class ProductComponentRead(BaseModel):
     component_sku: str | None = None
     component_name: str | None = None
     quantity: int = 1
+    is_scannable: bool = False
 
 
 class ProductComponentUpsertItem(BaseModel):
     component_product_id: int
     quantity: int = 1
+    is_scannable: bool = False
 
 
 class ProductComponentUpsertRequest(BaseModel):
