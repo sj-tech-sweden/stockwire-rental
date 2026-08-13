@@ -603,11 +603,11 @@
                       </div>
                       <q-linear-progress rounded size="10px" color="positive" track-color="grey-4" :value="workflowRowProgress(props.row).percent / 100" />
                     </div>
-                    <div v-if="productChildrenByParent.get(props.row.product_id)?.length" class="col-12">
+                    <div v-if="productInspectionChildrenByParent.get(props.row.product_id)?.length" class="col-12">
                       <q-separator class="q-my-xs" />
                       <div class="text-caption text-grey-6 q-mb-xs">{{ t('scan.includes') }}</div>
-                      <div v-for="child in productChildrenByParent.get(props.row.product_id)" :key="`child-${child.product_id}`" class="row items-center q-gutter-xs q-mb-xs">
-                        <q-badge :color="child.is_scannable ? 'positive' : 'warning'" text-color="white" :label="child.is_scannable ? 'Scan' : 'Check'" />
+                      <div v-for="child in productInspectionChildrenByParent.get(props.row.product_id)" :key="`child-${child.product_id}`" class="row items-center q-gutter-xs q-mb-xs">
+                        <q-badge color="warning" text-color="white" label="Check" />
                         <span class="text-caption">{{ child.name }}</span>
                         <span class="text-caption text-grey-6">×{{ child.quantity }}</span>
                       </div>
@@ -641,6 +641,18 @@
                 </q-card-section>
               </q-card>
             </div>
+          </template>
+          <template #body-cell-product_name="props">
+            <q-td :props="props">
+              <div class="text-weight-medium">{{ props.row.product_name }}</div>
+              <div v-if="productInspectionChildrenByParent.get(props.row.product_id)?.length" class="text-caption text-grey-6 q-mt-xs">
+                <span class="text-caption text-grey-6">{{ t('scan.includes') }}: </span>
+                <span v-for="(child, idx) in productInspectionChildrenByParent.get(props.row.product_id)" :key="`child-${child.product_id}`">
+                  <q-badge color="warning" text-color="white" label="Check" class="q-mr-xs" style="font-size:9px" />
+                  {{ child.name }} ({{ child.quantity }})<span v-if="idx < productInspectionChildrenByParent.get(props.row.product_id).length - 1">, </span>
+                </span>
+              </div>
+            </q-td>
           </template>
           <template #body-cell-progress="props">
             <q-td :props="props">
@@ -1545,7 +1557,6 @@ const productChildrenByParent = computed(() => {
         name: childProduct?.name || `Product #${acc.accessory_product_id}`,
         is_scannable: acc.is_scannable !== false,
         quantity: acc.quantity,
-        parent_type: 'accessory',
       })
     }
     for (const comp of product.components || []) {
@@ -1555,10 +1566,18 @@ const productChildrenByParent = computed(() => {
         name: childProduct?.name || `Product #${comp.component_product_id}`,
         is_scannable: !!comp.is_scannable,
         quantity: comp.quantity,
-        parent_type: 'component',
       })
     }
     if (children.length) map.set(product.id, children)
+  }
+  return map
+})
+
+const productInspectionChildrenByParent = computed(() => {
+  const map = new Map()
+  for (const [parentId, children] of productChildrenByParent.value) {
+    const inspection = children.filter(c => !c.is_scannable)
+    if (inspection.length) map.set(parentId, inspection)
   }
   return map
 })

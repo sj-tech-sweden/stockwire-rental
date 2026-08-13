@@ -722,6 +722,12 @@ function confirmOptionalAccessories() {
   syncRows()
 }
 
+function productNameById(productId) {
+  const item = productById.value.get(productId)
+  if (!item) return `Product #${productId}`
+  return `${item.sku} - ${item.name}`
+}
+
 function productAccessoryScanCount(product) {
   const accessories = product?.accessories || []
   return accessories.filter(a => a.required && a.is_scannable !== false).length
