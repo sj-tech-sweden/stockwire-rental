@@ -73,6 +73,7 @@ class Settings(BaseSettings):
 
     twenty_api_key: str = ""
     twenty_base_url: str = "https://api.twenty.com"
+    twenty_webhook_secret: str = ""
 
     mqtt_broker_host: str = "localhost"
     mqtt_broker_port: int = 1883

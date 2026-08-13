@@ -52,6 +52,7 @@ class JobRead(JobBase):
     productionplanner_project_id: str | None = None
     external_source: str | None = None
     external_reference: str | None = None
+    twenty_rental_job_id: str | None = None
     eventory_job_ids: str | None = None
 
     model_config = {"from_attributes": True}

@@ -12,6 +12,7 @@ class TwentyConfigBase(BaseModel):
     workspace_id: str | None = None
     is_active: bool = True
     sync_interval_minutes: int = Field(default=0, ge=0)
+    webhook_secret: str | None = None
 
     @field_validator("api_key")
     @classmethod
@@ -48,6 +49,7 @@ class TwentyConfigUpdate(BaseModel):
     workspace_id: str | None = None
     is_active: bool | None = None
     sync_interval_minutes: int | None = None
+    webhook_secret: str | None = None
     clear_api_key: bool = False
 
     @field_validator("base_url")
@@ -79,6 +81,8 @@ class TwentyConfigRead(BaseModel):
     is_active: bool = True
     has_api_key: bool = False
     sync_interval_minutes: int = 0
+    has_webhook_secret: bool = False
+    schema_provisioned: bool = False
     created_at: datetime
     updated_at: datetime
 

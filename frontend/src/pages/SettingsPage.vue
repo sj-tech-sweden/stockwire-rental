@@ -1040,6 +1040,19 @@
                 />
               </div>
             </div>
+            <div class="row q-col-gutter-sm q-mb-sm">
+              <div class="col-12 col-md-6">
+                <q-input
+                  v-model="twentyDraft.webhook_secret"
+                  :label="t('settings.integrations.twenty.webhookSecret')"
+                  :placeholder="twentyDraft.has_webhook_secret && !twentyDraft.webhook_secret ? t('settings.integrations.twenty.webhookSecretSaved') : t('settings.integrations.twenty.webhookSecretPlaceholder')"
+                  :hint="twentyDraft.has_webhook_secret && !twentyDraft.webhook_secret ? t('settings.integrations.twenty.webhookSecretSavedHint') : t('settings.integrations.twenty.webhookSecretHint')"
+                  outlined
+                  dense
+                  type="password"
+                />
+              </div>
+            </div>
             <div v-if="twentyDraft.enabled" class="row items-center q-gutter-sm q-mb-sm">
               <q-btn
                 color="secondary"
@@ -1090,6 +1103,20 @@
                   unelevated
                   :loading="twentySyncing"
                   @click="triggerTwentySync"
+                />
+                <q-btn
+                  v-if="twentyDraft.enabled"
+                  color="secondary"
+                  icon="schema"
+                  :label="t('settings.integrations.twenty.runSchemaSetup')"
+                  unelevated
+                  :loading="twentySchemaProvisioning"
+                  @click="provisionTwentySchema"
+                />
+                <q-badge
+                  v-if="twentyDraft.schema_provisioned"
+                  color="positive"
+                  :label="t('settings.integrations.twenty.schemaProvisioned')"
                 />
               </div>
               <div v-if="twentySyncStatus?.recent_logs?.length" class="q-mt-sm">
@@ -2112,7 +2139,11 @@ const twentyDraft = ref({
   base_url: 'https://api.twenty.com',
   has_api_key: false,
   sync_interval_minutes: 0,
+  webhook_secret: '',
+  has_webhook_secret: false,
+  schema_provisioned: false,
 })
+const twentySchemaProvisioning = ref(false)
 const twentyTesting = ref(false)
 const twentyTestResult = ref(null)
 const twentySyncing = ref(false)
@@ -3616,10 +3647,13 @@ async function loadTwentyConfig() {
         base_url: data.base_url || 'https://api.twenty.com',
         has_api_key: data.has_api_key ?? false,
         sync_interval_minutes: data.sync_interval_minutes ?? 0,
+        webhook_secret: '',
+        has_webhook_secret: data.has_webhook_secret ?? false,
+        schema_provisioned: data.schema_provisioned ?? false,
       }
     }
   } catch {
-    twentyDraft.value = { enabled: false, api_key: '', base_url: 'https://api.twenty.com', has_api_key: false, sync_interval_minutes: 0 }
+    twentyDraft.value = { enabled: false, api_key: '', base_url: 'https://api.twenty.com', has_api_key: false, sync_interval_minutes: 0, webhook_secret: '', has_webhook_secret: false, schema_provisioned: false }
   }
 }
 
@@ -3696,6 +3730,23 @@ async function triggerTwentySync() {
     $q.notify({ type: 'negative', message: error?.response?.data?.detail || t('settings.integrations.twenty.syncFailed') })
   } finally {
     twentySyncing.value = false
+  }
+}
+
+async function provisionTwentySchema() {
+  twentySchemaProvisioning.value = true
+  try {
+    await saveTwentyConfig()
+    const result = await api.post('/api/v1/integrations/twenty/provision-schema')
+    twentyDraft.value.schema_provisioned = true
+    const msg = result.data?.custom_objects_created?.length
+      ? t('settings.integrations.twenty.schemaProvisionedSuccess', { count: result.data.custom_objects_created.length })
+      : t('settings.integrations.twenty.schemaProvisionedNoop')
+    $q.notify({ type: 'positive', message: msg })
+  } catch (error) {
+    $q.notify({ type: 'negative', message: error?.response?.data?.detail || t('settings.integrations.twenty.schemaProvisionFailed') })
+  } finally {
+    twentySchemaProvisioning.value = false
   }
 }
 
