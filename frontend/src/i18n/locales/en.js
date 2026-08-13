@@ -1252,6 +1252,7 @@ export default {
     total: 'Total',
     availableConfirmed: 'Avail (confirmed)',
     availableWithDrafts: 'Avail (+drafts)',
+    packWith: 'Pack with',
     requiredQty: 'Required qty',
     rentalRequirements: 'Rental requirements',
     eventorySync: 'Eventory sync',

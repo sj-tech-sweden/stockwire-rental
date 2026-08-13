@@ -1247,6 +1247,7 @@ export default {
     total: 'Totalt',
     availableConfirmed: 'Tillg (bekräftad)',
     availableWithDrafts: 'Tillg (+utkast)',
+    packWith: 'Packa med',
     requiredQty: 'Krävd kvantitet',
     rentalRequirements: 'Hyreskrav',
     eventorySync: 'Eventory-synkning',

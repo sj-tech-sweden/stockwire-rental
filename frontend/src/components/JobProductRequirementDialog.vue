@@ -26,11 +26,17 @@
               class="bg-white"
             >
               <q-card-section class="q-pb-xs">
-                <div class="text-subtitle2">{{ item.product.sku }} · {{ item.product.name }}</div>
-                <div class="text-caption text-grey-7">
-                  {{ productCategoryPath(item.product) }} · {{ item.product.brand || t('jobs.noBrand') }}
+                <div class="text-subtitle2">
+                  {{ item.product.sku }} · {{ item.product.name }}
                   <q-badge v-if="item.row.is_scannable" color="positive" text-color="white" label="Scan" class="q-ml-xs" />
                   <q-badge v-else color="warning" text-color="white" label="Check" class="q-ml-xs" />
+                </div>
+                <div v-if="item.parentProduct" class="text-caption text-primary q-mb-xs">
+                  <q-icon name="link" size="12px" />
+                  {{ t('jobs.packWith') }} {{ item.parentProduct.sku }} · {{ item.parentProduct.name }}
+                </div>
+                <div class="text-caption text-grey-7">
+                  {{ productCategoryPath(item.product) }} · {{ item.product.brand || t('jobs.noBrand') }}
                 </div>
               </q-card-section>
               <q-card-section class="q-pt-none">
@@ -807,13 +813,42 @@ const productById = computed(() => {
   return map
 })
 
-const addedRequirementProducts = computed(() => (
-  localRows.value
+const parentByChildId = computed(() => {
+  const map = new Map()
+  for (const product of requirementSourceProducts.value) {
+    for (const acc of product.accessories || []) {
+      if (!acc.required) continue
+      map.set(acc.accessory_product_id, product.id)
+    }
+    for (const comp of product.components || []) {
+      map.set(comp.component_product_id, product.id)
+    }
+  }
+  return map
+})
+
+const addedRequirementProducts = computed(() => {
+  const addedIds = new Set(
+    localRows.value
+      .filter(row => Number(row.quantity_required || 0) > 0)
+      .map(row => row.product_id)
+  )
+  return localRows.value
     .filter(row => Number(row.quantity_required || 0) > 0)
-    .map(row => ({ row, product: productById.value.get(row.product_id) }))
+    .map(row => {
+      const product = productById.value.get(row.product_id)
+      const parentId = parentByChildId.value.get(row.product_id)
+      const parentProduct = parentId && addedIds.has(parentId) ? productById.value.get(parentId) : null
+      return { row, product, parentProduct }
+    })
     .filter(item => item.product)
-    .sort((a, b) => compareProducts(a.product, b.product, requirementSort.value))
-))
+    .sort((a, b) => {
+      const aParentId = parentByChildId.value.get(a.row.product_id) || 0
+      const bParentId = parentByChildId.value.get(b.row.product_id) || 0
+      if (aParentId !== bParentId) return aParentId - bParentId
+      return compareProducts(a.product, b.product, requirementSort.value)
+    })
+})
 
 function resetFilters() {
   requirementProductSearch.value = ''
