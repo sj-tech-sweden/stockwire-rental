@@ -161,6 +161,71 @@ export const useCrewStore = defineStore('crew', () => {
     return data
   }
 
+  // ── Self-Service ────────────────────────────────────────────────────────
+
+  async function fetchMySkills() {
+    const { data } = await api.get('/api/v1/crew/users/me/skills')
+    return data
+  }
+
+  async function addMySkill(skillId) {
+    const { data } = await api.post('/api/v1/crew/users/me/skills', { skill_id: skillId })
+    return data
+  }
+
+  async function removeMySkill(skillId) {
+    const { data } = await api.delete(`/api/v1/crew/users/me/skills/${skillId}`)
+    return data
+  }
+
+  async function fetchMyCertifications() {
+    const { data } = await api.get('/api/v1/crew/users/me/certifications')
+    return data
+  }
+
+  async function addMyCertification(payload) {
+    const { data } = await api.post('/api/v1/crew/users/me/certifications', payload)
+    return data
+  }
+
+  async function updateMyCertification(certId, payload) {
+    const { data } = await api.patch(`/api/v1/crew/users/me/certifications/${certId}`, payload)
+    return data
+  }
+
+  async function removeMyCertification(certId) {
+    await api.delete(`/api/v1/crew/users/me/certifications/${certId}`)
+  }
+
+  // ── Compliance ──────────────────────────────────────────────────────────
+
+  async function fetchJobCompliance(jobId) {
+    const { data } = await api.get(`/api/v1/crew/jobs/${jobId}/compliance`)
+    return data
+  }
+
+  // ── Required Certifications ─────────────────────────────────────────────
+
+  async function fetchEquipmentRequiredCerts(productId) {
+    const { data } = await api.get(`/api/v1/crew/equipment/${productId}/required-certifications`)
+    return data
+  }
+
+  async function setEquipmentRequiredCerts(productId, certIds) {
+    const { data } = await api.put(`/api/v1/crew/equipment/${productId}/required-certifications`, { cert_ids: certIds })
+    return data
+  }
+
+  async function fetchRoleRequiredCerts(roleId) {
+    const { data } = await api.get(`/api/v1/crew/roles/${roleId}/required-certifications`)
+    return data
+  }
+
+  async function setRoleRequiredCerts(roleId, certIds) {
+    const { data } = await api.put(`/api/v1/crew/roles/${roleId}/required-certifications`, { cert_ids: certIds })
+    return data
+  }
+
   return {
     roles,
     members,
@@ -193,5 +258,17 @@ export const useCrewStore = defineStore('crew', () => {
     updateCrewAssignment,
     deleteCrewAssignment,
     fetchCrewSuggestions,
+    fetchMySkills,
+    addMySkill,
+    removeMySkill,
+    fetchMyCertifications,
+    addMyCertification,
+    updateMyCertification,
+    removeMyCertification,
+    fetchJobCompliance,
+    fetchEquipmentRequiredCerts,
+    setEquipmentRequiredCerts,
+    fetchRoleRequiredCerts,
+    setRoleRequiredCerts,
   }
 })

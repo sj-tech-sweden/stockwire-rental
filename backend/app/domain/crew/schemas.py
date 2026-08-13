@@ -114,7 +114,10 @@ class CrewMemberCertificationRead(BaseModel):
     id: int
     crew_member_id: int
     certification: CrewCertificationRead
+    certificate_number: str | None = None
+    issued_at: date | None = None
     expiry_date: date | None = None
+    document_url: str | None = None
     created_at: datetime
 
     model_config = {"from_attributes": True}
@@ -239,3 +242,58 @@ class CrewSuggestion(BaseModel):
     missing_skills: list[str] = Field(default_factory=list)
     hourly_rate: Decimal | None = None
     source: str | None = None
+
+
+# ── Self-Service Schemas ────────────────────────────────────────────────────
+
+
+class SelfSkillToggle(BaseModel):
+    skill_id: int
+
+
+class SelfCertificationCreate(BaseModel):
+    certification_type_id: int
+    certificate_number: str | None = None
+    issued_at: date | None = None
+    expires_at: date | None = None
+
+
+class SelfCertificationUpdate(BaseModel):
+    document_url: str | None = None
+    certificate_number: str | None = None
+    issued_at: date | None = None
+    expiry_date: date | None = None
+
+
+class SelfCertificationRead(BaseModel):
+    id: int
+    certification_type_id: int
+    certification_type_name: str
+    certification_type_category: str | None = None
+    certificate_number: str | None = None
+    issued_at: date | None = None
+    expiry_date: date | None = None
+    document_url: str | None = None
+    status: str  # "valid", "expiring_soon", "expired"
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+# ── Compliance Schemas ──────────────────────────────────────────────────────
+
+
+class ComplianceWarning(BaseModel):
+    crew_member_id: int
+    crew_member_name: str
+    warning_type: str  # "missing_cert", "expired_cert", "expiring_soon_cert", "missing_skill"
+    certification_name: str | None = None
+    skill_name: str | None = None
+    message: str
+    severity: str  # "error", "warning"
+
+
+class JobComplianceResult(BaseModel):
+    job_id: int
+    is_compliant: bool
+    warnings: list[ComplianceWarning] = Field(default_factory=list)

@@ -1,4 +1,6 @@
-from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
+from datetime import date
+
+from fastapi import APIRouter, Body, Depends, HTTPException, Query, Response, status
 from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session, selectinload
 
@@ -14,9 +16,11 @@ from app.domain.crew.models import (
     CrewRole,
     CrewSkill,
     CrewCertification,
+    EquipmentRequiredCertification,
     JobCrewAssignment,
     JobCrewRequirement,
     JobRequiredSkill,
+    JobRoleRequiredCertification,
 )
 from app.domain.crew.schemas import (
     CrewCertificationCreate,
@@ -39,7 +43,14 @@ from app.domain.crew.schemas import (
     JobCrewRequirementRead,
     JobCrewRequirementUpdate,
     CrewSuggestion,
+    SelfSkillToggle,
+    SelfCertificationCreate,
+    SelfCertificationUpdate,
+    SelfCertificationRead,
+    ComplianceWarning,
+    JobComplianceResult,
 )
+from app.services.compliance_service import check_job_crew_compliance, compute_certification_status
 
 router = APIRouter(prefix="/crew", tags=["crew"], dependencies=[Depends(get_current_user)])
 
@@ -851,3 +862,273 @@ def get_crew_suggestions(
 
     suggestions.sort(key=lambda s: (-s.match_score, s.name))
     return suggestions
+
+
+# ── Self-Service: My Skills & Certifications ────────────────────────────────
+
+
+def _resolve_crew_member_for_user(db: Session, user: User) -> CrewMember:
+    """Find the CrewMember linked to the current user. Raises 404 if not found."""
+    member = db.scalars(
+        select(CrewMember)
+        .where(CrewMember.user_id == user.id)
+        .options(
+            selectinload(CrewMember.skills).selectinload(CrewMemberSkill.skill),
+            selectinload(CrewMember.certifications).selectinload(CrewMemberCertification.certification),
+        )
+    ).first()
+    if not member:
+        raise HTTPException(status_code=404, detail="No crew member profile is linked to your account")
+    return member
+
+
+@router.get("/users/me/skills", response_model=list[CrewSkillRead])
+def get_my_skills(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> list[CrewSkillRead]:
+    member = _resolve_crew_member_for_user(db, current_user)
+    return [_to_crew_skill_read(sk.skill) for sk in member.skills]
+
+
+@router.post("/users/me/skills", response_model=list[CrewSkillRead], status_code=status.HTTP_200_OK)
+def add_my_skill(
+    payload: SelfSkillToggle,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> list[CrewSkillRead]:
+    member = _resolve_crew_member_for_user(db, current_user)
+    skill = db.get(CrewSkill, payload.skill_id)
+    if not skill:
+        raise HTTPException(status_code=404, detail="Skill not found")
+    existing = db.scalar(
+        select(CrewMemberSkill).where(
+            CrewMemberSkill.crew_member_id == member.id,
+            CrewMemberSkill.skill_id == payload.skill_id,
+        )
+    )
+    if not existing:
+        db.add(CrewMemberSkill(crew_member_id=member.id, skill_id=payload.skill_id))
+        db.commit()
+    member = _resolve_crew_member_for_user(db, current_user)
+    return [_to_crew_skill_read(sk.skill) for sk in member.skills]
+
+
+@router.delete("/users/me/skills/{skill_id}", response_model=list[CrewSkillRead])
+def remove_my_skill(
+    skill_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> list[CrewSkillRead]:
+    member = _resolve_crew_member_for_user(db, current_user)
+    link = db.scalar(
+        select(CrewMemberSkill).where(
+            CrewMemberSkill.crew_member_id == member.id,
+            CrewMemberSkill.skill_id == skill_id,
+        )
+    )
+    if link:
+        db.delete(link)
+        db.commit()
+    member = _resolve_crew_member_for_user(db, current_user)
+    return [_to_crew_skill_read(sk.skill) for sk in member.skills]
+
+
+@router.get("/users/me/certifications", response_model=list[SelfCertificationRead])
+def get_my_certifications(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> list[SelfCertificationRead]:
+    member = _resolve_crew_member_for_user(db, current_user)
+    certs = list(db.scalars(
+        select(CrewMemberCertification)
+        .where(CrewMemberCertification.crew_member_id == member.id)
+        .options(selectinload(CrewMemberCertification.certification))
+        .order_by(CrewMemberCertification.id)
+    ).all())
+    result = []
+    for c in certs:
+        status_val = compute_certification_status(c.expiry_date, None, None)
+        result.append(SelfCertificationRead(
+            id=c.id,
+            certification_type_id=c.certification_id,
+            certification_type_name=c.certification.name if c.certification else "",
+            certification_type_category=c.certification.category if c.certification else None,
+            certificate_number=c.certificate_number,
+            issued_at=c.issued_at,
+            expiry_date=c.expiry_date,
+            document_url=c.document_url,
+            status=status_val,
+            created_at=c.created_at,
+        ))
+    return result
+
+
+@router.post("/users/me/certifications", response_model=SelfCertificationRead, status_code=status.HTTP_201_CREATED)
+def add_my_certification(
+    payload: SelfCertificationCreate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> SelfCertificationRead:
+    member = _resolve_crew_member_for_user(db, current_user)
+    cert_type = db.get(CrewCertification, payload.certification_type_id)
+    if not cert_type:
+        raise HTTPException(status_code=404, detail="Certification type not found")
+    cert = CrewMemberCertification(
+        crew_member_id=member.id,
+        certification_id=payload.certification_type_id,
+        certificate_number=payload.certificate_number,
+        issued_at=payload.issued_at,
+        expiry_date=payload.expires_at,
+    )
+    db.add(cert)
+    db.commit()
+    db.refresh(cert)
+    status_val = compute_certification_status(cert.expiry_date, None, None)
+    return SelfCertificationRead(
+        id=cert.id,
+        certification_type_id=cert.certification_id,
+        certification_type_name=cert_type.name,
+        certification_type_category=cert_type.category,
+        certificate_number=cert.certificate_number,
+        issued_at=cert.issued_at,
+        expiry_date=cert.expiry_date,
+        document_url=cert.document_url,
+        status=status_val,
+        created_at=cert.created_at,
+    )
+
+
+@router.patch("/users/me/certifications/{cert_id}", response_model=SelfCertificationRead)
+def update_my_certification(
+    cert_id: int,
+    payload: SelfCertificationUpdate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> SelfCertificationRead:
+    member = _resolve_crew_member_for_user(db, current_user)
+    cert = db.get(CrewMemberCertification, cert_id)
+    if not cert or cert.crew_member_id != member.id:
+        raise HTTPException(status_code=404, detail="Certification not found")
+    if payload.document_url is not None:
+        cert.document_url = payload.document_url
+    if payload.certificate_number is not None:
+        cert.certificate_number = payload.certificate_number
+    if payload.issued_at is not None:
+        cert.issued_at = payload.issued_at
+    if payload.expiry_date is not None:
+        cert.expiry_date = payload.expiry_date
+    db.commit()
+    db.refresh(cert)
+    status_val = compute_certification_status(cert.expiry_date, None, None)
+    cert_type = db.get(CrewCertification, cert.certification_id)
+    return SelfCertificationRead(
+        id=cert.id,
+        certification_type_id=cert.certification_id,
+        certification_type_name=cert_type.name if cert_type else "",
+        certification_type_category=cert_type.category if cert_type else None,
+        certificate_number=cert.certificate_number,
+        issued_at=cert.issued_at,
+        expiry_date=cert.expiry_date,
+        document_url=cert.document_url,
+        status=status_val,
+        created_at=cert.created_at,
+    )
+
+
+@router.delete("/users/me/certifications/{cert_id}")
+def remove_my_certification(
+    cert_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    member = _resolve_crew_member_for_user(db, current_user)
+    cert = db.get(CrewMemberCertification, cert_id)
+    if not cert or cert.crew_member_id != member.id:
+        raise HTTPException(status_code=404, detail="Certification not found")
+    db.delete(cert)
+    db.commit()
+    return {"status": "ok"}
+
+
+# ── Equipment & Role Required Certifications ─────────────────────────────────
+
+
+@router.get("/equipment/{product_id}/required-certifications", response_model=list[CrewCertificationRead])
+def list_equipment_required_certs(
+    product_id: int,
+    db: Session = Depends(get_db),
+) -> list[CrewCertificationRead]:
+    links = list(db.scalars(
+        select(EquipmentRequiredCertification)
+        .where(EquipmentRequiredCertification.product_id == product_id)
+        .options(selectinload(EquipmentRequiredCertification.certification_type))
+    ).all())
+    return [_to_crew_certification_read(link.certification_type) for link in links if link.certification_type]
+
+
+@router.put("/equipment/{product_id}/required-certifications")
+def set_equipment_required_certs(
+    product_id: int,
+    cert_ids: list[int] = Body(..., embed=True),
+    db: Session = Depends(get_db),
+) -> list[CrewCertificationRead]:
+    db.execute(delete(EquipmentRequiredCertification).where(EquipmentRequiredCertification.product_id == product_id))
+    for cert_id in cert_ids:
+        cert = db.get(CrewCertification, cert_id)
+        if cert:
+            db.add(EquipmentRequiredCertification(product_id=product_id, certification_type_id=cert_id))
+    db.commit()
+    links = list(db.scalars(
+        select(EquipmentRequiredCertification)
+        .where(EquipmentRequiredCertification.product_id == product_id)
+        .options(selectinload(EquipmentRequiredCertification.certification_type))
+    ).all())
+    return [_to_crew_certification_read(link.certification_type) for link in links if link.certification_type]
+
+
+@router.get("/roles/{role_id}/required-certifications", response_model=list[CrewCertificationRead])
+def list_role_required_certs(
+    role_id: int,
+    db: Session = Depends(get_db),
+) -> list[CrewCertificationRead]:
+    links = list(db.scalars(
+        select(JobRoleRequiredCertification)
+        .where(JobRoleRequiredCertification.job_role_id == role_id)
+        .options(selectinload(JobRoleRequiredCertification.certification_type))
+    ).all())
+    return [_to_crew_certification_read(link.certification_type) for link in links if link.certification_type]
+
+
+@router.put("/roles/{role_id}/required-certifications")
+def set_role_required_certs(
+    role_id: int,
+    cert_ids: list[int] = Body(..., embed=True),
+    db: Session = Depends(get_db),
+) -> list[CrewCertificationRead]:
+    db.execute(delete(JobRoleRequiredCertification).where(JobRoleRequiredCertification.job_role_id == role_id))
+    for cert_id in cert_ids:
+        cert = db.get(CrewCertification, cert_id)
+        if cert:
+            db.add(JobRoleRequiredCertification(job_role_id=role_id, certification_type_id=cert_id))
+    db.commit()
+    links = list(db.scalars(
+        select(JobRoleRequiredCertification)
+        .where(JobRoleRequiredCertification.job_role_id == role_id)
+        .options(selectinload(JobRoleRequiredCertification.certification_type))
+    ).all())
+    return [_to_crew_certification_read(link.certification_type) for link in links if link.certification_type]
+
+
+# ── Job Compliance Guardrails ────────────────────────────────────────────────
+
+
+@router.get("/jobs/{job_id}/compliance", response_model=JobComplianceResult)
+def get_job_compliance(
+    job_id: int,
+    db: Session = Depends(get_db),
+) -> JobComplianceResult:
+    job = db.get(Job, job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    return check_job_crew_compliance(db, job_id)

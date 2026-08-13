@@ -52,6 +52,9 @@ class CrewRole(Base):
         secondary="crew_member_preferred_roles",
         back_populates="preferred_roles"
     )
+    required_certifications: Mapped[list["JobRoleRequiredCertification"]] = relationship(
+        back_populates="job_role", cascade="all, delete-orphan"
+    )
 
 
 class CrewMember(Base):
@@ -114,7 +117,10 @@ class CrewMemberCertification(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     crew_member_id: Mapped[int] = mapped_column(ForeignKey("crew_members.id", ondelete="CASCADE"), index=True)
     certification_id: Mapped[int] = mapped_column(ForeignKey("crew_certifications.id", ondelete="CASCADE"), index=True)
+    certificate_number: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    issued_at: Mapped[date | None] = mapped_column(Date, nullable=True)
     expiry_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    document_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
 
     crew_member: Mapped[CrewMember] = relationship(back_populates="certifications")
@@ -174,3 +180,33 @@ class JobCrewAssignment(Base):
 
     job_crew_requirement: Mapped[JobCrewRequirement] = relationship(back_populates="assignments")
     crew_member: Mapped[CrewMember] = relationship(back_populates="assignments")
+
+
+class EquipmentRequiredCertification(Base):
+    __tablename__ = "equipment_required_certifications"
+
+    product_id: Mapped[int] = mapped_column(
+        ForeignKey("products.id", ondelete="CASCADE"), primary_key=True
+    )
+    certification_type_id: Mapped[int] = mapped_column(
+        ForeignKey("crew_certifications.id", ondelete="CASCADE"), primary_key=True
+    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
+
+    product: Mapped["Product"] = relationship(back_populates="required_certifications")
+    certification_type: Mapped[CrewCertification] = relationship()
+
+
+class JobRoleRequiredCertification(Base):
+    __tablename__ = "job_role_required_certifications"
+
+    job_role_id: Mapped[int] = mapped_column(
+        ForeignKey("crew_roles.id", ondelete="CASCADE"), primary_key=True
+    )
+    certification_type_id: Mapped[int] = mapped_column(
+        ForeignKey("crew_certifications.id", ondelete="CASCADE"), primary_key=True
+    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
+
+    job_role: Mapped[CrewRole] = relationship(back_populates="required_certifications")
+    certification_type: Mapped[CrewCertification] = relationship()

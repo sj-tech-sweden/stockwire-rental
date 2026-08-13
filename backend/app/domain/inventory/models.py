@@ -108,6 +108,11 @@ class Product(Base):
         back_populates="component_product",
         cascade="all, delete-orphan",
     )
+    required_certifications: Mapped[list["EquipmentRequiredCertification"]] = relationship(
+        "EquipmentRequiredCertification",
+        back_populates="product",
+        cascade="all, delete-orphan",
+    )
 
 
 class Device(Base):
