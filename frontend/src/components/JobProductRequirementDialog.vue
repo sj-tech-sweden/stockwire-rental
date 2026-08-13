@@ -169,7 +169,7 @@
             :header-style="{ paddingLeft: `${Math.min(group.depth * 14, 56)}px` }"
           >
             <div class="q-pa-sm">
-              <div v-if="!group.products.length" class="text-caption text-grey-6 q-mb-sm">
+              <div v-if="!group.products.length && !group.subtreeCount" class="text-caption text-grey-6 q-mb-sm">
                 {{ t('jobs.noProductsInCategory') }}
               </div>
               <q-card
@@ -491,17 +491,6 @@ const requirementCategoryGroups = computed(() => {
   const byCategoryId = new Map()
   const uncategorized = []
 
-  const types = {}
-  for (const p of filteredRequirementProducts.value) {
-    const t = p.product_type || 'unknown'
-    types[t] = (types[t] || 0) + 1
-  }
-  console.log('[requirementCategoryGroups]', {
-    filteredCount: filteredRequirementProducts.value.length,
-    types,
-    hasTree: Array.isArray(inventoryStore.categoryTree) && inventoryStore.categoryTree.length > 0,
-  })
-
   for (const product of filteredRequirementProducts.value) {
     const categoryId = Number(product.category_id || 0)
     if (!categoryId) {
@@ -575,7 +564,6 @@ const requirementCategoryGroups = computed(() => {
     })
   }
 
-  console.log('[requirementCategoryGroups] groups:', groups.map(g => `${g.label} (${g.products.length} products)`))
   return groups
 })
 
