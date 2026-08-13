@@ -12,7 +12,6 @@ from sqlalchemy.orm import Session
 from app.db.session import get_db
 from app.domain.integrations.models import TwentyConfig
 from app.domain.integrations.sync_engine import _log_sync
-from app.domain.integrations.twenty_client import TwentyClient
 
 logger = logging.getLogger(__name__)
 

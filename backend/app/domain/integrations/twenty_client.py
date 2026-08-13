@@ -217,8 +217,8 @@ class TwentyClient:
             existing_fields = [f.get("name", "") for f in result.get("data", {}).get(object_name, {}).get("fields", [])]
             if field_name in existing_fields:
                 return
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.debug("Could not introspect fields for %s, proceeding with creation: %s", object_name, exc)
 
         # Create the field via metadata API
         await self._request_with_retry(
@@ -240,8 +240,8 @@ class TwentyClient:
             resp = await self._request_with_retry("GET", f"{self.base_url}/rest/{object_name}?limit=1")
             if resp.status_code == 200:
                 return
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.debug("Could not check existence of %s, proceeding with creation: %s", object_name, exc)
 
         # Create the custom object via metadata API
         await self._request_with_retry(
