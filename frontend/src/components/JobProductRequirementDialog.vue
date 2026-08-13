@@ -454,7 +454,7 @@ const requirementCategoryFilterOptions = computed(() => {
 })
 
 const filteredRequirementProducts = computed(() => {
-  const term = requirementProductSearch.value.trim().toLowerCase()
+  const term = String(requirementProductSearch.value || '').trim().toLowerCase()
   const categoryFilter = requirementCategoryFilter.value
   const brandFilter = requirementBrandFilter.value
   const manufacturerFilter = requirementManufacturerFilter.value
