@@ -642,11 +642,11 @@
               </q-card>
             </div>
           </template>
-          <template #body-cell-product_name="props">
+          <template #body-cell-product="props">
             <q-td :props="props">
               <div class="text-weight-medium">{{ props.row.product_name }}</div>
               <div v-if="productInspectionChildrenByParent.get(props.row.product_id)?.length" class="text-caption text-grey-6 q-mt-xs">
-                <span class="text-caption text-grey-6">{{ t('scan.includes') }}: </span>
+                <span>{{ t('scan.includes') }}: </span>
                 <span v-for="(child, idx) in productInspectionChildrenByParent.get(props.row.product_id)" :key="`child-${child.product_id}`">
                   <q-badge color="warning" text-color="white" label="Check" class="q-mr-xs" style="font-size:9px" />
                   {{ child.name }} ({{ child.quantity }})<span v-if="idx < productInspectionChildrenByParent.get(props.row.product_id).length - 1">, </span>
