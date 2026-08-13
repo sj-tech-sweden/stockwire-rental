@@ -1474,7 +1474,6 @@ export default {
     inUseDevices: 'In Use',
     maintenanceDevices: 'Maintenance',
     product: 'Product',
-    openProduct: 'Open product',
     openDeviceInfo: 'Open device info',
     editDevice: 'Edit device',
     productDocuments: 'Product Documents',
