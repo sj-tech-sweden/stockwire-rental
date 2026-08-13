@@ -2213,6 +2213,7 @@ export default {
     scanInSelectedDevice: 'Scan in selected device',
     inspectionItems: 'Inspection items',
     includes: 'Includes',
+    groupByParent: 'Group by parent',
     finishedProducts: 'Finished products',
     packedDone: 'Packed',
     checkedInDone: 'Checked in',

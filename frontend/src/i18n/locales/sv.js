@@ -2186,6 +2186,7 @@ export default {
     scanInSelectedDevice: 'Skanna in vald enhet',
     inspectionItems: 'Kontrollpunkter',
     includes: 'Inkluderar',
+    groupByParent: 'Gruppera efter förälder',
     finishedProducts: 'Klara produkter',
     packedDone: 'Packat',
     checkedInDone: 'Incheckat',

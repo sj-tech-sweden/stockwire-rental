@@ -515,7 +515,7 @@
         <div class="text-caption text-grey-5 q-mb-sm">
           {{ t(workflowHelpKey) }}
         </div>
-        <div class="row items-center q-mb-sm">
+        <div class="row items-center q-gutter-sm q-mb-sm">
           <q-select
             v-model="workflowSortMode"
             :options="workflowSortOptions"
@@ -524,6 +524,7 @@
             class="col-auto"
             style="min-width: 180px"
           />
+          <q-toggle v-model="groupByParent" :label="t('scan.groupByParent')" color="primary" dense />
         </div>
         <div v-if="pendingInspectionRequirements.length" class="q-mb-md">
           <div class="text-caption text-grey-7 q-mb-xs">{{ t('scan.inspectionItems') }}</div>
@@ -1582,6 +1583,25 @@ const productInspectionChildrenByParent = computed(() => {
   return map
 })
 
+const productScannableChildrenByParent = computed(() => {
+  const map = new Map()
+  for (const [parentId, children] of productChildrenByParent.value) {
+    const scannable = children.filter(c => c.is_scannable)
+    if (scannable.length) map.set(parentId, scannable)
+  }
+  return map
+})
+
+const childParentId = computed(() => {
+  const map = new Map()
+  for (const [parentId, children] of productChildrenByParent.value) {
+    for (const child of children) {
+      map.set(child.product_id, parentId)
+    }
+  }
+  return map
+})
+
 const zoneById = computed(() => {
   const map = new Map()
   for (const zone of store.zones) map.set(zone.id, zone)
@@ -1805,6 +1825,7 @@ const completedWorkflowRequirements = computed(() => workflowSections.value.comp
 const workflowSummary = computed(() => summarizeWorkflowRequirements(workflowRequirements.value))
 
 const workflowSortMode = ref('warehouse')
+const groupByParent = ref(false)
 const workflowSortOptions = computed(() => [
   { label: t('scan.sortWarehouseOrder'), value: 'warehouse' },
   { label: t('scan.sortCategory'), value: 'category' },
@@ -1847,7 +1868,11 @@ const sortedPendingWorkflowRequirements = computed(() => {
 })
 
 const sortedPendingScannableRequirements = computed(() => {
-  const items = [...pendingScannableRequirements.value]
+  let items = [...pendingScannableRequirements.value]
+  if (groupByParent.value) {
+    const childIds = new Set(childParentId.value.keys())
+    items = items.filter(r => !childIds.has(r.product_id))
+  }
   return items.sort((a, b) => compareWorkflowRequirements(a, b, workflowSortMode.value))
 })
 
