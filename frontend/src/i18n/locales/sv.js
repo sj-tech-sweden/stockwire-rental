@@ -2179,7 +2179,7 @@ export default {
     selectDeviceToAdd: 'Välj enhet att lägga till',
     addSelectedDevice: 'Lägg till vald enhet',
     scanInSelectedDevice: 'Skanna in vald enhet',
-    acknowledgeInspection: 'Bekräfta',
+    inspectionItems: 'Kontrollpunkter',
     finishedProducts: 'Klara produkter',
     packedDone: 'Packat',
     checkedInDone: 'Incheckat',

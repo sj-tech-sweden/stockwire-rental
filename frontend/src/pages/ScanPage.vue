@@ -525,8 +525,26 @@
             style="min-width: 180px"
           />
         </div>
+        <div v-if="pendingInspectionRequirements.length" class="q-mb-md">
+          <div class="text-caption text-grey-7 q-mb-xs">{{ t('scan.inspectionItems') }}</div>
+          <q-list bordered separator class="rounded-borders">
+            <q-item v-for="row in pendingInspectionRequirements" :key="`insp-${row.product_id}`">
+              <q-item-section avatar>
+                <q-badge color="warning" text-color="white" label="Check" />
+              </q-item-section>
+              <q-item-section>
+                <q-item-label>{{ row.product_name }}</q-item-label>
+                <q-item-label caption>{{ t('scan.remainingCount', { count: row.remaining }) }}</q-item-label>
+              </q-item-section>
+              <q-item-section side>
+                <q-badge :color="row.remaining > 0 ? 'amber-7' : 'green-8'" text-color="black" :label="`${row.quantity_picked}/${row.quantity_required}`" />
+              </q-item-section>
+            </q-item>
+          </q-list>
+        </div>
+
         <q-table
-          :rows="sortedPendingWorkflowRequirements"
+          :rows="sortedPendingScannableRequirements"
           :columns="workflowColumns"
           row-key="product_id"
           flat
@@ -608,16 +626,6 @@
 :disable="workflowActionLoadingProductId !== null || !workflowDeviceSelections[props.row.product_id] || (scanToLocationMode && pendingLocationForDevice)"
                         :loading="workflowActionLoadingProductId === props.row.product_id"
                         @click="scanSelectedWorkflowDevice(props.row)"
-                      />
-                    </div>
-                    <div v-if="!props.row.is_scannable && props.row.remaining > 0 && !workflowIntakeMode" class="col-12">
-                      <q-btn
-                        color="warning"
-                        unelevated
-                        no-caps
-                        icon="check_circle"
-                        :label="t('scan.acknowledgeInspection')"
-                        @click="acknowledgeInspection(props.row)"
                       />
                     </div>
                   </div>
@@ -1733,6 +1741,8 @@ const workflowRequirements = computed(() => {
 
 const workflowSections = computed(() => splitWorkflowRequirements(workflowRequirements.value))
 const pendingWorkflowRequirements = computed(() => workflowSections.value.pending)
+const pendingScannableRequirements = computed(() => pendingWorkflowRequirements.value.filter(r => r.is_scannable !== false))
+const pendingInspectionRequirements = computed(() => pendingWorkflowRequirements.value.filter(r => r.is_scannable === false))
 const completedWorkflowRequirements = computed(() => workflowSections.value.completed)
 const workflowSummary = computed(() => summarizeWorkflowRequirements(workflowRequirements.value))
 
@@ -1775,6 +1785,11 @@ function compareWorkflowRequirements(a, b, mode) {
 
 const sortedPendingWorkflowRequirements = computed(() => {
   const items = [...pendingWorkflowRequirements.value]
+  return items.sort((a, b) => compareWorkflowRequirements(a, b, workflowSortMode.value))
+})
+
+const sortedPendingScannableRequirements = computed(() => {
+  const items = [...pendingScannableRequirements.value]
   return items.sort((a, b) => compareWorkflowRequirements(a, b, workflowSortMode.value))
 })
 
@@ -2232,20 +2247,6 @@ async function refreshCheckedOutForIntake() {
   }
   // All other scan actions (lookup, move, assign_component, rental flows, etc.)
   // do not use the checked-out list — return early to avoid unnecessary traffic.
-}
-
-async function acknowledgeInspection(row) {
-  const job = activeWorkflowJob.value
-  if (!job) return
-  const req = jobsStore.requirements.find(r => r.job_id === job.id && r.product_id === row.product_id)
-  if (!req) return
-  const qty = Number(req.quantity_required || 1)
-  await jobsStore.bulkUpsertRequirements(job.id, [{
-    product_id: row.product_id,
-    quantity_required: qty,
-    quantity_picked: qty,
-    is_scannable: false,
-  }])
 }
 
 async function scanSelectedWorkflowDevice(row) {

@@ -2206,7 +2206,7 @@ export default {
     selectDeviceToAdd: 'Select device to add',
     addSelectedDevice: 'Add selected device',
     scanInSelectedDevice: 'Scan in selected device',
-    acknowledgeInspection: 'Acknowledge',
+    inspectionItems: 'Inspection items',
     finishedProducts: 'Finished products',
     packedDone: 'Packed',
     checkedInDone: 'Checked in',
