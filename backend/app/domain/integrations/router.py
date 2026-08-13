@@ -63,6 +63,8 @@ def get_config(db: Session = Depends(get_db)):
         is_active=config.is_active,
         has_api_key=config.api_key is not None and config.api_key != "",
         sync_interval_minutes=config.sync_interval_minutes or 0,
+        has_webhook_secret=config.webhook_secret is not None and config.webhook_secret != "",
+        schema_provisioned=config.schema_provisioned,
         created_at=config.created_at,
         updated_at=config.updated_at,
     )
@@ -87,6 +89,8 @@ def create_config(payload: TwentyConfigCreate, db: Session = Depends(get_db)):
         is_active=config.is_active,
         has_api_key=config.api_key is not None and config.api_key != "",
         sync_interval_minutes=config.sync_interval_minutes or 0,
+        has_webhook_secret=config.webhook_secret is not None and config.webhook_secret != "",
+        schema_provisioned=config.schema_provisioned,
         created_at=config.created_at,
         updated_at=config.updated_at,
     )
@@ -118,6 +122,8 @@ def update_config(payload: TwentyConfigUpdate, db: Session = Depends(get_db)):
         is_active=config.is_active,
         has_api_key=config.api_key is not None and config.api_key != "",
         sync_interval_minutes=config.sync_interval_minutes or 0,
+        has_webhook_secret=config.webhook_secret is not None and config.webhook_secret != "",
+        schema_provisioned=config.schema_provisioned,
         created_at=config.created_at,
         updated_at=config.updated_at,
     )
@@ -147,6 +153,22 @@ async def test_connection(db: Session = Depends(get_db)):
         return TwentyTestResult(success=True, message="Connected successfully", workspace_name=workspace_name)
     except Exception as e:
         return TwentyTestResult(success=False, message=str(e))
+
+
+@router.post("/provision-schema")
+async def provision_schema(db: Session = Depends(get_db)):
+    """Provision custom fields and objects in Twenty CRM via Metadata API."""
+    client = _get_client(db)
+    try:
+        result = await client.provision_schema()
+        config = db.query(TwentyConfig).filter(TwentyConfig.is_active == True).first()
+        if config:
+            config.schema_provisioned = True
+            config.updated_at = datetime.now(timezone.utc)
+            db.commit()
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Schema provisioning failed: {e}")
 
 
 @router.post("/sync")
