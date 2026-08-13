@@ -14,7 +14,6 @@ from app.domain.crew.models import (
     JobCrewRequirement,
     JobRequiredSkill,
     JobRoleRequiredCertification,
-    EquipmentRequiredCertification,
 )
 from app.domain.crew.schemas import ComplianceWarning, JobComplianceResult
 from app.domain.inventory.models import Product

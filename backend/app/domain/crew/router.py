@@ -1,5 +1,3 @@
-from datetime import date
-
 from fastapi import APIRouter, Body, Depends, HTTPException, Query, Response, status
 from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session, selectinload
