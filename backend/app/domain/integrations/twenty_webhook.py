@@ -9,9 +9,9 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from app.config import settings
 from app.db.session import get_db
-from app.domain.integrations.models import TwentyConfig, TwentySyncLog
+from app.domain.integrations.models import TwentyConfig
+from app.domain.integrations.sync_engine import _log_sync
 from app.domain.integrations.twenty_client import TwentyClient
 
 logger = logging.getLogger(__name__)
@@ -55,7 +55,7 @@ async def twenty_webhook(
     body = await request.body()
     signature = request.headers.get("x-twenty-signature") or request.headers.get("x-webhook-signature")
 
-    webhook_secret = settings.twenty_webhook_secret
+    webhook_secret = config.webhook_secret or ""
     if webhook_secret and not _verify_webhook_signature(body, signature, webhook_secret):
         logger.warning("Twenty webhook signature verification failed")
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Invalid webhook signature")
@@ -161,23 +161,4 @@ def _handle_opportunity_event(db: Session, config: TwentyConfig, payload: Twenty
     _log_sync(db, "inbound", "job", job.id, str(twenty_opp_id), "create", "success")
 
 
-def _log_sync(
-    db: Session,
-    direction: str,
-    entity_type: str,
-    entity_id: int | None,
-    twenty_id: str | None,
-    operation: str,
-    status_val: str,
-    error_message: str | None = None,
-) -> None:
-    log = TwentySyncLog(
-        direction=direction,
-        entity_type=entity_type,
-        entity_id=entity_id,
-        twenty_id=twenty_id,
-        operation=operation,
-        status=status_val,
-        error_message=error_message,
-    )
-    db.add(log)
+
