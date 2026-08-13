@@ -1,20 +1,20 @@
 <template>
   <q-dialog :model-value="modelValue" persistent :maximized="isPhone" @update:model-value="emit('update:modelValue', $event)">
     <q-card :style="isPhone ? 'width: 100vw; max-width: 100vw; height: 100vh' : 'min-width: 760px; max-width: 95vw'" class="ec-card">
-      <q-card-section><div class="text-h6">{{ productEditing ? 'Edit product' : 'New product' }}</div></q-card-section>
+      <q-card-section><div class="text-h6">{{ productEditing ? t('inventory.editProduct') : t('inventory.newProduct') }}</div></q-card-section>
       <q-card-section class="q-pt-none" :style="isPhone ? 'max-height: calc(100vh - 140px); overflow: auto;' : ''">
         <q-form ref="productFormRef" @submit.prevent="saveProduct">
-          <div class="text-subtitle2 q-mb-sm">Identity</div>
+          <div class="text-subtitle2 q-mb-sm">{{ t('inventory.identity') }}</div>
           <div class="row q-col-gutter-sm">
             <div class="col-12 col-md-4">
-              <q-input v-model="productForm.sku" label="SKU" outlined dense :rules="[v => !!v || 'Required']">
+              <q-input v-model="productForm.sku" :label="t('inventory.sku')" outlined dense :rules="[v => !!v || t('common.required')]">
                 <template #append>
-                  <q-btn flat dense no-caps color="primary" icon="autorenew" label="Generate" :loading="generatingProductSku" @click="generateProductSku(true)" />
+                  <q-btn flat dense no-caps color="primary" icon="autorenew" :label="t('inventory.generate')" :loading="generatingProductSku" @click="generateProductSku(true)" />
                 </template>
               </q-input>
             </div>
             <div class="col-12 col-md-2">
-              <q-input v-model="productSkuPrefix" label="SKU prefix" outlined dense hint="e.g. SPK-" />
+              <q-input v-model="productSkuPrefix" :label="t('inventory.skuPrefix')" outlined dense :hint="t('inventory.skuPrefixHint')" />
             </div>
             <div class="col-12 col-md-8"><q-input v-model="productForm.name" :label="t('inventory.name')" outlined dense :rules="[v => !!v || t('common.required')]" /></div>
             <div class="col-12 col-md-4">
@@ -24,7 +24,7 @@
               <q-select
                 v-model="productForm.category_id"
                 :options="categorySelectOptions"
-                label="Category"
+                :label="t('inventory.category')"
                 outlined
                 dense
                 clearable
@@ -78,13 +78,13 @@
           </div>
 
           <q-separator class="q-my-md" />
-          <div class="text-subtitle2 q-mb-sm">Brand and Manufacturer</div>
+          <div class="text-subtitle2 q-mb-sm">{{ t('inventory.brandAndManufacturer') }}</div>
           <div class="row q-col-gutter-sm">
             <div class="col-12 col-md-4">
               <q-select
                 v-model="productForm.brand"
                 :options="brandSelectOptions"
-                label="Brand"
+                :label="t('inventory.brand')"
                 outlined
                 dense
                 use-input
@@ -101,7 +101,7 @@
               <q-select
                 v-model="productForm.manufacturer"
                 :options="manufacturerSelectOptions"
-                label="Manufacturer"
+                :label="t('inventory.manufacturer')"
                 outlined
                 dense
                 use-input
@@ -114,12 +114,12 @@
                 @update:model-value="onManufacturerChanged"
               />
             </div>
-            <div class="col-12 col-md-4"><q-input v-model="productForm.brand_url" type="url" label="Brand link (optional)" outlined dense /></div>
-            <div class="col-12 col-md-4"><q-input v-model="productForm.manufacturer_url" type="url" label="Manufacturer link (optional)" outlined dense /></div>
+            <div class="col-12 col-md-4"><q-input v-model="productForm.brand_url" type="url" :label="t('inventory.brandLink')" outlined dense /></div>
+            <div class="col-12 col-md-4"><q-input v-model="productForm.manufacturer_url" type="url" :label="t('inventory.manufacturerLink')" outlined dense /></div>
           </div>
 
           <q-separator class="q-my-md" />
-          <div class="text-subtitle2 q-mb-sm">Commercial and Maintenance</div>
+          <div class="text-subtitle2 q-mb-sm">{{ t('inventory.commercialAndMaintenance') }}</div>
           <div class="row q-col-gutter-sm">
             <div class="col-12 col-md-4">
               <q-input
@@ -145,17 +145,17 @@
                 dense
               />
             </div>
-            <div class="col-12 col-md-4"><q-input v-model.number="productForm.maintenance_interval_days" type="number" :label="t('inventory.maintenanceInterval')" outlined dense /></div>
-            <div class="col-12 col-md-4"><q-input v-model.number="productForm.power_consumption_watts" type="number" step="0.01" :label="t('inventory.power')" outlined dense /></div>
+            <div class="col-12 col-md-4"><q-input v-model.number="productForm.maintenance_interval_days" type="number" :label="t('inventory.maintenanceInterval', { unit: t('inventory.unitDays') })" :suffix="t('inventory.unitDays')" outlined dense /></div>
+            <div class="col-12 col-md-4"><q-input v-model.number="productForm.power_consumption_watts" type="number" step="0.01" :label="t('inventory.power', { unit: t('inventory.unitWatts') })" :suffix="t('inventory.unitWatts')" outlined dense /></div>
           </div>
 
           <q-separator class="q-my-md" />
-          <div class="text-subtitle2 q-mb-sm">Physical Specs</div>
+          <div class="text-subtitle2 q-mb-sm">{{ t('inventory.physicalSpecs') }}</div>
           <div class="row q-col-gutter-sm">
-            <div class="col-12 col-md-4"><q-input v-model.number="productForm.weight_kg" type="number" step="0.001" :label="t('inventory.weight')" outlined dense /></div>
-            <div class="col-12 col-md-3"><q-input v-model.number="productForm.height_cm" type="number" step="0.01" :label="t('inventory.height')" outlined dense /></div>
-            <div class="col-12 col-md-3"><q-input v-model.number="productForm.width_cm" type="number" step="0.01" :label="t('inventory.width')" outlined dense /></div>
-            <div class="col-12 col-md-3"><q-input v-model.number="productForm.depth_cm" type="number" step="0.01" :label="t('inventory.depth')" outlined dense /></div>
+            <div class="col-12 col-md-4"><q-input v-model.number="productForm.weight_kg" type="number" step="0.001" :label="t('inventory.weight', { unit: t('inventory.unitKg') })" :suffix="t('inventory.unitKg')" outlined dense /></div>
+            <div class="col-12 col-md-3"><q-input v-model.number="productForm.height_cm" type="number" step="0.01" :label="t('inventory.height', { unit: t('inventory.unitCm') })" :suffix="t('inventory.unitCm')" outlined dense /></div>
+            <div class="col-12 col-md-3"><q-input v-model.number="productForm.width_cm" type="number" step="0.01" :label="t('inventory.width', { unit: t('inventory.unitCm') })" :suffix="t('inventory.unitCm')" outlined dense /></div>
+            <div class="col-12 col-md-3"><q-input v-model.number="productForm.depth_cm" type="number" step="0.01" :label="t('inventory.depth', { unit: t('inventory.unitCm') })" :suffix="t('inventory.unitCm')" outlined dense /></div>
             <div class="col-12 col-md-3" />
 
             <div class="col-12 q-mt-sm">
@@ -167,7 +167,7 @@
                 dense
                 header-class="rounded-borders"
               >
-                <div class="text-caption text-grey-7 q-mb-sm">Link suppliers to this product. Mark one as primary.</div>
+                <div class="text-caption text-grey-7 q-mb-sm">{{ t('inventory.suppliersHelp') }}</div>
                 <div class="row q-col-gutter-sm items-end q-mb-sm">
                   <div class="col-12 col-md-5">
                     <SupplierPickerInline
@@ -177,7 +177,7 @@
                     />
                   </div>
                   <div class="col-6 col-md-2">
-                    <q-input v-model.number="newSupplierLeadTime" type="number" min="0" :label="t('inventory.leadTime')" outlined dense />
+                    <q-input v-model.number="newSupplierLeadTime" type="number" min="0" :label="t('inventory.leadTime', { unit: t('inventory.unitDays') })" :suffix="t('inventory.unitDays')" outlined dense />
                   </div>
                   <div class="col-6 col-md-2">
                     <q-input v-model.number="newSupplierUnitCost" type="number" step="0.01" min="0" :label="t('inventory.unitCost')" outlined dense />
@@ -198,21 +198,21 @@
                         :color="row.is_primary ? 'amber' : 'grey'"
                         @click="togglePrimarySupplier(row.supplier_id)"
                       >
-                        <q-tooltip>{{ row.is_primary ? 'Demote to secondary' : 'Promote to primary' }}</q-tooltip>
+                        <q-tooltip>{{ row.is_primary ? t('inventory.demoteToSecondary') : t('inventory.promoteToPrimary') }}</q-tooltip>
                       </q-btn>
                     </q-item-section>
                     <q-item-section v-if="editingSupplierId !== row.supplier_id">
                       <q-item-label :class="{ 'text-bold': row.is_primary }">{{ supplierNameById(row.supplier_id) }}</q-item-label>
                       <q-item-label caption>
-                        {{ row.is_primary ? 'Primary' : 'Secondary' }}
-                        <span v-if="row.lead_time_days"> · {{ row.lead_time_days }} days lead time</span>
+                        {{ row.is_primary ? t('inventory.primary') : t('inventory.secondary') }}
+                        <span v-if="row.lead_time_days"> · {{ row.lead_time_days }} {{ t('inventory.unitDays') }}</span>
                         <span v-if="row.unit_cost"> · {{ row.unit_cost }} {{ activeCurrencyCode }}</span>
                       </q-item-label>
                     </q-item-section>
                     <q-item-section v-else>
                       <div class="row q-col-gutter-xs items-center">
                         <div class="col-auto">
-                          <q-input v-model.number="editLeadTime" type="number" min="0" :label="t('inventory.leadTime')" outlined dense style="width: 140px" />
+                          <q-input v-model.number="editLeadTime" type="number" min="0" :label="t('inventory.leadTime', { unit: t('inventory.unitDays') })" :suffix="t('inventory.unitDays')" outlined dense style="width: 140px" />
                         </div>
                         <div class="col-auto">
                           <q-input v-model.number="editUnitCost" type="number" step="0.01" min="0" :label="t('inventory.unitCost')" outlined dense style="width: 120px" />
@@ -226,7 +226,7 @@
                     <q-item-section side>
                       <div class="row items-center no-wrap">
                         <q-btn flat dense icon="edit" color="grey" @click="startEditSupplier(row)">
-                          <q-tooltip>Edit lead time / cost</q-tooltip>
+                          <q-tooltip>{{ t('inventory.editLeadTimeCost') }}</q-tooltip>
                         </q-btn>
                         <q-btn flat dense icon="delete" color="negative" @click="removeSupplierRow(row.supplier_id)" />
                       </div>
@@ -234,7 +234,7 @@
                   </q-item>
                   <q-item v-if="!productForm.suppliers.length">
                     <q-item-section>
-                      <q-item-label caption>No suppliers linked.</q-item-label>
+                      <q-item-label caption>{{ t('inventory.noSuppliersLinked') }}</q-item-label>
                     </q-item-section>
                   </q-item>
                 </q-list>
@@ -243,13 +243,13 @@
 
             <div class="col-12 q-mt-sm" v-if="productForm.product_type === 'consumable'">
               <q-separator class="q-my-md" />
-              <div class="text-subtitle2 q-mb-sm">Reorder Settings</div>
+              <div class="text-subtitle2 q-mb-sm">{{ t('inventory.reorderSettings') }}</div>
               <div class="row q-col-gutter-sm">
                 <div class="col-12 col-md-4">
-                  <q-input v-model.number="productForm.min_stock_level" type="number" min="0" :label="t('inventory.minStockLevel')" outlined dense hint="Alert when stock falls below this" />
+                  <q-input v-model.number="productForm.min_stock_level" type="number" min="0" :label="t('inventory.minStockLevel')" outlined dense :hint="t('inventory.minStockHint')" />
                 </div>
                 <div class="col-12 col-md-4">
-                  <q-input v-model.number="productForm.min_order_qty" type="number" min="1" :label="t('inventory.minOrderQty')" outlined dense hint="Minimum to order from supplier" />
+                  <q-input v-model.number="productForm.min_order_qty" type="number" min="1" :label="t('inventory.minOrderQty')" outlined dense :hint="t('inventory.minOrderHint')" />
                 </div>
               </div>
             </div>
@@ -263,7 +263,7 @@
                 dense
                 header-class="rounded-borders"
               >
-                <div class="text-caption text-grey-7 q-mb-sm">Define accessory products for this product. Mark each as required or optional.</div>
+                <div class="text-caption text-grey-7 q-mb-sm">{{ t('inventory.accessoriesHelp') }}</div>
                 <div class="row q-col-gutter-sm items-end q-mb-sm">
                   <div class="col-12 col-md-7">
                     <q-select
@@ -284,13 +284,13 @@
                     <q-btn flat dense icon="add_circle" color="primary" :aria-label="t('inventory.newAccessory')" @click="enterAssociationMode('accessory')" />
                   </div>
                   <div class="col-6 col-md-2">
-                    <q-input v-model.number="newAccessoryQty" type="number" min="1" label="Qty" outlined dense />
-                  </div>
-                  <div class="col-6 col-md-2">
-                    <q-toggle v-model="newAccessoryRequired" label="Required" color="primary" />
+                    <q-input v-model.number="newAccessoryQty" type="number" min="1" :label="t('inventory.qty')" outlined dense />
                   </div>
                   <div class="col-6 col-md-1">
-                    <q-toggle v-model="newAccessoryScannable" label="Scan" color="secondary" />
+                    <q-toggle v-model="newAccessoryRequired" :label="t('inventory.required')" color="primary" />
+                  </div>
+                  <div class="col-6 col-md-1">
+                    <q-toggle v-model="newAccessoryScannable" :label="t('inventory.scan')" color="secondary" />
                   </div>
                   <div class="col-6 col-md-1">
                     <q-btn color="primary" unelevated icon="add" @click="addAccessoryRow" />
@@ -309,7 +309,7 @@
                   </q-item>
                   <q-item v-if="!productForm.accessories.length">
                     <q-item-section>
-                      <q-item-label caption>No accessories configured.</q-item-label>
+                      <q-item-label caption>{{ t('inventory.noAccessoriesConfigured') }}</q-item-label>
                     </q-item-section>
                   </q-item>
                 </q-list>
@@ -325,7 +325,7 @@
                 dense
                 header-class="rounded-borders"
               >
-                <div class="text-caption text-grey-7 q-mb-sm">Define component products that make up this bundle.</div>
+                <div class="text-caption text-grey-7 q-mb-sm">{{ t('inventory.componentsHelp') }}</div>
                 <div class="row q-col-gutter-sm items-end q-mb-sm">
                   <div class="col-12 col-md-9">
                     <q-select
@@ -346,10 +346,10 @@
                     <q-btn flat dense icon="add_circle" color="primary" :aria-label="t('inventory.newComponent')" @click="enterAssociationMode('component')" />
                   </div>
                   <div class="col-6 col-md-2">
-                    <q-input v-model.number="newComponentQty" type="number" min="1" label="Qty" outlined dense />
+                    <q-input v-model.number="newComponentQty" type="number" min="1" :label="t('inventory.qty')" outlined dense />
                   </div>
                   <div class="col-6 col-md-1">
-                    <q-toggle v-model="newComponentScannable" label="Scan" color="secondary" />
+                    <q-toggle v-model="newComponentScannable" :label="t('inventory.scan')" color="secondary" />
                   </div>
                   <div class="col-6 col-md-1">
                     <q-btn color="primary" unelevated icon="add" @click="addComponentRow" />
@@ -368,7 +368,7 @@
                   </q-item>
                   <q-item v-if="!productForm.components.length">
                     <q-item-section>
-                      <q-item-label caption>No components configured.</q-item-label>
+                      <q-item-label caption>{{ t('inventory.noComponentsConfigured') }}</q-item-label>
                     </q-item-section>
                   </q-item>
                 </q-list>
@@ -377,25 +377,25 @@
 
             <div class="col-12 q-mt-sm">
               <q-separator class="q-my-md" />
-              <div class="text-subtitle2 q-mb-sm">Linked Devices</div>
+              <div class="text-subtitle2 q-mb-sm">{{ t('inventory.linkedDevices') }}</div>
               <div class="text-caption text-grey-7 q-mb-sm">
-                {{ productEditing ? `All devices linked to ${productEditing.sku}` : 'Save product to link devices.' }}
+                {{ productEditing ? `All devices linked to ${productEditing.sku}` : t('inventory.linkedDevicesHint') }}
               </div>
               <div class="row q-col-gutter-sm q-mb-sm" v-if="productEditing">
                 <div class="col-auto">
-                  <q-badge color="primary" text-color="white" :label="`Total: ${productLinkedDevices.length}`" />
+                  <q-badge color="primary" text-color="white" :label="`${t('inventory.totalDevices')}: ${productLinkedDevices.length}`" />
                 </div>
                 <div class="col-auto">
-                  <q-badge color="positive" text-color="white" :label="`Available: ${productLinkedAvailability.available}`" />
+                  <q-badge color="positive" text-color="white" :label="`${t('inventory.availableDevices')}: ${productLinkedAvailability.available}`" />
                 </div>
                 <div class="col-auto">
-                  <q-badge color="warning" text-color="black" :label="`Reserved: ${productLinkedAvailability.reserved}`" />
+                  <q-badge color="warning" text-color="black" :label="`${t('inventory.reservedDevices')}: ${productLinkedAvailability.reserved}`" />
                 </div>
                 <div class="col-auto">
-                  <q-badge color="info" text-color="white" :label="`In Use: ${productLinkedAvailability.in_use}`" />
+                  <q-badge color="info" text-color="white" :label="`${t('inventory.inUseDevices')}: ${productLinkedAvailability.in_use}`" />
                 </div>
                 <div class="col-auto">
-                  <q-badge color="negative" text-color="white" :label="`Maintenance: ${productLinkedAvailability.maintenance}`" />
+                  <q-badge color="negative" text-color="white" :label="`${t('inventory.maintenanceDevices')}: ${productLinkedAvailability.maintenance}`" />
                 </div>
               </div>
 
@@ -417,8 +417,8 @@
                         :color="productActionColor"
                         class="inventory-action-contrast"
                         icon="inventory_2"
-                        :label="isPhone ? void 0 : 'Product'"
-                        :aria-label="isPhone ? 'Open product' : void 0"
+                        :label="isPhone ? void 0 : t('inventory.product')"
+                        :aria-label="t('inventory.openProduct')"
                         @click="emit('edit-product', row.product_id)"
                       />
                       <q-btn
@@ -427,8 +427,8 @@
                         :round="isPhone"
                         :color="infoActionColor"
                         icon="info"
-                        :label="isPhone ? void 0 : 'Info'"
-                        :aria-label="isPhone ? 'Open device info' : void 0"
+                        :label="isPhone ? void 0 : t('app.actions.info')"
+                        :aria-label="t('inventory.openDeviceInfo')"
                         @click="emit('view-device', row.id)"
                       />
                       <q-btn
@@ -437,8 +437,8 @@
                         :round="isPhone"
                         color="primary"
                         icon="edit"
-                        :label="isPhone ? void 0 : 'Edit'"
-                        :aria-label="isPhone ? 'Edit device' : void 0"
+                        :label="isPhone ? void 0 : t('app.actions.edit')"
+                        :aria-label="t('inventory.editDevice')"
                         @click="emit('edit-device', row.id)"
                       />
                     </div>
@@ -446,7 +446,7 @@
                 </q-item>
                 <q-item v-if="!productLinkedDevices.length">
                   <q-item-section>
-                    <q-item-label caption>No devices linked to this product yet.</q-item-label>
+                    <q-item-label caption>{{ t('inventory.noDevicesLinked') }}</q-item-label>
                   </q-item-section>
                 </q-item>
               </q-list>
@@ -512,12 +512,12 @@
       <EntityAttachmentsPanel
         entity-type="product"
         :entity-id="productEditing?.id || null"
-        title="Product Documents"
+        :title="t('inventory.productDocuments')"
         default-category="product-document"
       />
       <q-card-actions :align="isPhone ? 'stretch' : 'right'" :class="isPhone ? 'q-pa-md bg-grey-2' : ''">
         <q-btn flat :class="isPhone ? 'full-width q-mb-sm' : ''" :label="t('app.actions.cancel')" @click="closeProductDialog" />
-        <q-btn color="primary" unelevated :class="isPhone ? 'full-width' : ''" :label="productEditing ? 'Save' : 'Create'" :loading="saving" @click="saveProduct" />
+        <q-btn color="primary" unelevated :class="isPhone ? 'full-width' : ''" :label="productEditing ? t('app.actions.save') : t('app.actions.create')" :loading="saving" @click="saveProduct" />
       </q-card-actions>
     </q-card>
   </q-dialog>
