@@ -545,6 +545,8 @@
                   <div class="row items-center">
                     <div class="col text-subtitle2">{{ props.row.product_name }}</div>
                     <div class="col-auto">
+                      <q-badge v-if="props.row.is_scannable" color="positive" text-color="white" label="Scan" class="q-mr-xs" />
+                      <q-badge v-else color="warning" text-color="white" label="Check" class="q-mr-xs" />
                       <q-btn flat dense round color="primary" icon="place" size="sm" @click="openWorkflowProductLocationMap(props.row)">
                         <q-tooltip>{{ t('inventory.deviceDialog.locateOnMap') }}</q-tooltip>
                       </q-btn>
@@ -606,6 +608,16 @@
 :disable="workflowActionLoadingProductId !== null || !workflowDeviceSelections[props.row.product_id] || (scanToLocationMode && pendingLocationForDevice)"
                         :loading="workflowActionLoadingProductId === props.row.product_id"
                         @click="scanSelectedWorkflowDevice(props.row)"
+                      />
+                    </div>
+                    <div v-if="!props.row.is_scannable && props.row.remaining > 0 && !workflowIntakeMode" class="col-12">
+                      <q-btn
+                        color="warning"
+                        unelevated
+                        no-caps
+                        icon="check_circle"
+                        :label="t('scan.acknowledgeInspection')"
+                        @click="acknowledgeInspection(props.row)"
                       />
                     </div>
                   </div>
@@ -1714,6 +1726,7 @@ const workflowRequirements = computed(() => {
       quantity_picked: picked,
       checked_out: checkedOut,
       available,
+      is_scannable: item.is_scannable !== false,
     }, { mode: scanAction.value })
   })
 })
@@ -2219,6 +2232,20 @@ async function refreshCheckedOutForIntake() {
   }
   // All other scan actions (lookup, move, assign_component, rental flows, etc.)
   // do not use the checked-out list — return early to avoid unnecessary traffic.
+}
+
+async function acknowledgeInspection(row) {
+  const job = activeWorkflowJob.value
+  if (!job) return
+  const req = jobsStore.requirements.find(r => r.job_id === job.id && r.product_id === row.product_id)
+  if (!req) return
+  const qty = Number(req.quantity_required || 1)
+  await jobsStore.bulkUpsertRequirements(job.id, [{
+    product_id: row.product_id,
+    quantity_required: qty,
+    quantity_picked: qty,
+    is_scannable: false,
+  }])
 }
 
 async function scanSelectedWorkflowDevice(row) {
