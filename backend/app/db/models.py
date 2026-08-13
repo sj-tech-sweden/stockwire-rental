@@ -10,9 +10,11 @@ from app.domain.crew.models import (
     CrewMemberSkill,
     CrewRole,
     CrewSkill,
+    EquipmentRequiredCertification,
     JobCrewAssignment,
     JobCrewRequirement,
     JobRequiredSkill,
+    JobRoleRequiredCertification,
 )
 from app.domain.finance.models import FinancialTransaction
 from app.domain.integrations.models import TwentyConfig, TwentySyncLog
@@ -87,5 +89,7 @@ __all__ = [
     "JobCrewRequirement",
     "JobRequiredSkill",
     "JobCrewAssignment",
+    "EquipmentRequiredCertification",
+    "JobRoleRequiredCertification",
     "CalendarFeed",
 ]

@@ -25,7 +25,13 @@
             <q-list v-else bordered separator class="rounded-borders">
               <q-item v-for="s in suggestions" :key="s.crew_member_id" clickable @click="selectMember(s)">
                 <q-item-section>
-                  <q-item-label :class="{ 'text-bold': s.match_score >= 0.8 }">{{ s.name }}</q-item-label>
+                  <div class="row items-center q-gutter-xs">
+                    <q-item-label :class="{ 'text-bold': s.match_score >= 0.8 }">{{ s.name }}</q-item-label>
+                    <ComplianceBadge
+                      :warnings="getMemberWarnings(s.crew_member_id)"
+                      :is-compliant="isMemberCompliant(s.crew_member_id)"
+                    />
+                  </div>
                   <q-item-label caption>
                     <q-badge v-if="s.source === 'internal'" color="blue" :label="t('crew.internal')" class="q-mr-xs" />
                     <q-badge v-else-if="s.source === 'supplier'" color="orange" :label="t('crew.external')" class="q-mr-xs" />
@@ -63,6 +69,7 @@ import { computed, ref, watch } from 'vue'
 import { useQuasar } from 'quasar'
 import { useI18n } from 'vue-i18n'
 import { useCrewStore } from '../stores/crew'
+import ComplianceBadge from './ComplianceBadge.vue'
 
 const props = defineProps({
   modelValue: Boolean,
@@ -85,6 +92,7 @@ const loadingSuggestions = ref(false)
 const selectedRequirementId = ref(null)
 const selectedMemberId = ref(null)
 const memberSearch = ref('')
+const complianceData = ref(null)
 
 const requirementOptions = computed(() => {
   return requirements.value
@@ -112,6 +120,16 @@ const memberOptions = computed(() => {
 function filterMembers(val, update) {
   memberSearch.value = val
   update(() => {})
+}
+
+function getMemberWarnings(memberId) {
+  if (!complianceData.value?.warnings) return []
+  return complianceData.value.warnings.filter(w => w.crew_member_id === memberId)
+}
+
+function isMemberCompliant(memberId) {
+  const warnings = getMemberWarnings(memberId)
+  return !warnings.some(w => w.severity === 'error')
 }
 
 async function selectMember(suggestion) {
@@ -156,9 +174,15 @@ watch(() => props.modelValue, async (open) => {
     selectedMemberId.value = null
     suggestions.value = []
     memberSearch.value = ''
+    complianceData.value = null
 
     try {
-      requirements.value = await crewStore.fetchJobCrewRequirements(props.jobId)
+      const [reqs, compliance] = await Promise.all([
+        crewStore.fetchJobCrewRequirements(props.jobId),
+        crewStore.fetchJobCompliance(props.jobId).catch(() => null),
+      ])
+      requirements.value = reqs
+      complianceData.value = compliance
     } catch {
       requirements.value = []
     }

@@ -123,6 +123,13 @@
       </template>
     </q-card>
 
+    <!-- My Skills & Certifications (crew self-service) -->
+    <q-card v-if="hasCrewProfile" class="ec-card q-pa-md q-mt-md" style="max-width: 720px; margin: 0 auto;">
+      <MySkills class="q-mb-md" />
+      <q-separator class="q-my-md" />
+      <MyCertifications />
+    </q-card>
+
     <!-- Per-user notification preferences (start from company defaults) -->
     <q-card class="ec-card q-pa-md q-mt-md" style="max-width: 720px; margin: 0 auto;">
       <div class="text-subtitle1 q-mb-sm">{{ t('profile.myNotificationPreferences') }}</div>
@@ -191,6 +198,8 @@ import { useAuthStore } from '../stores/auth'
 import { api } from '../boot/axios'
 import { getApiBaseUrl } from '../utils/runtime-config'
 import { resolveAppLocale, setLocale, setUserLocalePreference } from '../i18n'
+import MySkills from '../components/MySkills.vue'
+import MyCertifications from '../components/MyCertifications.vue'
 
 const $q = useQuasar()
 const authStore = useAuthStore()
@@ -308,6 +317,7 @@ async function fetchCrewCalendarUrl() {
 
 const authSource = computed(() => String(authStore.me?.auth_source || 'local').toLowerCase())
 const isSsoManaged = computed(() => ['oidc', 'saml'].includes(authSource.value))
+const hasCrewProfile = computed(() => !!authStore.me?.id)
 const managedProviderLabel = computed(() => {
   const provider = String(authStore.me?.external_provider || '').trim()
   if (provider) return provider

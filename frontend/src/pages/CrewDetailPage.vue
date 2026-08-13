@@ -111,11 +111,26 @@
             </div>
           </div>
           <div v-if="member?.certifications?.length" class="q-gutter-xs">
-            <q-badge v-for="cert in member.certifications" :key="cert.id" color="blue" class="q-pa-xs">
-              {{ cert.certification?.name || cert.certification }}
-              <span v-if="cert.expiry_date" class="text-caption q-ml-xs">({{ t('crew.expires') }}: {{ formatDate(cert.expiry_date) }})</span>
-              <q-btn v-if="authStore.canEdit" flat dense icon="close" size="xs" class="q-ml-xs" @click="removeCertification(cert)" />
-            </q-badge>
+            <div v-for="cert in member.certifications" :key="cert.id" class="row items-center q-gutter-xs q-py-xs">
+              <q-badge color="blue" class="q-pa-xs">
+                {{ cert.certification?.name || cert.certification }}
+                <span v-if="cert.expiry_date" class="text-caption q-ml-xs">({{ t('crew.expires') }}: {{ formatDate(cert.expiry_date) }})</span>
+              </q-badge>
+              <a
+                v-if="cert.document_url"
+                :href="cert.document_url"
+                target="_blank"
+                class="text-caption text-primary"
+              >
+                <q-icon name="description" size="xs" class="q-mr-xs" />{{ t('crew.viewDocument') }}
+              </a>
+              <q-btn
+                v-if="authStore.canEdit"
+                flat dense icon="upload" size="xs" color="secondary"
+                @click="uploadCertDocument(cert)"
+              />
+              <q-btn v-if="authStore.canEdit" flat dense icon="close" size="xs" @click="removeCertification(cert)" />
+            </div>
           </div>
           <div v-else class="text-caption text-grey-7">{{ t('crew.noCertifications') }}</div>
         </q-card-section>
@@ -173,6 +188,9 @@
         </q-card-actions>
       </q-card>
     </q-dialog>
+
+    <!-- Hidden file input for certification document upload -->
+    <input ref="certFileInput" type="file" class="hidden" accept="image/*,.pdf" @change="onCertFileSelected" />
   </q-page>
 </template>
 
@@ -217,6 +235,8 @@ const newCertName = ref('')
 const newCertCategory = ref('')
 const newCertExpiry = ref('')
 const addingCert = ref(false)
+const certFileInput = ref(null)
+const uploadingCertId = ref(null)
 
 const roleOptions = computed(() => crewStore.roles.map(r => ({ label: r.name, value: r.id })))
 
@@ -475,6 +495,38 @@ function cancelCert() {
 
 function removeCertification(cert) {
   form.value.certification_items = form.value.certification_items.filter(c => c.certification_id !== (cert.certification?.id || cert.certification_id))
+}
+
+function uploadCertDocument(cert) {
+  uploadingCertId.value = cert.id
+  certFileInput.value?.click()
+}
+
+async function onCertFileSelected(event) {
+  const file = event.target.files?.[0]
+  if (!file || !uploadingCertId.value) return
+
+  const formData = new FormData()
+  formData.append('file', file)
+  formData.append('entity_type', 'crew_certification')
+  formData.append('entity_id', String(uploadingCertId.value))
+  formData.append('category', 'proof')
+
+  try {
+    const { data: uploaded } = await api.post('/api/v1/storage/files', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+    await api.patch(`/api/v1/crew/users/me/certifications/${uploadingCertId.value}`, {
+      document_url: `/api/v1/storage/files/${uploaded.id}/download`,
+    })
+    await loadMember()
+    $q.notify({ type: 'positive', message: t('crew.documentUploaded') })
+  } catch (err) {
+    $q.notify({ type: 'negative', message: err?.response?.data?.detail || t('crew.failedUploadDocument') })
+  } finally {
+    uploadingCertId.value = null
+    if (certFileInput.value) certFileInput.value.value = ''
+  }
 }
 
 watch(() => route.params.crewMemberId, async (next, prev) => {
