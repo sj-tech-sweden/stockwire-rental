@@ -69,7 +69,7 @@ export const useInventoryStore = defineStore('inventory', () => {
     loading.value = true
     try {
       const [productsRes, devicesRes, zonesRes, zoneTreeRes, categoriesRes, categoryTreeRes, locationTypesRes, maintenanceRes, schedulesRes] = await Promise.all([
-        api.get('/api/v1/inventory/products'),
+        api.get('/api/v1/inventory/products', { params: { limit: 1000 } }),
         api.get('/api/v1/inventory/devices'),
         api.get('/api/v1/inventory/zones'),
         api.get('/api/v1/inventory/zones/tree'),
