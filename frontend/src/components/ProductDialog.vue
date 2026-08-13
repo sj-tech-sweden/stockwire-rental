@@ -284,13 +284,13 @@
                     <q-btn flat dense icon="add_circle" color="primary" :aria-label="t('inventory.newAccessory')" @click="enterAssociationMode('accessory')" />
                   </div>
                   <div class="col-6 col-md-2">
-                    <q-input v-model.number="newAccessoryQty" type="number" min="1" label="Qty" outlined dense />
-                  </div>
-                  <div class="col-6 col-md-2">
-                    <q-toggle v-model="newAccessoryRequired" label="Required" color="primary" />
+                    <q-input v-model.number="newAccessoryQty" type="number" min="1" :label="t('inventory.qty')" outlined dense />
                   </div>
                   <div class="col-6 col-md-1">
-                    <q-toggle v-model="newAccessoryScannable" label="Scan" color="secondary" />
+                    <q-toggle v-model="newAccessoryRequired" :label="t('inventory.required')" color="primary" />
+                  </div>
+                  <div class="col-6 col-md-1">
+                    <q-toggle v-model="newAccessoryScannable" :label="t('inventory.scan')" color="secondary" />
                   </div>
                   <div class="col-6 col-md-1">
                     <q-btn color="primary" unelevated icon="add" @click="addAccessoryRow" />
@@ -309,7 +309,7 @@
                   </q-item>
                   <q-item v-if="!productForm.accessories.length">
                     <q-item-section>
-                      <q-item-label caption>No accessories configured.</q-item-label>
+                      <q-item-label caption>{{ t('inventory.noAccessoriesConfigured') }}</q-item-label>
                     </q-item-section>
                   </q-item>
                 </q-list>
@@ -346,10 +346,10 @@
                     <q-btn flat dense icon="add_circle" color="primary" :aria-label="t('inventory.newComponent')" @click="enterAssociationMode('component')" />
                   </div>
                   <div class="col-6 col-md-2">
-                    <q-input v-model.number="newComponentQty" type="number" min="1" label="Qty" outlined dense />
+                    <q-input v-model.number="newComponentQty" type="number" min="1" :label="t('inventory.qty')" outlined dense />
                   </div>
                   <div class="col-6 col-md-1">
-                    <q-toggle v-model="newComponentScannable" label="Scan" color="secondary" />
+                    <q-toggle v-model="newComponentScannable" :label="t('inventory.scan')" color="secondary" />
                   </div>
                   <div class="col-6 col-md-1">
                     <q-btn color="primary" unelevated icon="add" @click="addComponentRow" />
@@ -368,7 +368,7 @@
                   </q-item>
                   <q-item v-if="!productForm.components.length">
                     <q-item-section>
-                      <q-item-label caption>No components configured.</q-item-label>
+                      <q-item-label caption>{{ t('inventory.noComponentsConfigured') }}</q-item-label>
                     </q-item-section>
                   </q-item>
                 </q-list>
@@ -512,7 +512,7 @@
       <EntityAttachmentsPanel
         entity-type="product"
         :entity-id="productEditing?.id || null"
-        title="Product Documents"
+        :title="t('inventory.productDocuments')"
         default-category="product-document"
       />
       <q-card-actions :align="isPhone ? 'stretch' : 'right'" :class="isPhone ? 'q-pa-md bg-grey-2' : ''">
