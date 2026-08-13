@@ -1425,7 +1425,6 @@ export default {
     sku: 'SKU',
     skuPrefix: 'SKU prefix',
     skuPrefixHint: 'e.g. SPK-',
-    generate: 'Generate',
     brandAndManufacturer: 'Brand and Manufacturer',
     brandLink: 'Brand link (optional)',
     manufacturerLink: 'Manufacturer link (optional)',
