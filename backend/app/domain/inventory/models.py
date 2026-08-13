@@ -182,6 +182,7 @@ class ProductAccessory(Base):
     accessory_product_id: Mapped[int] = mapped_column(ForeignKey("products.id", ondelete="CASCADE"), index=True)
     quantity: Mapped[int] = mapped_column(Integer, default=1)
     required: Mapped[bool] = mapped_column(Boolean, default=False)
+    is_scannable: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
 
     parent_product: Mapped[Product] = relationship(
@@ -203,6 +204,7 @@ class ProductComponent(Base):
     parent_product_id: Mapped[int] = mapped_column(ForeignKey("products.id", ondelete="CASCADE"), index=True)
     component_product_id: Mapped[int] = mapped_column(ForeignKey("products.id", ondelete="CASCADE"), index=True)
     quantity: Mapped[int] = mapped_column(Integer, default=1)
+    is_scannable: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
 
     parent_product: Mapped[Product] = relationship(
