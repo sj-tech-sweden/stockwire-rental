@@ -65,12 +65,27 @@ export const useInventoryStore = defineStore('inventory', () => {
     return true
   }
 
+  async function fetchAllPaginated(url) {
+    const PAGE_SIZE = 100
+    let skip = 0
+    const allItems = []
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
+      const { data } = await api.get(url, { params: { skip, limit: PAGE_SIZE } })
+      const items = data?.items ?? (Array.isArray(data) ? data : [])
+      allItems.push(...items)
+      if (!data?.has_more || items.length < PAGE_SIZE) break
+      skip += PAGE_SIZE
+    }
+    return allItems
+  }
+
   async function fetchAll() {
     loading.value = true
     try {
-      const [productsRes, devicesRes, zonesRes, zoneTreeRes, categoriesRes, categoryTreeRes, locationTypesRes, maintenanceRes, schedulesRes] = await Promise.all([
-        api.get('/api/v1/inventory/products', { params: { limit: 1000 } }),
-        api.get('/api/v1/inventory/devices'),
+      const [productsAll, devicesAll, zonesRes, zoneTreeRes, categoriesRes, categoryTreeRes, locationTypesRes, maintenanceRes, schedulesRes] = await Promise.all([
+        fetchAllPaginated('/api/v1/inventory/products'),
+        fetchAllPaginated('/api/v1/inventory/devices'),
         api.get('/api/v1/inventory/zones'),
         api.get('/api/v1/inventory/zones/tree'),
         api.get('/api/v1/inventory/categories'),
@@ -79,8 +94,6 @@ export const useInventoryStore = defineStore('inventory', () => {
         api.get('/api/v1/inventory/maintenance'),
         api.get('/api/v1/inventory/maintenance-schedules'),
       ])
-      const productsData = productsRes?.data?.items ?? (Array.isArray(productsRes?.data) ? productsRes.data : [])
-      const devicesData = devicesRes?.data?.items ?? (Array.isArray(devicesRes?.data) ? devicesRes.data : [])
       const zonesData = Array.isArray(zonesRes?.data) ? zonesRes.data : []
       const zoneTreeData = Array.isArray(zoneTreeRes?.data) ? zoneTreeRes.data : []
       const categoriesData = Array.isArray(categoriesRes?.data) ? categoriesRes.data : []
@@ -88,8 +101,8 @@ export const useInventoryStore = defineStore('inventory', () => {
       const locationTypesData = locationTypesRes?.data
       const maintenanceData = Array.isArray(maintenanceRes?.data) ? maintenanceRes.data : []
       const schedulesData = Array.isArray(schedulesRes?.data) ? schedulesRes.data : []
-      products.value = productsData
-      devices.value = devicesData
+      products.value = productsAll
+      devices.value = devicesAll
       zones.value = zonesData
       zoneTree.value = zoneTreeData.length ? zoneTreeData : zonesData
       categories.value = categoriesData
