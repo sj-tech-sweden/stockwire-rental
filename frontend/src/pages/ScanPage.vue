@@ -603,6 +603,15 @@
                       </div>
                       <q-linear-progress rounded size="10px" color="positive" track-color="grey-4" :value="workflowRowProgress(props.row).percent / 100" />
                     </div>
+                    <div v-if="productChildrenByParent.get(props.row.product_id)?.length" class="col-12">
+                      <q-separator class="q-my-xs" />
+                      <div class="text-caption text-grey-6 q-mb-xs">{{ t('scan.includes') }}</div>
+                      <div v-for="child in productChildrenByParent.get(props.row.product_id)" :key="`child-${child.product_id}`" class="row items-center q-gutter-xs q-mb-xs">
+                        <q-badge :color="child.is_scannable ? 'positive' : 'warning'" text-color="white" :label="child.is_scannable ? 'Scan' : 'Check'" />
+                        <span class="text-caption">{{ child.name }}</span>
+                        <span class="text-caption text-grey-6">×{{ child.quantity }}</span>
+                      </div>
+                    </div>
                     <div v-if="showWorkflowDeviceSelector(props.row)" class="col-12">
                       <q-select
                         :model-value="workflowDeviceSelections[props.row.product_id] || null"
@@ -1522,6 +1531,36 @@ const productById = computed(() => {
   const out = new Map()
   for (const product of store.products) out.set(product.id, product)
   return out
+})
+
+const productChildrenByParent = computed(() => {
+  const map = new Map()
+  for (const product of store.products) {
+    const children = []
+    for (const acc of product.accessories || []) {
+      if (!acc.required) continue
+      const childProduct = productById.value.get(acc.accessory_product_id)
+      children.push({
+        product_id: acc.accessory_product_id,
+        name: childProduct?.name || `Product #${acc.accessory_product_id}`,
+        is_scannable: acc.is_scannable !== false,
+        quantity: acc.quantity,
+        parent_type: 'accessory',
+      })
+    }
+    for (const comp of product.components || []) {
+      const childProduct = productById.value.get(comp.component_product_id)
+      children.push({
+        product_id: comp.component_product_id,
+        name: childProduct?.name || `Product #${comp.component_product_id}`,
+        is_scannable: !!comp.is_scannable,
+        quantity: comp.quantity,
+        parent_type: 'component',
+      })
+    }
+    if (children.length) map.set(product.id, children)
+  }
+  return map
 })
 
 const zoneById = computed(() => {
