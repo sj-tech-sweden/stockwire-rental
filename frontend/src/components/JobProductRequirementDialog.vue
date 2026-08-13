@@ -372,7 +372,21 @@ function normalizeDate(value) {
 
 const requirementSourceProducts = computed(() => {
   const source = props.products?.length ? props.products : (inventoryStore.products || [])
-  return filterRequirementSourceProducts(source, { includeRentalProducts: props.includeRentalProducts })
+  const filtered = filterRequirementSourceProducts(source, { includeRentalProducts: props.includeRentalProducts })
+  const types = {}
+  for (const p of filtered) {
+    const t = p.product_type || 'unknown'
+    types[t] = (types[t] || 0) + 1
+  }
+  if (filtered.length > 0 && !types.case) {
+    console.warn('[JobProductRequirementDialog] Cases missing!', {
+      totalSource: source.length,
+      totalFiltered: filtered.length,
+      types,
+      caseProducts: source.filter(p => p.product_type === 'case').slice(0, 3).map(p => ({ id: p.id, sku: p.sku, name: p.name, type: p.product_type, rental: p.is_rental_product })),
+    })
+  }
+  return filtered
 })
 
 const requirementBrandFilterOptions = computed(() => {
