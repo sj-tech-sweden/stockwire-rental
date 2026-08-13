@@ -29,6 +29,8 @@
                 <div class="text-subtitle2">{{ item.product.sku }} · {{ item.product.name }}</div>
                 <div class="text-caption text-grey-7">
                   {{ productCategoryPath(item.product) }} · {{ item.product.brand || t('jobs.noBrand') }}
+                  <q-badge v-if="item.row.is_scannable" color="positive" text-color="white" label="Scan" class="q-ml-xs" />
+                  <q-badge v-else color="warning" text-color="white" label="Check" class="q-ml-xs" />
                 </div>
               </q-card-section>
               <q-card-section class="q-pt-none">
@@ -175,6 +177,8 @@
                   <div class="text-subtitle2">{{ product.sku }} · {{ product.name }}</div>
                   <div class="text-caption text-grey-7">
                     {{ product.brand || t('jobs.noBrand') }} · {{ product.manufacturer || t('jobs.noManufacturer') }} · {{ product.product_type || t('jobs.typeEquipment') }}
+                    <q-badge v-if="productAccessoryScanCount(product)" color="positive" text-color="white" :label="`${productAccessoryScanCount(product)} scan`" class="q-ml-xs" />
+                    <q-badge v-if="productInspectionCount(product)" color="warning" text-color="white" :label="`${productInspectionCount(product)} check`" class="q-ml-xs" />
                   </div>
                 </q-card-section>
 
@@ -304,6 +308,7 @@ function cloneRequirementRows(rows = []) {
     product_id: Number(item.product_id),
     quantity_required: Number(item.quantity_required || 0),
     quantity_picked: Number(item.quantity_picked || 0),
+    is_scannable: item.is_scannable !== false,
     notes: item.notes || null,
   }))
 }
@@ -602,6 +607,61 @@ function productRequirementQty(productId) {
   return Number(localRows.value.find(item => item.product_id === productId)?.quantity_required || 0)
 }
 
+function expandProductChildren(parentProductId, parentQty) {
+  const product = productById.value.get(parentProductId)
+  if (!product) return
+
+  const accessories = product.accessories || []
+  for (const acc of accessories) {
+    if (!acc.required) continue
+    const childProductId = acc.accessory_product_id
+    const existing = localRows.value.find(r => r.product_id === childProductId)
+    if (existing) {
+      existing.quantity_required = Math.max(existing.quantity_required, acc.quantity * parentQty)
+      existing.is_scannable = acc.is_scannable !== false
+    } else {
+      localRows.value.push({
+        product_id: childProductId,
+        quantity_required: acc.quantity * parentQty,
+        quantity_picked: 0,
+        is_scannable: acc.is_scannable !== false,
+        notes: null,
+      })
+    }
+  }
+
+  const components = product.components || []
+  for (const comp of components) {
+    const childProductId = comp.component_product_id
+    const existing = localRows.value.find(r => r.product_id === childProductId)
+    if (existing) {
+      existing.quantity_required = Math.max(existing.quantity_required, comp.quantity * parentQty)
+      existing.is_scannable = !!comp.is_scannable
+    } else {
+      localRows.value.push({
+        product_id: childProductId,
+        quantity_required: comp.quantity * parentQty,
+        quantity_picked: 0,
+        is_scannable: !!comp.is_scannable,
+        notes: null,
+      })
+    }
+  }
+}
+
+function productAccessoryScanCount(product) {
+  const accessories = product?.accessories || []
+  return accessories.filter(a => a.required && a.is_scannable !== false).length
+}
+
+function productInspectionCount(product) {
+  const accessories = product?.accessories || []
+  const components = product?.components || []
+  const accInspection = accessories.filter(a => a.required && a.is_scannable === false).length
+  const compInspection = components.filter(c => !c.is_scannable).length
+  return accInspection + compInspection
+}
+
 function setProductRequirementQty(productId, value) {
   const qty = Math.max(0, Number(value || 0))
   const row = localRows.value.find(item => item.product_id === productId)
@@ -615,7 +675,8 @@ function setProductRequirementQty(productId, value) {
     return
   }
   if (qty > 0) {
-    localRows.value.push({ product_id: productId, quantity_required: qty, quantity_picked: 0, notes: null })
+    localRows.value.push({ product_id: productId, quantity_required: qty, quantity_picked: 0, is_scannable: true, notes: null })
+    expandProductChildren(productId, qty)
     syncRows()
   }
 }
