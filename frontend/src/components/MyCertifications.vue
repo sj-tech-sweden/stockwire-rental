@@ -9,6 +9,10 @@
       <q-spinner size="16px" class="q-mr-sm" />{{ t('app.actions.loading') }}
     </div>
 
+    <div v-else-if="noProfile" class="text-caption text-grey-7 q-mb-sm">
+      {{ t('crew.memberNotFound') }}
+    </div>
+
     <div v-else-if="!certifications.length" class="text-caption text-grey-7 q-mb-sm">
       {{ t('crew.noCertifications') }}
     </div>
@@ -109,6 +113,7 @@ const adding = ref(false)
 const fileInput = ref(null)
 const uploadingCertId = ref(null)
 const certTypeFilter = ref('')
+const noProfile = ref(false)
 
 const newCert = ref({
   certification_type_id: null,
@@ -158,7 +163,11 @@ async function loadData() {
     certifications.value = certs
     certTypes.value = types
   } catch (err) {
-    $q.notify({ type: 'negative', message: err?.response?.data?.detail || t('crew.failedLoadCertifications') })
+    if (err?.response?.status === 404) {
+      noProfile.value = true
+    } else {
+      $q.notify({ type: 'negative', message: err?.response?.data?.detail || t('crew.failedLoadCertifications') })
+    }
   } finally {
     loading.value = false
   }

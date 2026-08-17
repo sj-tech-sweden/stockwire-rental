@@ -4,6 +4,9 @@
     <div v-if="loading" class="text-caption text-grey-7">
       <q-spinner size="16px" class="q-mr-sm" />{{ t('app.actions.loading') }}
     </div>
+    <div v-else-if="noProfile" class="text-caption text-grey-7">
+      {{ t('crew.memberNotFound') }}
+    </div>
     <div v-else>
       <div v-if="mySkills.length" class="row q-gutter-xs q-mb-sm">
         <q-badge
@@ -63,6 +66,7 @@ const mySkills = ref([])
 const allSkills = ref([])
 const selectedSkill = ref(null)
 const filterText = ref('')
+const noProfile = ref(false)
 
 const availableSkills = computed(() => {
   const myIds = new Set(mySkills.value.map(s => s.id))
@@ -84,7 +88,11 @@ async function loadSkills() {
     mySkills.value = await crewStore.fetchMySkills()
     allSkills.value = await crewStore.fetchSkills()
   } catch (err) {
-    $q.notify({ type: 'negative', message: err?.response?.data?.detail || t('crew.failedLoadSkills') })
+    if (err?.response?.status === 404) {
+      noProfile.value = true
+    } else {
+      $q.notify({ type: 'negative', message: err?.response?.data?.detail || t('crew.failedLoadSkills') })
+    }
   } finally {
     loading.value = false
   }
