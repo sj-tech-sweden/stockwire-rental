@@ -174,6 +174,38 @@ onMounted(async () => {
   if (route.query.reason === 'expired') {
     error.value = t('login.sessionExpired')
   }
+  if (route.query.reason === 'saml_error') {
+    try {
+      const detail = atob(String(route.query.detail || ''))
+      error.value = detail || t('login.samlFailed')
+    } catch {
+      error.value = t('login.samlFailed')
+    }
+  }
+
+  // SAML ACS browser endpoint redirects back with tokens in the URL fragment.
+  const fragment = window.location.hash
+  if (fragment && fragment.includes('access_token=')) {
+    const params = new URLSearchParams(fragment.replace(/^#/, ''))
+    const accessToken = params.get('access_token')
+    const refreshToken = params.get('refresh_token')
+    if (accessToken) {
+      authStore._setSession({
+        access_token: accessToken,
+        refresh_token: refreshToken,
+        user: null,
+      })
+      try {
+        await authStore.fetchMe()
+      } catch {
+        // fetchMe failed but we keep the token; the app will handle auth on the next route
+      }
+      const redirect = resolveRedirect()
+      sessionStorage.removeItem('sw_login_redirect')
+      router.replace(redirect)
+      return
+    }
+  }
 
   try {
     ssoProviders.value = await authStore.fetchSsoProviders()
@@ -222,6 +254,16 @@ function callbackRedirectUri(provider) {
   return `${origin}/login?oidc_provider=${encodeURIComponent(provider)}`
 }
 
+function escapeXml(value) {
+  if (value == null) return ''
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&apos;')
+}
+
 async function completeOidcLogin(provider, code, state) {
   error.value = ''
   ssoLoading.value = true
@@ -267,19 +309,49 @@ async function startSso(provider) {
     if (provider.kind === 'saml') {
       const samlConfig = await authStore.fetchSamlProviderConfig(provider.provider)
       if (!samlConfig?.idp_sso_url) throw new Error('Missing SAML IdP SSO URL')
-      const relayState = btoa(JSON.stringify({ provider: provider.provider }))
-      const samlRequest = {
-        Issuer: samlConfig.sp_entity_id,
-        Destination: samlConfig.idp_sso_url,
-        'urn:oasis:names:tc:SAML:2.0:protocol': {
-          AssertionConsumerServiceURL: samlConfig.acs_url,
-          ProtocolBinding: 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect',
-          IssueInstant: new Date().toISOString(),
-        },
+      if (!samlConfig?.sp_entity_id) throw new Error('Missing SAML SP entity ID')
+      if (!samlConfig?.acs_url) throw new Error('Missing SAML ACS URL')
+
+      // Build a proper SAML 2.0 AuthnRequest and POST it to the IdP.
+      // Using HTTP-POST avoids deflate/URL-encoding complexities required by HTTP-Redirect.
+      const requestId = '_' + crypto.randomUUID()
+      const issueInstant = new Date().toISOString()
+      const authnRequestXml = `<?xml version="1.0" encoding="UTF-8"?>
+<samlp:AuthnRequest xmlns:samlp="urn:oasis:names:tc:SAML:2.0:protocol"
+                    xmlns:saml="urn:oasis:names:tc:SAML:2.0:assertion"
+                    ID="${requestId}"
+                    Version="2.0"
+                    IssueInstant="${issueInstant}"
+                    Destination="${escapeXml(samlConfig.idp_sso_url)}"
+                    ProtocolBinding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST"
+                    AssertionConsumerServiceURL="${escapeXml(samlConfig.acs_url)}">
+  <saml:Issuer>${escapeXml(samlConfig.sp_entity_id)}</saml:Issuer>
+  <samlp:NameIDPolicy Format="urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress" AllowCreate="true"/>
+</samlp:AuthnRequest>`
+
+      const redirect = resolveRedirect()
+      const relayState = btoa(JSON.stringify({ provider: provider.provider, redirect }))
+      const samlRequestB64 = btoa(unescape(encodeURIComponent(authnRequestXml)))
+
+      const form = document.createElement('form')
+      form.method = 'POST'
+      form.action = samlConfig.idp_sso_url
+      form.style.display = 'none'
+
+      function addField(name, value) {
+        const input = document.createElement('input')
+        input.type = 'hidden'
+        input.name = name
+        input.value = value
+        form.appendChild(input)
       }
-      const samlRequestStr = btoa(JSON.stringify(samlRequest))
-      const samlUrl = `${samlConfig.idp_sso_url}?SAMLRequest=${encodeURIComponent(samlRequestStr)}&RelayState=${encodeURIComponent(relayState)}`
-      window.location.assign(samlUrl)
+
+      addField('SAMLRequest', samlRequestB64)
+      addField('RelayState', relayState)
+
+      document.body.appendChild(form)
+      form.submit()
+      document.body.removeChild(form)
       return
     }
     error.value = 'SAML provider is configured. Start from your IdP app and pass saml_response to /login query.'

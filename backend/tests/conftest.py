@@ -33,6 +33,16 @@ def test_engine():
 
 
 @pytest.fixture()
+def db_session(test_engine) -> Generator[Session, None, None]:
+    SessionLocal = sessionmaker(bind=test_engine, autoflush=False, autocommit=False)
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+
+@pytest.fixture()
 def client(test_engine) -> Generator[TestClient, None, None]:
     TestingSessionLocal = sessionmaker(bind=test_engine, autoflush=False, autocommit=False)
 

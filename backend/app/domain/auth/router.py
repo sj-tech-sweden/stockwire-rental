@@ -1,7 +1,11 @@
+import base64
+import json
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
+from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
+from fastapi import APIRouter, Depends, Form, HTTPException, Request, Response, status
+from fastapi.responses import RedirectResponse
 from jose import jwt
 from slowapi import Limiter
 from slowapi.util import get_remote_address
@@ -10,25 +14,46 @@ from sqlalchemy.orm import Session
 
 logger = logging.getLogger(__name__)
 
+from pydantic import BaseModel
+
 from app.config import settings
 from app.db.session import get_db
 from app.domain.auth.deps import get_current_user, require_admin
-from app.domain.auth.models import User, UserSession, APIKey, Role, UserRole
-from app.domain.auth.schemas import Token, UserCreate, UserLogin, UserSummary, UserSelfUpdate, OIDCExchangeRequest, SAMLAssertionRequest, SSOProviderSummary, ForgotPasswordRequest, ResetPasswordRequest
-from app.domain.auth.security import create_access_token, generate_refresh_token, compute_refresh_token_hash, hash_password, verify_password, hash_api_key, hash_api_key_lookup, decode_token
+from app.domain.auth.models import APIKey, Role, User, UserRole, UserSession
+from app.domain.auth.schemas import (
+    ForgotPasswordRequest,
+    OIDCExchangeRequest,
+    ResetPasswordRequest,
+    SAMLAssertionRequest,
+    SSOProviderSummary,
+    Token,
+    UserCreate,
+    UserLogin,
+    UserSelfUpdate,
+    UserSummary,
+)
+from app.domain.auth.security import (
+    compute_refresh_token_hash,
+    create_access_token,
+    decode_token,
+    generate_refresh_token,
+    hash_api_key,
+    hash_api_key_lookup,
+    hash_password,
+    verify_password,
+)
 from app.domain.auth.sso import (
     build_oidc_authorize_url,
-    verify_oidc_state,
     claims_to_identity,
     exchange_oidc_code,
-    get_runtime_sso_config,
     get_oidc_provider,
+    get_runtime_sso_config,
     get_saml_provider,
     list_enabled_providers,
     parse_saml_response,
     upsert_external_user,
+    verify_oidc_state,
 )
-from pydantic import BaseModel
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -60,10 +85,38 @@ def _clear_refresh_cookie(response: Response) -> None:
     )
 
 
+def _decode_saml_relay_state(relay_state: str) -> dict[str, Any]:
+    if not relay_state:
+        return {}
+    try:
+        decoded = base64.urlsafe_b64decode(relay_state.encode()).decode("utf-8")
+        parsed = json.loads(decoded)
+        return parsed if isinstance(parsed, dict) else {}
+    except Exception:
+        return {}
+
+
+def _decode_saml_relay_state_provider(relay_state: str) -> str | None:
+    return _decode_saml_relay_state(relay_state).get("provider")
+
+
+def _decode_saml_relay_state_redirect(relay_state: str) -> str | None:
+    redirect = _decode_saml_relay_state(relay_state).get("redirect")
+    if isinstance(redirect, str) and redirect.startswith("/"):
+        return redirect
+    return None
+
+
+def _saml_error_redirect(detail: str) -> RedirectResponse:
+    encoded = base64.urlsafe_b64encode(detail.encode("utf-8")).decode().rstrip("=")
+    target = f"{settings.effective_frontend_base_url}/login?reason=saml_error&detail={encoded}"
+    return RedirectResponse(url=target, status_code=status.HTTP_303_SEE_OTHER)
+
+
 def _create_refresh_session(db: Session, user: User) -> str:
     refresh_token = generate_refresh_token()
     token_hash = compute_refresh_token_hash(refresh_token)
-    expires_at = datetime.now(timezone.utc) + timedelta(days=settings.jwt_refresh_expire_days)
+    expires_at = datetime.now(UTC) + timedelta(days=settings.jwt_refresh_expire_days)
     session = UserSession(
         session_id=token_hash,
         user_id=user.id,
@@ -197,6 +250,57 @@ def saml_login(payload: SAMLAssertionRequest, response: Response, db: Session = 
     return _make_token_response(user, response, db)
 
 
+@router.post("/sso/saml/acs")
+def saml_acs(
+    response: Response,
+    db: Session = Depends(get_db),
+    saml_response: str = Form(..., alias="SAMLResponse"),
+    relay_state: str = Form(default="", alias="RelayState"),
+) -> Response:
+    """Browser SAML ACS endpoint: receives IdP HTTP-POST response and redirects back to the SPA.
+
+    The tokens are placed in the URL fragment so they are not sent to the server on the
+    next request and the frontend can store them in localStorage.
+    """
+    runtime = get_runtime_sso_config(db)
+    if not runtime.enabled:
+        return _saml_error_redirect("SSO not enabled")
+
+    provider_key = _decode_saml_relay_state_provider(relay_state)
+    if not provider_key:
+        return _saml_error_redirect("Invalid SAML relay state")
+
+    try:
+        saml = get_saml_provider(provider_key, db)
+    except HTTPException as exc:
+        return _saml_error_redirect(str(exc.detail))
+
+    try:
+        identity = parse_saml_response(saml, saml_response_b64)
+        user = upsert_external_user(
+            db,
+            provider_key=saml.key,
+            source="saml",
+            subject=identity["subject"],
+            email=identity["email"],
+            full_name=identity["full_name"],
+            groups=identity["groups"],
+            allow_auto_create=saml.allow_auto_create,
+            runtime=runtime,
+        )
+    except HTTPException as exc:
+        return _saml_error_redirect(str(exc.detail))
+
+    access_token_str = create_access_token(user.id, user.email, user.role)
+    refresh_token = _create_refresh_session(db, user)
+    _set_refresh_cookie(response, refresh_token)
+
+    redirect_path = _decode_saml_relay_state_redirect(relay_state) or "/"
+    fragment = f"access_token={access_token_str}&refresh_token={refresh_token}"
+    target = f"{settings.effective_frontend_base_url}{redirect_path}#{fragment}"
+    return RedirectResponse(url=target, status_code=status.HTTP_303_SEE_OTHER)
+
+
 @router.get("/bootstrap-status")
 def bootstrap_status(db: Session = Depends(get_db)) -> dict:
     """Returns whether first-time setup is still needed (no users exist)."""
@@ -218,7 +322,7 @@ def setup_admin(request: Request, payload: UserCreate, response: Response, db: S
         role="admin",
         is_active=True,
         is_admin=True,
-        created_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
     )
     db.add(user)
     db.commit()
@@ -281,7 +385,7 @@ def forgot_password(
         {
             "sub": str(user.id),
             "purpose": "password_reset",
-            "exp": datetime.now(timezone.utc) + timedelta(minutes=settings.password_reset_expire_minutes),
+            "exp": datetime.now(UTC) + timedelta(minutes=settings.password_reset_expire_minutes),
         },
         settings.jwt_secret_key,
         algorithm=settings.jwt_algorithm,
@@ -372,7 +476,7 @@ def refresh_token(
     request: Request,
     db: Session = Depends(get_db),
 ) -> Token:
-    refresh_token = request.cookies.get("refresh_token") or request.headers.get("X-Refresh-Token")
+    refresh_token = request.headers.get("X-Refresh-Token") or request.cookies.get("refresh_token")
     if not refresh_token:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Refresh token missing")
 
@@ -382,7 +486,13 @@ def refresh_token(
         _clear_refresh_cookie(response)
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid refresh token")
 
-    if session.expires_at < datetime.now(timezone.utc):
+    # Always compare timezone-aware datetimes. Postgres preserves the offset,
+    # while SQLite returns naive UTC values, so make both sides aware.
+    now = datetime.now(UTC)
+    expires_at = session.expires_at
+    if expires_at.tzinfo is None:
+        expires_at = expires_at.replace(tzinfo=UTC)
+    if expires_at < now:
         db.delete(session)
         db.commit()
         _clear_refresh_cookie(response)
@@ -395,7 +505,13 @@ def refresh_token(
         _clear_refresh_cookie(response)
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found or inactive")
 
-    db.delete(session)
+    # Keep the old session valid for a short grace period so that concurrent
+    # refresh attempts (e.g. from multiple tabs using the same token) do not
+    # immediately log the user out. After the grace period it will expire naturally.
+    session.expires_at = datetime.now(UTC) + timedelta(
+        seconds=settings.jwt_refresh_reuse_grace_seconds
+    )
+    db.add(session)
     db.commit()
 
     new_token = create_access_token(user.id, user.email, user.role)
@@ -413,7 +529,7 @@ def logout(
     request: Request,
     db: Session = Depends(get_db),
 ) -> Response:
-    refresh_token = request.cookies.get("refresh_token")
+    refresh_token = request.cookies.get("refresh_token") or request.headers.get("X-Refresh-Token")
     if refresh_token:
         token_hash = compute_refresh_token_hash(refresh_token)
         session = db.get(UserSession, token_hash)
@@ -489,7 +605,7 @@ def create_user(
         notification_channel=payload.notification_channel,
         is_active=payload.is_active,
         is_admin=payload.role == "admin",
-        created_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
     )
     db.add(user)
     db.commit()

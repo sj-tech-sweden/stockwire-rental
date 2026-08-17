@@ -130,7 +130,7 @@ Use this if your organization requires SAML.
 
 - Identifier (Entity ID): your SP entity id used by Stockwire
 - Reply URL (ACS):
-  - https://your-domain/api/v1/auth/sso/saml/login
+  - https://your-domain/api/v1/auth/sso/saml/acs
   - For local testing, use your reachable backend URL
 
 ### 3) Configure claims and groups

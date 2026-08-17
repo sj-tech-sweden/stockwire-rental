@@ -33,6 +33,10 @@ def _ensure_category(db, name: str, parent_id: int | None = None) -> InventoryCa
 
 def seed_demo_data() -> None:
     with SessionLocal() as db:
+        # Seed report templates independently (always runs)
+        from app.domain.reports.seed import seed_report_templates
+        seed_report_templates(db)
+
         if db.scalar(select(User.id).limit(1)) is not None:
             return
 

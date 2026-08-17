@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, JSON, String
+from sqlalchemy import JSON, Boolean, DateTime, ForeignKey, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -27,12 +27,12 @@ class User(Base):
     auth_source: Mapped[str] = mapped_column(String(50), default="local")
     external_provider: Mapped[str | None] = mapped_column(String(100), nullable=True, index=True)
     external_subject: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
 
     # relationships
-    roles: Mapped[list["Role"]] = relationship("Role", secondary="user_roles", back_populates="users")
-    jobs: Mapped[list["Job"]] = relationship(back_populates="owner")
-    push_subscriptions: Mapped[list["PushSubscription"]] = relationship(
+    roles: Mapped[list[Role]] = relationship("Role", secondary="user_roles", back_populates="users")
+    jobs: Mapped[list[Job]] = relationship(back_populates="owner")
+    push_subscriptions: Mapped[list[PushSubscription]] = relationship(
         back_populates="user", cascade="all, delete-orphan"
     )
 
@@ -46,7 +46,7 @@ class Role(Base):
     # permissions - generic JSON array of permission strings
     permissions: Mapped[dict] = mapped_column(JSON, nullable=False, server_default='[]')
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
 
     users: Mapped[list[User]] = relationship("User", secondary="user_roles", back_populates="roles")
 
@@ -58,7 +58,7 @@ class UserRole(Base):
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     role_id: Mapped[int] = mapped_column(ForeignKey("roles.id", ondelete="CASCADE"), nullable=False, index=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
 
 
 class UserSession(Base):
@@ -67,7 +67,7 @@ class UserSession(Base):
     session_id: Mapped[str] = mapped_column(String(128), primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
 
 
 class APIKey(Base):
@@ -80,7 +80,7 @@ class APIKey(Base):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     is_admin: Mapped[bool] = mapped_column(Boolean, default=False)
     last_used_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
 
 
 class PushSubscription(Base):
@@ -92,6 +92,6 @@ class PushSubscription(Base):
     p256dh_key: Mapped[str] = mapped_column(String(255), nullable=False)
     auth_key: Mapped[str] = mapped_column(String(255), nullable=False)
     user_agent: Mapped[str | None] = mapped_column(String(1000), nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
 
     user: Mapped[User] = relationship(back_populates="push_subscriptions")

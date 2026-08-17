@@ -124,7 +124,7 @@ cp infra/env/.env.example infra/env/.env
     "idp_sso_url": "https://login.microsoftonline.com/<tenant-id>/saml2",
     "idp_x509_cert": "<entra-signing-cert>",
     "sp_entity_id": "https://stockwire.example.com/saml/metadata",
-    "acs_url": "https://stockwire.example.com/api/v1/auth/sso/saml/login",
+    "acs_url": "https://stockwire.example.com/api/v1/auth/sso/saml/acs",
     "group_attribute": "http://schemas.microsoft.com/ws/2008/06/identity/claims/groups",
     "email_attribute": "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress",
     "name_attribute": "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name",

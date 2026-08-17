@@ -131,6 +131,19 @@
             </q-item-section>
           </q-item>
           <q-item
+            clickable
+            v-ripple
+            to="/reports"
+            @click="onChildNavigate"
+          >
+            <q-item-section avatar>
+              <q-icon name="summarize" class="text-primary" />
+            </q-item-section>
+            <q-item-section :class="$q.dark.isActive ? 'text-grey-3' : 'text-grey-8'">
+              {{ t('app.nav.reports') }}
+            </q-item-section>
+          </q-item>
+          <q-item
             v-if="authStore.canManageSettings"
             clickable
             v-ripple

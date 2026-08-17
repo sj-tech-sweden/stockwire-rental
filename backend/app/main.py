@@ -147,6 +147,16 @@ def run_startup_checks() -> None:
             alembic_command.upgrade(cfg, "head")
         else:
             print("alembic.ini not found; skipping automatic migrations")
+    # Seed default report templates (idempotent, safe to run on every startup)
+    try:
+        from app.db.session import SessionLocal
+        from app.domain.reports.seed import seed_report_templates
+        with SessionLocal() as db:
+            count = seed_report_templates(db)
+            if count:
+                print(f"Seeded {count} default report templates")
+    except Exception as exc:
+        print(f"Report template seeding skipped: {exc}")
 
 
 @app.on_event("shutdown")

@@ -26,6 +26,7 @@ class Settings(BaseSettings):
     jwt_expire_hours: int = 8
     jwt_access_expire_minutes: int = 15
     jwt_refresh_expire_days: int = 7
+    jwt_refresh_reuse_grace_seconds: int = 30
 
     sso_enabled: bool = False
     sso_auto_create_users: bool = True
@@ -47,6 +48,12 @@ class Settings(BaseSettings):
     storage_s3_prefix: str = "uploads"
     storage_s3_presign_expiry_seconds: int = 900
 
+    pdf_reports_enabled: bool = True
+    pdf_default_margin_top_mm: float = 20.0
+    pdf_default_margin_bottom_mm: float = 20.0
+    pdf_default_margin_left_mm: float = 20.0
+    pdf_default_margin_right_mm: float = 20.0
+
     smtp_host: str = ""
     smtp_port: int = 587
     smtp_user: str = ""
@@ -62,6 +69,7 @@ class Settings(BaseSettings):
 
     password_reset_expire_minutes: int = 15
     password_reset_base_url: str = "http://localhost:9000"
+    frontend_base_url: str = ""
 
     prometheus_enabled: bool = True
     prometheus_pushgateway: str = ""
@@ -93,6 +101,11 @@ class Settings(BaseSettings):
     @property
     def cors_origins_list(self) -> list[str]:
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
+
+    @property
+    def effective_frontend_base_url(self) -> str:
+        url = (self.frontend_base_url or self.password_reset_base_url or "http://localhost:9000").rstrip("/")
+        return url
 
     @property
     def database_url(self) -> str:

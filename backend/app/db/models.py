@@ -16,6 +16,7 @@ from app.domain.crew.models import (
     JobRequiredSkill,
     JobRoleRequiredCertification,
 )
+from app.domain.reports.models import Letterhead, ReportTemplate, GeneratedReportLog
 from app.domain.finance.models import FinancialTransaction
 from app.domain.integrations.models import TwentyConfig, TwentySyncLog
 from app.domain.route_planner.models import DeliveryRoute, RouteStop, RouteVehicle, Vehicle
@@ -91,5 +92,8 @@ __all__ = [
     "JobCrewAssignment",
     "EquipmentRequiredCertification",
     "JobRoleRequiredCertification",
+    "Letterhead",
+    "ReportTemplate",
+    "GeneratedReportLog",
     "CalendarFeed",
 ]

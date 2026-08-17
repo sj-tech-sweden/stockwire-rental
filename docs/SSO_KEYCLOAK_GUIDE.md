@@ -130,8 +130,8 @@ Use exact group values that Keycloak emits.
 
 ### 2) Configure ACS and NameID
 
-- Valid redirect/ACS URL should point to backend SAML login endpoint:
-  - https://your-domain/api/v1/auth/sso/saml/login
+- Valid redirect/ACS URL should point to backend SAML ACS endpoint:
+  - https://your-domain/api/v1/auth/sso/saml/acs
 - Configure NameID to stable value (commonly username or email)
 
 ### 3) Configure SAML mappers
