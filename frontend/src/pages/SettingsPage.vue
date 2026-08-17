@@ -3739,8 +3739,10 @@ async function provisionTwentySchema() {
     await saveTwentyConfig()
     const result = await api.post('/api/v1/integrations/twenty/provision-schema')
     twentyDraft.value.schema_provisioned = true
-    const msg = result.data?.custom_objects_created?.length
-      ? t('settings.integrations.twenty.schemaProvisionedSuccess', { count: result.data.custom_objects_created.length })
+    const d = result.data || {}
+    const total = (d.custom_fields_created?.length || 0) + (d.custom_objects_created?.length || 0) + (d.webhooks_created?.length || 0)
+    const msg = total > 0
+      ? t('settings.integrations.twenty.schemaProvisionedSuccess', { count: total })
       : t('settings.integrations.twenty.schemaProvisionedNoop')
     $q.notify({ type: 'positive', message: msg })
   } catch (error) {
