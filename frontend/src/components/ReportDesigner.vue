@@ -675,12 +675,10 @@ async function saveTemplate() {
   saving.value = true
   try {
     // Persist whichever language is currently being edited.
-    let currentTranslations = translations.value
-    let saveFlowables = baseFlowables.value
     const currentLang = editorLanguage.value || 'en'
-    if (currentLang === 'en') {
-      saveFlowables = flowables.value
-    } else {
+    let currentTranslations = translations.value
+    const saveFlowables = currentLang === 'en' ? flowables.value : baseFlowables.value
+    if (currentLang !== 'en') {
       currentTranslations = {
         ...translations.value,
         [currentLang]: {
@@ -688,7 +686,6 @@ async function saveTemplate() {
           flowables: JSON.parse(JSON.stringify(flowables.value)),
         },
       }
-      saveFlowables = baseFlowables.value
     }
 
     const bodyJson = JSON.stringify({ flowables: saveFlowables, page_size: 'A4' })

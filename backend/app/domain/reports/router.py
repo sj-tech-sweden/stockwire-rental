@@ -155,8 +155,10 @@ async def upload_letterhead_pdf(
         import io
         reader = PdfReader(io.BytesIO(payload))
         page_count = len(reader.pages)
-    except Exception:
-        pass
+    except Exception as exc:
+        # PDF parsing is best-effort; if the uploaded PDF is malformed or
+        # pypdf cannot read it, we fall back to the default page count of 1.
+        logger.warning("Could not determine PDF page count for letterhead upload: %s", exc)
 
     asset = AssetFile(
         entity_type="letterhead",

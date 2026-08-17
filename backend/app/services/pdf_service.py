@@ -24,7 +24,7 @@ from reportlab.platypus import (
 )
 
 from app.config import settings
-from app.services.report_i18n import format_report_date, get_translator, translate_flowables
+from app.services.report_i18n import get_translator, translate_flowables
 
 logger = logging.getLogger(__name__)
 
