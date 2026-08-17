@@ -157,13 +157,23 @@ async def test_connection(db: Session = Depends(get_db)):
 
 @router.post("/provision-schema")
 async def provision_schema(db: Session = Depends(get_db)):
-    """Provision custom fields and objects in Twenty CRM via Metadata API."""
+    """Provision custom fields, objects, and webhooks in Twenty CRM via Metadata API."""
     from app.domain.integrations.models import TwentyConfig
 
     client = _get_client(db)
     try:
-        result = await client.provision_schema()
         config = db.query(TwentyConfig).filter(TwentyConfig.is_active == True).first()
+        # Build the webhook URL from the app's public base URL
+        webhook_url = None
+        webhook_secret = None
+        if config:
+            from app.config import settings
+            base = (settings.frontend_base_url or settings.password_reset_base_url or "").rstrip("/")
+            if base:
+                webhook_url = f"{base}/api/v1/integrations/twenty/webhook"
+            webhook_secret = config.webhook_secret or None
+
+        result = await client.provision_schema(webhook_url=webhook_url, webhook_secret=webhook_secret)
         if config:
             config.schema_provisioned = True
             config.updated_at = datetime.now(timezone.utc)

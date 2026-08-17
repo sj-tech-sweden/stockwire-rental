@@ -172,39 +172,93 @@ class TwentyClient:
         result = await self.graphql(query)
         return result.get("data", {}).get("opportunities", {}).get("edges", [])
 
-    async def provision_schema(self) -> dict[str, Any]:
-        """Create custom fields and objects in Twenty via Metadata API.
+    async def provision_schema(self, webhook_url: str | None = None, webhook_secret: str | None = None) -> dict[str, Any]:
+        """Create custom fields, objects, and webhooks in Twenty via Metadata API.
 
         Returns a summary of what was created/already existed.
         """
-        results: dict[str, Any] = {"custom_fields_created": [], "custom_objects_created": [], "errors": []}
+        results: dict[str, Any] = {"custom_fields_created": [], "custom_objects_created": [], "webhooks_created": [], "errors": []}
 
-        # Create stockwire_url field on Company
-        try:
-            await self._ensure_custom_field("company", "stockwire_url", "url", "Stockwire URL")
-            results["custom_fields_created"].append("company.stockwire_url")
-        except Exception as exc:
-            results["errors"].append(f"company.stockwire_url: {exc}")
+        # ── Company fields ────────────────────────────────────────────────
+        company_fields = [
+            ("stockwire_url", "url", "Stockwire URL"),
+            ("stockwire_id", "number", "Stockwire ID"),
+            ("stockwire_notes", "text", "Stockwire Notes"),
+            ("phone_secondary", "phone", "Secondary Phone"),
+        ]
+        for field_name, field_type, label in company_fields:
+            try:
+                await self._ensure_custom_field("company", field_name, field_type, label)
+                results["custom_fields_created"].append(f"company.{field_name}")
+            except Exception as exc:
+                results["errors"].append(f"company.{field_name}: {exc}")
 
-        # Create stockwire_url field on Opportunity
-        try:
-            await self._ensure_custom_field("opportunity", "stockwire_url", "url", "Stockwire URL")
-            results["custom_fields_created"].append("opportunity.stockwire_url")
-        except Exception as exc:
-            results["errors"].append(f"opportunity.stockwire_url: {exc}")
+        # ── Opportunity fields ────────────────────────────────────────────
+        opportunity_fields = [
+            ("stockwire_url", "url", "Stockwire URL"),
+            ("stockwire_id", "number", "Stockwire ID"),
+            ("stockwire_job_code", "text", "Job Code"),
+            ("stockwire_start_date", "date", "Rental Start Date"),
+            ("stockwire_end_date", "date", "Rental End Date"),
+            ("stockwire_status", "text", "Rental Status"),
+        ]
+        for field_name, field_type, label in opportunity_fields:
+            try:
+                await self._ensure_custom_field("opportunity", field_name, field_type, label)
+                results["custom_fields_created"].append(f"opportunity.{field_name}")
+            except Exception as exc:
+                results["errors"].append(f"opportunity.{field_name}: {exc}")
 
-        # Create Rental Job custom object
+        # ── Person fields ─────────────────────────────────────────────────
+        person_fields = [
+            ("stockwire_url", "url", "Stockwire URL"),
+            ("stockwire_id", "number", "Stockwire ID"),
+        ]
+        for field_name, field_type, label in person_fields:
+            try:
+                await self._ensure_custom_field("person", field_name, field_type, label)
+                results["custom_fields_created"].append(f"person.{field_name}")
+            except Exception as exc:
+                results["errors"].append(f"person.{field_name}: {exc}")
+
+        # ── Rental Job custom object ──────────────────────────────────────
         try:
             await self._ensure_custom_object("rentalJob", "Rental Job", [
                 {"name": "jobStatus", "type": "text", "label": "Job Status"},
+                {"name": "jobCode", "type": "text", "label": "Job Code"},
+                {"name": "customerName", "type": "text", "label": "Customer Name"},
                 {"name": "startDate", "type": "date", "label": "Start Date"},
                 {"name": "endDate", "type": "date", "label": "End Date"},
                 {"name": "totalAmount", "type": "number", "label": "Total Amount"},
+                {"name": "currency", "type": "text", "label": "Currency"},
                 {"name": "stockwireJobUrl", "type": "url", "label": "Stockwire Job URL"},
+                {"name": "stockwireJobId", "type": "number", "label": "Stockwire Job ID"},
+                {"name": "description", "type": "text", "label": "Description"},
             ])
             results["custom_objects_created"].append("rentalJob")
         except Exception as exc:
             results["errors"].append(f"rentalJob: {exc}")
+
+        # ── Webhooks ──────────────────────────────────────────────────────
+        if webhook_url:
+            try:
+                existing_hooks = await self.list_webhooks()
+                existing_urls = {h.get("targetUrl") for h in existing_hooks}
+
+                webhook_events = [
+                    ("company.created", "company"),
+                    ("company.updated", "company"),
+                    ("opportunity.updated", "opportunity"),
+                ]
+                for event, object_type in webhook_events:
+                    if webhook_url not in existing_urls:
+                        hook = await self.create_webhook(webhook_url, event, object_type, webhook_secret)
+                        hook_id = hook.get("data", hook).get("id", "unknown")
+                        results["webhooks_created"].append(f"{event} → {webhook_url}")
+                        logger.info("Created Twenty webhook: %s (id=%s)", event, hook_id)
+            except Exception as exc:
+                results["errors"].append(f"webhooks: {exc}")
+                logger.warning("Could not provision webhooks: %s", exc)
 
         return results
 
@@ -259,10 +313,15 @@ class TwentyClient:
         existing_id = job_data.get("twenty_rental_job_id")
         payload = {
             "jobStatus": job_data.get("status", "draft"),
+            "jobCode": job_data.get("job_code", ""),
+            "customerName": job_data.get("customer_name", ""),
             "startDate": job_data.get("start_date"),
             "endDate": job_data.get("end_date"),
             "totalAmount": job_data.get("sales_price", 0),
+            "currency": job_data.get("currency", "SEK"),
             "stockwireJobUrl": deep_link,
+            "stockwireJobId": job_id,
+            "description": job_data.get("description", ""),
         }
 
         if existing_id:
@@ -285,3 +344,34 @@ class TwentyClient:
         except Exception as exc:
             logger.error("Failed to post note to %s/%s: %s", entity_type, twenty_entity_id, exc)
             return False
+
+    async def list_webhooks(self) -> list[dict[str, Any]]:
+        """List existing webhooks in the Twenty workspace."""
+        resp = await self._request_with_retry("GET", f"{self.base_url}/rest/webhooks")
+        if not resp.is_success:
+            return []
+        data = resp.json()
+        items = data.get("data", data)
+        return items if isinstance(items, list) else []
+
+    async def create_webhook(self, target_url: str, event: str, object_type: str | None = None, secret: str | None = None) -> dict[str, Any]:
+        """Create a webhook in Twenty CRM."""
+        payload: dict[str, Any] = {
+            "targetUrl": target_url,
+            "event": event,
+            "isActive": True,
+        }
+        if object_type:
+            payload["objectType"] = object_type
+        if secret:
+            payload["secret"] = secret
+        resp = await self._request_with_retry("POST", f"{self.base_url}/rest/webhooks", json=payload)
+        if not resp.is_success:
+            logger.error("Twenty create webhook failed %s: %s", resp.status_code, resp.text[:300])
+            resp.raise_for_status()
+        return resp.json()
+
+    async def delete_webhook(self, webhook_id: str) -> bool:
+        """Delete a webhook from Twenty CRM."""
+        resp = await self._request_with_retry("DELETE", f"{self.base_url}/rest/webhooks/{webhook_id}")
+        return resp.is_success
