@@ -771,7 +771,7 @@ export default {
         webhookSecretHint: 'Hittas i Twenty CRM Inställningar > APIs & Webhooks. Används för att verifiera inkommande webhook-payloads.',
         runSchemaSetup: 'Kör schemainställning',
         schemaProvisioned: 'Schema tillhandahållet',
-        schemaProvisionedSuccess: 'Schemainställning slutförd: {count} anpassat objekt skapat',
+        schemaProvisionedSuccess: 'Schemainställning slutförd: {count} objekt skapade (fält, objekt, webhooks)',
         schemaProvisionedNoop: 'Schemainställning slutförd. Alla objekt finns redan.',
         schemaProvisionFailed: 'Schema-tillhandahållning misslyckades',
       },

@@ -771,7 +771,7 @@ export default {
         webhookSecretHint: 'Found in Twenty CRM Settings > APIs & Webhooks. Used to verify incoming webhook payloads.',
         runSchemaSetup: 'Run Schema Setup',
         schemaProvisioned: 'Schema provisioned',
-        schemaProvisionedSuccess: 'Schema setup complete: {count} custom object(s) created',
+        schemaProvisionedSuccess: 'Schema setup complete: {count} item(s) created (fields, objects, webhooks)',
         schemaProvisionedNoop: 'Schema setup complete. All objects already exist.',
         schemaProvisionFailed: 'Schema provisioning failed',
       },

@@ -163,7 +163,6 @@ async def provision_schema(db: Session = Depends(get_db)):
     client = _get_client(db)
     try:
         config = db.query(TwentyConfig).filter(TwentyConfig.is_active == True).first()
-        # Webhook URL points to the backend API; deep links point to the frontend
         webhook_url = None
         webhook_secret = None
         if config:

@@ -20,6 +20,30 @@ STAGE_MAP = {
 
 SYNC_PAGE_SIZE = 50
 
+# Fields that are custom-added via schema provisioning; may not exist on older records
+_STOCKWIRE_FIELDS = {
+    "stockwire_url", "stockwire_id", "stockwire_notes", "phone_secondary",
+    "stockwire_job_code", "stockwire_start_date", "stockwire_end_date", "stockwire_status",
+}
+
+
+async def _safe_update(client: TwentyClient, object_name: str, record_id: str, data: dict) -> None:
+    """Update a record, stripping fields that don't exist on the target object."""
+    try:
+        await client.update_object(object_name, record_id, data)
+    except Exception as exc:
+        err_str = str(exc)
+        # If a field is missing, strip stockwire_* fields and retry
+        if "doesn't have any" in err_str or "400" in err_str:
+            stripped = {k: v for k, v in data.items() if k not in _STOCKWIRE_FIELDS}
+            if stripped != data:
+                try:
+                    await client.update_object(object_name, record_id, stripped)
+                    return
+                except Exception:
+                    pass
+        raise
+
 
 def _extract_twenty_id(response: dict, object_name: str) -> str | None:
     data = response.get("data", {})
@@ -164,7 +188,7 @@ async def sync_customer_outbound(db: Session, client: TwentyClient, customer: Cu
 
         if customer.external_source == "twenty" and customer.external_reference:
             twenty_company_id = customer.external_reference
-            await client.update_object("companies", twenty_company_id, company_data)
+            await _safe_update(client, "companies", twenty_company_id, company_data)
             _log_sync(db, "outbound", "customer", customer.id, twenty_company_id, "update", "success")
         else:
             result = await client.create_object("companies", company_data)
@@ -210,7 +234,7 @@ async def sync_job_outbound(db: Session, client: TwentyClient, job: Job) -> None
 
         if job.external_source == "twenty" and job.external_reference:
             twenty_opp_id = job.external_reference
-            await client.update_object("opportunities", twenty_opp_id, opp_data)
+            await _safe_update(client, "opportunities", twenty_opp_id, opp_data)
             _log_sync(db, "outbound", "job", job.id, twenty_opp_id, "update", "success")
         else:
             result = await client.create_object("opportunities", opp_data)

@@ -243,7 +243,7 @@ class TwentyClient:
         if webhook_url:
             try:
                 existing_hooks = await self.list_webhooks()
-                existing_urls = {h.get("targetUrl") for h in existing_hooks}
+                existing_urls = {h.get("targetUrl") for h in existing_hooks if isinstance(h, dict)}
 
                 webhook_events = [
                     ("company.created", "company"),
@@ -288,25 +288,36 @@ class TwentyClient:
         )
 
     async def _ensure_custom_object(self, object_name: str, label: str, fields: list[dict[str, Any]]) -> None:
-        """Create a custom object with fields if it doesn't already exist."""
-        # Check if object exists
+        """Create a custom object with fields if it doesn't already exist.
+
+        If the object already exists, still create any missing fields on it.
+        """
+        object_exists = False
         try:
             resp = await self._request_with_retry("GET", f"{self.base_url}/rest/{object_name}?limit=1")
             if resp.status_code == 200:
-                return
+                object_exists = True
         except Exception as exc:
             logger.debug("Could not check existence of %s, proceeding with creation: %s", object_name, exc)
 
-        # Create the custom object via metadata API
-        await self._request_with_retry(
-            "POST",
-            f"{self.base_url}/rest/metadata/object",
-            json={
-                "name": object_name,
-                "label": label,
-                "fields": fields,
-            },
-        )
+        if not object_exists:
+            await self._request_with_retry(
+                "POST",
+                f"{self.base_url}/rest/metadata/object",
+                json={
+                    "name": object_name,
+                    "label": label,
+                    "fields": fields,
+                },
+            )
+            return
+
+        # Object exists — create any missing fields on it
+        for field in fields:
+            try:
+                await self._ensure_custom_field(object_name, field["name"], field["type"], field["label"])
+            except Exception as exc:
+                logger.debug("Could not ensure field %s.%s: %s", object_name, field["name"], exc)
 
     async def sync_job_to_twenty(self, job_id: int, job_data: dict[str, Any], deep_link: str) -> str | None:
         """Upsert a Rental Job custom object in Twenty and return its ID."""
