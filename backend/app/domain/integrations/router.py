@@ -163,14 +163,14 @@ async def provision_schema(db: Session = Depends(get_db)):
     client = _get_client(db)
     try:
         config = db.query(TwentyConfig).filter(TwentyConfig.is_active == True).first()
-        # Build the webhook URL from the app's public base URL
+        # Webhook URL points to the backend API; deep links point to the frontend
         webhook_url = None
         webhook_secret = None
         if config:
             from app.config import settings
-            base = (settings.frontend_base_url or settings.password_reset_base_url or "").rstrip("/")
-            if base:
-                webhook_url = f"{base}/api/v1/integrations/twenty/webhook"
+            api_base = settings.effective_api_base_url
+            if api_base:
+                webhook_url = f"{api_base}/api/v1/integrations/twenty/webhook"
             webhook_secret = config.webhook_secret or None
 
         result = await client.provision_schema(webhook_url=webhook_url, webhook_secret=webhook_secret)

@@ -61,6 +61,8 @@ def _log_sync(
 
 
 def _customer_to_company_payload(customer: Customer) -> dict:
+    from app.config import settings
+
     payload: dict = {"name": customer.name or ""}
     if customer.address or customer.city or customer.postal_code or customer.country:
         payload["address"] = {
@@ -73,8 +75,9 @@ def _customer_to_company_payload(customer: Customer) -> dict:
         payload["stockwire_notes"] = customer.notes
     if customer.id:
         payload["stockwire_id"] = customer.id
-    if customer.external_reference:
-        payload["stockwire_url"] = f"/customer/{customer.id}"
+    frontend = settings.effective_frontend_base_url
+    if frontend and customer.id:
+        payload["stockwire_url"] = f"{frontend}/customer/{customer.id}"
     return payload
 
 
