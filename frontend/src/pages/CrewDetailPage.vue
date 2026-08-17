@@ -172,15 +172,27 @@
       </q-card>
     </div>
 
-    <q-dialog v-model="showCertDialog" persistent>
+    <q-dialog v-model="showCertDialog" persistent @show="loadCertTypes">
       <q-card style="min-width: 320px" class="ec-card">
         <q-card-section>
           <div class="text-h6">{{ t('crew.addCertification') }}</div>
         </q-card-section>
         <q-card-section class="q-pt-none">
-          <q-input v-model="newCertName" :label="t('crew.certificationName')" outlined dense class="q-mb-sm" autofocus @keyup.enter="addCertification" :rules="[v => !!v || t('common.required')]" />
-          <q-input v-model="newCertCategory" :label="t('crew.certificationCategory')" outlined dense class="q-mb-sm" @keyup.enter="addCertification" />
-          <q-input v-model="newCertExpiry" :label="t('crew.expiryDate')" outlined dense type="date" />
+          <q-select
+            v-model="newCertTypeId"
+            :options="certTypeOptions"
+            :label="t('crew.certificationType')"
+            outlined dense emit-value map-options use-input input-debounce="300"
+            :rules="[v => !!v || t('common.required')]"
+            @filter="filterCertTypes"
+          >
+            <template #no-option>
+              <q-item>
+                <q-item-section class="text-grey">{{ t('crew.noMatchingCertTypes') }}</q-item-section>
+              </q-item>
+            </template>
+          </q-select>
+          <q-input v-model="newCertExpiry" :label="t('crew.expiryDate')" outlined dense type="date" class="q-mt-sm" />
         </q-card-section>
         <q-card-actions align="right">
           <q-btn flat :label="t('app.actions.cancel')" @click="cancelCert" />
@@ -231,12 +243,14 @@ const userSearch = ref('')
 const supplierSearch = ref('')
 
 const showCertDialog = ref(false)
-const newCertName = ref('')
-const newCertCategory = ref('')
+const newCertTypeId = ref(null)
 const newCertExpiry = ref('')
 const addingCert = ref(false)
 const certFileInput = ref(null)
 const uploadingCertId = ref(null)
+const certTypeFilter = ref('')
+const certTypes = ref([])
+const certTypeOptions = ref([])
 
 const roleOptions = computed(() => crewStore.roles.map(r => ({ label: r.name, value: r.id })))
 
@@ -458,24 +472,22 @@ function confirmDelete() {
   })
 }
 
+function filterCertTypes(val, update) {
+  certTypeFilter.value = val
+  update(() => {
+    const term = (val || '').toLowerCase()
+    certTypeOptions.value = certTypes.value
+      .filter(c => !term || c.name.toLowerCase().includes(term) || (c.category || '').toLowerCase().includes(term))
+      .map(c => ({ label: c.name + (c.category ? ` (${c.category})` : ''), value: c.id }))
+  })
+}
+
 async function addCertification() {
-  if (!newCertName.value.trim()) return
+  if (!newCertTypeId.value) return
   addingCert.value = true
   try {
-    let certId = null
-    const existingCerts = await api.get('/api/v1/crew/certifications', { params: { q: newCertName.value.trim() } })
-    const existing = existingCerts.data.find(c => c.name.toLowerCase() === newCertName.value.trim().toLowerCase())
-    if (existing) {
-      certId = existing.id
-    } else {
-      const { data: newCert } = await api.post('/api/v1/crew/certifications', {
-        name: newCertName.value.trim(),
-        category: newCertCategory.value.trim() || null,
-      })
-      certId = newCert.id
-    }
     form.value.certification_items.push({
-      certification_id: certId,
+      certification_id: newCertTypeId.value,
       expiry_date: newCertExpiry.value || null,
     })
     cancelCert()
@@ -488,8 +500,7 @@ async function addCertification() {
 
 function cancelCert() {
   showCertDialog.value = false
-  newCertName.value = ''
-  newCertCategory.value = ''
+  newCertTypeId.value = null
   newCertExpiry.value = ''
 }
 
@@ -526,6 +537,15 @@ async function onCertFileSelected(event) {
   } finally {
     uploadingCertId.value = null
     if (certFileInput.value) certFileInput.value.value = ''
+  }
+}
+
+async function loadCertTypes() {
+  if (certTypes.value.length) return
+  try {
+    certTypes.value = await crewStore.fetchCertifications()
+  } catch {
+    // silent - dropdown will just be empty
   }
 }
 
