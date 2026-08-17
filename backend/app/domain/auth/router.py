@@ -3,6 +3,7 @@ import json
 import logging
 from datetime import UTC, datetime, timedelta
 from typing import Any
+from urllib.parse import urlparse
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request, Response, status
 from fastapi.responses import RedirectResponse
@@ -102,8 +103,21 @@ def _decode_saml_relay_state_provider(relay_state: str) -> str | None:
 
 def _decode_saml_relay_state_redirect(relay_state: str) -> str | None:
     redirect = _decode_saml_relay_state(relay_state).get("redirect")
-    if isinstance(redirect, str) and redirect.startswith("/"):
-        return redirect
+    if not isinstance(redirect, str):
+        return None
+
+    # Normalize browser-accepted backslashes before validation.
+    candidate = redirect.replace("\\", "/")
+    parsed = urlparse(candidate)
+
+    # Only allow internal relative paths.
+    if (
+        candidate.startswith("/")
+        and not candidate.startswith("//")
+        and not parsed.scheme
+        and not parsed.netloc
+    ):
+        return candidate
     return None
 
 
