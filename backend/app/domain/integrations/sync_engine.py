@@ -61,6 +61,8 @@ def _log_sync(
 
 
 def _customer_to_company_payload(customer: Customer) -> dict:
+    from app.config import settings
+
     payload: dict = {"name": customer.name or ""}
     if customer.address or customer.city or customer.postal_code or customer.country:
         payload["address"] = {
@@ -70,14 +72,31 @@ def _customer_to_company_payload(customer: Customer) -> dict:
             "addressCountry": customer.country or "",
         }
     if customer.notes:
-        payload["notes"] = customer.notes
+        payload["stockwire_notes"] = customer.notes
+    if customer.id:
+        payload["stockwire_id"] = customer.id
+    frontend = settings.effective_frontend_base_url
+    if frontend and customer.id:
+        payload["stockwire_url"] = f"{frontend}/customer/{customer.id}"
     return payload
 
 
 def _sanitize_phone(phone: str) -> str:
-    """Return phone in a format Twenty accepts (digits only, or E.164)."""
-    # Strip dashes, spaces, and parentheses
-    cleaned = "".join(c for c in phone if c.isdigit() or c == "+")
+    """Return phone in E.164 format that Twenty CRM accepts."""
+    # Strip dashes, spaces, parentheses, and leading/trailing whitespace
+    cleaned = "".join(c for c in phone if c.isdigit() or c == "+").strip()
+    if not cleaned:
+        return ""
+    # Already E.164
+    if cleaned.startswith("+"):
+        return cleaned
+    # 00 prefix → +
+    if cleaned.startswith("00"):
+        return "+" + cleaned[2:]
+    # Swedish mobile/landline: 10 digits starting with 0 → +46
+    if len(cleaned) == 10 and cleaned.startswith("0"):
+        return "+46" + cleaned[1:]
+    # Return cleaned version as fallback (may still fail validation)
     return cleaned
 
 
@@ -92,6 +111,8 @@ def _customer_to_person_payload(customer: Customer) -> dict:
         payload["emails"] = {"primaryEmail": customer.email}
     if customer.phone:
         payload["phones"] = {"primaryPhoneNumber": _sanitize_phone(customer.phone)}
+    if customer.id:
+        payload["stockwire_id"] = customer.id
     return payload
 
 
@@ -105,6 +126,17 @@ def _job_to_opportunity_payload(job: Job) -> dict:
         payload["amount"] = {"amountMicros": micros}
     if job.end_date:
         payload["closeDate"] = job.end_date.isoformat()
+    if job.job_code:
+        payload["stockwire_job_code"] = job.job_code
+    if job.start_date:
+        payload["stockwire_start_date"] = job.start_date.isoformat()
+    if job.end_date:
+        payload["stockwire_end_date"] = job.end_date.isoformat()
+    payload["stockwire_status"] = job.status or ""
+    if job.id:
+        payload["stockwire_id"] = job.id
+    if job.description:
+        payload["description"] = job.description
     return payload
 
 
@@ -152,8 +184,8 @@ async def sync_customer_outbound(db: Session, client: TwentyClient, customer: Cu
                     _extract_twenty_id(result, "people")
                 except Exception as create_err:
                     err_str = str(create_err).lower()
-                    if "duplicate" in err_str or "400" in err_str:
-                        logger.debug("Person may already exist for customer %s, skipping create", customer.id)
+                    if "duplicate" in err_str or "400" in err_str or "invalid_phone" in err_str or "phone" in err_str:
+                        logger.debug("Person may already exist or has invalid data for customer %s, skipping create: %s", customer.id, create_err)
                     else:
                         raise
 
@@ -244,9 +276,13 @@ async def sync_customer_inbound(db: Session, client: TwentyClient, twenty_compan
             existing.postal_code = postal_code
         if country:
             existing.country = country
+        sw_notes = twenty_company.get("stockwire_notes") or twenty_company.get("notes")
+        if sw_notes:
+            existing.notes = sw_notes
         _log_sync(db, "inbound", "customer", existing.id, company_id, "update", "success")
     else:
         full_name = f"{name_obj.get('firstName', '')} {name_obj.get('lastName', '')}".strip()
+        sw_notes = twenty_company.get("stockwire_notes") or twenty_company.get("notes")
         new_customer = Customer(
             name=company_name or full_name or None,
             email=email,
@@ -255,7 +291,7 @@ async def sync_customer_inbound(db: Session, client: TwentyClient, twenty_compan
             city=city or None,
             postal_code=postal_code or None,
             country=country or None,
-            notes=twenty_company.get("notes"),
+            notes=sw_notes,
             external_source="twenty",
             external_reference=company_id,
         )
@@ -295,14 +331,22 @@ async def sync_job_inbound(db: Session, client: TwentyClient, twenty_opp: dict) 
             existing.sales_price = amount
         if twenty_opp.get("closeDate"):
             existing.end_date = datetime.fromisoformat(twenty_opp["closeDate"]).date()
+        if twenty_opp.get("stockwire_start_date"):
+            existing.start_date = datetime.fromisoformat(twenty_opp["stockwire_start_date"]).date()
+        if twenty_opp.get("stockwire_job_code") and not existing.job_code:
+            existing.job_code = twenty_opp["stockwire_job_code"]
+        if twenty_opp.get("description"):
+            existing.description = twenty_opp["description"]
         _log_sync(db, "inbound", "job", existing.id, opp_id, "update", "success")
     else:
         new_job = Job(
-            job_code=opp_name[:50] if opp_name else f"TWENTY-{opp_id[:8]}",
+            job_code=twenty_opp.get("stockwire_job_code") or (opp_name[:50] if opp_name else f"TWENTY-{opp_id[:8]}"),
             customer_name=opp_name,
             status=stockwire_status,
             sales_price=amount or None,
+            start_date=datetime.fromisoformat(twenty_opp["stockwire_start_date"]).date() if twenty_opp.get("stockwire_start_date") else None,
             end_date=datetime.fromisoformat(twenty_opp["closeDate"]).date() if twenty_opp.get("closeDate") else None,
+            description=twenty_opp.get("description") or opp_name,
             external_source="twenty",
             external_reference=opp_id,
         )

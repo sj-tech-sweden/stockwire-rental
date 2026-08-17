@@ -157,13 +157,23 @@ async def test_connection(db: Session = Depends(get_db)):
 
 @router.post("/provision-schema")
 async def provision_schema(db: Session = Depends(get_db)):
-    """Provision custom fields and objects in Twenty CRM via Metadata API."""
+    """Provision custom fields, objects, and webhooks in Twenty CRM via Metadata API."""
     from app.domain.integrations.models import TwentyConfig
 
     client = _get_client(db)
     try:
-        result = await client.provision_schema()
         config = db.query(TwentyConfig).filter(TwentyConfig.is_active == True).first()
+        # Webhook URL points to the backend API; deep links point to the frontend
+        webhook_url = None
+        webhook_secret = None
+        if config:
+            from app.config import settings
+            api_base = settings.effective_api_base_url
+            if api_base:
+                webhook_url = f"{api_base}/api/v1/integrations/twenty/webhook"
+            webhook_secret = config.webhook_secret or None
+
+        result = await client.provision_schema(webhook_url=webhook_url, webhook_secret=webhook_secret)
         if config:
             config.schema_provisioned = True
             config.updated_at = datetime.now(timezone.utc)
@@ -235,8 +245,11 @@ async def trigger_sync(payload: TwentySyncTrigger, db: Session = Depends(get_db)
                 data_val = companies_data.get("data", [])
                 if isinstance(data_val, list):
                     companies = data_val
+                elif isinstance(data_val, dict):
+                    inner = data_val.get("companies", data_val)
+                    companies = inner.get("edges", inner) if isinstance(inner, dict) else inner if isinstance(inner, list) else []
                 else:
-                    companies = data_val.get("companies", {}).get("edges", [])
+                    companies = []
                 if not companies:
                     break
                 for edge in companies:
@@ -258,8 +271,11 @@ async def trigger_sync(payload: TwentySyncTrigger, db: Session = Depends(get_db)
                 data_val = opps_data.get("data", [])
                 if isinstance(data_val, list):
                     opps = data_val
+                elif isinstance(data_val, dict):
+                    inner = data_val.get("opportunities", data_val)
+                    opps = inner.get("edges", inner) if isinstance(inner, dict) else inner if isinstance(inner, list) else []
                 else:
-                    opps = data_val.get("opportunities", {}).get("edges", [])
+                    opps = []
                 if not opps:
                     break
                 for edge in opps:

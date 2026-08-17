@@ -70,6 +70,7 @@ class Settings(BaseSettings):
     password_reset_expire_minutes: int = 15
     password_reset_base_url: str = "http://localhost:9000"
     frontend_base_url: str = ""
+    api_base_url: str = ""
 
     prometheus_enabled: bool = True
     prometheus_pushgateway: str = ""
@@ -106,6 +107,14 @@ class Settings(BaseSettings):
     def effective_frontend_base_url(self) -> str:
         url = (self.frontend_base_url or self.password_reset_base_url or "http://localhost:9000").rstrip("/")
         return url
+
+    @property
+    def effective_api_base_url(self) -> str:
+        """Public URL of the backend API, used for webhook targets."""
+        if self.api_base_url:
+            return self.api_base_url.rstrip("/")
+        # Fall back to frontend base URL (works for single-domain deployments)
+        return self.effective_frontend_base_url
 
     @property
     def database_url(self) -> str:
