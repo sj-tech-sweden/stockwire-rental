@@ -13,7 +13,7 @@ router = APIRouter(prefix="/metrics", tags=["metrics"])
 
 @router.post("/frontend/page-view")
 def record_frontend_page_view(
-    path: str = Body(""),
+    path: str = Body("", embed=True),
     _user: User = Depends(get_current_user),
 ) -> dict[str, bool]:
     frontend_page_views.labels(path=path or "/").inc()
@@ -33,7 +33,7 @@ def record_frontend_api_timing(
 
 @router.post("/frontend/error")
 def record_frontend_error(
-    type: str = Body("unknown"),
+    type: str = Body("unknown", embed=True),
     _user: User = Depends(get_current_user),
 ) -> dict[str, bool]:
     frontend_errors.labels(type=type).inc()

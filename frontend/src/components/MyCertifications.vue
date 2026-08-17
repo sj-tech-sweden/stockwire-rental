@@ -2,11 +2,15 @@
   <div>
     <div class="row items-center justify-between q-mb-sm">
       <div class="text-subtitle1">{{ t('crew.myCertifications') }}</div>
-      <q-btn flat dense no-caps color="primary" icon="add" :label="t('crew.addCertification')" @click="showAddDialog = true" />
+      <q-btn flat dense no-caps color="primary" icon="add" :label="t('crew.addCertification')" :disable="loading || noProfile" @click="showAddDialog = true" />
     </div>
 
     <div v-if="loading" class="text-caption text-grey-7">
       <q-spinner size="16px" class="q-mr-sm" />{{ t('app.actions.loading') }}
+    </div>
+
+    <div v-else-if="noProfile" class="text-caption text-grey-7 q-mb-sm">
+      {{ t('crew.memberNotFound') }}
     </div>
 
     <div v-else-if="!certifications.length" class="text-caption text-grey-7 q-mb-sm">
@@ -109,6 +113,7 @@ const adding = ref(false)
 const fileInput = ref(null)
 const uploadingCertId = ref(null)
 const certTypeFilter = ref('')
+const noProfile = ref(false)
 
 const newCert = ref({
   certification_type_id: null,
@@ -151,12 +156,23 @@ function formatDate(value) {
 async function loadData() {
   loading.value = true
   try {
-    const [certs, types] = await Promise.all([
+    const results = await Promise.allSettled([
       crewStore.fetchMyCertifications(),
       crewStore.fetchCertifications(),
     ])
-    certifications.value = certs
-    certTypes.value = types
+    const [certsResult, typesResult] = results
+
+    if (certsResult.status === 'fulfilled') {
+      certifications.value = certsResult.value
+    } else if (certsResult.reason?.response?.status === 404) {
+      noProfile.value = true
+    } else {
+      throw certsResult.reason
+    }
+
+    if (typesResult.status === 'fulfilled') {
+      certTypes.value = typesResult.value
+    }
   } catch (err) {
     $q.notify({ type: 'negative', message: err?.response?.data?.detail || t('crew.failedLoadCertifications') })
   } finally {

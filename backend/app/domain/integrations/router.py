@@ -158,6 +158,8 @@ async def test_connection(db: Session = Depends(get_db)):
 @router.post("/provision-schema")
 async def provision_schema(db: Session = Depends(get_db)):
     """Provision custom fields and objects in Twenty CRM via Metadata API."""
+    from app.domain.integrations.models import TwentyConfig
+
     client = _get_client(db)
     try:
         result = await client.provision_schema()
