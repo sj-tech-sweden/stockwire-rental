@@ -75,9 +75,21 @@ def _customer_to_company_payload(customer: Customer) -> dict:
 
 
 def _sanitize_phone(phone: str) -> str:
-    """Return phone in a format Twenty accepts (digits only, or E.164)."""
-    # Strip dashes, spaces, and parentheses
-    cleaned = "".join(c for c in phone if c.isdigit() or c == "+")
+    """Return phone in E.164 format that Twenty CRM accepts."""
+    # Strip dashes, spaces, parentheses, and leading/trailing whitespace
+    cleaned = "".join(c for c in phone if c.isdigit() or c == "+").strip()
+    if not cleaned:
+        return ""
+    # Already E.164
+    if cleaned.startswith("+"):
+        return cleaned
+    # 00 prefix → +
+    if cleaned.startswith("00"):
+        return "+" + cleaned[2:]
+    # Swedish mobile/landline: 10 digits starting with 0 → +46
+    if len(cleaned) == 10 and cleaned.startswith("0"):
+        return "+46" + cleaned[1:]
+    # Return cleaned version as fallback (may still fail validation)
     return cleaned
 
 
@@ -152,8 +164,8 @@ async def sync_customer_outbound(db: Session, client: TwentyClient, customer: Cu
                     _extract_twenty_id(result, "people")
                 except Exception as create_err:
                     err_str = str(create_err).lower()
-                    if "duplicate" in err_str or "400" in err_str:
-                        logger.debug("Person may already exist for customer %s, skipping create", customer.id)
+                    if "duplicate" in err_str or "400" in err_str or "invalid_phone" in err_str or "phone" in err_str:
+                        logger.debug("Person may already exist or has invalid data for customer %s, skipping create: %s", customer.id, create_err)
                     else:
                         raise
 

@@ -235,8 +235,11 @@ async def trigger_sync(payload: TwentySyncTrigger, db: Session = Depends(get_db)
                 data_val = companies_data.get("data", [])
                 if isinstance(data_val, list):
                     companies = data_val
+                elif isinstance(data_val, dict):
+                    inner = data_val.get("companies", data_val)
+                    companies = inner.get("edges", inner) if isinstance(inner, dict) else inner if isinstance(inner, list) else []
                 else:
-                    companies = data_val.get("companies", {}).get("edges", [])
+                    companies = []
                 if not companies:
                     break
                 for edge in companies:
@@ -258,8 +261,11 @@ async def trigger_sync(payload: TwentySyncTrigger, db: Session = Depends(get_db)
                 data_val = opps_data.get("data", [])
                 if isinstance(data_val, list):
                     opps = data_val
+                elif isinstance(data_val, dict):
+                    inner = data_val.get("opportunities", data_val)
+                    opps = inner.get("edges", inner) if isinstance(inner, dict) else inner if isinstance(inner, list) else []
                 else:
-                    opps = data_val.get("opportunities", {}).get("edges", [])
+                    opps = []
                 if not opps:
                     break
                 for edge in opps:
