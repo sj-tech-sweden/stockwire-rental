@@ -194,6 +194,7 @@
               <q-btn flat dense round icon="info" :color="infoActionColor" class="q-mr-xs inventory-action-contrast" @click="openProductInfo(props.row)" />
               <q-btn flat dense round icon="calendar_month" :color="calendarActionColor" class="q-mr-xs inventory-action-contrast" @click="openProductAvailabilityCalendar(props.row)" />
               <q-btn flat dense round icon="edit" color="primary" @click="openEditProduct(props.row)" />
+              <q-btn flat dense round icon="description" color="secondary" @click="productExportTarget = props.row; productExportDialogOpen = true" />
             </q-td>
           </template>
           <template #item="props">
@@ -464,6 +465,7 @@
             <q-td :props="props" auto-width>
               <q-btn flat dense round icon="info" :color="infoActionColor" class="q-mr-xs inventory-action-contrast" @click="deviceInfoTarget = props.row; deviceInfoDialogOpen = true" />
               <q-btn flat dense round icon="edit" color="primary" @click="openEditDevice(props.row)" />
+              <q-btn flat dense round icon="description" color="secondary" @click="deviceExportTarget = props.row; deviceExportDialogOpen = true" />
             </q-td>
           </template>
           <template #item="props">
@@ -785,6 +787,19 @@
       :selected-racks="generateShelvesTargetRacks"
       @saved="onGenerateShelvesSaved"
     />
+
+    <ReportExportDialog
+      v-if="productExportTarget"
+      v-model="productExportDialogOpen"
+      entity-type="product"
+      :entity-id="productExportTarget.id"
+    />
+    <ReportExportDialog
+      v-if="deviceExportTarget"
+      v-model="deviceExportDialogOpen"
+      entity-type="device"
+      :entity-id="deviceExportTarget.id"
+    />
   </q-page>
 </template>
 
@@ -817,6 +832,7 @@ import {
 import { translateProductType, translateCategory } from '../utils/translate-helpers'
 import { api } from '../boot/axios'
 import DefectReportDialog from '../components/DefectReportDialog.vue'
+import ReportExportDialog from '../components/ReportExportDialog.vue'
 import RentalProductDialog from '../components/RentalProductDialog.vue'
 import RentalProductInfoDialog from '../components/RentalProductInfoDialog.vue'
 import ProductAvailabilityDialog from '../components/ProductAvailabilityDialog.vue'
@@ -1697,6 +1713,10 @@ function getManufacturerLink(manufacturer) {
 
 const productDialogOpen = ref(false)
 const productEditing = ref(null)
+const productExportDialogOpen = ref(false)
+const productExportTarget = ref(null)
+const deviceExportDialogOpen = ref(false)
+const deviceExportTarget = ref(null)
 
 function openCreateProduct() {
   productEditing.value = null

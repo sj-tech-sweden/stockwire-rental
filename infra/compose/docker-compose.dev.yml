@@ -19,6 +19,8 @@ services:
     image: valkey/valkey:9-alpine
     # ports:
     #   - "${VALKEY_HOST_PORT:-6380}:6379"
+    volumes:
+      - stockwire-rental-valkey9-data:/data
     healthcheck:
       test: ["CMD-SHELL", "valkey-cli ping || redis-cli ping"]
       interval: 10s
@@ -73,3 +75,4 @@ services:
 
 volumes:
   stockwire-rental-postgres18-data:
+  stockwire-rental-valkey9-data:

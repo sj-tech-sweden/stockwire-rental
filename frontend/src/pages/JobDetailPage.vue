@@ -7,14 +7,32 @@
       <div class="col">
         <div class="text-h5 text-break">{{ isNewJob ? t('jobs.newJob') : (currentJob?.job_code || t('jobs.viewJob')) }}</div>
       </div>
-      <div class="col-auto" v-if="authStore.canEdit">
+      <div class="col-auto" v-if="authStore.canEdit && !isNewJob">
+        <q-btn
+          color="secondary"
+          outline
+          icon="description"
+          :label="isPhone ? undefined : t('reports.export')"
+          class="q-mr-sm"
+          @click="showExportDialog = true"
+        />
         <q-btn
           ref="headerSaveBtn"
           color="primary"
           unelevated
-          :label="isPhone ? (isNewJob ? t('app.actions.create') : t('app.actions.save')) : (isNewJob ? t('jobs.create') : t('jobs.saveChanges'))"
+          :label="isPhone ? t('app.actions.save') : t('jobs.saveChanges')"
           :loading="saving"
-          @click="isNewJob ? createJob() : saveChanges()"
+          @click="saveChanges()"
+        />
+      </div>
+      <div class="col-auto" v-if="authStore.canEdit && isNewJob">
+        <q-btn
+          ref="headerSaveBtn"
+          color="primary"
+          unelevated
+          :label="isPhone ? t('app.actions.create') : t('jobs.create')"
+          :loading="saving"
+          @click="createJob()"
         />
       </div>
     </div>
@@ -537,6 +555,7 @@
     <JobCustomFieldsDialog v-model="customFieldsDialogOpen" :job-id="currentJob?.id || null" @saved="reloadFieldRows" />
     <CrewRequirementDialog v-model="crewRequirementDialogOpen" :job-id="currentJob?.id || null" @saved="loadCrewData" />
     <CrewAssignmentDialog v-model="crewAssignmentDialogOpen" :job-id="currentJob?.id || null" :requirement-id="selectedCrewRequirementId" @saved="onCrewAssignmentSaved" />
+    <ReportExportDialog v-if="currentJob" v-model="showExportDialog" entity-type="job" :entity-id="currentJob.id" />
   </q-page>
 </template>
 
@@ -570,6 +589,7 @@ import CrewAssignmentDialog from '../components/CrewAssignmentDialog.vue'
 import CustomerPickerDialog from '../components/CustomerPickerDialog.vue'
 import VenuePickerDialog from '../components/VenuePickerDialog.vue'
 import JobCustomFieldsDialog from '../components/JobCustomFieldsDialog.vue'
+import ReportExportDialog from '../components/ReportExportDialog.vue'
 
 const $q = useQuasar()
 const route = useRoute()
@@ -598,6 +618,7 @@ const venuePickerOpen = ref(false)
 const customFieldsDialogOpen = ref(false)
 const crewRequirementDialogOpen = ref(false)
 const crewAssignmentDialogOpen = ref(false)
+const showExportDialog = ref(false)
 const selectedCrewRequirementId = ref(null)
 const eventorySyncLoading = ref({})
 const eventoryVerified = ref({})

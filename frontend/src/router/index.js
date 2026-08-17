@@ -65,6 +65,7 @@ const routes = [
       { path: 'crew/new', component: () => import('../pages/CrewDetailPage.vue') },
       { path: 'crew/:crewMemberId', component: () => import('../pages/CrewDetailPage.vue') },
       { path: 'venues', component: () => import('../pages/VenuesPage.vue') },
+      { path: 'reports', component: () => import('../pages/ReportsPage.vue') },
       { path: 'profile', component: () => import('../pages/ProfilePage.vue') },
       { path: 'settings', component: () => import('../pages/SettingsPage.vue') },
       { path: 'finance', component: () => import('../pages/FinancePage.vue') },

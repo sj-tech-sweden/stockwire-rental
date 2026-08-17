@@ -1,8 +1,15 @@
+import axios from 'axios'
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 
 import { api } from '../boot/axios'
+import { getApiBaseUrl } from '../utils/runtime-config'
 import { cacheSnapshot, isOnline, queueMutation, readSnapshot } from '../services/offline/orbitSync'
+
+const publicApi = axios.create({
+  baseURL: getApiBaseUrl(),
+  timeout: 30000,
+})
 
 export const useAuthStore = defineStore('auth', () => {
   const token = ref(localStorage.getItem('sw_token') || null)
@@ -14,7 +21,7 @@ export const useAuthStore = defineStore('auth', () => {
     localStorage.removeItem('sw_user')
   }
   const me = ref(parsedUser)
-  let _refreshToken = sessionStorage.getItem('sw_refresh_token') || null
+  let _refreshToken = localStorage.getItem('sw_refresh_token') || null
 
   const isAuthenticated = computed(() => !!token.value)
   const isAdmin = computed(() => me.value?.role === 'admin')
@@ -31,9 +38,9 @@ export const useAuthStore = defineStore('auth', () => {
   function _storeRefreshToken(refreshToken) {
     _refreshToken = refreshToken
     if (refreshToken) {
-      sessionStorage.setItem('sw_refresh_token', refreshToken)
+      localStorage.setItem('sw_refresh_token', refreshToken)
     } else {
-      sessionStorage.removeItem('sw_refresh_token')
+      localStorage.removeItem('sw_refresh_token')
     }
   }
 
@@ -75,7 +82,7 @@ export const useAuthStore = defineStore('auth', () => {
     _refreshToken = null
     localStorage.removeItem('sw_token')
     localStorage.removeItem('sw_user')
-    sessionStorage.removeItem('sw_refresh_token')
+    localStorage.removeItem('sw_refresh_token')
     delete api.defaults.headers.common['Authorization']
   }
 
@@ -153,7 +160,7 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   async function checkBootstrap() {
-    const { data } = await api.get('/api/v1/auth/bootstrap-status')
+    const { data } = await publicApi.get('/api/v1/auth/bootstrap-status')
     return data.setup_needed
   }
 
@@ -178,18 +185,18 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   async function fetchSsoProviders() {
-    const { data } = await api.get('/api/v1/auth/sso/providers')
+    const { data } = await publicApi.get('/api/v1/auth/sso/providers')
     ssoProviders.value = Array.isArray(data) ? data : []
     return ssoProviders.value
   }
 
   async function fetchSamlProviderConfig(provider) {
-    const { data } = await api.get(`/api/v1/auth/sso/saml-provider-config/${encodeURIComponent(provider)}`)
+    const { data } = await publicApi.get(`/api/v1/auth/sso/saml-provider-config/${encodeURIComponent(provider)}`)
     return data
   }
 
   async function getOidcAuthorizeUrl(provider, redirectUri) {
-    const { data } = await api.get(`/api/v1/auth/sso/oidc/authorize/${encodeURIComponent(provider)}`, {
+    const { data } = await publicApi.get(`/api/v1/auth/sso/oidc/authorize/${encodeURIComponent(provider)}`, {
       params: { redirect_uri: redirectUri },
     })
     // Store the state in sessionStorage so it survives the redirect
