@@ -264,18 +264,19 @@ class TwentyClient:
 
     async def _ensure_custom_field(self, object_name: str, field_name: str, field_type: str, label: str) -> None:
         """Create a custom field on an object if it doesn't already exist."""
-        # Check if field exists
+        # Check if field exists via GraphQL introspection
         query = '{ %s { fields { name } } }' % object_name
         try:
             result = await self.graphql(query)
-            existing_fields = [f.get("name", "") for f in result.get("data", {}).get(object_name, {}).get("fields", [])]
+            fields_data = result.get("data", {}).get(object_name, {})
+            existing_fields = [f.get("name", "") for f in fields_data.get("fields", [])]
             if field_name in existing_fields:
                 return
         except Exception as exc:
             logger.debug("Could not introspect fields for %s, proceeding with creation: %s", object_name, exc)
 
         # Create the field via metadata API
-        await self._request_with_retry(
+        resp = await self._request_with_retry(
             "POST",
             f"{self.base_url}/rest/metadata/objectFields",
             json={
@@ -286,6 +287,8 @@ class TwentyClient:
                 "isCustom": True,
             },
         )
+        if not resp.is_success:
+            logger.warning("Failed to create field %s.%s: %s %s", object_name, field_name, resp.status_code, resp.text[:200])
 
     async def _ensure_custom_object(self, object_name: str, label: str, fields: list[dict[str, Any]]) -> None:
         """Create a custom object with fields if it doesn't already exist.
@@ -362,8 +365,20 @@ class TwentyClient:
         if not resp.is_success:
             return []
         data = resp.json()
-        items = data.get("data", data)
-        return items if isinstance(items, list) else []
+        # Handle various response shapes: {data: [...]}, {data: {webhooks: [...]}}, or [...]
+        items = data.get("data", data) if isinstance(data, dict) else data
+        if isinstance(items, dict):
+            # Try common nested keys
+            for key in ("webhooks", "edges", "nodes"):
+                if key in items and isinstance(items[key], list):
+                    items = items[key]
+                    break
+            else:
+                items = []
+        if not isinstance(items, list):
+            items = []
+        # Filter to only dicts (skip any non-dict entries)
+        return [h for h in items if isinstance(h, dict)]
 
     async def create_webhook(self, target_url: str, event: str, object_type: str | None = None, secret: str | None = None) -> dict[str, Any]:
         """Create a webhook in Twenty CRM."""

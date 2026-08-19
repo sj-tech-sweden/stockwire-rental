@@ -106,10 +106,15 @@ def update_config(payload: TwentyConfigUpdate, db: Session = Depends(get_db)):
 
     update_data = payload.model_dump(exclude_unset=True)
     update_data.pop("clear_api_key", None)
+    update_data.pop("clear_webhook_secret", None)
     if payload.clear_api_key:
         config.api_key = ""
     elif "api_key" in update_data and not update_data["api_key"]:
         del update_data["api_key"]
+    if payload.clear_webhook_secret:
+        config.webhook_secret = ""
+    elif "webhook_secret" in update_data and not update_data["webhook_secret"]:
+        del update_data["webhook_secret"]
     for field, value in update_data.items():
         setattr(config, field, value)
     config.updated_at = datetime.now(timezone.utc)

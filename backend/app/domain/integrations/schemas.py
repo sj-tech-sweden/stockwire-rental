@@ -51,6 +51,7 @@ class TwentyConfigUpdate(BaseModel):
     sync_interval_minutes: int | None = None
     webhook_secret: str | None = None
     clear_api_key: bool = False
+    clear_webhook_secret: bool = False
 
     @field_validator("base_url")
     @classmethod

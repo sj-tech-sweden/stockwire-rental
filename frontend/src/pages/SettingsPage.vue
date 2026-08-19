@@ -1050,7 +1050,11 @@
                   outlined
                   dense
                   type="password"
-                />
+                >
+                  <template #append>
+                    <q-btn flat dense icon="autorenew" size="sm" color="secondary" @click="generateWebhookSecret" :title="t('settings.integrations.twenty.generateSecret')" />
+                  </template>
+                </q-input>
               </div>
             </div>
             <div v-if="twentyDraft.enabled" class="row items-center q-gutter-sm q-mb-sm">
@@ -3665,6 +3669,13 @@ async function loadTwentySyncStatus() {
   }
 }
 
+function generateWebhookSecret() {
+  const array = new Uint8Array(32)
+  crypto.getRandomValues(array)
+  const secret = Array.from(array, b => b.toString(16).padStart(2, '0')).join('')
+  twentyDraft.value.webhook_secret = secret
+}
+
 async function saveTwentyConfig() {
   const payload = {
     base_url: twentyDraft.value.base_url,
@@ -3676,10 +3687,17 @@ async function saveTwentyConfig() {
   } else if (!twentyDraft.value.has_api_key) {
     payload.clear_api_key = true
   }
+  if (twentyDraft.value.webhook_secret) {
+    payload.webhook_secret = twentyDraft.value.webhook_secret
+  } else if (!twentyDraft.value.has_webhook_secret) {
+    payload.clear_webhook_secret = true
+  }
   try {
     const data = await settingsStore.saveTwentyConfig(payload)
     twentyDraft.value.has_api_key = data?.has_api_key ?? true
     twentyDraft.value.api_key = ''
+    twentyDraft.value.has_webhook_secret = data?.has_webhook_secret ?? true
+    twentyDraft.value.webhook_secret = ''
     $q.notify({ type: 'positive', message: t('settings.integrations.twenty.saved') })
   } catch (error) {
     $q.notify({ type: 'negative', message: error?.response?.data?.detail || t('settings.integrations.twenty.saveFailed') })
