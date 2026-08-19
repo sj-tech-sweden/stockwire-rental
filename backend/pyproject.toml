@@ -29,7 +29,7 @@ dependencies = [
   "paho-mqtt==2.1.0",
   "boto3==1.43.74",
   "prometheus-fastapi-instrumentator==8.1.0",
-  "icalendar==7.2.2",
+  "icalendar==7.3.0",
   "openai>=3.3.0,<3.4.0",
   "slowapi>=0.1.9",
   "reportlab>=5,<5.1",
