@@ -149,6 +149,8 @@ class TwentyClient:
             f"{self.base_url}/metadata",
             json=body,
         )
+        if not resp.is_success:
+            logger.error("Metadata GraphQL request failed %s: %s", resp.status_code, resp.text[:500])
         resp.raise_for_status()
         return resp.json()
 
@@ -197,7 +199,7 @@ class TwentyClient:
             ("stockwireUrl", "LINKS", "Stockwire URL"),
             ("stockwireId", "NUMBER", "Stockwire ID"),
             ("stockwireNotes", "TEXT", "Stockwire Notes"),
-            ("phoneSecondary", "PHONE", "Secondary Phone"),
+            ("phoneSecondary", "TEXT", "Secondary Phone"),
         ]
         for field_name, field_type, label in company_fields:
             try:
@@ -393,7 +395,12 @@ class TwentyClient:
             msg = errors[0].get("message", str(errors))
             extensions = errors[0].get("extensions", {})
             # "Name already used" means the field exists — that's fine (idempotent)
-            if "already used" in msg.lower() or "not available" in msg.lower():
+            error_text = msg.lower()
+            try:
+                error_text += " " + str(extensions).lower()
+            except Exception:
+                pass
+            if "already used" in error_text or "not available" in error_text:
                 logger.info("Field %s.%s already exists, skipping", object_name, field_name)
                 return
             logger.error("createOneField %s.%s failed: %s (extensions=%s, objectMetadataId=%s)", object_name, field_name, msg, extensions, object_metadata_id)
