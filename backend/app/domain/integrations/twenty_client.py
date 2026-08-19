@@ -256,7 +256,14 @@ class TwentyClient:
         if webhook_url:
             try:
                 existing_hooks = await self.list_webhooks()
-                existing_urls = {h.get("targetUrl") for h in existing_hooks if isinstance(h, dict)}
+                # Build a set of (targetUrl, event) tuples to avoid duplicates
+                existing_pairs = set()
+                for h in existing_hooks:
+                    if isinstance(h, dict):
+                        url = h.get("targetUrl", "")
+                        evt = h.get("event", "")
+                        if url and evt:
+                            existing_pairs.add((url, evt))
 
                 webhook_events = [
                     ("company.created", "company"),
@@ -264,7 +271,7 @@ class TwentyClient:
                     ("opportunity.updated", "opportunity"),
                 ]
                 for event, object_type in webhook_events:
-                    if webhook_url not in existing_urls:
+                    if (webhook_url, event) not in existing_pairs:
                         hook = await self.create_webhook(webhook_url, event, object_type, webhook_secret)
                         hook_id = hook.get("data", hook).get("id", "unknown")
                         results["webhooks_created"].append(f"{event} → {webhook_url}")
@@ -335,12 +342,10 @@ class TwentyClient:
         mutation = '''
         mutation CreateOneField($input: CreateOneFieldMetadataInput!) {
           createOneField(input: $input) {
-            field {
-              id
-              name
-              type
-              label
-            }
+            id
+            name
+            type
+            label
           }
         }
         '''
@@ -376,10 +381,8 @@ class TwentyClient:
             mutation = '''
             mutation CreateOneObject($input: CreateOneObjectInput!) {
               createOneObject(input: $input) {
-                objectMetadata {
-                  id
-                  nameSingular
-                }
+                id
+                nameSingular
               }
             }
             '''
