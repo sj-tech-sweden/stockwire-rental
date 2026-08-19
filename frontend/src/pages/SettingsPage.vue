@@ -3756,13 +3756,19 @@ async function provisionTwentySchema() {
   try {
     await saveTwentyConfig()
     const result = await api.post('/api/v1/integrations/twenty/provision-schema')
-    twentyDraft.value.schema_provisioned = true
     const d = result.data || {}
     const total = (d.custom_fields_created?.length || 0) + (d.custom_objects_created?.length || 0) + (d.webhooks_created?.length || 0)
-    const msg = total > 0
-      ? t('settings.integrations.twenty.schemaProvisionedSuccess', { count: total })
-      : t('settings.integrations.twenty.schemaProvisionedNoop')
-    $q.notify({ type: 'positive', message: msg })
+    const errors = d.errors || []
+    if (errors.length && total === 0) {
+      twentyDraft.value.schema_provisioned = false
+      $q.notify({ type: 'negative', message: t('settings.integrations.twenty.schemaProvisionFailed') + ': ' + errors[0] })
+    } else {
+      twentyDraft.value.schema_provisioned = true
+      const msg = total > 0
+        ? t('settings.integrations.twenty.schemaProvisionedSuccess', { count: total })
+        : t('settings.integrations.twenty.schemaProvisionedNoop')
+      $q.notify({ type: errors.length ? 'warning' : 'positive', message: msg + (errors.length ? ` (${errors.length} errors)` : '') })
+    }
   } catch (error) {
     $q.notify({ type: 'negative', message: error?.response?.data?.detail || t('settings.integrations.twenty.schemaProvisionFailed') })
   } finally {

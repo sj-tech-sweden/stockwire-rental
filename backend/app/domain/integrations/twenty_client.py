@@ -181,10 +181,10 @@ class TwentyClient:
 
         # ── Company fields ────────────────────────────────────────────────
         company_fields = [
-            ("stockwire_url", "url", "Stockwire URL"),
-            ("stockwire_id", "number", "Stockwire ID"),
-            ("stockwire_notes", "text", "Stockwire Notes"),
-            ("phone_secondary", "phone", "Secondary Phone"),
+            ("stockwireUrl", "LINKS", "Stockwire URL"),
+            ("stockwireId", "NUMBER", "Stockwire ID"),
+            ("stockwireNotes", "TEXT", "Stockwire Notes"),
+            ("phoneSecondary", "PHONE", "Secondary Phone"),
         ]
         for field_name, field_type, label in company_fields:
             try:
@@ -195,12 +195,12 @@ class TwentyClient:
 
         # ── Opportunity fields ────────────────────────────────────────────
         opportunity_fields = [
-            ("stockwire_url", "url", "Stockwire URL"),
-            ("stockwire_id", "number", "Stockwire ID"),
-            ("stockwire_job_code", "text", "Job Code"),
-            ("stockwire_start_date", "date", "Rental Start Date"),
-            ("stockwire_end_date", "date", "Rental End Date"),
-            ("stockwire_status", "text", "Rental Status"),
+            ("stockwireUrl", "LINKS", "Stockwire URL"),
+            ("stockwireId", "NUMBER", "Stockwire ID"),
+            ("stockwireJobCode", "TEXT", "Job Code"),
+            ("stockwireStartDate", "DATE", "Rental Start Date"),
+            ("stockwireEndDate", "DATE", "Rental End Date"),
+            ("stockwireStatus", "TEXT", "Rental Status"),
         ]
         for field_name, field_type, label in opportunity_fields:
             try:
@@ -211,8 +211,8 @@ class TwentyClient:
 
         # ── Person fields ─────────────────────────────────────────────────
         person_fields = [
-            ("stockwire_url", "url", "Stockwire URL"),
-            ("stockwire_id", "number", "Stockwire ID"),
+            ("stockwireUrl", "LINKS", "Stockwire URL"),
+            ("stockwireId", "NUMBER", "Stockwire ID"),
         ]
         for field_name, field_type, label in person_fields:
             try:
@@ -224,16 +224,16 @@ class TwentyClient:
         # ── Rental Job custom object ──────────────────────────────────────
         try:
             await self._ensure_custom_object("rentalJob", "Rental Job", [
-                {"name": "jobStatus", "type": "text", "label": "Job Status"},
-                {"name": "jobCode", "type": "text", "label": "Job Code"},
-                {"name": "customerName", "type": "text", "label": "Customer Name"},
-                {"name": "startDate", "type": "date", "label": "Start Date"},
-                {"name": "endDate", "type": "date", "label": "End Date"},
-                {"name": "totalAmount", "type": "number", "label": "Total Amount"},
-                {"name": "currency", "type": "text", "label": "Currency"},
-                {"name": "stockwireJobUrl", "type": "url", "label": "Stockwire Job URL"},
-                {"name": "stockwireJobId", "type": "number", "label": "Stockwire Job ID"},
-                {"name": "description", "type": "text", "label": "Description"},
+                {"name": "jobStatus", "type": "TEXT", "label": "Job Status"},
+                {"name": "jobCode", "type": "TEXT", "label": "Job Code"},
+                {"name": "customerName", "type": "TEXT", "label": "Customer Name"},
+                {"name": "startDate", "type": "DATE", "label": "Start Date"},
+                {"name": "endDate", "type": "DATE", "label": "End Date"},
+                {"name": "totalAmount", "type": "NUMBER", "label": "Total Amount"},
+                {"name": "currency", "type": "TEXT", "label": "Currency"},
+                {"name": "stockwireJobUrl", "type": "LINKS", "label": "Stockwire Job URL"},
+                {"name": "stockwireJobId", "type": "NUMBER", "label": "Stockwire Job ID"},
+                {"name": "description", "type": "TEXT", "label": "Description"},
             ])
             results["custom_objects_created"].append("rentalJob")
         except Exception as exc:
@@ -262,9 +262,36 @@ class TwentyClient:
 
         return results
 
+    async def _resolve_object_metadata_id(self, name_singular: str) -> str:
+        """Look up the UUID for an object by its nameSingular via GraphQL."""
+        query = '''
+        query GetObject($nameSingular: String!) {
+          objects(filter: { nameSingular: { eq: $nameSingular } }) {
+            edges {
+              node {
+                id
+                nameSingular
+              }
+            }
+          }
+        }
+        '''
+        result = await self.graphql(query, {"nameSingular": name_singular})
+        edges = result.get("data", {}).get("objects", {}).get("edges", [])
+        if not edges:
+            raise ValueError(f"Object '{name_singular}' not found in Twenty workspace")
+        return edges[0]["node"]["id"]
+
     async def _ensure_custom_field(self, object_name: str, field_name: str, field_type: str, label: str) -> None:
-        """Create a custom field on an object if it doesn't already exist."""
-        # Check if field exists via GraphQL introspection
+        """Create a custom field on an object via GraphQL if it doesn't already exist.
+
+        field_type must be a valid Twenty FieldMetadataType enum value:
+        TEXT, NUMBER, BOOLEAN, DATE, DATE_TIME, LINKS, PHONE, EMAILS,
+        CURRENCY, SELECT, MULTI_SELECT, RELATION, etc.
+        """
+        object_metadata_id = await self._resolve_object_metadata_id(object_name)
+
+        # Check if field already exists via introspection
         query = '{ %s { fields { name } } }' % object_name
         try:
             result = await self.graphql(query)
@@ -275,47 +302,74 @@ class TwentyClient:
         except Exception as exc:
             logger.debug("Could not introspect fields for %s, proceeding with creation: %s", object_name, exc)
 
-        # Create the field via metadata API
-        resp = await self._request_with_retry(
-            "POST",
-            f"{self.base_url}/rest/metadata/objectFields",
-            json={
-                "objectName": object_name,
-                "name": field_name,
-                "type": field_type,
-                "label": label,
-                "isCustom": True,
-            },
-        )
-        if not resp.is_success:
-            logger.warning("Failed to create field %s.%s: %s %s", object_name, field_name, resp.status_code, resp.text[:200])
+        # Create the field via GraphQL mutation
+        mutation = '''
+        mutation CreateOneField($input: CreateOneFieldMetadataInput!) {
+          createOneField(input: $input) {
+            field {
+              id
+              name
+              type
+              label
+            }
+          }
+        }
+        '''
+        resp = await self.graphql(mutation, {
+            "input": {
+                "field": {
+                    "objectMetadataId": object_metadata_id,
+                    "name": field_name,
+                    "type": field_type,
+                    "label": label,
+                }
+            }
+        })
+        errors = resp.get("errors")
+        if errors:
+            msg = errors[0].get("message", str(errors))
+            raise RuntimeError(f"createOneField failed: {msg}")
 
     async def _ensure_custom_object(self, object_name: str, label: str, fields: list[dict[str, Any]]) -> None:
-        """Create a custom object with fields if it doesn't already exist.
+        """Create a custom object with fields via GraphQL if it doesn't already exist.
 
         If the object already exists, still create any missing fields on it.
         """
         object_exists = False
         try:
-            resp = await self._request_with_retry("GET", f"{self.base_url}/rest/{object_name}?limit=1")
-            if resp.status_code == 200:
-                object_exists = True
-        except Exception as exc:
-            logger.debug("Could not check existence of %s, proceeding with creation: %s", object_name, exc)
+            await self._resolve_object_metadata_id(object_name)
+            object_exists = True
+        except Exception:
+            pass
 
         if not object_exists:
-            await self._request_with_retry(
-                "POST",
-                f"{self.base_url}/rest/metadata/object",
-                json={
-                    "name": object_name,
-                    "label": label,
-                    "fields": fields,
-                },
-            )
-            return
+            mutation = '''
+            mutation CreateOneObject($input: CreateOneObjectMetadataInput!) {
+              createOneObject(input: $input) {
+                objectMetadata {
+                  id
+                  nameSingular
+                }
+              }
+            }
+            '''
+            resp = await self.graphql(mutation, {
+                "input": {
+                    "object": {
+                        "nameSingular": object_name,
+                        "labelSingular": label,
+                        "namePlural": object_name + "s",
+                        "labelPlural": label + "s",
+                        "isCustom": True,
+                    }
+                }
+            })
+            errors = resp.get("errors")
+            if errors:
+                msg = errors[0].get("message", str(errors))
+                raise RuntimeError(f"createOneObject failed: {msg}")
 
-        # Object exists — create any missing fields on it
+        # Create any fields on the object
         for field in fields:
             try:
                 await self._ensure_custom_field(object_name, field["name"], field["type"], field["label"])
