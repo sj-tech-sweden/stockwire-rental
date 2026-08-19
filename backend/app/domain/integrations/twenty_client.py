@@ -204,7 +204,9 @@ class TwentyClient:
                 await self._ensure_custom_field("company", field_name, field_type, label)
                 results["custom_fields_created"].append(f"company.{field_name}")
             except Exception as exc:
-                results["errors"].append(f"company.{field_name}: {exc}")
+                err_msg = f"company.{field_name}: {exc}"
+                results["errors"].append(err_msg)
+                logger.warning("Schema provision error: %s", err_msg)
 
         # ── Opportunity fields ────────────────────────────────────────────
         opportunity_fields = [
@@ -220,7 +222,9 @@ class TwentyClient:
                 await self._ensure_custom_field("opportunity", field_name, field_type, label)
                 results["custom_fields_created"].append(f"opportunity.{field_name}")
             except Exception as exc:
-                results["errors"].append(f"opportunity.{field_name}: {exc}")
+                err_msg = f"opportunity.{field_name}: {exc}"
+                results["errors"].append(err_msg)
+                logger.warning("Schema provision error: %s", err_msg)
 
         # ── Person fields ─────────────────────────────────────────────────
         person_fields = [
@@ -232,7 +236,9 @@ class TwentyClient:
                 await self._ensure_custom_field("person", field_name, field_type, label)
                 results["custom_fields_created"].append(f"person.{field_name}")
             except Exception as exc:
-                results["errors"].append(f"person.{field_name}: {exc}")
+                err_msg = f"person.{field_name}: {exc}"
+                results["errors"].append(err_msg)
+                logger.warning("Schema provision error: %s", err_msg)
 
         # ── Rental Job custom object ──────────────────────────────────────
         try:
@@ -420,7 +426,7 @@ class TwentyClient:
             try:
                 await self._ensure_custom_field(object_name, field["name"], field["type"], field["label"])
             except Exception as exc:
-                logger.debug("Could not ensure field %s.%s: %s", object_name, field["name"], exc)
+                logger.warning("Could not ensure field %s.%s: %s", object_name, field["name"], exc)
 
     async def sync_job_to_twenty(self, job_id: int, job_data: dict[str, Any], deep_link: str) -> str | None:
         """Upsert a Rental Job custom object in Twenty and return its ID."""
