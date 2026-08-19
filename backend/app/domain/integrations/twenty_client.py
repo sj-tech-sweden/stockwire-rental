@@ -139,6 +139,19 @@ class TwentyClient:
         resp.raise_for_status()
         return resp.json()
 
+    async def metadata_graphql(self, query: str, variables: dict[str, Any] | None = None) -> dict[str, Any]:
+        """Send a GraphQL mutation/query to the Metadata API endpoint."""
+        body: dict[str, Any] = {"query": query}
+        if variables:
+            body["variables"] = variables
+        resp = await self._request_with_retry(
+            "POST",
+            f"{self.base_url}/metadata",
+            json=body,
+        )
+        resp.raise_for_status()
+        return resp.json()
+
     async def search_people(self, email: str | None = None, name: str | None = None) -> list[dict[str, Any]]:
         filters = []
         if email:
@@ -318,7 +331,7 @@ class TwentyClient:
         except Exception as exc:
             logger.debug("Could not introspect fields for %s, proceeding with creation: %s", object_name, exc)
 
-        # Create the field via GraphQL mutation
+        # Create the field via GraphQL mutation on the Metadata API
         mutation = '''
         mutation CreateOneField($input: CreateOneFieldMetadataInput!) {
           createOneField(input: $input) {
@@ -331,7 +344,7 @@ class TwentyClient:
           }
         }
         '''
-        resp = await self.graphql(mutation, {
+        resp = await self.metadata_graphql(mutation, {
             "input": {
                 "field": {
                     "objectMetadataId": object_metadata_id,
@@ -361,7 +374,7 @@ class TwentyClient:
 
         if not object_exists:
             mutation = '''
-            mutation CreateOneObject($input: CreateOneObjectMetadataInput!) {
+            mutation CreateOneObject($input: CreateOneObjectInput!) {
               createOneObject(input: $input) {
                 objectMetadata {
                   id
@@ -370,7 +383,7 @@ class TwentyClient:
               }
             }
             '''
-            resp = await self.graphql(mutation, {
+            resp = await self.metadata_graphql(mutation, {
                 "input": {
                     "object": {
                         "nameSingular": object_name,
