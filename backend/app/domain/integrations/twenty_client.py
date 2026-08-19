@@ -262,8 +262,24 @@ class TwentyClient:
 
         return results
 
+    # Hardcoded UUIDs for Twenty standard objects (constant across all workspaces)
+    _STANDARD_OBJECT_IDS = {
+        "company": "20202020-b374-4779-a561-80086cb2e17f",
+        "person": "20202020-e674-48e5-a542-72570eee7213",
+        "opportunity": "20202020-9549-49dd-b2b2-883999db8938",
+        "task": "20202020-1ba1-48ba-bc83-ef7e5990ed10",
+        "note": "20202020-0b00-45cd-b6f6-6cd806fc6804",
+    }
+
     async def _resolve_object_metadata_id(self, name_singular: str) -> str:
-        """Look up the UUID for an object by its nameSingular via GraphQL."""
+        """Look up the UUID for an object by its nameSingular via GraphQL.
+
+        Falls back to hardcoded UUIDs for standard objects if the query fails.
+        """
+        # Try hardcoded first for standard objects
+        if name_singular in self._STANDARD_OBJECT_IDS:
+            return self._STANDARD_OBJECT_IDS[name_singular]
+
         query = '''
         query GetObject($nameSingular: String!) {
           objects(filter: { nameSingular: { eq: $nameSingular } }) {
@@ -328,6 +344,7 @@ class TwentyClient:
         errors = resp.get("errors")
         if errors:
             msg = errors[0].get("message", str(errors))
+            logger.error("createOneField %s.%s failed: %s (objectMetadataId=%s)", object_name, field_name, msg, object_metadata_id)
             raise RuntimeError(f"createOneField failed: {msg}")
 
     async def _ensure_custom_object(self, object_name: str, label: str, fields: list[dict[str, Any]]) -> None:
@@ -367,6 +384,7 @@ class TwentyClient:
             errors = resp.get("errors")
             if errors:
                 msg = errors[0].get("message", str(errors))
+                logger.error("createOneObject %s failed: %s", object_name, msg)
                 raise RuntimeError(f"createOneObject failed: {msg}")
 
         # Create any fields on the object
