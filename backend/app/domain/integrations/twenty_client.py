@@ -256,26 +256,13 @@ class TwentyClient:
         if webhook_url:
             try:
                 existing_hooks = await self.list_webhooks()
-                # Build a set of (targetUrl, event) tuples to avoid duplicates
-                existing_pairs = set()
-                for h in existing_hooks:
-                    if isinstance(h, dict):
-                        url = h.get("targetUrl", "")
-                        evt = h.get("event", "")
-                        if url and evt:
-                            existing_pairs.add((url, evt))
+                existing_urls = {h.get("targetUrl") for h in existing_hooks if isinstance(h, dict)}
 
-                webhook_events = [
-                    ("company.created", "company"),
-                    ("company.updated", "company"),
-                    ("opportunity.updated", "opportunity"),
-                ]
-                for event, object_type in webhook_events:
-                    if (webhook_url, event) not in existing_pairs:
-                        hook = await self.create_webhook(webhook_url, event, object_type, webhook_secret)
-                        hook_id = hook.get("data", hook).get("id", "unknown")
-                        results["webhooks_created"].append(f"{event} → {webhook_url}")
-                        logger.info("Created Twenty webhook: %s (id=%s)", event, hook_id)
+                if webhook_url not in existing_urls:
+                    hook = await self.create_webhook(webhook_url, secret=webhook_secret)
+                    hook_id = hook.get("data", hook).get("id", "unknown")
+                    results["webhooks_created"].append(webhook_url)
+                    logger.info("Created Twenty webhook (id=%s, url=%s)", hook_id, webhook_url)
             except Exception as exc:
                 results["errors"].append(f"webhooks: {exc}")
                 logger.warning("Could not provision webhooks: %s", exc)
@@ -468,15 +455,12 @@ class TwentyClient:
         # Filter to only dicts (skip any non-dict entries)
         return [h for h in items if isinstance(h, dict)]
 
-    async def create_webhook(self, target_url: str, event: str, object_type: str | None = None, secret: str | None = None) -> dict[str, Any]:
-        """Create a webhook in Twenty CRM."""
+    async def create_webhook(self, target_url: str, secret: str | None = None) -> dict[str, Any]:
+        """Create a webhook in Twenty CRM (receives all events)."""
         payload: dict[str, Any] = {
             "targetUrl": target_url,
-            "event": event,
             "isActive": True,
         }
-        if object_type:
-            payload["objectType"] = object_type
         if secret:
             payload["secret"] = secret
         resp = await self._request_with_retry("POST", f"{self.base_url}/rest/webhooks", json=payload)
