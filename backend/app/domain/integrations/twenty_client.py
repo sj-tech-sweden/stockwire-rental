@@ -287,9 +287,9 @@ class TwentyClient:
     async def _resolve_object_metadata_id(self, name_singular: str) -> str:
         """Look up the UUID for an object by its nameSingular via the Metadata API.
 
-        First tries a direct query, falling back to listing all objects.
+        Tries multiple approaches since different Twenty versions use different APIs.
         """
-        # Try direct filter query first
+        # Approach 1: GraphQL query with filter
         query = '''
         query GetObject($nameSingular: String!) {
           objects(filter: { nameSingular: { eq: $nameSingular } }) {
@@ -308,9 +308,9 @@ class TwentyClient:
             if edges:
                 return edges[0]["node"]["id"]
         except Exception as exc:
-            logger.debug("Direct object query failed for %s: %s", name_singular, exc)
+            logger.debug("Approach 1 failed for %s: %s", name_singular, exc)
 
-        # Fallback: list all objects and find by name
+        # Approach 2: List all objects and find by name
         list_query = '''
         query ListAllObjects {
           objects {
@@ -330,7 +330,20 @@ class TwentyClient:
                 if node.get("nameSingular") == name_singular:
                     return node["id"]
         except Exception as exc:
-            logger.debug("List objects query failed: %s", exc)
+            logger.debug("Approach 2 failed for %s: %s", name_singular, exc)
+
+        # Approach 3: REST API introspection
+        try:
+            resp = await self._request_with_retry("GET", f"{self.base_url}/rest/metadata/objects")
+            if resp.is_success:
+                data = resp.json()
+                items = data.get("data", data) if isinstance(data, dict) else data
+                if isinstance(items, list):
+                    for obj in items:
+                        if isinstance(obj, dict) and obj.get("nameSingular") == name_singular:
+                            return obj["id"]
+        except Exception as exc:
+            logger.debug("Approach 3 failed for %s: %s", name_singular, exc)
 
         raise ValueError(f"Object '{name_singular}' not found in Twenty workspace")
 
@@ -379,6 +392,10 @@ class TwentyClient:
         if errors:
             msg = errors[0].get("message", str(errors))
             extensions = errors[0].get("extensions", {})
+            # "Name already used" means the field exists — that's fine (idempotent)
+            if "already used" in msg.lower() or "not available" in msg.lower():
+                logger.info("Field %s.%s already exists, skipping", object_name, field_name)
+                return
             logger.error("createOneField %s.%s failed: %s (extensions=%s, objectMetadataId=%s)", object_name, field_name, msg, extensions, object_metadata_id)
             raise RuntimeError(f"createOneField failed: {msg}")
 
