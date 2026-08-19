@@ -349,7 +349,8 @@ class TwentyClient:
         errors = resp.get("errors")
         if errors:
             msg = errors[0].get("message", str(errors))
-            logger.error("createOneField %s.%s failed: %s (objectMetadataId=%s)", object_name, field_name, msg, object_metadata_id)
+            extensions = errors[0].get("extensions", {})
+            logger.error("createOneField %s.%s failed: %s (extensions=%s, objectMetadataId=%s)", object_name, field_name, msg, extensions, object_metadata_id)
             raise RuntimeError(f"createOneField failed: {msg}")
 
     async def _ensure_custom_object(self, object_name: str, label: str, fields: list[dict[str, Any]]) -> None:
@@ -387,7 +388,8 @@ class TwentyClient:
             errors = resp.get("errors")
             if errors:
                 msg = errors[0].get("message", str(errors))
-                logger.error("createOneObject %s failed: %s", object_name, msg)
+                extensions = errors[0].get("extensions", {})
+                logger.error("createOneObject %s failed: %s (extensions=%s)", object_name, msg, extensions)
                 raise RuntimeError(f"createOneObject failed: {msg}")
 
         # Create any fields on the object
