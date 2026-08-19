@@ -279,14 +279,11 @@ class TwentyClient:
     }
 
     async def _resolve_object_metadata_id(self, name_singular: str) -> str:
-        """Look up the UUID for an object by its nameSingular via GraphQL.
+        """Look up the UUID for an object by its nameSingular via the Metadata API.
 
-        Falls back to hardcoded UUIDs for standard objects if the query fails.
+        First tries a direct query, falling back to listing all objects.
         """
-        # Try hardcoded first for standard objects
-        if name_singular in self._STANDARD_OBJECT_IDS:
-            return self._STANDARD_OBJECT_IDS[name_singular]
-
+        # Try direct filter query first
         query = '''
         query GetObject($nameSingular: String!) {
           objects(filter: { nameSingular: { eq: $nameSingular } }) {
@@ -299,11 +296,37 @@ class TwentyClient:
           }
         }
         '''
-        result = await self.graphql(query, {"nameSingular": name_singular})
-        edges = result.get("data", {}).get("objects", {}).get("edges", [])
-        if not edges:
-            raise ValueError(f"Object '{name_singular}' not found in Twenty workspace")
-        return edges[0]["node"]["id"]
+        try:
+            result = await self.metadata_graphql(query, {"nameSingular": name_singular})
+            edges = result.get("data", {}).get("objects", {}).get("edges", [])
+            if edges:
+                return edges[0]["node"]["id"]
+        except Exception as exc:
+            logger.debug("Direct object query failed for %s: %s", name_singular, exc)
+
+        # Fallback: list all objects and find by name
+        list_query = '''
+        query ListAllObjects {
+          objects {
+            edges {
+              node {
+                id
+                nameSingular
+              }
+            }
+          }
+        }
+        '''
+        try:
+            result = await self.metadata_graphql(list_query)
+            for edge in result.get("data", {}).get("objects", {}).get("edges", []):
+                node = edge.get("node", {})
+                if node.get("nameSingular") == name_singular:
+                    return node["id"]
+        except Exception as exc:
+            logger.debug("List objects query failed: %s", exc)
+
+        raise ValueError(f"Object '{name_singular}' not found in Twenty workspace")
 
     async def _ensure_custom_field(self, object_name: str, field_name: str, field_type: str, label: str) -> None:
         """Create a custom field on an object via GraphQL if it doesn't already exist.
