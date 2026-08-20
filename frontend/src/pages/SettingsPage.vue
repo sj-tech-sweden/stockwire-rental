@@ -1050,6 +1050,22 @@
                   outlined
                   dense
                   type="password"
+                >
+                  <template #append>
+                    <q-btn flat dense icon="autorenew" size="sm" color="secondary" @click="generateWebhookSecret" :title="t('settings.integrations.twenty.generateSecret')" />
+                  </template>
+                </q-input>
+              </div>
+              <div class="col-12 col-md-6">
+                <q-input
+                  v-model="twentyDraft.webhook_base_url"
+                  :label="t('settings.integrations.twenty.webhookBaseUrl')"
+                  :placeholder="twentyDraft.default_webhook_base_url || t('settings.integrations.twenty.webhookBaseUrlPlaceholder')"
+                  :hint="twentyDraft.webhook_base_url_is_env ? t('settings.integrations.twenty.webhookBaseUrlLockedHint') : t('settings.integrations.twenty.webhookBaseUrlHint')"
+                  :disable="twentyDraft.webhook_base_url_is_env"
+                  outlined
+                  dense
+                  clearable
                 />
               </div>
             </div>
@@ -1102,6 +1118,7 @@
                   :label="t('settings.integrations.twenty.syncNow')"
                   unelevated
                   :loading="twentySyncing"
+                  :disable="twentySyncJob?.status === 'running'"
                   @click="triggerTwentySync"
                 />
                 <q-btn
@@ -1111,6 +1128,7 @@
                   :label="t('settings.integrations.twenty.runSchemaSetup')"
                   unelevated
                   :loading="twentySchemaProvisioning"
+                  :disable="twentySchemaJob?.status === 'running' || twentySchemaJob?.status === 'pending'"
                   @click="provisionTwentySchema"
                 />
                 <q-badge
@@ -1118,6 +1136,43 @@
                   color="positive"
                   :label="t('settings.integrations.twenty.schemaProvisioned')"
                 />
+              </div>
+              <div v-if="twentySchemaJob && ['pending', 'running'].includes(twentySchemaJob.status)" class="q-mb-sm">
+                <q-linear-progress
+                  :value="twentySchemaJob.total ? twentySchemaJob.processed / twentySchemaJob.total : 0"
+                  :indeterminate="!twentySchemaJob.total"
+                  color="secondary"
+                  class="q-mt-xs"
+                />
+                <div class="text-caption text-grey-7 q-mt-xs">
+                  {{ t('settings.integrations.twenty.schemaProvisioning', {
+                    stage: twentySchemaJob.stage || t('settings.integrations.twenty.syncQueued'),
+                    processed: twentySchemaJob.processed ?? 0,
+                    total: twentySchemaJob.total ?? '?'
+                  }) }}
+                  <span v-if="twentySchemaJob.message"> — {{ twentySchemaJob.message }}</span>
+                </div>
+              </div>
+              <div v-if="twentySyncJob && ['pending', 'running'].includes(twentySyncJob.status)" class="q-mb-sm">
+                <q-linear-progress
+                  :value="twentySyncJob.total ? twentySyncJob.processed / twentySyncJob.total : 0"
+                  color="accent"
+                  class="q-mt-xs"
+                  :indeterminate="!twentySyncJob.total"
+                />
+                <div class="text-caption text-grey-7 q-mt-xs">
+                  {{ t('settings.integrations.twenty.syncProgress', {
+                    stage: twentySyncJob.stage || t('settings.integrations.twenty.syncQueued'),
+                    processed: twentySyncJob.processed ?? 0,
+                    total: twentySyncJob.total ?? '?'
+                  }) }}
+                  <span v-if="twentySyncJob.synced || twentySyncJob.failed">
+                    — {{ t('settings.integrations.twenty.syncCounts', {
+                      synced: twentySyncJob.synced ?? 0,
+                      failed: twentySyncJob.failed ?? 0
+                    }) }}
+                  </span>
+                </div>
               </div>
               <div v-if="twentySyncStatus?.recent_logs?.length" class="q-mt-sm">
                 <div class="text-caption text-grey-7 q-mb-xs">{{ t('settings.integrations.twenty.recentLogs') }}</div>
@@ -1741,6 +1796,7 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { useRoute } from 'vue-router'
+import { subscribeRealtime } from '../services/realtime/client'
 import { useQuasar } from 'quasar'
 import { useI18n } from 'vue-i18n'
 
@@ -2141,12 +2197,21 @@ const twentyDraft = ref({
   sync_interval_minutes: 0,
   webhook_secret: '',
   has_webhook_secret: false,
+  webhook_base_url: '',
+  webhook_base_url_is_env: false,
+  default_webhook_base_url: '',
   schema_provisioned: false,
 })
 const twentySchemaProvisioning = ref(false)
+const twentySchemaJob = ref(null)
+const twentySchemaPollInterval = ref(null)
+const twentySchemaUnsubscribe = ref(null)
 const twentyTesting = ref(false)
 const twentyTestResult = ref(null)
 const twentySyncing = ref(false)
+const twentySyncJob = ref(null)
+const twentySyncPollInterval = ref(null)
+const twentySyncUnsubscribe = ref(null)
 const twentySyncStatus = ref(null)
 const twentyLogColumns = [
   { name: 'direction', label: t('settings.integrations.twenty.logDirection'), field: 'direction', align: 'left', sortable: true },
@@ -3649,11 +3714,14 @@ async function loadTwentyConfig() {
         sync_interval_minutes: data.sync_interval_minutes ?? 0,
         webhook_secret: '',
         has_webhook_secret: data.has_webhook_secret ?? false,
+        webhook_base_url: data.webhook_base_url || '',
+        webhook_base_url_is_env: data.webhook_base_url_is_env ?? false,
+        default_webhook_base_url: data.default_webhook_base_url || '',
         schema_provisioned: data.schema_provisioned ?? false,
       }
     }
   } catch {
-    twentyDraft.value = { enabled: false, api_key: '', base_url: 'https://api.twenty.com', has_api_key: false, sync_interval_minutes: 0, webhook_secret: '', has_webhook_secret: false, schema_provisioned: false }
+    twentyDraft.value = { enabled: false, api_key: '', base_url: 'https://api.twenty.com', has_api_key: false, sync_interval_minutes: 0, webhook_secret: '', has_webhook_secret: false, webhook_base_url: '', webhook_base_url_is_env: false, default_webhook_base_url: '', schema_provisioned: false }
   }
 }
 
@@ -3665,21 +3733,38 @@ async function loadTwentySyncStatus() {
   }
 }
 
+function generateWebhookSecret() {
+  const array = new Uint8Array(32)
+  crypto.getRandomValues(array)
+  const secret = Array.from(array, b => b.toString(16).padStart(2, '0')).join('')
+  twentyDraft.value.webhook_secret = secret
+}
+
 async function saveTwentyConfig() {
   const payload = {
     base_url: twentyDraft.value.base_url,
     is_active: twentyDraft.value.enabled,
     sync_interval_minutes: twentyDraft.value.sync_interval_minutes ?? 0,
   }
+  if (!twentyDraft.value.webhook_base_url_is_env) {
+    payload.webhook_base_url = twentyDraft.value.webhook_base_url || null
+  }
   if (twentyDraft.value.api_key) {
     payload.api_key = twentyDraft.value.api_key
   } else if (!twentyDraft.value.has_api_key) {
     payload.clear_api_key = true
   }
+  if (twentyDraft.value.webhook_secret) {
+    payload.webhook_secret = twentyDraft.value.webhook_secret
+  } else if (!twentyDraft.value.has_webhook_secret) {
+    payload.clear_webhook_secret = true
+  }
   try {
     const data = await settingsStore.saveTwentyConfig(payload)
     twentyDraft.value.has_api_key = data?.has_api_key ?? true
     twentyDraft.value.api_key = ''
+    twentyDraft.value.has_webhook_secret = data?.has_webhook_secret ?? true
+    twentyDraft.value.webhook_secret = ''
     $q.notify({ type: 'positive', message: t('settings.integrations.twenty.saved') })
   } catch (error) {
     $q.notify({ type: 'negative', message: error?.response?.data?.detail || t('settings.integrations.twenty.saveFailed') })
@@ -3719,13 +3804,92 @@ async function testTwentyConnection() {
   }
 }
 
+function watchTwentyJob(jobRef, intervalRef, unsubscribeRef, jobType, { onUpdate, onComplete, onFailed }) {
+  const jobId = jobRef.value?.job_id
+  if (!jobId) return
+
+  const topic = `twenty.job.${jobId}`
+  let lastReceivedAt = Date.now()
+
+  const unsubscribe = subscribeRealtime((event) => {
+    if (event?.topic !== topic) return
+    lastReceivedAt = Date.now()
+    const payload = event?.payload || {}
+    jobRef.value = { ...jobRef.value, ...payload }
+    if (onUpdate) onUpdate(payload)
+    if (payload.status === 'completed') {
+      if (intervalRef.value) {
+        clearInterval(intervalRef.value)
+        intervalRef.value = null
+      }
+      if (onComplete) onComplete(payload)
+    } else if (payload.status === 'failed') {
+      if (intervalRef.value) {
+        clearInterval(intervalRef.value)
+        intervalRef.value = null
+      }
+      if (onFailed) onFailed(payload)
+    }
+  })
+  unsubscribeRef.value = unsubscribe
+
+  intervalRef.value = setInterval(async () => {
+    if (!jobRef.value || !['pending', 'running'].includes(jobRef.value.status)) {
+      if (intervalRef.value) {
+        clearInterval(intervalRef.value)
+        intervalRef.value = null
+      }
+      return
+    }
+    // Skip poll if we got a websocket update recently (within 5s)
+    if (Date.now() - lastReceivedAt < 5000) return
+    try {
+      const job = await settingsStore.fetchTwentySyncJob(jobRef.value.job_id)
+      jobRef.value = job
+      if (job.status === 'completed') {
+        clearInterval(intervalRef.value)
+        intervalRef.value = null
+        if (onComplete) onComplete(job)
+      } else if (job.status === 'failed') {
+        clearInterval(intervalRef.value)
+        intervalRef.value = null
+        if (onFailed) onFailed(job)
+      }
+    } catch (pollError) {
+      console.warn('Failed to poll Twenty job', pollError)
+    }
+  }, 3000)
+}
+
 async function triggerTwentySync() {
   twentySyncing.value = true
+  twentySyncJob.value = null
+  if (twentySyncPollInterval.value) {
+    clearInterval(twentySyncPollInterval.value)
+    twentySyncPollInterval.value = null
+  }
+  if (twentySyncUnsubscribe.value) {
+    twentySyncUnsubscribe.value()
+    twentySyncUnsubscribe.value = null
+  }
   try {
     await saveTwentyConfig()
-    const result = await settingsStore.triggerTwentySync('both')
-    $q.notify({ type: 'positive', message: t('settings.integrations.twenty.syncComplete', { synced: result.synced, failed: result.failed }) })
-    await loadTwentySyncStatus()
+    const startResult = await settingsStore.triggerTwentySync('both')
+    twentySyncJob.value = { ...startResult, synced: 0, failed: 0, processed: 0, total: null, stage: null }
+    $q.notify({ type: 'info', message: t('settings.integrations.twenty.syncQueued') })
+
+    watchTwentyJob(twentySyncJob, twentySyncPollInterval, twentySyncUnsubscribe, 'sync', {
+      onComplete: async (job) => {
+        $q.notify({
+          type: job.failed > 0 ? 'warning' : 'positive',
+          message: t('settings.integrations.twenty.syncComplete', { synced: job.synced, failed: job.failed }),
+        })
+        await loadTwentySyncStatus()
+      },
+      onFailed: (job) => {
+        $q.notify({ type: 'negative', message: job.error || t('settings.integrations.twenty.syncFailed') })
+      },
+    })
   } catch (error) {
     $q.notify({ type: 'negative', message: error?.response?.data?.detail || t('settings.integrations.twenty.syncFailed') })
   } finally {
@@ -3735,16 +3899,41 @@ async function triggerTwentySync() {
 
 async function provisionTwentySchema() {
   twentySchemaProvisioning.value = true
+  twentySchemaJob.value = null
+  if (twentySchemaPollInterval.value) {
+    clearInterval(twentySchemaPollInterval.value)
+    twentySchemaPollInterval.value = null
+  }
+  if (twentySchemaUnsubscribe.value) {
+    twentySchemaUnsubscribe.value()
+    twentySchemaUnsubscribe.value = null
+  }
   try {
     await saveTwentyConfig()
-    const result = await api.post('/api/v1/integrations/twenty/provision-schema')
-    twentyDraft.value.schema_provisioned = true
-    const d = result.data || {}
-    const total = (d.custom_fields_created?.length || 0) + (d.custom_objects_created?.length || 0) + (d.webhooks_created?.length || 0)
-    const msg = total > 0
-      ? t('settings.integrations.twenty.schemaProvisionedSuccess', { count: total })
-      : t('settings.integrations.twenty.schemaProvisionedNoop')
-    $q.notify({ type: 'positive', message: msg })
+    const startResult = await api.post('/api/v1/integrations/twenty/provision-schema')
+    twentySchemaJob.value = { ...startResult.data, type: 'provision-schema' }
+
+    watchTwentyJob(twentySchemaJob, twentySchemaPollInterval, twentySchemaUnsubscribe, 'schema', {
+      onComplete: (job) => {
+        twentyDraft.value.schema_provisioned = true
+        const result = job.result || {}
+        const total = (result.custom_fields_created?.length || 0) + (result.custom_objects_created?.length || 0) + (result.webhooks_created?.length || 0)
+        const errors = result.errors || []
+        if (errors.length && total === 0) {
+          twentyDraft.value.schema_provisioned = false
+          $q.notify({ type: 'negative', message: t('settings.integrations.twenty.schemaProvisionFailed') + ': ' + errors[0] })
+        } else {
+          const msg = total > 0
+            ? t('settings.integrations.twenty.schemaProvisionedSuccess', { count: total })
+            : t('settings.integrations.twenty.schemaProvisionedNoop')
+          $q.notify({ type: errors.length ? 'warning' : 'positive', message: msg + (errors.length ? ` (${errors.length} errors)` : '') })
+        }
+      },
+      onFailed: (job) => {
+        twentyDraft.value.schema_provisioned = false
+        $q.notify({ type: 'negative', message: job.error || t('settings.integrations.twenty.schemaProvisionFailed') })
+      },
+    })
   } catch (error) {
     $q.notify({ type: 'negative', message: error?.response?.data?.detail || t('settings.integrations.twenty.schemaProvisionFailed') })
   } finally {
@@ -4005,6 +4194,22 @@ onMounted(async () => {
 onBeforeUnmount(() => {
   for (const timer of Object.values(eventorySyncPollTimers.value || {})) {
     if (timer) clearInterval(timer)
+  }
+  if (twentySyncPollInterval.value) {
+    clearInterval(twentySyncPollInterval.value)
+    twentySyncPollInterval.value = null
+  }
+  if (twentySchemaPollInterval.value) {
+    clearInterval(twentySchemaPollInterval.value)
+    twentySchemaPollInterval.value = null
+  }
+  if (twentySyncUnsubscribe.value) {
+    twentySyncUnsubscribe.value()
+    twentySyncUnsubscribe.value = null
+  }
+  if (twentySchemaUnsubscribe.value) {
+    twentySchemaUnsubscribe.value()
+    twentySchemaUnsubscribe.value = null
   }
 })
 </script>

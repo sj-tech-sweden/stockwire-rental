@@ -5,7 +5,6 @@ from __future__ import annotations
 import asyncio
 import logging
 import threading
-import time
 from datetime import datetime, timedelta, timezone
 
 logger = logging.getLogger(__name__)
@@ -21,17 +20,8 @@ _CHECK_INTERVAL_SECONDS = 60
 def _run_twenty_sync_now() -> None:
     """Execute a full Two-way Twenty CRM sync in the current thread."""
     from app.db.session import SessionLocal
-    from app.domain.customers.models import Customer
     from app.domain.integrations.models import TwentyConfig
-    from app.domain.integrations.sync_engine import (
-        SYNC_PAGE_SIZE,
-        sync_customer_inbound,
-        sync_customer_outbound,
-        sync_job_inbound,
-        sync_job_outbound,
-    )
     from app.domain.integrations.twenty_client import TwentyClient
-    from app.domain.jobs.models import Job
 
     db = SessionLocal()
     try:
@@ -64,38 +54,49 @@ async def _do_sync(db, client) -> None:
     from app.domain.jobs.models import Job
 
     # Outbound: customers
+    logger.info("Auto-sync stage: outbound customers")
     offset = 0
+    processed = 0
     while True:
         customers = db.query(Customer).offset(offset).limit(SYNC_PAGE_SIZE).all()
         if not customers:
             break
         for customer in customers:
+            processed += 1
             try:
                 await sync_customer_outbound(db, client, customer)
+                if processed % 10 == 0:
+                    logger.info("Auto-sync outbound-customer: %d processed", processed)
             except Exception:
-                logger.debug("Auto-sync: failed to sync customer %s", getattr(customer, "id", "?"))
+                logger.exception("Auto-sync: failed to sync customer %s", getattr(customer, "id", "?"))
         if len(customers) < SYNC_PAGE_SIZE:
             break
         offset += SYNC_PAGE_SIZE
+    logger.info("Auto-sync stage complete: outbound customers (%d processed)", processed)
 
     # Outbound: jobs
+    logger.info("Auto-sync stage: outbound jobs")
     offset = 0
+    processed = 0
     while True:
-        from app.domain.jobs.models import Job
-
         jobs = db.query(Job).offset(offset).limit(SYNC_PAGE_SIZE).all()
         if not jobs:
             break
         for job in jobs:
+            processed += 1
             try:
                 await sync_job_outbound(db, client, job)
+                if processed % 10 == 0:
+                    logger.info("Auto-sync outbound-job: %d processed", processed)
             except Exception:
-                logger.debug("Auto-sync: failed to sync job %s", getattr(job, "id", "?"))
+                logger.exception("Auto-sync: failed to sync job %s", getattr(job, "id", "?"))
         if len(jobs) < SYNC_PAGE_SIZE:
             break
         offset += SYNC_PAGE_SIZE
+    logger.info("Auto-sync stage complete: outbound jobs (%d processed)", processed)
 
     # Inbound: companies → customers
+    logger.info("Auto-sync stage: inbound customers")
     # Pre-fetch all people once and build a company_id → person lookup to avoid
     # one API call per company during the loop below.
     people_by_company: dict[str, dict] = {}
@@ -106,10 +107,12 @@ async def _do_sync(db, client) -> None:
             comp = p_node.get("company") or {}
             if isinstance(comp, dict) and comp.get("id"):
                 people_by_company.setdefault(comp["id"], p_node)
+        logger.info("Auto-sync pre-fetched %d people", len(people_by_company))
     except Exception:
-        logger.debug("Auto-sync: could not pre-fetch people; person matching will be skipped")
+        logger.warning("Auto-sync: could not pre-fetch people; person matching will be skipped")
 
     offset = 0
+    processed = 0
     while True:
         companies_data = await client.list_objects("companies", limit=SYNC_PAGE_SIZE, offset=offset)
         data_val = companies_data.get("data", [])
@@ -121,17 +124,36 @@ async def _do_sync(db, client) -> None:
             break
         for edge in companies:
             company = edge.get("node", edge)
+            processed += 1
             try:
                 matched_person = people_by_company.get(company.get("id") or "")
-                await sync_customer_inbound(db, client, company, matched_person)
+                created = await sync_customer_inbound(db, client, company, matched_person)
+                if created:
+                    try:
+                        customer = db.query(Customer).filter(
+                            Customer.external_source == "twenty",
+                            Customer.external_reference == str(company.get("id")),
+                        ).first()
+                        if customer:
+                            await sync_customer_outbound(db, client, customer, force=True)
+                    except Exception:
+                        logger.exception(
+                            "Auto-sync: failed to write back stockwire fields for company %s",
+                            company.get("id"),
+                        )
+                if processed % 10 == 0:
+                    logger.info("Auto-sync inbound-customer: %d processed", processed)
             except Exception:
-                logger.debug("Auto-sync: failed inbound company %s", company.get("id"))
+                logger.exception("Auto-sync: failed inbound company %s", company.get("id"))
         if len(companies) < SYNC_PAGE_SIZE:
             break
         offset += SYNC_PAGE_SIZE
+    logger.info("Auto-sync stage complete: inbound customers (%d processed)", processed)
 
-    # Inbound: opportunities → jobs
+    # Inbound: opportunities → jobs (only update existing Stockwire jobs)
+    logger.info("Auto-sync stage: inbound jobs")
     offset = 0
+    processed = 0
     while True:
         opps_data = await client.list_objects("opportunities", limit=SYNC_PAGE_SIZE, offset=offset)
         data_val = opps_data.get("data", [])
@@ -143,13 +165,17 @@ async def _do_sync(db, client) -> None:
             break
         for edge in opps:
             opp = edge.get("node", edge)
+            processed += 1
             try:
-                await sync_job_inbound(db, client, opp)
+                updated = await sync_job_inbound(db, client, opp)
+                if processed % 10 == 0:
+                    logger.info("Auto-sync inbound-job: %d processed (updated=%s)", processed, updated)
             except Exception:
-                logger.debug("Auto-sync: failed inbound opportunity %s", opp.get("id"))
+                logger.exception("Auto-sync: failed inbound opportunity %s", opp.get("id"))
         if len(opps) < SYNC_PAGE_SIZE:
             break
         offset += SYNC_PAGE_SIZE
+    logger.info("Auto-sync stage complete: inbound jobs (%d processed)", processed)
 
 
 def _scheduler_loop() -> None:

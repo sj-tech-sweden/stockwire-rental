@@ -1,19 +1,19 @@
 import asyncio
 import logging
+import time
 from typing import Any
 
 import httpx
+
+from app.domain.realtime.events import emit_realtime_event
 
 logger = logging.getLogger(__name__)
 
 MAX_RETRIES = 3
 RETRY_BACKOFF = [0.5, 1.0, 2.0]
 
-
-def _mask_url(url: str) -> str:
-    if "/rest/" in url or "/graphql" in url:
-        return url
-    return url
+# Twenty rate limit: 100 tokens per 60s. Throttle requests to stay under it.
+MIN_REQUEST_INTERVAL = 0.7
 
 
 def _mask_headers(headers: dict) -> dict:
@@ -34,6 +34,16 @@ class TwentyClient:
             "Authorization": f"Bearer {api_key}",
             "Content-Type": "application/json",
         }
+        self._rate_limit_lock = asyncio.Lock()
+        self._last_request_time = 0.0
+
+    async def _throttle(self) -> None:
+        """Enforce a minimum interval between Twenty API requests."""
+        async with self._rate_limit_lock:
+            elapsed = time.monotonic() - self._last_request_time
+            if elapsed < MIN_REQUEST_INTERVAL:
+                await asyncio.sleep(MIN_REQUEST_INTERVAL - elapsed)
+            self._last_request_time = time.monotonic()
 
     async def _request_with_retry(
         self,
@@ -43,17 +53,23 @@ class TwentyClient:
     ) -> httpx.Response:
         last_exc: Exception | None = None
         for attempt in range(MAX_RETRIES):
+            await self._throttle()
             try:
                 async with httpx.AsyncClient(timeout=30) as client:
                     resp = await client.request(method, url, headers=self.headers, **kwargs)
-                    if resp.status_code >= 500 and attempt < MAX_RETRIES - 1:
-                        logger.warning(
-                            "Twenty %s %s returned %d, retrying in %.1fs",
-                            method, url.split("/")[-1], resp.status_code,
-                            RETRY_BACKOFF[attempt],
-                        )
-                        await asyncio.sleep(RETRY_BACKOFF[attempt])
-                        continue
+                    if resp.status_code in (429, 503) or resp.status_code >= 500:
+                        if attempt < MAX_RETRIES - 1:
+                            backoff = RETRY_BACKOFF[attempt]
+                            if resp.status_code == 429:
+                                # Twenty limit window is 60s; back off longer.
+                                backoff = max(backoff, 2.0)
+                            logger.warning(
+                                "Twenty %s %s returned %d, retrying in %.1fs",
+                                method, url.split("/")[-1], resp.status_code,
+                                backoff,
+                            )
+                            await asyncio.sleep(backoff)
+                            continue
                     return resp
             except (httpx.ConnectError, httpx.ReadTimeout) as exc:
                 last_exc = exc
@@ -139,12 +155,32 @@ class TwentyClient:
         resp.raise_for_status()
         return resp.json()
 
+    async def metadata_graphql(self, query: str, variables: dict[str, Any] | None = None) -> dict[str, Any]:
+        """Send a GraphQL mutation/query to the Metadata API endpoint."""
+        body: dict[str, Any] = {"query": query}
+        if variables:
+            body["variables"] = variables
+        resp = await self._request_with_retry(
+            "POST",
+            f"{self.base_url}/metadata",
+            json=body,
+        )
+        if not resp.is_success:
+            logger.error("Metadata GraphQL request failed %s: %s", resp.status_code, resp.text[:500])
+        resp.raise_for_status()
+        return resp.json()
+
+    @staticmethod
+    def _sanitize_graphql_string(value: str) -> str:
+        """Escape double quotes and backslashes for safe interpolation in GraphQL string literals."""
+        return value.replace("\\", "\\\\").replace('"', '\\"')
+
     async def search_people(self, email: str | None = None, name: str | None = None) -> list[dict[str, Any]]:
         filters = []
         if email:
-            filters.append('{emails: {primaryEmail: {eq: "%s"}}}' % email)
+            filters.append('{emails: {primaryEmail: {eq: "%s"}}}' % self._sanitize_graphql_string(email))
         if name:
-            filters.append('{name: {firstName: {contains: "%s"}}}' % name)
+            filters.append('{name: {firstName: {contains: "%s"}}}' % self._sanitize_graphql_string(name))
         filter_str = ", ".join(filters) if filters else "{}"
         query = '{ people(filter: %s) { edges { node { id name { firstName lastName } emails { primaryEmail } company { id } } } } }' % filter_str
         result = await self.graphql(query)
@@ -153,9 +189,9 @@ class TwentyClient:
     async def search_companies(self, name: str | None = None, domain: str | None = None) -> list[dict[str, Any]]:
         filters = []
         if name:
-            filters.append('{name: {contains: "%s"}}' % name)
+            filters.append('{name: {contains: "%s"}}' % self._sanitize_graphql_string(name))
         if domain:
-            filters.append('{domainName: {primaryLinkUrl: {contains: "%s"}}}' % domain)
+            filters.append('{domainName: {primaryLinkUrl: {contains: "%s"}}}' % self._sanitize_graphql_string(domain))
         filter_str = ", ".join(filters) if filters else "{}"
         query = '{ companies(filter: %s) { edges { node { id name } } } }' % filter_str
         result = await self.graphql(query)
@@ -164,160 +200,311 @@ class TwentyClient:
     async def search_opportunities(self, name: str | None = None, stage: str | None = None) -> list[dict[str, Any]]:
         filters = []
         if name:
-            filters.append('{name: {contains: "%s"}}' % name)
+            filters.append('{name: {contains: "%s"}}' % self._sanitize_graphql_string(name))
         if stage:
-            filters.append('{stage: {eq: "%s"}}' % stage)
+            filters.append('{stage: {eq: "%s"}}' % self._sanitize_graphql_string(stage))
         filter_str = ", ".join(filters) if filters else "{}"
         query = '{ opportunities(filter: %s) { edges { node { id name stage } } } }' % filter_str
         result = await self.graphql(query)
         return result.get("data", {}).get("opportunities", {}).get("edges", [])
 
-    async def provision_schema(self, webhook_url: str | None = None, webhook_secret: str | None = None) -> dict[str, Any]:
+    async def provision_schema(
+        self,
+        webhook_url: str | None = None,
+        webhook_secret: str | None = None,
+        job_id: str | None = None,
+    ) -> dict[str, Any]:
         """Create custom fields, objects, and webhooks in Twenty via Metadata API.
 
         Returns a summary of what was created/already existed.
         """
+
+        def _emit(stage: str, processed: int, total: int | None = None, message: str = "") -> None:
+            if job_id:
+                emit_realtime_event(
+                    f"twenty.job.{job_id}",
+                    {
+                        "job_id": job_id,
+                        "type": "provision-schema",
+                        "status": "running",
+                        "stage": stage,
+                        "processed": processed,
+                        "total": total,
+                        "message": message,
+                    },
+                )
+
         results: dict[str, Any] = {"custom_fields_created": [], "custom_objects_created": [], "webhooks_created": [], "errors": []}
 
-        # ── Company fields ────────────────────────────────────────────────
-        company_fields = [
-            ("stockwire_url", "url", "Stockwire URL"),
-            ("stockwire_id", "number", "Stockwire ID"),
-            ("stockwire_notes", "text", "Stockwire Notes"),
-            ("phone_secondary", "phone", "Secondary Phone"),
+        all_field_groups = [
+            ("company", [
+                ("stockwireUrl", "LINKS", "Stockwire URL"),
+                ("stockwireId", "NUMBER", "Stockwire ID"),
+                ("stockwireNotes", "TEXT", "Stockwire Notes"),
+                ("phoneSecondary", "TEXT", "Secondary Phone"),
+            ]),
+            ("opportunity", [
+                ("stockwireUrl", "LINKS", "Stockwire URL"),
+                ("stockwireId", "NUMBER", "Stockwire ID"),
+                ("stockwireJobCode", "TEXT", "Job Code"),
+                ("stockwireStartDate", "DATE", "Rental Start Date"),
+                ("stockwireEndDate", "DATE", "Rental End Date"),
+                ("stockwireStatus", "TEXT", "Rental Status"),
+            ]),
+            ("person", [
+                ("stockwireUrl", "LINKS", "Stockwire URL"),
+                ("stockwireId", "NUMBER", "Stockwire ID"),
+            ]),
         ]
-        for field_name, field_type, label in company_fields:
-            try:
-                await self._ensure_custom_field("company", field_name, field_type, label)
-                results["custom_fields_created"].append(f"company.{field_name}")
-            except Exception as exc:
-                results["errors"].append(f"company.{field_name}: {exc}")
+        total_fields = sum(len(fields) for _, fields in all_field_groups)
+        total_steps = total_fields + 1 + (1 if webhook_url else 0)
+        processed = 0
 
-        # ── Opportunity fields ────────────────────────────────────────────
-        opportunity_fields = [
-            ("stockwire_url", "url", "Stockwire URL"),
-            ("stockwire_id", "number", "Stockwire ID"),
-            ("stockwire_job_code", "text", "Job Code"),
-            ("stockwire_start_date", "date", "Rental Start Date"),
-            ("stockwire_end_date", "date", "Rental End Date"),
-            ("stockwire_status", "text", "Rental Status"),
-        ]
-        for field_name, field_type, label in opportunity_fields:
-            try:
-                await self._ensure_custom_field("opportunity", field_name, field_type, label)
-                results["custom_fields_created"].append(f"opportunity.{field_name}")
-            except Exception as exc:
-                results["errors"].append(f"opportunity.{field_name}: {exc}")
-
-        # ── Person fields ─────────────────────────────────────────────────
-        person_fields = [
-            ("stockwire_url", "url", "Stockwire URL"),
-            ("stockwire_id", "number", "Stockwire ID"),
-        ]
-        for field_name, field_type, label in person_fields:
-            try:
-                await self._ensure_custom_field("person", field_name, field_type, label)
-                results["custom_fields_created"].append(f"person.{field_name}")
-            except Exception as exc:
-                results["errors"].append(f"person.{field_name}: {exc}")
+        for object_name, fields in all_field_groups:
+            logger.info("Schema provision: creating fields on %s (%d fields)", object_name, len(fields))
+            for field_name, field_type, label in fields:
+                processed += 1
+                _emit("fields", processed, total_steps, f"Creating field {object_name}.{field_name}")
+                try:
+                    await self._ensure_custom_field(object_name, field_name, field_type, label)
+                    results["custom_fields_created"].append(f"{object_name}.{field_name}")
+                    logger.info(
+                        "Schema provision progress: %d/%d fields (%s.%s)",
+                        processed, total_fields, object_name, field_name,
+                    )
+                except Exception as exc:
+                    err_msg = f"{object_name}.{field_name}: {exc}"
+                    results["errors"].append(err_msg)
+                    logger.warning(
+                        "Schema provision progress: %d/%d fields (%s.%s) FAILED: %s",
+                        processed, total_fields, object_name, field_name, exc,
+                    )
 
         # ── Rental Job custom object ──────────────────────────────────────
+        processed += 1
+        _emit("custom object", processed, total_steps, "Ensuring Rental Job custom object")
+        logger.info("Schema provision: ensuring custom object rentalJob")
         try:
             await self._ensure_custom_object("rentalJob", "Rental Job", [
-                {"name": "jobStatus", "type": "text", "label": "Job Status"},
-                {"name": "jobCode", "type": "text", "label": "Job Code"},
-                {"name": "customerName", "type": "text", "label": "Customer Name"},
-                {"name": "startDate", "type": "date", "label": "Start Date"},
-                {"name": "endDate", "type": "date", "label": "End Date"},
-                {"name": "totalAmount", "type": "number", "label": "Total Amount"},
-                {"name": "currency", "type": "text", "label": "Currency"},
-                {"name": "stockwireJobUrl", "type": "url", "label": "Stockwire Job URL"},
-                {"name": "stockwireJobId", "type": "number", "label": "Stockwire Job ID"},
-                {"name": "description", "type": "text", "label": "Description"},
+                {"name": "jobStatus", "type": "TEXT", "label": "Job Status"},
+                {"name": "jobCode", "type": "TEXT", "label": "Job Code"},
+                {"name": "customerName", "type": "TEXT", "label": "Customer Name"},
+                {"name": "startDate", "type": "DATE", "label": "Start Date"},
+                {"name": "endDate", "type": "DATE", "label": "End Date"},
+                {"name": "totalAmount", "type": "NUMBER", "label": "Total Amount"},
+                {"name": "jobCurrency", "type": "TEXT", "label": "Currency"},
+                {"name": "stockwireJobUrl", "type": "LINKS", "label": "Stockwire Job URL"},
+                {"name": "stockwireJobId", "type": "NUMBER", "label": "Stockwire Job ID"},
+                {"name": "description", "type": "TEXT", "label": "Description"},
             ])
             results["custom_objects_created"].append("rentalJob")
+            logger.info("Schema provision: custom object rentalJob ready")
         except Exception as exc:
             results["errors"].append(f"rentalJob: {exc}")
+            logger.warning("Schema provision: custom object rentalJob FAILED: %s", exc)
 
         # ── Webhooks ──────────────────────────────────────────────────────
         if webhook_url:
+            processed += 1
+            _emit("webhook", processed, total_steps, f"Ensuring webhook {webhook_url}")
+            logger.info("Schema provision: ensuring webhook %s", webhook_url)
             try:
                 existing_hooks = await self.list_webhooks()
                 existing_urls = {h.get("targetUrl") for h in existing_hooks if isinstance(h, dict)}
 
-                webhook_events = [
-                    ("company.created", "company"),
-                    ("company.updated", "company"),
-                    ("opportunity.updated", "opportunity"),
-                ]
-                for event, object_type in webhook_events:
-                    if webhook_url not in existing_urls:
-                        hook = await self.create_webhook(webhook_url, event, object_type, webhook_secret)
-                        hook_id = hook.get("data", hook).get("id", "unknown")
-                        results["webhooks_created"].append(f"{event} → {webhook_url}")
-                        logger.info("Created Twenty webhook: %s (id=%s)", event, hook_id)
+                if webhook_url not in existing_urls:
+                    hook = await self.create_webhook(webhook_url, secret=webhook_secret)
+                    hook_id = hook.get("data", hook).get("id", "unknown")
+                    results["webhooks_created"].append(webhook_url)
+                    logger.info("Created Twenty webhook (id=%s, url=%s)", hook_id, webhook_url)
             except Exception as exc:
                 results["errors"].append(f"webhooks: {exc}")
                 logger.warning("Could not provision webhooks: %s", exc)
 
+        logger.info(
+            "Schema provision complete: %d fields, %d objects, %d webhooks, %d errors",
+            len(results["custom_fields_created"]),
+            len(results["custom_objects_created"]),
+            len(results["webhooks_created"]),
+            len(results["errors"]),
+        )
+        if results["errors"]:
+            logger.warning("Schema provision errors: %s", results["errors"])
         return results
 
+    # Hardcoded UUIDs for Twenty standard objects (constant across all workspaces)
+    _STANDARD_OBJECT_IDS = {
+        "company": "20202020-b374-4779-a561-80086cb2e17f",
+        "person": "20202020-e674-48e5-a542-72570eee7213",
+        "opportunity": "20202020-9549-49dd-b2b2-883999db8938",
+        "task": "20202020-1ba1-48ba-bc83-ef7e5990ed10",
+        "note": "20202020-0b00-45cd-b6f6-6cd806fc6804",
+    }
+
+    async def _resolve_object_metadata_id(self, name_singular: str) -> str:
+        """Look up the UUID for an object by its nameSingular via the Metadata API.
+
+        Tries multiple approaches since different Twenty versions use different APIs.
+        """
+        # Approach 1: GraphQL query with filter
+        query = '''
+        query GetObject($nameSingular: String!) {
+          objects(filter: { nameSingular: { eq: $nameSingular } }) {
+            edges {
+              node {
+                id
+                nameSingular
+              }
+            }
+          }
+        }
+        '''
+        try:
+            result = await self.metadata_graphql(query, {"nameSingular": name_singular})
+            edges = result.get("data", {}).get("objects", {}).get("edges", [])
+            if edges:
+                return edges[0]["node"]["id"]
+        except Exception as exc:
+            logger.debug("Approach 1 failed for %s: %s", name_singular, exc)
+
+        # Approach 2: List all objects and find by name
+        list_query = '''
+        query ListAllObjects {
+          objects {
+            edges {
+              node {
+                id
+                nameSingular
+              }
+            }
+          }
+        }
+        '''
+        try:
+            result = await self.metadata_graphql(list_query)
+            for edge in result.get("data", {}).get("objects", {}).get("edges", []):
+                node = edge.get("node", {})
+                if node.get("nameSingular") == name_singular:
+                    return node["id"]
+        except Exception as exc:
+            logger.debug("Approach 2 failed for %s: %s", name_singular, exc)
+
+        # Approach 3: REST API introspection
+        try:
+            resp = await self._request_with_retry("GET", f"{self.base_url}/rest/metadata/objects")
+            if resp.is_success:
+                data = resp.json()
+                items = data.get("data", data) if isinstance(data, dict) else data
+                if isinstance(items, list):
+                    for obj in items:
+                        if isinstance(obj, dict) and obj.get("nameSingular") == name_singular:
+                            return obj["id"]
+        except Exception as exc:
+            logger.debug("Approach 3 failed for %s: %s", name_singular, exc)
+
+        raise ValueError(f"Object '{name_singular}' not found in Twenty workspace")
+
     async def _ensure_custom_field(self, object_name: str, field_name: str, field_type: str, label: str) -> None:
-        """Create a custom field on an object if it doesn't already exist."""
-        # Check if field exists
+        """Create a custom field on an object via GraphQL if it doesn't already exist.
+
+        field_type must be a valid Twenty FieldMetadataType enum value:
+        TEXT, NUMBER, BOOLEAN, DATE, DATE_TIME, LINKS, PHONE, EMAILS,
+        CURRENCY, SELECT, MULTI_SELECT, RELATION, etc.
+        """
+        object_metadata_id = await self._resolve_object_metadata_id(object_name)
+
+        # Check if field already exists via introspection
         query = '{ %s { fields { name } } }' % object_name
         try:
             result = await self.graphql(query)
-            existing_fields = [f.get("name", "") for f in result.get("data", {}).get(object_name, {}).get("fields", [])]
+            fields_data = result.get("data", {}).get(object_name, {})
+            existing_fields = [f.get("name", "") for f in fields_data.get("fields", [])]
             if field_name in existing_fields:
                 return
         except Exception as exc:
             logger.debug("Could not introspect fields for %s, proceeding with creation: %s", object_name, exc)
 
-        # Create the field via metadata API
-        await self._request_with_retry(
-            "POST",
-            f"{self.base_url}/rest/metadata/objectFields",
-            json={
-                "objectName": object_name,
-                "name": field_name,
-                "type": field_type,
-                "label": label,
-                "isCustom": True,
-            },
-        )
+        # Create the field via GraphQL mutation on the Metadata API
+        mutation = '''
+        mutation CreateOneField($input: CreateOneFieldMetadataInput!) {
+          createOneField(input: $input) {
+            id
+            name
+            type
+            label
+          }
+        }
+        '''
+        resp = await self.metadata_graphql(mutation, {
+            "input": {
+                "field": {
+                    "objectMetadataId": object_metadata_id,
+                    "name": field_name,
+                    "type": field_type,
+                    "label": label,
+                }
+            }
+        })
+        errors = resp.get("errors")
+        if errors:
+            msg = errors[0].get("message", str(errors))
+            extensions = errors[0].get("extensions", {})
+            # "Name already used" means the field exists — that's fine (idempotent)
+            error_text = msg.lower()
+            try:
+                error_text += " " + str(extensions).lower()
+            except (TypeError, ValueError):
+                pass  # extensions may not be stringifiable, ignore
+            if "already used" in error_text or "not available" in error_text:
+                logger.info("Field %s.%s already exists, skipping", object_name, field_name)
+                return
+            logger.error("createOneField %s.%s failed: %s (extensions=%s, objectMetadataId=%s)", object_name, field_name, msg, extensions, object_metadata_id)
+            raise RuntimeError(f"createOneField failed: {msg}")
 
     async def _ensure_custom_object(self, object_name: str, label: str, fields: list[dict[str, Any]]) -> None:
-        """Create a custom object with fields if it doesn't already exist.
+        """Create a custom object with fields via GraphQL if it doesn't already exist.
 
         If the object already exists, still create any missing fields on it.
         """
         object_exists = False
         try:
-            resp = await self._request_with_retry("GET", f"{self.base_url}/rest/{object_name}?limit=1")
-            if resp.status_code == 200:
-                object_exists = True
-        except Exception as exc:
-            logger.debug("Could not check existence of %s, proceeding with creation: %s", object_name, exc)
+            await self._resolve_object_metadata_id(object_name)
+            object_exists = True
+        except (ValueError, RuntimeError):
+            pass  # Object not found or lookup failed — will attempt to create
 
         if not object_exists:
-            await self._request_with_retry(
-                "POST",
-                f"{self.base_url}/rest/metadata/object",
-                json={
-                    "name": object_name,
-                    "label": label,
-                    "fields": fields,
-                },
-            )
-            return
+            mutation = '''
+            mutation CreateOneObject($input: CreateOneObjectInput!) {
+              createOneObject(input: $input) {
+                id
+                nameSingular
+              }
+            }
+            '''
+            resp = await self.metadata_graphql(mutation, {
+                "input": {
+                    "object": {
+                        "nameSingular": object_name,
+                        "labelSingular": label,
+                        "namePlural": object_name + "s",
+                        "labelPlural": label + "s",
+                    }
+                }
+            })
+            errors = resp.get("errors")
+            if errors:
+                msg = errors[0].get("message", str(errors))
+                extensions = errors[0].get("extensions", {})
+                logger.error("createOneObject %s failed: %s (extensions=%s)", object_name, msg, extensions)
+                raise RuntimeError(f"createOneObject failed: {msg}")
 
-        # Object exists — create any missing fields on it
+        # Create any fields on the object
         for field in fields:
             try:
                 await self._ensure_custom_field(object_name, field["name"], field["type"], field["label"])
             except Exception as exc:
-                logger.debug("Could not ensure field %s.%s: %s", object_name, field["name"], exc)
+                logger.warning("Could not ensure field %s.%s: %s", object_name, field["name"], exc)
 
     async def sync_job_to_twenty(self, job_id: int, job_data: dict[str, Any], deep_link: str) -> str | None:
         """Upsert a Rental Job custom object in Twenty and return its ID."""
@@ -329,8 +516,8 @@ class TwentyClient:
             "startDate": job_data.get("start_date"),
             "endDate": job_data.get("end_date"),
             "totalAmount": job_data.get("sales_price", 0),
-            "currency": job_data.get("currency", "SEK"),
-            "stockwireJobUrl": deep_link,
+            "jobCurrency": job_data.get("currency", "SEK"),
+            "stockwireJobUrl": {"primaryLinkUrl": deep_link, "primaryLinkLabel": "Stockwire"},
             "stockwireJobId": job_id,
             "description": job_data.get("description", ""),
         }
@@ -362,18 +549,27 @@ class TwentyClient:
         if not resp.is_success:
             return []
         data = resp.json()
-        items = data.get("data", data)
-        return items if isinstance(items, list) else []
+        # Handle various response shapes: {data: [...]}, {data: {webhooks: [...]}}, or [...]
+        items = data.get("data", data) if isinstance(data, dict) else data
+        if isinstance(items, dict):
+            # Try common nested keys
+            for key in ("webhooks", "edges", "nodes"):
+                if key in items and isinstance(items[key], list):
+                    items = items[key]
+                    break
+            else:
+                items = []
+        if not isinstance(items, list):
+            items = []
+        # Filter to only dicts (skip any non-dict entries)
+        return [h for h in items if isinstance(h, dict)]
 
-    async def create_webhook(self, target_url: str, event: str, object_type: str | None = None, secret: str | None = None) -> dict[str, Any]:
-        """Create a webhook in Twenty CRM."""
+    async def create_webhook(self, target_url: str, secret: str | None = None) -> dict[str, Any]:
+        """Create a webhook in Twenty CRM (receives all events)."""
         payload: dict[str, Any] = {
             "targetUrl": target_url,
-            "event": event,
             "isActive": True,
         }
-        if object_type:
-            payload["objectType"] = object_type
         if secret:
             payload["secret"] = secret
         resp = await self._request_with_retry("POST", f"{self.base_url}/rest/webhooks", json=payload)

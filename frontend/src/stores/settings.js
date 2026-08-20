@@ -1205,8 +1205,17 @@ export const useSettingsStore = defineStore('settings', () => {
     return data
   }
 
-  async function triggerTwentySync(direction = 'both') {
-    const { data } = await api.post(`${TWENTY_API}/sync`, { direction })
+  async function triggerTwentySync(direction = 'both', entityTypes = null) {
+    const payload = { direction }
+    if (entityTypes) {
+      payload.entity_types = entityTypes
+    }
+    const { data } = await api.post(`${TWENTY_API}/sync`, payload)
+    return data
+  }
+
+  async function fetchTwentySyncJob(jobId) {
+    const { data } = await api.get(`${TWENTY_API}/sync/${jobId}`)
     return data
   }
 
@@ -1276,6 +1285,7 @@ export const useSettingsStore = defineStore('settings', () => {
     deleteTwentyConfig,
     testTwentyConnection,
     triggerTwentySync,
+    fetchTwentySyncJob,
     fetchTwentySyncStatus,
   }
 })

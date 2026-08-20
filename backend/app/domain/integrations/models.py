@@ -20,6 +20,7 @@ class TwentyConfig(Base):
     is_active: Mapped[bool] = mapped_column(default=True)
     sync_interval_minutes: Mapped[int] = mapped_column(Integer, default=0)
     webhook_secret: Mapped[str | None] = mapped_column(Text, nullable=True)
+    webhook_base_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     schema_provisioned: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow, onupdate=_utcnow)
