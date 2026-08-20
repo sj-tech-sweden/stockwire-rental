@@ -164,7 +164,7 @@ def update_config(payload: TwentyConfigUpdate, request: Request, db: Session = D
 def delete_config(db: Session = Depends(get_db)):
     from app.domain.integrations.models import TwentyConfig
 
-    config = db.query(TwentyConfig).filter(TwentyConfig.is_active == True).first()
+    config = db.query(TwentyConfig).first()
     if not config:
         raise HTTPException(status_code=404, detail="Twenty CRM is not configured")
 
@@ -433,11 +433,10 @@ async def _run_sync_job(job_id: str, payload: TwentySyncTrigger) -> None:
                                     if customer:
                                         await sync_customer_outbound(db, client, customer, force=True)
                                 except Exception:
-                                    logger.exception(
-                                        "Failed to write back stockwire fields for customer %s",
+                                    logger.warning(
+                                        "Write-back of stockwire fields failed for customer %s (inbound sync succeeded)",
                                         company.get("id"),
                                     )
-                                    failed += 1
                         except Exception as exc:
                             failed += 1
                             logger.exception("Sync failed for inbound company %s: %s", company.get("id"), exc)

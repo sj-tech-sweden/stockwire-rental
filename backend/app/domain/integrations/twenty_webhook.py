@@ -63,7 +63,7 @@ def _verify_webhook_signature(payload: bytes, signature: str | None, secret: str
         import json as _json
         body_json = _json.loads(payload)
         compact_body = _json.dumps(body_json, separators=(",", ":"), ensure_ascii=False).encode()
-    except Exception:
+    except (ValueError, TypeError):
         compact_body = payload
 
     # Try both raw secret string and hex-decoded bytes
@@ -71,7 +71,7 @@ def _verify_webhook_signature(payload: bytes, signature: str | None, secret: str
     try:
         secret_bytes_variants.append(bytes.fromhex(secret))
     except ValueError:
-        pass
+        pass  # Not a hex string, use raw bytes only
 
     for secret_bytes in secret_bytes_variants:
         # Twenty's documented format: timestamp:JSON payload
@@ -97,7 +97,7 @@ def _verify_webhook_signature(payload: bytes, signature: str | None, secret: str
                 if hmac.compare_digest(expected, clean_sig):
                     logger.warning("Webhook signature matched: HMAC(timestamp:pretty_json)")
                     return True
-            except Exception:
+            except (TypeError, ValueError):
                 pass
 
         # Fallback: plain body (no timestamp prefix)
@@ -150,7 +150,7 @@ async def twenty_webhook(
             break
     webhook_secret = config.webhook_secret or ""
 
-    logger.warning(
+    logger.debug(
         "Twenty webhook request received: content-length=%d signature-header=%s configured_secret=%s header_names=%s",
         len(body),
         _mask_signature(signature),
@@ -168,7 +168,7 @@ async def twenty_webhook(
     record = payload.record or payload.object or payload.data or {}
     payload_keys = list(payload.model_dump(exclude_none=True).keys())
 
-    logger.warning(
+    logger.debug(
         "Twenty webhook parsed: event=%s record_present=%s record_keys=%s payload_keys=%s",
         event_type,
         bool(payload.record or payload.object or payload.data),
@@ -199,14 +199,8 @@ async def twenty_webhook(
         )
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Invalid webhook signature")
 
-    if webhook_secret and not signature:
-        logger.warning(
-            "Twenty webhook received with configured secret but no signature header; processing anyway. "
-            "If Twenty does not sign webhooks in your version, clear the webhook secret in settings."
-        )
-
     record_id = record.get("id")
-    logger.warning(
+    logger.debug(
         "Twenty webhook processing: event=%s record_id=%s record_keys=%s",
         event_type,
         record_id,
@@ -231,7 +225,7 @@ async def twenty_webhook(
         db.commit()
         # Return 200 so Twenty does not retry and hammer the endpoint.
         # The failure is visible in the sync logs and application logs.
-        return {"status": "error", "detail": str(exc)}
+        return {"status": "error", "detail": "Internal processing error"}
 
     db.commit()
     return {"status": "ok"}

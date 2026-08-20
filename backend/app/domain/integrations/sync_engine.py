@@ -373,7 +373,7 @@ async def sync_customer_inbound(db: Session, client: TwentyClient, twenty_compan
         country = twenty_company.get("country") or ""
 
     if existing:
-        logger.warning(
+        logger.debug(
             "Inbound company update: customer_id=%s twenty_id=%s name=%r -> %r",
             existing.id, company_id, existing.name, company_name,
         )
@@ -446,15 +446,19 @@ async def sync_job_inbound(db: Session, client: TwentyClient, twenty_opp: dict) 
     stockwire_status = reverse_stages.get(stage, "draft")
 
     raw_amount = twenty_opp.get("amount")
-    if isinstance(raw_amount, dict):
-        amount_micros = raw_amount.get("amountMicros")
-        amount = float(amount_micros) / 1_000_000 if amount_micros else 0
-    elif raw_amount:
-        amount = float(raw_amount)
-    else:
+    try:
+        if isinstance(raw_amount, dict):
+            amount_micros = raw_amount.get("amountMicros")
+            amount = float(amount_micros) / 1_000_000 if amount_micros else 0
+        elif raw_amount:
+            amount = float(raw_amount)
+        else:
+            amount = 0
+    except (TypeError, ValueError):
+        logger.warning("Could not parse opportunity amount: %r", raw_amount)
         amount = 0
 
-    logger.warning(
+    logger.debug(
         "Inbound job update: job_id=%s opp_id=%s name=%r status=%r amount=%s",
         existing.id, opp_id, opp_name, stockwire_status, amount,
     )

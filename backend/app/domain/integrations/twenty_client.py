@@ -16,12 +16,6 @@ RETRY_BACKOFF = [0.5, 1.0, 2.0]
 MIN_REQUEST_INTERVAL = 0.7
 
 
-def _mask_url(url: str) -> str:
-    if "/rest/" in url or "/graphql" in url:
-        return url
-    return url
-
-
 def _mask_headers(headers: dict) -> dict:
     masked = {}
     for key, value in headers.items():
@@ -176,12 +170,17 @@ class TwentyClient:
         resp.raise_for_status()
         return resp.json()
 
+    @staticmethod
+    def _sanitize_graphql_string(value: str) -> str:
+        """Escape double quotes and backslashes for safe interpolation in GraphQL string literals."""
+        return value.replace("\\", "\\\\").replace('"', '\\"')
+
     async def search_people(self, email: str | None = None, name: str | None = None) -> list[dict[str, Any]]:
         filters = []
         if email:
-            filters.append('{emails: {primaryEmail: {eq: "%s"}}}' % email)
+            filters.append('{emails: {primaryEmail: {eq: "%s"}}}' % self._sanitize_graphql_string(email))
         if name:
-            filters.append('{name: {firstName: {contains: "%s"}}}' % name)
+            filters.append('{name: {firstName: {contains: "%s"}}}' % self._sanitize_graphql_string(name))
         filter_str = ", ".join(filters) if filters else "{}"
         query = '{ people(filter: %s) { edges { node { id name { firstName lastName } emails { primaryEmail } company { id } } } } }' % filter_str
         result = await self.graphql(query)
@@ -190,9 +189,9 @@ class TwentyClient:
     async def search_companies(self, name: str | None = None, domain: str | None = None) -> list[dict[str, Any]]:
         filters = []
         if name:
-            filters.append('{name: {contains: "%s"}}' % name)
+            filters.append('{name: {contains: "%s"}}' % self._sanitize_graphql_string(name))
         if domain:
-            filters.append('{domainName: {primaryLinkUrl: {contains: "%s"}}}' % domain)
+            filters.append('{domainName: {primaryLinkUrl: {contains: "%s"}}}' % self._sanitize_graphql_string(domain))
         filter_str = ", ".join(filters) if filters else "{}"
         query = '{ companies(filter: %s) { edges { node { id name } } } }' % filter_str
         result = await self.graphql(query)
@@ -201,9 +200,9 @@ class TwentyClient:
     async def search_opportunities(self, name: str | None = None, stage: str | None = None) -> list[dict[str, Any]]:
         filters = []
         if name:
-            filters.append('{name: {contains: "%s"}}' % name)
+            filters.append('{name: {contains: "%s"}}' % self._sanitize_graphql_string(name))
         if stage:
-            filters.append('{stage: {eq: "%s"}}' % stage)
+            filters.append('{stage: {eq: "%s"}}' % self._sanitize_graphql_string(stage))
         filter_str = ", ".join(filters) if filters else "{}"
         query = '{ opportunities(filter: %s) { edges { node { id name stage } } } }' % filter_str
         result = await self.graphql(query)
@@ -454,8 +453,8 @@ class TwentyClient:
             error_text = msg.lower()
             try:
                 error_text += " " + str(extensions).lower()
-            except Exception:
-                pass
+            except (TypeError, ValueError):
+                pass  # extensions may not be stringifiable, ignore
             if "already used" in error_text or "not available" in error_text:
                 logger.info("Field %s.%s already exists, skipping", object_name, field_name)
                 return
@@ -471,8 +470,8 @@ class TwentyClient:
         try:
             await self._resolve_object_metadata_id(object_name)
             object_exists = True
-        except Exception:
-            pass
+        except (ValueError, RuntimeError):
+            pass  # Object not found or lookup failed — will attempt to create
 
         if not object_exists:
             mutation = '''
