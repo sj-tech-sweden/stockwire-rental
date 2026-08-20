@@ -1,6 +1,7 @@
 import logging
 from datetime import datetime
 
+import httpx
 from sqlalchemy.orm import Session
 
 from app.domain.customers.models import Customer
@@ -9,6 +10,17 @@ from app.domain.integrations.twenty_client import TwentyClient
 from app.domain.jobs.models import Job
 
 logger = logging.getLogger(__name__)
+
+
+class TwentyRecordNotFoundError(Exception):
+    """Raised when a Twenty record referenced by external_reference no longer exists."""
+
+
+def _links_field(url: str | None, label: str = "Stockwire") -> dict[str, str] | None:
+    """Format a URL for Twenty LINKS typed fields."""
+    if not url:
+        return None
+    return {"primaryLinkUrl": url, "primaryLinkLabel": label}
 
 STAGE_MAP = {
     "draft": "NEW",
@@ -28,21 +40,35 @@ _STOCKWIRE_FIELDS = {
 
 
 async def _safe_update(client: TwentyClient, object_name: str, record_id: str, data: dict) -> None:
-    """Update a record, stripping fields that don't exist on the target object."""
-    try:
-        await client.update_object(object_name, record_id, data)
-    except Exception as exc:
+    """Update a record, stripping fields that don't exist on the target object.
+
+    Raises TwentyRecordNotFoundError when the target record no longer exists so
+    callers can recreate it.
+    """
+    async def _try_stripped_update(exc: Exception) -> bool:
         err_str = str(exc)
-        # If a field is missing, strip stockwire_* fields and retry
         if "doesn't have any" in err_str or "400" in err_str:
             stripped = {k: v for k, v in data.items() if k not in _STOCKWIRE_FIELDS}
             if stripped != data:
                 try:
                     await client.update_object(object_name, record_id, stripped)
-                    return
+                    return True
                 except Exception:
                     pass
-        raise
+        return False
+
+    try:
+        await client.update_object(object_name, record_id, data)
+    except httpx.HTTPStatusError as exc:
+        if exc.response.status_code == 404:
+            raise TwentyRecordNotFoundError(
+                f"{object_name}/{record_id} not found in Twenty"
+            ) from exc
+        if not await _try_stripped_update(exc):
+            raise
+    except Exception as exc:
+        if not await _try_stripped_update(exc):
+            raise
 
 
 def _extract_twenty_id(response: dict, object_name: str) -> str | None:
@@ -101,7 +127,9 @@ def _customer_to_company_payload(customer: Customer) -> dict:
         payload["stockwireId"] = customer.id
     frontend = settings.effective_frontend_base_url
     if frontend and customer.id:
-        payload["stockwireUrl"] = f"{frontend}/customer/{customer.id}"
+        links = _links_field(f"{frontend}/companies/{customer.id}")
+        if links:
+            payload["stockwireUrl"] = links
     return payload
 
 
@@ -125,6 +153,8 @@ def _sanitize_phone(phone: str) -> str:
 
 
 def _customer_to_person_payload(customer: Customer) -> dict:
+    from app.config import settings
+
     parts = (customer.name or "").strip().split(None, 1)
     first_name = parts[0] if parts else ""
     last_name = parts[1] if len(parts) > 1 else ""
@@ -137,10 +167,17 @@ def _customer_to_person_payload(customer: Customer) -> dict:
         payload["phones"] = {"primaryPhoneNumber": _sanitize_phone(customer.phone)}
     if customer.id:
         payload["stockwireId"] = customer.id
+    frontend = settings.effective_frontend_base_url
+    if frontend and customer.id:
+        links = _links_field(f"{frontend}/companies/{customer.id}")
+        if links:
+            payload["stockwireUrl"] = links
     return payload
 
 
 def _job_to_opportunity_payload(job: Job) -> dict:
+    from app.config import settings
+
     payload: dict = {
         "name": f"{job.job_code} - {job.customer_name or ''}".strip(" -"),
         "stage": STAGE_MAP.get(job.status, "SCREENING"),
@@ -159,8 +196,11 @@ def _job_to_opportunity_payload(job: Job) -> dict:
     payload["stockwireStatus"] = job.status or ""
     if job.id:
         payload["stockwireId"] = job.id
-    if job.description:
-        payload["description"] = job.description
+    frontend = settings.effective_frontend_base_url
+    if frontend and job.id:
+        links = _links_field(f"{frontend}/job/{job.id}")
+        if links:
+            payload["stockwireUrl"] = links
     return payload
 
 
@@ -179,7 +219,19 @@ async def _find_existing_person(client: TwentyClient, company_id: str, email: st
     return None
 
 
-async def sync_customer_outbound(db: Session, client: TwentyClient, customer: Customer) -> None:
+async def sync_customer_outbound(
+    db: Session, client: TwentyClient, customer: Customer, *, force: bool = False
+) -> None:
+    """Push a Stockwire customer to Twenty CRM.
+
+    By default, records that originated in Twenty (external_origin == "twenty")
+    are not pushed back, to avoid overwriting data in Twenty. Use force=True to
+    override (e.g. for the one-time stockwire-field write-back after inbound sync).
+    """
+    if customer.external_origin == "twenty" and not force:
+        logger.debug("Skipping outbound sync for Twenty-originated customer %s", customer.id)
+        return
+
     try:
         company_data = _customer_to_company_payload(customer)
         person_data = _customer_to_person_payload(customer)
@@ -188,13 +240,24 @@ async def sync_customer_outbound(db: Session, client: TwentyClient, customer: Cu
 
         if customer.external_source == "twenty" and customer.external_reference:
             twenty_company_id = customer.external_reference
-            await _safe_update(client, "companies", twenty_company_id, company_data)
-            _log_sync(db, "outbound", "customer", customer.id, twenty_company_id, "update", "success")
-        else:
+            try:
+                await _safe_update(client, "companies", twenty_company_id, company_data)
+                _log_sync(db, "outbound", "customer", customer.id, twenty_company_id, "update", "success")
+            except TwentyRecordNotFoundError:
+                logger.warning(
+                    "Company %s no longer exists in Twenty; recreating customer %s",
+                    twenty_company_id, customer.id,
+                )
+                customer.external_source = None
+                customer.external_reference = None
+                twenty_company_id = None
+
+        if not twenty_company_id:
             result = await client.create_object("companies", company_data)
             twenty_company_id = _extract_twenty_id(result, "companies")
             customer.external_source = "twenty"
             customer.external_reference = twenty_company_id
+            customer.external_origin = customer.external_origin or "stockwire"
             _log_sync(db, "outbound", "customer", customer.id, twenty_company_id, "create", "success")
 
         if twenty_company_id and person_data.get("name"):
@@ -221,7 +284,18 @@ async def sync_customer_outbound(db: Session, client: TwentyClient, customer: Cu
         raise
 
 
-async def sync_job_outbound(db: Session, client: TwentyClient, job: Job) -> None:
+async def sync_job_outbound(
+    db: Session, client: TwentyClient, job: Job, *, force: bool = False
+) -> None:
+    """Push a Stockwire job to Twenty CRM as an opportunity.
+
+    By default, records that originated in Twenty (external_origin == "twenty")
+    are not pushed back, to avoid overwriting data in Twenty.
+    """
+    if job.external_origin == "twenty" and not force:
+        logger.debug("Skipping outbound sync for Twenty-originated job %s", job.id)
+        return
+
     try:
         opp_data = _job_to_opportunity_payload(job)
 
@@ -234,13 +308,24 @@ async def sync_job_outbound(db: Session, client: TwentyClient, job: Job) -> None
 
         if job.external_source == "twenty" and job.external_reference:
             twenty_opp_id = job.external_reference
-            await _safe_update(client, "opportunities", twenty_opp_id, opp_data)
-            _log_sync(db, "outbound", "job", job.id, twenty_opp_id, "update", "success")
-        else:
+            try:
+                await _safe_update(client, "opportunities", twenty_opp_id, opp_data)
+                _log_sync(db, "outbound", "job", job.id, twenty_opp_id, "update", "success")
+            except TwentyRecordNotFoundError:
+                logger.warning(
+                    "Opportunity %s no longer exists in Twenty; recreating job %s",
+                    twenty_opp_id, job.id,
+                )
+                job.external_source = None
+                job.external_reference = None
+                twenty_opp_id = None
+
+        if not twenty_opp_id:
             result = await client.create_object("opportunities", opp_data)
             twenty_opp_id = _extract_twenty_id(result, "opportunities")
             job.external_source = "twenty"
             job.external_reference = twenty_opp_id
+            job.external_origin = job.external_origin or "stockwire"
             _log_sync(db, "outbound", "job", job.id, twenty_opp_id, "create", "success")
 
         db.commit()
@@ -251,7 +336,11 @@ async def sync_job_outbound(db: Session, client: TwentyClient, job: Job) -> None
         raise
 
 
-async def sync_customer_inbound(db: Session, client: TwentyClient, twenty_company: dict, twenty_person: dict | None = None) -> None:
+async def sync_customer_inbound(db: Session, client: TwentyClient, twenty_company: dict, twenty_person: dict | None = None) -> bool:
+    """Sync a Twenty company into Stockwire.
+
+    Returns True if a new customer was created, False if an existing one was updated.
+    """
     company_id = twenty_company.get("id")
     company_name = twenty_company.get("name", "")
 
@@ -284,10 +373,12 @@ async def sync_customer_inbound(db: Session, client: TwentyClient, twenty_compan
         country = twenty_company.get("country") or ""
 
     if existing:
-        if name_obj.get("firstName") or name_obj.get("lastName"):
-            full_name = f"{name_obj.get('firstName', '')} {name_obj.get('lastName', '')}".strip()
-            if full_name:
-                existing.name = full_name
+        logger.warning(
+            "Inbound company update: customer_id=%s twenty_id=%s name=%r -> %r",
+            existing.id, company_id, existing.name, company_name,
+        )
+        if company_name:
+            existing.name = company_name
         if email:
             existing.email = email
         if phone:
@@ -304,29 +395,40 @@ async def sync_customer_inbound(db: Session, client: TwentyClient, twenty_compan
         if sw_notes:
             existing.notes = sw_notes
         _log_sync(db, "inbound", "customer", existing.id, company_id, "update", "success")
-    else:
-        full_name = f"{name_obj.get('firstName', '')} {name_obj.get('lastName', '')}".strip()
-        sw_notes = twenty_company.get("stockwireNotes") or twenty_company.get("notes")
-        new_customer = Customer(
-            name=company_name or full_name or None,
-            email=email,
-            phone=phone,
-            address=address or None,
-            city=city or None,
-            postal_code=postal_code or None,
-            country=country or None,
-            notes=sw_notes,
-            external_source="twenty",
-            external_reference=company_id,
-        )
-        db.add(new_customer)
-        db.flush()
-        _log_sync(db, "inbound", "customer", new_customer.id, company_id, "create", "success")
+        db.commit()
+        return False
 
+    full_name = f"{name_obj.get('firstName', '')} {name_obj.get('lastName', '')}".strip()
+    sw_notes = twenty_company.get("stockwireNotes") or twenty_company.get("notes")
+    new_customer = Customer(
+        name=company_name or full_name or None,
+        email=email,
+        phone=phone,
+        address=address or None,
+        city=city or None,
+        postal_code=postal_code or None,
+        country=country or None,
+        notes=sw_notes,
+        external_source="twenty",
+        external_reference=company_id,
+        external_origin="twenty",
+    )
+    db.add(new_customer)
+    db.flush()
+    _log_sync(db, "inbound", "customer", new_customer.id, company_id, "create", "success")
     db.commit()
+    return True
 
 
-async def sync_job_inbound(db: Session, client: TwentyClient, twenty_opp: dict) -> None:
+async def sync_job_inbound(db: Session, client: TwentyClient, twenty_opp: dict) -> bool:
+    """Sync a Twenty opportunity into an existing Stockwire job.
+
+    Jobs are authoritative in Stockwire, so we only update jobs that were
+    originally pushed from Stockwire (external_source == "twenty").
+    We never create new jobs from Twenty opportunities.
+
+    Returns True if the job was updated, False if no matching job was found.
+    """
     opp_id = twenty_opp.get("id")
     opp_name = twenty_opp.get("name", "")
 
@@ -334,6 +436,10 @@ async def sync_job_inbound(db: Session, client: TwentyClient, twenty_opp: dict) 
         Job.external_source == "twenty",
         Job.external_reference == opp_id,
     ).first()
+
+    if not existing:
+        logger.warning("Ignoring Twenty opportunity %s: no matching Stockwire job", opp_id)
+        return False
 
     reverse_stages = _reverse_stage_map()
     stage = twenty_opp.get("stage", "SCREENING")
@@ -348,34 +454,22 @@ async def sync_job_inbound(db: Session, client: TwentyClient, twenty_opp: dict) 
     else:
         amount = 0
 
-    if existing:
-        existing.customer_name = opp_name or existing.customer_name
-        existing.status = stockwire_status
-        if amount:
-            existing.sales_price = amount
-        if twenty_opp.get("closeDate"):
-            existing.end_date = datetime.fromisoformat(twenty_opp["closeDate"]).date()
-        if twenty_opp.get("stockwireStartDate"):
-            existing.start_date = datetime.fromisoformat(twenty_opp["stockwireStartDate"]).date()
-        if twenty_opp.get("stockwireJobCode") and not existing.job_code:
-            existing.job_code = twenty_opp["stockwireJobCode"]
-        if twenty_opp.get("description"):
-            existing.description = twenty_opp["description"]
-        _log_sync(db, "inbound", "job", existing.id, opp_id, "update", "success")
-    else:
-        new_job = Job(
-            job_code=twenty_opp.get("stockwireJobCode") or (opp_name[:50] if opp_name else f"TWENTY-{opp_id[:8]}"),
-            customer_name=opp_name,
-            status=stockwire_status,
-            sales_price=amount or None,
-            start_date=datetime.fromisoformat(twenty_opp["stockwireStartDate"]).date() if twenty_opp.get("stockwireStartDate") else None,
-            end_date=datetime.fromisoformat(twenty_opp["closeDate"]).date() if twenty_opp.get("closeDate") else None,
-            description=twenty_opp.get("description") or opp_name,
-            external_source="twenty",
-            external_reference=opp_id,
-        )
-        db.add(new_job)
-        db.flush()
-        _log_sync(db, "inbound", "job", new_job.id, opp_id, "create", "success")
-
+    logger.warning(
+        "Inbound job update: job_id=%s opp_id=%s name=%r status=%r amount=%s",
+        existing.id, opp_id, opp_name, stockwire_status, amount,
+    )
+    existing.customer_name = opp_name or existing.customer_name
+    existing.status = stockwire_status
+    if amount:
+        existing.sales_price = amount
+    if twenty_opp.get("closeDate"):
+        existing.end_date = datetime.fromisoformat(twenty_opp["closeDate"]).date()
+    if twenty_opp.get("stockwireStartDate"):
+        existing.start_date = datetime.fromisoformat(twenty_opp["stockwireStartDate"]).date()
+    if twenty_opp.get("stockwireJobCode") and not existing.job_code:
+        existing.job_code = twenty_opp["stockwireJobCode"]
+    if twenty_opp.get("description"):
+        existing.description = twenty_opp["description"]
+    _log_sync(db, "inbound", "job", existing.id, opp_id, "update", "success")
     db.commit()
+    return True

@@ -20,6 +20,7 @@ class Customer(Base):
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     external_source: Mapped[str | None] = mapped_column(String(80), nullable=True, index=True)
     external_reference: Mapped[str | None] = mapped_column(String(120), nullable=True, index=True)
+    external_origin: Mapped[str | None] = mapped_column(String(80), nullable=True, index=True)
     twenty_person_id: Mapped[str | None] = mapped_column(String(100), nullable=True, index=True)
     is_customer: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     is_product_supplier: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)

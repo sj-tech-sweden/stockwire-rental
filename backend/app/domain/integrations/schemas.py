@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -13,6 +13,7 @@ class TwentyConfigBase(BaseModel):
     is_active: bool = True
     sync_interval_minutes: int = Field(default=0, ge=0)
     webhook_secret: str | None = None
+    webhook_base_url: str | None = None
 
     @field_validator("api_key")
     @classmethod
@@ -50,6 +51,7 @@ class TwentyConfigUpdate(BaseModel):
     is_active: bool | None = None
     sync_interval_minutes: int | None = None
     webhook_secret: str | None = None
+    webhook_base_url: str | None = None
     clear_api_key: bool = False
     clear_webhook_secret: bool = False
 
@@ -83,6 +85,9 @@ class TwentyConfigRead(BaseModel):
     has_api_key: bool = False
     sync_interval_minutes: int = 0
     has_webhook_secret: bool = False
+    webhook_base_url: str | None = None
+    webhook_base_url_is_env: bool = False
+    default_webhook_base_url: str | None = None
     schema_provisioned: bool = False
     created_at: datetime
     updated_at: datetime
@@ -133,3 +138,22 @@ class TwentySyncTrigger(BaseModel):
             if invalid:
                 raise ValueError(f"Invalid entity types: {', '.join(sorted(invalid))}. Valid: {', '.join(sorted(valid))}")
         return v
+
+
+class TwentySyncJobStatus(BaseModel):
+    job_id: str
+    status: Literal["pending", "running", "completed", "failed"]
+    type: str | None = None
+    direction: str | None = None
+    entity_types: list[str] | None = None
+    synced: int = 0
+    failed: int = 0
+    stage: str | None = None
+    processed: int = 0
+    total: int | None = None
+    result: dict[str, Any] | None = None
+    fields_created: int | None = None
+    objects_created: int | None = None
+    webhooks_created: int | None = None
+    errors: list[str] | None = None
+    error: str | None = None

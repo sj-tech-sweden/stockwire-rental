@@ -158,9 +158,8 @@
 
       <template #body-cell-actions="props">
         <q-td :props="props" auto-width>
-          <q-btn flat round dense icon="visibility" color="grey-7" class="q-mr-xs" :to="`/jobs/${props.row.id}`" />
+          <q-btn flat round dense icon="edit" color="primary" class="q-mr-xs" :to="`/jobs/${props.row.id}`" />
           <template v-if="authStore.canEdit">
-            <q-btn flat round dense icon="edit" color="primary" class="q-mr-xs" @click="openEdit(props.row)" />
             <q-btn v-if="productionplannerEnabled" flat round dense icon="sync" color="info" class="q-mr-xs" @click="syncToProductionPlanner(props.row)" :label="t('jobs.syncToPP')" :disable="jobsStore.loading" />
             <q-btn v-if="productionplannerEnabled && props.row.productionplanner_project_id" flat round dense icon="open_in_new" color="primary" class="q-mr-xs" @click="openProductionPlanner(props.row.productionplanner_project_id)" :label="t('jobs.openInPP')" />
             <q-btn flat round dense icon="delete" color="negative" @click="confirmDelete(props.row)" />
@@ -197,7 +196,7 @@
               <div class="text-caption">{{ props.row.start_date || '-' }} {{ t('jobs.to') }} {{ props.row.end_date || '-' }}</div>
             </q-card-section>
             <q-card-actions align="right">
-              <q-btn flat dense icon="visibility" color="grey-7" :to="`/jobs/${props.row.id}`" />
+              <q-btn flat dense icon="edit" color="primary" :to="`/jobs/${props.row.id}`" />
               <template v-if="authStore.canEdit">
               <q-btn v-if="productionplannerEnabled" flat dense round icon="sync" color="info" :aria-label="t('jobs.syncToPP')" :disable="jobsStore.loading" @click="syncToProductionPlanner(props.row)">
                 <q-tooltip>{{ t('jobs.syncToPP') }}</q-tooltip>
@@ -205,7 +204,6 @@
               <q-btn v-if="productionplannerEnabled && props.row.productionplanner_project_id" flat dense round icon="open_in_new" color="primary" :aria-label="t('jobs.openInProductionPlanner')" @click="openProductionPlanner(props.row.productionplanner_project_id)">
                 <q-tooltip>{{ t('jobs.openInProductionPlanner') }}</q-tooltip>
               </q-btn>
-              <q-btn flat dense icon="edit" color="primary" @click="openEdit(props.row)" />
               <q-btn flat dense icon="delete" color="negative" @click="confirmDelete(props.row)" />
               </template>
             </q-card-actions>
@@ -370,6 +368,10 @@ function formatMoney(value) {
   }
 }
 
+const showProductionPlannerColumn = computed(() =>
+  productionplannerEnabled.value && visibleJobs.value.some(job => job.productionplanner_project_id)
+)
+
 const columns = computed(() => [
   { name: 'job_code', label: t('jobs.jobCode'), field: 'job_code', sortable: true, align: 'left' },
   { name: 'description', label: t('jobs.description'), field: 'description', sortable: true, align: 'left' },
@@ -377,7 +379,9 @@ const columns = computed(() => [
   { name: 'venue_name', label: t('jobs.venue'), field: 'venue_name', sortable: true, align: 'left' },
   { name: 'project_name', label: t('jobs.project'), field: 'project_name', sortable: true, align: 'left' },
   { name: 'status', label: t('jobs.status'), field: 'status', sortable: true, align: 'left' },
-  { name: 'productionplanner', label: t('jobs.productionPlanner'), field: 'productionplanner_project_id', sortable: false, align: 'left' },
+  ...(showProductionPlannerColumn.value
+    ? [{ name: 'productionplanner', label: t('jobs.productionPlanner'), field: 'productionplanner_project_id', sortable: false, align: 'left' }]
+    : []),
   { name: 'sales_price', label: t('jobs.salesLabel'), field: 'sales_price', sortable: true, align: 'right' },
   { name: 'invoice_paid', label: t('jobs.invoiceLabel'), field: 'invoice_paid', sortable: true, align: 'left' },
   { name: 'start_date', label: t('jobs.start'), field: 'start_date', sortable: true, align: 'left', format: formatDate },

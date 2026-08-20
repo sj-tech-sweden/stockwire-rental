@@ -62,18 +62,41 @@
               <div class="text-caption text-grey-7">{{ t('jobs.venue') }}: {{ venueDisplayName }}</div>
               <div class="text-caption text-grey-7">{{ t('jobs.project') }}: {{ projectDisplayName }}</div>
               <div class="text-caption text-grey-7">{{ formattedDateRange }}</div>
-              <q-btn
-                v-if="twentyJobUrl"
-                flat
-                dense
-                no-caps
-                color="primary"
-                icon="open_in_new"
-                :label="t('jobs.openInTwenty')"
-                :href="twentyJobUrl"
-                target="_blank"
-                class="q-mt-sm"
-              />
+              <div class="row q-gutter-sm q-mt-sm">
+                <q-btn
+                  v-if="twentyJobUrl"
+                  flat
+                  dense
+                  no-caps
+                  color="primary"
+                  icon="open_in_new"
+                  :label="isPhone ? undefined : t('jobs.openInTwenty')"
+                  :href="twentyJobUrl"
+                  target="_blank"
+                />
+                <q-btn
+                  v-if="productionPlannerUrl"
+                  flat
+                  dense
+                  no-caps
+                  color="accent"
+                  icon="open_in_new"
+                  :label="isPhone ? undefined : t('jobs.openInPP')"
+                  :href="productionPlannerUrl"
+                  target="_blank"
+                />
+                <q-btn
+                  v-if="productionplannerEnabled"
+                  flat
+                  dense
+                  no-caps
+                  color="accent"
+                  icon="sync"
+                  :label="isPhone ? undefined : t('jobs.syncToPP')"
+                  :loading="productionPlannerSyncLoading"
+                  @click="syncToProductionPlanner"
+                />
+              </div>
             </div>
             <div class="col-12 col-md-auto">
               <div class="row q-gutter-sm">
@@ -640,6 +663,11 @@ const currentJobId = computed(() => Number(route.params.jobId || 0))
 const isNewJob = computed(() => route.path.endsWith('/new'))
 const currentJob = computed(() => jobsStore.jobs.find(job => job.id === currentJobId.value) || null)
 const twentyJobUrl = computed(() => getTwentyJobUrl(currentJob.value, twentyConfig.value))
+const productionplannerEnabled = computed(() => settingsStore.integrations?.productionplanner?.enabled === true)
+const productionPlannerUrl = computed(() => {
+  const projectId = currentJob.value?.productionplanner_project_id
+  return projectId ? jobsStore.getProductionPlannerUrl(projectId) : null
+})
 
 const eventoryInstances = computed(() => settingsStore.integrations?.eventory_instances || [])
 const eventorySyncInstances = computed(() => {
@@ -747,6 +775,22 @@ async function updateEventoryRentals(instanceId) {
     $q.notify({ type: 'negative', message: err?.response?.data?.detail || t('jobs.eventoryUpdateFailed') })
   } finally {
     eventorySyncLoading.value = { ...eventorySyncLoading.value, [instanceId]: false }
+  }
+}
+
+const productionPlannerSyncLoading = ref(false)
+
+async function syncToProductionPlanner() {
+  if (!currentJob.value?.id || !productionplannerEnabled.value) return
+  productionPlannerSyncLoading.value = true
+  try {
+    await jobsStore.syncJobToProductionPlanner(currentJob.value.id)
+    $q.notify({ type: 'positive', message: t('jobs.syncPPSuccess') })
+    await jobsStore.fetchAll()
+  } catch (err) {
+    $q.notify({ type: 'negative', message: err?.response?.data?.detail || t('jobs.syncPPFailed') })
+  } finally {
+    productionPlannerSyncLoading.value = false
   }
 }
 

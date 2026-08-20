@@ -1,13 +1,19 @@
 import asyncio
 import logging
+import time
 from typing import Any
 
 import httpx
+
+from app.domain.realtime.events import emit_realtime_event
 
 logger = logging.getLogger(__name__)
 
 MAX_RETRIES = 3
 RETRY_BACKOFF = [0.5, 1.0, 2.0]
+
+# Twenty rate limit: 100 tokens per 60s. Throttle requests to stay under it.
+MIN_REQUEST_INTERVAL = 0.7
 
 
 def _mask_url(url: str) -> str:
@@ -34,6 +40,16 @@ class TwentyClient:
             "Authorization": f"Bearer {api_key}",
             "Content-Type": "application/json",
         }
+        self._rate_limit_lock = asyncio.Lock()
+        self._last_request_time = 0.0
+
+    async def _throttle(self) -> None:
+        """Enforce a minimum interval between Twenty API requests."""
+        async with self._rate_limit_lock:
+            elapsed = time.monotonic() - self._last_request_time
+            if elapsed < MIN_REQUEST_INTERVAL:
+                await asyncio.sleep(MIN_REQUEST_INTERVAL - elapsed)
+            self._last_request_time = time.monotonic()
 
     async def _request_with_retry(
         self,
@@ -43,17 +59,23 @@ class TwentyClient:
     ) -> httpx.Response:
         last_exc: Exception | None = None
         for attempt in range(MAX_RETRIES):
+            await self._throttle()
             try:
                 async with httpx.AsyncClient(timeout=30) as client:
                     resp = await client.request(method, url, headers=self.headers, **kwargs)
-                    if resp.status_code >= 500 and attempt < MAX_RETRIES - 1:
-                        logger.warning(
-                            "Twenty %s %s returned %d, retrying in %.1fs",
-                            method, url.split("/")[-1], resp.status_code,
-                            RETRY_BACKOFF[attempt],
-                        )
-                        await asyncio.sleep(RETRY_BACKOFF[attempt])
-                        continue
+                    if resp.status_code in (429, 503) or resp.status_code >= 500:
+                        if attempt < MAX_RETRIES - 1:
+                            backoff = RETRY_BACKOFF[attempt]
+                            if resp.status_code == 429:
+                                # Twenty limit window is 60s; back off longer.
+                                backoff = max(backoff, 2.0)
+                            logger.warning(
+                                "Twenty %s %s returned %d, retrying in %.1fs",
+                                method, url.split("/")[-1], resp.status_code,
+                                backoff,
+                            )
+                            await asyncio.sleep(backoff)
+                            continue
                     return resp
             except (httpx.ConnectError, httpx.ReadTimeout) as exc:
                 last_exc = exc
@@ -187,62 +209,82 @@ class TwentyClient:
         result = await self.graphql(query)
         return result.get("data", {}).get("opportunities", {}).get("edges", [])
 
-    async def provision_schema(self, webhook_url: str | None = None, webhook_secret: str | None = None) -> dict[str, Any]:
+    async def provision_schema(
+        self,
+        webhook_url: str | None = None,
+        webhook_secret: str | None = None,
+        job_id: str | None = None,
+    ) -> dict[str, Any]:
         """Create custom fields, objects, and webhooks in Twenty via Metadata API.
 
         Returns a summary of what was created/already existed.
         """
+
+        def _emit(stage: str, processed: int, total: int | None = None, message: str = "") -> None:
+            if job_id:
+                emit_realtime_event(
+                    f"twenty.job.{job_id}",
+                    {
+                        "job_id": job_id,
+                        "type": "provision-schema",
+                        "status": "running",
+                        "stage": stage,
+                        "processed": processed,
+                        "total": total,
+                        "message": message,
+                    },
+                )
+
         results: dict[str, Any] = {"custom_fields_created": [], "custom_objects_created": [], "webhooks_created": [], "errors": []}
 
-        # ── Company fields ────────────────────────────────────────────────
-        company_fields = [
-            ("stockwireUrl", "LINKS", "Stockwire URL"),
-            ("stockwireId", "NUMBER", "Stockwire ID"),
-            ("stockwireNotes", "TEXT", "Stockwire Notes"),
-            ("phoneSecondary", "TEXT", "Secondary Phone"),
+        all_field_groups = [
+            ("company", [
+                ("stockwireUrl", "LINKS", "Stockwire URL"),
+                ("stockwireId", "NUMBER", "Stockwire ID"),
+                ("stockwireNotes", "TEXT", "Stockwire Notes"),
+                ("phoneSecondary", "TEXT", "Secondary Phone"),
+            ]),
+            ("opportunity", [
+                ("stockwireUrl", "LINKS", "Stockwire URL"),
+                ("stockwireId", "NUMBER", "Stockwire ID"),
+                ("stockwireJobCode", "TEXT", "Job Code"),
+                ("stockwireStartDate", "DATE", "Rental Start Date"),
+                ("stockwireEndDate", "DATE", "Rental End Date"),
+                ("stockwireStatus", "TEXT", "Rental Status"),
+            ]),
+            ("person", [
+                ("stockwireUrl", "LINKS", "Stockwire URL"),
+                ("stockwireId", "NUMBER", "Stockwire ID"),
+            ]),
         ]
-        for field_name, field_type, label in company_fields:
-            try:
-                await self._ensure_custom_field("company", field_name, field_type, label)
-                results["custom_fields_created"].append(f"company.{field_name}")
-            except Exception as exc:
-                err_msg = f"company.{field_name}: {exc}"
-                results["errors"].append(err_msg)
-                logger.warning("Schema provision error: %s", err_msg)
+        total_fields = sum(len(fields) for _, fields in all_field_groups)
+        total_steps = total_fields + 1 + (1 if webhook_url else 0)
+        processed = 0
 
-        # ── Opportunity fields ────────────────────────────────────────────
-        opportunity_fields = [
-            ("stockwireUrl", "LINKS", "Stockwire URL"),
-            ("stockwireId", "NUMBER", "Stockwire ID"),
-            ("stockwireJobCode", "TEXT", "Job Code"),
-            ("stockwireStartDate", "DATE", "Rental Start Date"),
-            ("stockwireEndDate", "DATE", "Rental End Date"),
-            ("stockwireStatus", "TEXT", "Rental Status"),
-        ]
-        for field_name, field_type, label in opportunity_fields:
-            try:
-                await self._ensure_custom_field("opportunity", field_name, field_type, label)
-                results["custom_fields_created"].append(f"opportunity.{field_name}")
-            except Exception as exc:
-                err_msg = f"opportunity.{field_name}: {exc}"
-                results["errors"].append(err_msg)
-                logger.warning("Schema provision error: %s", err_msg)
-
-        # ── Person fields ─────────────────────────────────────────────────
-        person_fields = [
-            ("stockwireUrl", "LINKS", "Stockwire URL"),
-            ("stockwireId", "NUMBER", "Stockwire ID"),
-        ]
-        for field_name, field_type, label in person_fields:
-            try:
-                await self._ensure_custom_field("person", field_name, field_type, label)
-                results["custom_fields_created"].append(f"person.{field_name}")
-            except Exception as exc:
-                err_msg = f"person.{field_name}: {exc}"
-                results["errors"].append(err_msg)
-                logger.warning("Schema provision error: %s", err_msg)
+        for object_name, fields in all_field_groups:
+            logger.info("Schema provision: creating fields on %s (%d fields)", object_name, len(fields))
+            for field_name, field_type, label in fields:
+                processed += 1
+                _emit("fields", processed, total_steps, f"Creating field {object_name}.{field_name}")
+                try:
+                    await self._ensure_custom_field(object_name, field_name, field_type, label)
+                    results["custom_fields_created"].append(f"{object_name}.{field_name}")
+                    logger.info(
+                        "Schema provision progress: %d/%d fields (%s.%s)",
+                        processed, total_fields, object_name, field_name,
+                    )
+                except Exception as exc:
+                    err_msg = f"{object_name}.{field_name}: {exc}"
+                    results["errors"].append(err_msg)
+                    logger.warning(
+                        "Schema provision progress: %d/%d fields (%s.%s) FAILED: %s",
+                        processed, total_fields, object_name, field_name, exc,
+                    )
 
         # ── Rental Job custom object ──────────────────────────────────────
+        processed += 1
+        _emit("custom object", processed, total_steps, "Ensuring Rental Job custom object")
+        logger.info("Schema provision: ensuring custom object rentalJob")
         try:
             await self._ensure_custom_object("rentalJob", "Rental Job", [
                 {"name": "jobStatus", "type": "TEXT", "label": "Job Status"},
@@ -251,17 +293,22 @@ class TwentyClient:
                 {"name": "startDate", "type": "DATE", "label": "Start Date"},
                 {"name": "endDate", "type": "DATE", "label": "End Date"},
                 {"name": "totalAmount", "type": "NUMBER", "label": "Total Amount"},
-                {"name": "currency", "type": "TEXT", "label": "Currency"},
+                {"name": "jobCurrency", "type": "TEXT", "label": "Currency"},
                 {"name": "stockwireJobUrl", "type": "LINKS", "label": "Stockwire Job URL"},
                 {"name": "stockwireJobId", "type": "NUMBER", "label": "Stockwire Job ID"},
                 {"name": "description", "type": "TEXT", "label": "Description"},
             ])
             results["custom_objects_created"].append("rentalJob")
+            logger.info("Schema provision: custom object rentalJob ready")
         except Exception as exc:
             results["errors"].append(f"rentalJob: {exc}")
+            logger.warning("Schema provision: custom object rentalJob FAILED: %s", exc)
 
         # ── Webhooks ──────────────────────────────────────────────────────
         if webhook_url:
+            processed += 1
+            _emit("webhook", processed, total_steps, f"Ensuring webhook {webhook_url}")
+            logger.info("Schema provision: ensuring webhook %s", webhook_url)
             try:
                 existing_hooks = await self.list_webhooks()
                 existing_urls = {h.get("targetUrl") for h in existing_hooks if isinstance(h, dict)}
@@ -275,6 +322,15 @@ class TwentyClient:
                 results["errors"].append(f"webhooks: {exc}")
                 logger.warning("Could not provision webhooks: %s", exc)
 
+        logger.info(
+            "Schema provision complete: %d fields, %d objects, %d webhooks, %d errors",
+            len(results["custom_fields_created"]),
+            len(results["custom_objects_created"]),
+            len(results["webhooks_created"]),
+            len(results["errors"]),
+        )
+        if results["errors"]:
+            logger.warning("Schema provision errors: %s", results["errors"])
         return results
 
     # Hardcoded UUIDs for Twenty standard objects (constant across all workspaces)
@@ -434,7 +490,6 @@ class TwentyClient:
                         "labelSingular": label,
                         "namePlural": object_name + "s",
                         "labelPlural": label + "s",
-                        "isCustom": True,
                     }
                 }
             })
@@ -462,8 +517,8 @@ class TwentyClient:
             "startDate": job_data.get("start_date"),
             "endDate": job_data.get("end_date"),
             "totalAmount": job_data.get("sales_price", 0),
-            "currency": job_data.get("currency", "SEK"),
-            "stockwireJobUrl": deep_link,
+            "jobCurrency": job_data.get("currency", "SEK"),
+            "stockwireJobUrl": {"primaryLinkUrl": deep_link, "primaryLinkLabel": "Stockwire"},
             "stockwireJobId": job_id,
             "description": job_data.get("description", ""),
         }
