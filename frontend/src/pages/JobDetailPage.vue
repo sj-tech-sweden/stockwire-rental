@@ -54,10 +54,10 @@
           <div class="row q-col-gutter-md items-start">
             <div class="col-12 col-md">
               <div class="row items-center q-gutter-sm q-mb-sm">
-                <div class="text-h6">{{ currentJob.job_code }}</div>
-                <q-badge :color="statusColor(currentJob.status)" :label="statusLabel(currentJob.status)" />
+                <div class="text-h6">{{ currentJob?.job_code }}</div>
+                <q-badge v-if="currentJob" :color="statusColor(currentJob.status)" :label="statusLabel(currentJob.status)" />
               </div>
-              <div class="text-body1 q-mb-sm">{{ currentJob.description || t('jobs.noDescription') }}</div>
+              <div class="text-body1 q-mb-sm">{{ currentJob?.description || t('jobs.noDescription') }}</div>
               <div class="text-caption text-grey-7">{{ t('jobs.customer') }}: {{ customerDisplayName }}</div>
               <div class="text-caption text-grey-7">{{ t('jobs.venue') }}: {{ venueDisplayName }}</div>
               <div class="text-caption text-grey-7">{{ t('jobs.project') }}: {{ projectDisplayName }}</div>
@@ -166,11 +166,53 @@
             />
 
             <div class="row q-col-gutter-sm q-mt-sm">
-              <div class="col-12 col-md-6">
+              <div class="col-12 col-md-4">
+                <q-select
+                  v-model="form.company_id"
+                  :options="filteredCompanyOptions"
+                  :label="t('jobs.company')"
+                  outlined
+                  dense
+                  clearable
+                  use-input
+                  fill-input
+                  input-debounce="0"
+                  emit-value
+                  map-options
+                  :disable="!authStore.canEdit"
+                  @filter="filterCompanyOptions"
+                >
+                  <template #after>
+                    <q-btn flat round dense icon="add" color="primary" size="sm" @click="companyCreateDialogOpen = true" />
+                  </template>
+                </q-select>
+              </div>
+              <div class="col-12 col-md-4">
+                <q-select
+                  v-model="form.contact_person_id"
+                  :options="filteredPersonOptions"
+                  :label="t('jobs.contactPerson')"
+                  outlined
+                  dense
+                  clearable
+                  use-input
+                  fill-input
+                  input-debounce="0"
+                  emit-value
+                  map-options
+                  :disable="!authStore.canEdit"
+                  @filter="filterPersonOptions"
+                >
+                  <template #after>
+                    <q-btn flat round dense icon="add" color="primary" size="sm" @click="personCreateDialogOpen = true" />
+                  </template>
+                </q-select>
+              </div>
+              <div class="col-12 col-md-4">
                 <q-select
                   v-model="form.customer_id"
                   :options="filteredCustomerOptions"
-                  :label="t('jobs.customer')"
+                  :label="t('jobs.customer') + ' (' + t('common.legacy') + ')'"
                   outlined
                   dense
                   clearable
@@ -183,6 +225,8 @@
                   @filter="filterCustomerOptions"
                 />
               </div>
+            </div>
+            <div class="row q-col-gutter-sm q-mt-sm">
               <div class="col-12 col-md-6">
                 <q-select
                   v-model="form.venue_id"
@@ -574,6 +618,8 @@
       :job-id="currentJob?.id || null"
     />
     <CustomerPickerDialog v-model="customerPickerOpen" :customers="customersStore.customers" :selected-id="form.customer_id" @select="onCustomerSelected" />
+    <CompanyCreateDialog v-model="companyCreateDialogOpen" @saved="onCompanyCreated" />
+    <PersonCreateDialog v-model="personCreateDialogOpen" :company-id="form.company_id" @saved="onPersonCreated" />
     <VenuePickerDialog v-model="venuePickerOpen" :venues="venuesStore.venues" :selected-id="form.venue_id" @select="onVenueSelected" />
     <JobCustomFieldsDialog v-model="customFieldsDialogOpen" :job-id="currentJob?.id || null" @saved="reloadFieldRows" />
     <CrewRequirementDialog v-model="crewRequirementDialogOpen" :job-id="currentJob?.id || null" @saved="loadCrewData" />
@@ -591,6 +637,8 @@ import { useI18n } from 'vue-i18n'
 import { JOB_STATUSES, useJobsStore } from '../stores/jobs'
 import { useInventoryStore } from '../stores/inventory'
 import { useCustomersStore } from '../stores/customers'
+import { useCompaniesStore } from '../stores/companies'
+import { usePersonsStore } from '../stores/persons'
 import { useVenuesStore } from '../stores/venues'
 import { useProjectsStore } from '../stores/projects'
 import { useAuthStore } from '../stores/auth'
@@ -610,6 +658,8 @@ import JobRentalRequirementDialog from '../components/JobRentalRequirementDialog
 import CrewRequirementDialog from '../components/CrewRequirementDialog.vue'
 import CrewAssignmentDialog from '../components/CrewAssignmentDialog.vue'
 import CustomerPickerDialog from '../components/CustomerPickerDialog.vue'
+import CompanyCreateDialog from '../components/CompanyCreateDialog.vue'
+import PersonCreateDialog from '../components/PersonCreateDialog.vue'
 import VenuePickerDialog from '../components/VenuePickerDialog.vue'
 import JobCustomFieldsDialog from '../components/JobCustomFieldsDialog.vue'
 import ReportExportDialog from '../components/ReportExportDialog.vue'
@@ -623,6 +673,8 @@ const isPhone = computed(() => $q.screen.lt.md)
 const jobsStore = useJobsStore()
 const inventoryStore = useInventoryStore()
 const customersStore = useCustomersStore()
+const companiesStore = useCompaniesStore()
+const personsStore = usePersonsStore()
 const venuesStore = useVenuesStore()
 const projectsStore = useProjectsStore()
 const authStore = useAuthStore()
@@ -637,6 +689,8 @@ const formRef = ref(null)
 const requirementDialogOpen = ref(false)
 const rentalRequirementDialogOpen = ref(false)
 const customerPickerOpen = ref(false)
+const companyCreateDialogOpen = ref(false)
+const personCreateDialogOpen = ref(false)
 const venuePickerOpen = ref(false)
 const customFieldsDialogOpen = ref(false)
 const crewRequirementDialogOpen = ref(false)
@@ -651,6 +705,8 @@ const endDateRef = ref(null)
 const crewRequirementRows = ref([])
 const crewAssignmentRows = ref([])
 const filteredCustomerOptions = ref([])
+const filteredCompanyOptions = ref([])
+const filteredPersonOptions = ref([])
 const filteredVenueOptions = ref([])
 const twentyConfig = ref(null)
 const form = ref(emptyForm())
@@ -799,6 +855,23 @@ const customerOptions = computed(() => customersStore.customers.map(customer => 
   label: customer.email ? `${customer.name} · ${customer.email}` : customer.name,
   value: customer.id,
 })))
+const companyOptions = computed(() => {
+  return (companiesStore.companies || []).map(company => ({
+    label: company.name,
+    value: company.id,
+  }))
+})
+const personOptions = computed(() => {
+  const companyId = form.value.company_id
+  let persons = personsStore.persons || []
+  if (companyId) {
+    persons = persons.filter(p => p.company_id === companyId)
+  }
+  return persons.map(person => ({
+    label: `${person.first_name} ${person.last_name}`,
+    value: person.id,
+  }))
+})
 const venueOptions = computed(() => venuesStore.venues.map(venue => ({
   label: [venue.name, venue.city].filter(Boolean).join(' · '),
   value: venue.id,
@@ -815,6 +888,8 @@ function emptyForm() {
     description: '',
     customer_id: null,
     customer_name: '',
+    company_id: null,
+    contact_person_id: null,
     venue_id: null,
     venue_name: '',
     project_id: null,
@@ -919,6 +994,28 @@ function filterCustomerOptions(val, update) {
   })
 }
 
+function filterCompanyOptions(val, update) {
+  update(() => {
+    const needle = val.trim().toLowerCase()
+    if (!needle) {
+      filteredCompanyOptions.value = companyOptions.value
+      return
+    }
+    filteredCompanyOptions.value = companyOptions.value.filter(option => option.label.toLowerCase().includes(needle))
+  })
+}
+
+function filterPersonOptions(val, update) {
+  update(() => {
+    const needle = val.trim().toLowerCase()
+    if (!needle) {
+      filteredPersonOptions.value = personOptions.value
+      return
+    }
+    filteredPersonOptions.value = personOptions.value.filter(option => option.label.toLowerCase().includes(needle))
+  })
+}
+
 function filterVenueOptions(val, update) {
   update(() => {
     const needle = val.trim().toLowerCase()
@@ -934,6 +1031,14 @@ watch(customerOptions, (options) => {
   filteredCustomerOptions.value = options
 }, { immediate: true })
 
+watch(companyOptions, (options) => {
+  filteredCompanyOptions.value = options
+}, { immediate: true })
+
+watch(personOptions, (options) => {
+  filteredPersonOptions.value = options
+}, { immediate: true })
+
 watch(venueOptions, (options) => {
   filteredVenueOptions.value = options
 }, { immediate: true })
@@ -946,6 +1051,15 @@ watch(() => form.value.invoice_paid, (paid) => {
   }
   if (!paid) {
     form.value.invoice_paid_at = null
+  }
+})
+
+watch(() => form.value.company_id, (newCompanyId, oldCompanyId) => {
+  if (newCompanyId !== oldCompanyId && form.value.contact_person_id) {
+    const person = personsStore.persons.find(p => p.id === form.value.contact_person_id)
+    if (person && person.company_id !== newCompanyId) {
+      form.value.contact_person_id = null
+    }
   }
 })
 
@@ -1138,6 +1252,14 @@ function onCustomerSelected(customer) {
   form.value.customer_name = customer.name
 }
 
+function onCompanyCreated(company) {
+  form.value.company_id = company.id
+}
+
+function onPersonCreated(person) {
+  form.value.contact_person_id = person.id
+}
+
 function onVenueSelected(venue) {
   form.value.venue_id = venue.id
   form.value.venue_name = venue.name
@@ -1159,6 +1281,8 @@ function syncFromJob(job) {
     description: job.description ?? '',
     customer_id: job.customer_id ?? null,
     customer_name: job.customer_name ?? '',
+    company_id: job.company_id ?? null,
+    contact_person_id: job.contact_person_id ?? null,
     venue_id: job.venue_id ?? null,
     venue_name: job.venue_name ?? '',
     project_id: job.project_id ?? null,
@@ -1225,6 +1349,8 @@ async function loadData() {
       jobsStore.fetchAll(),
       inventoryStore.fetchAll(),
       customersStore.fetchAll(),
+      companiesStore.fetchAll(),
+      personsStore.fetchAll(),
       venuesStore.fetchAll(),
       projectsStore.fetchAll(),
       settingsStore.fetchCompanyProfile(),

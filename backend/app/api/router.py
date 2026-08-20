@@ -5,7 +5,7 @@ from app.api.v1.metrics import router as metrics_router
 from app.domain.audit.router import router as audit_router
 from app.domain.auth.router import router as auth_router
 from app.domain.custom_fields.router import router as custom_fields_router
-from app.domain.customers.router import router as customers_router
+from app.domain.customers.router import companies_router, customers_router, persons_router
 from app.domain.crew.router import router as crew_router
 from app.domain.reports.router import router as reports_router
 from app.domain.finance.router import router as finance_router
@@ -31,6 +31,8 @@ api_router.include_router(audit_router)
 api_router.include_router(inventory_router)
 api_router.include_router(custom_fields_router)
 api_router.include_router(customers_router)
+api_router.include_router(companies_router)
+api_router.include_router(persons_router)
 api_router.include_router(crew_router)
 api_router.include_router(reports_router)
 api_router.include_router(jobs_router)

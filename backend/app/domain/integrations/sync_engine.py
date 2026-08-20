@@ -4,7 +4,7 @@ from datetime import datetime
 import httpx
 from sqlalchemy.orm import Session
 
-from app.domain.customers.models import Customer
+from app.domain.customers.models import Company, Customer, Person
 from app.domain.integrations.models import TwentySyncLog
 from app.domain.integrations.twenty_client import TwentyClient
 from app.domain.jobs.models import Job
@@ -475,5 +475,290 @@ async def sync_job_inbound(db: Session, client: TwentyClient, twenty_opp: dict) 
     if twenty_opp.get("description"):
         existing.description = twenty_opp["description"]
     _log_sync(db, "inbound", "job", existing.id, opp_id, "update", "success")
+    db.commit()
+    return True
+
+
+# ============================================================================
+# New Company/Person Sync Functions
+# ============================================================================
+
+
+def _company_to_company_payload(company: Company) -> dict:
+    """Convert a Stockwire Company to a Twenty Company payload."""
+    from app.config import settings
+
+    payload: dict = {"name": company.name or ""}
+    if company.address or company.city or company.postal_code or company.country:
+        payload["address"] = {
+            "addressStreet1": company.address or "",
+            "addressCity": company.city or "",
+            "addressPostcode": company.postal_code or "",
+            "addressCountry": company.country or "",
+        }
+    if company.notes:
+        payload["stockwireNotes"] = company.notes
+    if company.id:
+        payload["stockwireId"] = company.id
+    frontend = settings.effective_frontend_base_url
+    if frontend and company.id:
+        links = _links_field(f"{frontend}/companies/{company.id}")
+        if links:
+            payload["stockwireUrl"] = links
+    return payload
+
+
+def _person_to_person_payload(person: Person) -> dict:
+    """Convert a Stockwire Person to a Twenty Person payload."""
+    from app.config import settings
+
+    payload: dict = {}
+    if person.first_name or person.last_name:
+        payload["name"] = {"firstName": person.first_name or "", "lastName": person.last_name or ""}
+    if person.email:
+        payload["emails"] = {"primaryEmail": person.email}
+    if person.phone:
+        payload["phones"] = {"primaryPhoneNumber": _sanitize_phone(person.phone)}
+    if person.id:
+        payload["stockwireId"] = person.id
+    frontend = settings.effective_frontend_base_url
+    if frontend and person.id:
+        links = _links_field(f"{frontend}/persons/{person.id}")
+        if links:
+            payload["stockwireUrl"] = links
+    return payload
+
+
+async def sync_company_outbound(
+    db: Session, client: TwentyClient, company: Company, *, force: bool = False
+) -> None:
+    """Push a Stockwire Company to Twenty CRM.
+
+    By default, records that originated in Twenty (external_origin == "twenty")
+    are not pushed back, to avoid overwriting data in Twenty. Use force=True to
+    override (e.g. for the one-time stockwire-field write-back after inbound sync).
+    """
+    if company.external_origin == "twenty" and not force:
+        logger.debug("Skipping outbound sync for Twenty-originated company %s", company.id)
+        return
+
+    try:
+        company_data = _company_to_company_payload(company)
+
+        twenty_company_id = None
+
+        if company.external_source == "twenty" and company.external_reference:
+            twenty_company_id = company.external_reference
+            try:
+                await _safe_update(client, "companies", twenty_company_id, company_data)
+                _log_sync(db, "outbound", "company", company.id, twenty_company_id, "update", "success")
+            except TwentyRecordNotFoundError:
+                logger.warning(
+                    "Company %s no longer exists in Twenty; recreating company %s",
+                    twenty_company_id, company.id,
+                )
+                company.external_source = None
+                company.external_reference = None
+                twenty_company_id = None
+
+        if not twenty_company_id:
+            result = await client.create_object("companies", company_data)
+            twenty_company_id = _extract_twenty_id(result, "companies")
+            company.external_source = "twenty"
+            company.external_reference = twenty_company_id
+            company.external_origin = company.external_origin or "stockwire"
+            _log_sync(db, "outbound", "company", company.id, twenty_company_id, "create", "success")
+
+        db.commit()
+    except Exception as e:
+        logger.exception("Failed to sync company %s to Twenty", company.id)
+        _log_sync(db, "outbound", "company", company.id, None, "update", "failed", str(e))
+        db.commit()
+        raise
+
+
+async def sync_person_outbound(
+    db: Session, client: TwentyClient, person: Person, *, force: bool = False
+) -> None:
+    """Push a Stockwire Person to Twenty CRM.
+
+    By default, records that originated in Twenty (external_origin == "twenty")
+    are not pushed back, to avoid overwriting data in Twenty. Use force=True to
+    override (e.g. for the one-time stockwire-field write-back after inbound sync).
+    """
+    if person.external_origin == "twenty" and not force:
+        logger.debug("Skipping outbound sync for Twenty-originated person %s", person.id)
+        return
+
+    try:
+        person_data = _person_to_person_payload(person)
+
+        # Link to company in Twenty if person has company_id
+        if person.company_id:
+            company = db.get(Company, person.company_id)
+            if company and company.external_reference:
+                person_data["companyId"] = company.external_reference
+
+        twenty_person_id = None
+
+        if person.external_source == "twenty" and person.external_reference:
+            twenty_person_id = person.external_reference
+            try:
+                await _safe_update(client, "people", twenty_person_id, person_data)
+                _log_sync(db, "outbound", "person", person.id, twenty_person_id, "update", "success")
+            except TwentyRecordNotFoundError:
+                logger.warning(
+                    "Person %s no longer exists in Twenty; recreating person %s",
+                    twenty_person_id, person.id,
+                )
+                person.external_source = None
+                person.external_reference = None
+                twenty_person_id = None
+
+        if not twenty_person_id:
+            result = await client.create_object("people", person_data)
+            twenty_person_id = _extract_twenty_id(result, "people")
+            person.external_source = "twenty"
+            person.external_reference = twenty_person_id
+            person.external_origin = person.external_origin or "stockwire"
+            _log_sync(db, "outbound", "person", person.id, twenty_person_id, "create", "success")
+
+        db.commit()
+    except Exception as e:
+        logger.exception("Failed to sync person %s to Twenty", person.id)
+        _log_sync(db, "outbound", "person", person.id, None, "update", "failed", str(e))
+        db.commit()
+        raise
+
+
+async def sync_company_inbound(db: Session, client: TwentyClient, twenty_company: dict) -> bool:
+    """Sync a Twenty Company into a Stockwire Company.
+
+    Returns True if a new company was created, False if an existing one was updated.
+    """
+    company_id = twenty_company.get("id")
+    company_name = twenty_company.get("name", "")
+
+    existing = db.query(Company).filter(
+        Company.external_source == "twenty",
+        Company.external_reference == company_id,
+    ).first()
+
+    address_data = twenty_company.get("address") or {}
+    if isinstance(address_data, dict):
+        address = address_data.get("addressStreet1") or ""
+        city = address_data.get("addressCity") or ""
+        postal_code = address_data.get("addressPostcode") or ""
+        country = address_data.get("addressCountry") or ""
+    else:
+        address = str(address_data) if address_data else ""
+        city = twenty_company.get("city") or ""
+        postal_code = twenty_company.get("postalCode") or ""
+        country = twenty_company.get("country") or ""
+
+    sw_notes = twenty_company.get("stockwireNotes") or twenty_company.get("notes")
+
+    if existing:
+        logger.debug(
+            "Inbound company update: company_id=%s twenty_id=%s name=%r -> %r",
+            existing.id, company_id, existing.name, company_name,
+        )
+        if company_name:
+            existing.name = company_name
+        if address:
+            existing.address = address
+        if city:
+            existing.city = city
+        if postal_code:
+            existing.postal_code = postal_code
+        if country:
+            existing.country = country
+        if sw_notes:
+            existing.notes = sw_notes
+        _log_sync(db, "inbound", "company", existing.id, company_id, "update", "success")
+        db.commit()
+        return False
+
+    new_company = Company(
+        name=company_name or None,
+        address=address or None,
+        city=city or None,
+        postal_code=postal_code or None,
+        country=country or None,
+        notes=sw_notes,
+        external_source="twenty",
+        external_reference=company_id,
+        external_origin="twenty",
+    )
+    db.add(new_company)
+    db.flush()
+    _log_sync(db, "inbound", "company", new_company.id, company_id, "create", "success")
+    db.commit()
+    return True
+
+
+async def sync_person_inbound(db: Session, client: TwentyClient, twenty_person: dict) -> bool:
+    """Sync a Twenty Person into a Stockwire Person.
+
+    Returns True if a new person was created, False if an existing one was updated.
+    """
+    person_id = twenty_person.get("id")
+    name_obj = twenty_person.get("name") or {}
+    first_name = name_obj.get("firstName", "")
+    last_name = name_obj.get("lastName", "")
+
+    # Get company link
+    twenty_company_id = twenty_person.get("companyId")
+    company_id = None
+    if twenty_company_id:
+        company = db.query(Company).filter(
+            Company.external_source == "twenty",
+            Company.external_reference == str(twenty_company_id),
+        ).first()
+        if company:
+            company_id = company.id
+
+    existing = db.query(Person).filter(
+        Person.external_source == "twenty",
+        Person.external_reference == person_id,
+    ).first()
+
+    emails_data = twenty_person.get("emails") or {}
+    email = emails_data.get("primaryEmail") if isinstance(emails_data, dict) else None
+    phones_data = twenty_person.get("phones") or {}
+    phone = phones_data.get("primaryPhoneNumber") if isinstance(phones_data, dict) else None
+
+    if existing:
+        logger.debug(
+            "Inbound person update: person_id=%s twenty_id=%s name=%r %r",
+            existing.id, person_id, first_name, last_name,
+        )
+        if first_name:
+            existing.first_name = first_name
+        if last_name:
+            existing.last_name = last_name
+        if email:
+            existing.email = email
+        if phone:
+            existing.phone = phone
+        if company_id is not None:
+            existing.company_id = company_id
+        _log_sync(db, "inbound", "person", existing.id, person_id, "update", "success")
+        db.commit()
+        return False
+
+    new_person = Person(
+        first_name=first_name or None,
+        last_name=last_name or None,
+        email=email,
+        phone=phone,
+        company_id=company_id,
+        external_source="twenty",
+        external_reference=person_id,
+        external_origin="twenty",
+    )
+    db.add(new_person)
+    db.flush()
+    _log_sync(db, "inbound", "person", new_person.id, person_id, "create", "success")
     db.commit()
     return True

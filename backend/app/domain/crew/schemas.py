@@ -74,6 +74,7 @@ class CrewMemberBase(BaseModel):
     phone: str | None = None
     user_id: int | None = None
     supplier_id: int | None = None
+    person_id: int | None = None  # Link to Person entity
     hourly_rate: Decimal | None = None
     daily_rate: Decimal | None = None
     notes: str | None = None
@@ -92,6 +93,7 @@ class CrewMemberUpdate(BaseModel):
     phone: str | None = None
     user_id: int | None = None
     supplier_id: int | None = None
+    person_id: int | None = None
     hourly_rate: Decimal | None = None
     daily_rate: Decimal | None = None
     notes: str | None = None
@@ -138,6 +140,7 @@ class CrewMemberRead(CrewMemberBase):
     created_at: datetime
     user_name: str | None = None
     supplier_name: str | None = None
+    company_name: str | None = None  # Company name from person relationship
     skills: list[CrewSkillRead] = Field(default_factory=list)
     certifications: list[CrewMemberCertificationRead] = Field(default_factory=list)
     preferred_roles: list[CrewRoleRead] = Field(default_factory=list)
@@ -242,6 +245,7 @@ class CrewSuggestion(BaseModel):
     missing_skills: list[str] = Field(default_factory=list)
     hourly_rate: Decimal | None = None
     source: str | None = None
+    company_name: str | None = None  # Company name from person relationship
 
 
 # ── Self-Service Schemas ────────────────────────────────────────────────────

@@ -198,6 +198,10 @@ async def test_do_sync_fetches_people_once_not_per_company():
         patch("app.domain.integrations.sync_engine.sync_job_inbound", _sync_job_inbound),
         patch("app.domain.integrations.sync_engine.sync_customer_outbound", AsyncMock()),
         patch("app.domain.integrations.sync_engine.sync_job_outbound", AsyncMock()),
+        patch("app.domain.integrations.sync_engine.sync_company_inbound", AsyncMock()),
+        patch("app.domain.integrations.sync_engine.sync_company_outbound", AsyncMock()),
+        patch("app.domain.integrations.sync_engine.sync_person_inbound", AsyncMock()),
+        patch("app.domain.integrations.sync_engine.sync_person_outbound", AsyncMock()),
     ):
         await _do_sync(db, client)
 

@@ -66,6 +66,7 @@ class CrewMember(Base):
     phone: Mapped[str | None] = mapped_column(String(50), nullable=True)
     user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
     supplier_id: Mapped[int | None] = mapped_column(ForeignKey("customers.id", ondelete="SET NULL"), nullable=True, index=True)
+    person_id: Mapped[int | None] = mapped_column(ForeignKey("persons.id", ondelete="SET NULL"), nullable=True, index=True)
     hourly_rate: Mapped[float | None] = mapped_column(Numeric(10, 2), nullable=True)
     daily_rate: Mapped[float | None] = mapped_column(Numeric(10, 2), nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -74,6 +75,7 @@ class CrewMember(Base):
 
     user: Mapped["User | None"] = relationship()
     supplier: Mapped["Customer | None"] = relationship()
+    person: Mapped["Person | None"] = relationship("Person", back_populates="crew_member")
     skills: Mapped[list["CrewMemberSkill"]] = relationship(
         back_populates="crew_member", cascade="all, delete-orphan"
     )

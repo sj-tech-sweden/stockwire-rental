@@ -43,18 +43,64 @@ def _run_twenty_sync_now() -> None:
 
 
 async def _do_sync(db, client) -> None:
-    from app.domain.customers.models import Customer
+    from app.domain.customers.models import Company, Customer, Person
     from app.domain.integrations.sync_engine import (
         SYNC_PAGE_SIZE,
+        sync_company_inbound,
+        sync_company_outbound,
         sync_customer_inbound,
         sync_customer_outbound,
         sync_job_inbound,
         sync_job_outbound,
+        sync_person_inbound,
+        sync_person_outbound,
     )
     from app.domain.jobs.models import Job
 
-    # Outbound: customers
-    logger.info("Auto-sync stage: outbound customers")
+    # Outbound: companies
+    logger.info("Auto-sync stage: outbound companies")
+    offset = 0
+    processed = 0
+    while True:
+        companies = db.query(Company).offset(offset).limit(SYNC_PAGE_SIZE).all()
+        if not companies:
+            break
+        for company in companies:
+            processed += 1
+            try:
+                await sync_company_outbound(db, client, company)
+                if processed % 10 == 0:
+                    logger.info("Auto-sync outbound-company: %d processed", processed)
+            except Exception:
+                logger.exception("Auto-sync: failed to sync company %s", getattr(company, "id", "?"))
+        if len(companies) < SYNC_PAGE_SIZE:
+            break
+        offset += SYNC_PAGE_SIZE
+    logger.info("Auto-sync stage complete: outbound companies (%d processed)", processed)
+
+    # Outbound: persons
+    logger.info("Auto-sync stage: outbound persons")
+    offset = 0
+    processed = 0
+    while True:
+        persons = db.query(Person).offset(offset).limit(SYNC_PAGE_SIZE).all()
+        if not persons:
+            break
+        for person in persons:
+            processed += 1
+            try:
+                await sync_person_outbound(db, client, person)
+                if processed % 10 == 0:
+                    logger.info("Auto-sync outbound-person: %d processed", processed)
+            except Exception:
+                logger.exception("Auto-sync: failed to sync person %s", getattr(person, "id", "?"))
+        if len(persons) < SYNC_PAGE_SIZE:
+            break
+        offset += SYNC_PAGE_SIZE
+    logger.info("Auto-sync stage complete: outbound persons (%d processed)", processed)
+
+    # Outbound: legacy customers (for backward compatibility)
+    logger.info("Auto-sync stage: outbound legacy customers")
     offset = 0
     processed = 0
     while True:
@@ -72,7 +118,7 @@ async def _do_sync(db, client) -> None:
         if len(customers) < SYNC_PAGE_SIZE:
             break
         offset += SYNC_PAGE_SIZE
-    logger.info("Auto-sync stage complete: outbound customers (%d processed)", processed)
+    logger.info("Auto-sync stage complete: outbound legacy customers (%d processed)", processed)
 
     # Outbound: jobs
     logger.info("Auto-sync stage: outbound jobs")
@@ -95,8 +141,88 @@ async def _do_sync(db, client) -> None:
         offset += SYNC_PAGE_SIZE
     logger.info("Auto-sync stage complete: outbound jobs (%d processed)", processed)
 
-    # Inbound: companies → customers
-    logger.info("Auto-sync stage: inbound customers")
+    # Inbound: companies → Company entities
+    logger.info("Auto-sync stage: inbound companies")
+    offset = 0
+    processed = 0
+    while True:
+        companies_data = await client.list_objects("companies", limit=SYNC_PAGE_SIZE, offset=offset)
+        data_val = companies_data.get("data", [])
+        if isinstance(data_val, list):
+            companies = data_val
+        else:
+            companies = data_val.get("companies", {}).get("edges", [])
+        if not companies:
+            break
+        for edge in companies:
+            company = edge.get("node", edge)
+            processed += 1
+            try:
+                created = await sync_company_inbound(db, client, company)
+                if created:
+                    try:
+                        company_entity = db.query(Company).filter(
+                            Company.external_source == "twenty",
+                            Company.external_reference == str(company.get("id")),
+                        ).first()
+                        if company_entity:
+                            await sync_company_outbound(db, client, company_entity, force=True)
+                    except Exception:
+                        logger.exception(
+                            "Auto-sync: failed to write back stockwire fields for company %s",
+                            company.get("id"),
+                        )
+                if processed % 10 == 0:
+                    logger.info("Auto-sync inbound-company: %d processed", processed)
+            except Exception:
+                logger.exception("Auto-sync: failed inbound company %s", company.get("id"))
+        if len(companies) < SYNC_PAGE_SIZE:
+            break
+        offset += SYNC_PAGE_SIZE
+    logger.info("Auto-sync stage complete: inbound companies (%d processed)", processed)
+
+    # Inbound: people → Person entities
+    logger.info("Auto-sync stage: inbound persons")
+    offset = 0
+    processed = 0
+    while True:
+        people_data = await client.list_objects("people", limit=SYNC_PAGE_SIZE, offset=offset)
+        data_val = people_data.get("data", [])
+        if isinstance(data_val, list):
+            people = data_val
+        else:
+            people = data_val.get("people", {}).get("edges", [])
+        if not people:
+            break
+        for edge in people:
+            person = edge.get("node", edge)
+            processed += 1
+            try:
+                created = await sync_person_inbound(db, client, person)
+                if created:
+                    try:
+                        person_entity = db.query(Person).filter(
+                            Person.external_source == "twenty",
+                            Person.external_reference == str(person.get("id")),
+                        ).first()
+                        if person_entity:
+                            await sync_person_outbound(db, client, person_entity, force=True)
+                    except Exception:
+                        logger.exception(
+                            "Auto-sync: failed to write back stockwire fields for person %s",
+                            person.get("id"),
+                        )
+                if processed % 10 == 0:
+                    logger.info("Auto-sync inbound-person: %d processed", processed)
+            except Exception:
+                logger.exception("Auto-sync: failed inbound person %s", person.get("id"))
+        if len(people) < SYNC_PAGE_SIZE:
+            break
+        offset += SYNC_PAGE_SIZE
+    logger.info("Auto-sync stage complete: inbound persons (%d processed)", processed)
+
+    # Inbound: legacy companies → customers (for backward compatibility)
+    logger.info("Auto-sync stage: inbound legacy customers")
     # Pre-fetch all people once and build a company_id → person lookup to avoid
     # one API call per company during the loop below.
     people_by_company: dict[str, dict] = {}
@@ -138,17 +264,17 @@ async def _do_sync(db, client) -> None:
                             await sync_customer_outbound(db, client, customer, force=True)
                     except Exception:
                         logger.exception(
-                            "Auto-sync: failed to write back stockwire fields for company %s",
+                            "Auto-sync: failed to write back stockwire fields for legacy company %s",
                             company.get("id"),
                         )
                 if processed % 10 == 0:
-                    logger.info("Auto-sync inbound-customer: %d processed", processed)
+                    logger.info("Auto-sync inbound-legacy-customer: %d processed", processed)
             except Exception:
-                logger.exception("Auto-sync: failed inbound company %s", company.get("id"))
+                logger.exception("Auto-sync: failed inbound legacy company %s", company.get("id"))
         if len(companies) < SYNC_PAGE_SIZE:
             break
         offset += SYNC_PAGE_SIZE
-    logger.info("Auto-sync stage complete: inbound customers (%d processed)", processed)
+    logger.info("Auto-sync stage complete: inbound legacy customers (%d processed)", processed)
 
     # Inbound: opportunities → jobs (only update existing Stockwire jobs)
     logger.info("Auto-sync stage: inbound jobs")

@@ -36,9 +36,15 @@ class Job(Base):
     twenty_rental_job_id: Mapped[str | None] = mapped_column(String(100), nullable=True, index=True)
     eventory_job_ids: Mapped[str | None] = mapped_column(Text, nullable=True)
 
+    # New Company/Person FKs (Phase 1 of entity split)
+    company_id: Mapped[int | None] = mapped_column(ForeignKey("companies.id", ondelete="SET NULL"), nullable=True, index=True)
+    contact_person_id: Mapped[int | None] = mapped_column(ForeignKey("persons.id", ondelete="SET NULL"), nullable=True, index=True)
+
     owner: Mapped["User"] = relationship(back_populates="jobs")
     project: Mapped["Project"] = relationship(back_populates="jobs")
-    customer: Mapped["Customer"] = relationship(back_populates="jobs")
+    customer_legacy: Mapped["Customer"] = relationship("Customer", back_populates="jobs")
+    company: Mapped["Company | None"] = relationship("Company", back_populates="jobs")
+    contact_person: Mapped["Person | None"] = relationship("Person", foreign_keys=[contact_person_id])
     venue: Mapped["Venue"] = relationship(back_populates="jobs")
     requirements: Mapped[list["JobRequirement"]] = relationship(back_populates="job", cascade="all,delete")
     crew_requirements: Mapped[list["JobCrewRequirement"]] = relationship(
