@@ -98,7 +98,7 @@ def _verify_webhook_signature(payload: bytes, signature: str | None, secret: str
                     logger.warning("Webhook signature matched: HMAC(timestamp:pretty_json)")
                     return True
             except (TypeError, ValueError):
-                pass
+                pass  # pretty-print failed, skip this variant
 
         # Fallback: plain body (no timestamp prefix)
         expected = hmac.new(secret_bytes, payload, hashlib.sha256).hexdigest()
