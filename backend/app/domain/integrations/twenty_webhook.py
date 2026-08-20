@@ -225,7 +225,7 @@ async def twenty_webhook(
         db.commit()
         # Return 200 so Twenty does not retry and hammer the endpoint.
         # The failure is visible in the sync logs and application logs.
-        return {"status": "error", "detail": "Internal processing error"}
+        return {"status": "error", "detail": "An internal error occurred while processing the webhook."}
 
     db.commit()
     return {"status": "ok"}
