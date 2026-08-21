@@ -31,14 +31,14 @@
       </div>
       <div class="col-12 col-sm-6 col-md-3">
         <q-select
-          v-model="filterCustomerId"
-          :options="customerOptions"
+          v-model="filterCompanyId"
+          :options="companyFilterOptions"
           emit-value
           map-options
           outlined
           dense
           clearable
-          :label="t('jobs.filterByCustomer')"
+          :label="t('jobs.filterByCompany')"
         />
       </div>
       <div class="col-12 col-sm-6 col-md-3">
@@ -178,7 +178,9 @@
               <div class="text-caption text-grey-7">{{ props.row.description || t('jobs.noDescription') }}</div>
             </q-card-section>
             <q-card-section class="q-pt-none q-pb-sm">
-              <div class="text-caption">{{ t('jobs.customerLabel') }}: {{ customerNameForId(props.row.customer_id) || t('jobs.unassigned') }}</div>
+              <div class="text-caption" v-if="props.row.company_name">{{ t('jobs.company') }}: {{ props.row.company_name }}</div>
+              <div class="text-caption" v-if="props.row.contact_person_name">{{ t('jobs.contactPerson') }}: {{ props.row.contact_person_name }}</div>
+              <div class="text-caption" v-if="!props.row.company_name && !props.row.contact_person_name">{{ t('jobs.customerLabel') }}: {{ customerNameForId(props.row.customer_id) || t('jobs.unassigned') }}</div>
               <div class="text-caption">
                 {{ t('jobs.venueLabel') }}: {{ venueNameForId(props.row.venue_id) || t('jobs.unassigned') }}
                 <a
@@ -228,6 +230,8 @@ import { useQuasar } from 'quasar'
 
 import { JOB_STATUSES, useJobsStore } from '../stores/jobs'
 import { useCustomersStore } from '../stores/customers'
+import { useCompaniesStore } from '../stores/companies'
+import { usePersonsStore } from '../stores/persons'
 import { useVenuesStore } from '../stores/venues'
 import { useInventoryStore } from '../stores/inventory'
 import { useAuthStore } from '../stores/auth'
@@ -242,6 +246,8 @@ import JobDeleteDialog from '../components/JobDeleteDialog.vue'
 const compactGrid = useCompactGrid(1024)
 const jobsStore = useJobsStore()
 const customersStore = useCustomersStore()
+const companiesStore = useCompaniesStore()
+const personsStore = usePersonsStore()
 const venuesStore = useVenuesStore()
 const inventoryStore = useInventoryStore()
 const authStore = useAuthStore()
@@ -255,7 +261,7 @@ const $q = useQuasar()
 const pageLoading = ref(false)
 const search = ref('')
 const selectedStatuses = ref([])
-const filterCustomerId = ref(null)
+const filterCompanyId = ref(null)
 const filterVenueId = ref(null)
 const filterProjectIdLocal = ref(null)
 const filterStartDateFrom = ref('')
@@ -309,8 +315,8 @@ const statusOptions = computed(() =>
   statusFilters.value.map(s => ({ label: s.label, value: s.value }))
 )
 
-const customerOptions = computed(() =>
-  customersStore.customers
+const companyFilterOptions = computed(() =>
+  companiesStore.companies
     .map(c => ({ label: c.name, value: c.id }))
     .sort((a, b) => a.label.localeCompare(b.label))
 )
@@ -375,7 +381,8 @@ const showProductionPlannerColumn = computed(() =>
 const columns = computed(() => [
   { name: 'job_code', label: t('jobs.jobCode'), field: 'job_code', sortable: true, align: 'left' },
   { name: 'description', label: t('jobs.description'), field: 'description', sortable: true, align: 'left' },
-  { name: 'customer_name', label: t('jobs.customer'), field: 'customer_name', sortable: true, align: 'left' },
+  { name: 'company_name', label: t('jobs.company'), field: 'company_name', sortable: true, align: 'left' },
+  { name: 'contact_person_name', label: t('jobs.contactPerson'), field: 'contact_person_name', sortable: true, align: 'left' },
   { name: 'venue_name', label: t('jobs.venue'), field: 'venue_name', sortable: true, align: 'left' },
   { name: 'project_name', label: t('jobs.project'), field: 'project_name', sortable: true, align: 'left' },
   { name: 'status', label: t('jobs.status'), field: 'status', sortable: true, align: 'left' },
@@ -394,6 +401,11 @@ const jobsWithProject = computed(() =>
   jobsStore.jobs.map(job => ({
     ...job,
     project_name: projectsStore.projects.find(p => p.id === job.project_id)?.name || '',
+    company_name: companiesStore.companies.find(c => c.id === job.company_id)?.name || '',
+    contact_person_name: job.contact_person_id ? (() => {
+      const person = personsStore.persons.find(p => p.id === job.contact_person_id)
+      return person ? `${person.first_name} ${person.last_name}` : ''
+    })() : '',
   }))
 )
 
@@ -407,13 +419,13 @@ const visibleJobs = computed(() => {
   return jobsWithProject.value.filter(job => {
     if (filterProjectId.value && job.project_id !== filterProjectId.value) return false
     if (selectedStatuses.value?.length && !selectedStatuses.value.includes(job.status)) return false
-    if (filterCustomerId.value && job.customer_id !== filterCustomerId.value) return false
+    if (filterCompanyId.value && job.company_id !== filterCompanyId.value) return false
     if (filterVenueId.value && job.venue_id !== filterVenueId.value) return false
     if (filterProjectIdLocal.value && job.project_id !== filterProjectIdLocal.value) return false
     if (filterStartDateFrom.value && job.start_date < filterStartDateFrom.value) return false
     if (filterStartDateTo.value && job.start_date > filterStartDateTo.value) return false
     if (!term) return true
-    return [job.job_code, job.description, job.customer_name, job.venue_name, job.project_name, job.status]
+    return [job.job_code, job.description, job.company_name, job.contact_person_name, job.venue_name, job.project_name, job.status]
       .filter(Boolean)
       .some(value => String(value).toLowerCase().includes(term))
   })
@@ -421,7 +433,7 @@ const visibleJobs = computed(() => {
 
 const hasActiveFilters = computed(() =>
   (selectedStatuses.value?.length || 0) > 0 ||
-  filterCustomerId.value !== null ||
+  filterCompanyId.value !== null ||
   filterVenueId.value !== null ||
   filterProjectIdLocal.value !== null ||
   filterStartDateFrom.value !== '' ||
@@ -431,7 +443,7 @@ const hasActiveFilters = computed(() =>
 
 function clearAllFilters() {
   selectedStatuses.value = []
-  filterCustomerId.value = null
+  filterCompanyId.value = null
   filterVenueId.value = null
   filterProjectIdLocal.value = null
   filterStartDateFrom.value = ''
@@ -449,6 +461,8 @@ async function loadData() {
     await Promise.all([
       jobsStore.fetchAll(),
       customersStore.fetchAll(),
+      companiesStore.fetchAll(),
+      personsStore.fetchAll(),
       venuesStore.fetchAll(),
       inventoryStore.fetchAll(),
       settingsStore.fetchIntegrations(),

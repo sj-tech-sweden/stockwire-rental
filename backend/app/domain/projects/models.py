@@ -22,6 +22,10 @@ class Project(Base):
 
     productionplanner_project_id: Mapped[str | None] = mapped_column(String(100), nullable=True, index=True)
 
-    customer: Mapped["Customer"] = relationship(back_populates="projects")
+    # New Company FK (Phase 1 of entity split)
+    company_id: Mapped[int | None] = mapped_column(ForeignKey("companies.id", ondelete="SET NULL"), nullable=True, index=True)
+
+    customer_legacy: Mapped["Customer"] = relationship("Customer", back_populates="projects")
+    company: Mapped["Company | None"] = relationship("Company", back_populates="projects")
     venue: Mapped["Venue"] = relationship()
     jobs: Mapped[list["Job"]] = relationship(back_populates="project")

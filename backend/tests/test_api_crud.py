@@ -315,6 +315,47 @@ def test_customers_and_venues_crud(client):
     assert venues.status_code == 200 and venues.json()["total"] == 1
 
 
+def test_companies_and_persons_crud(client):
+    company = client.post(
+        "/api/v1/companies",
+        json={"name": "Acme Corp", "address": "Street 1", "city": "Stockholm", "is_customer": True},
+    )
+    assert company.status_code == 200
+    company_id = company.json()["id"]
+    assert company.json()["name"] == "Acme Corp"
+
+    updated_company = client.put(f"/api/v1/companies/{company_id}", json={"name": "Acme Corporation"})
+    assert updated_company.status_code == 200
+    assert updated_company.json()["name"] == "Acme Corporation"
+
+    person = client.post(
+        "/api/v1/persons",
+        json={"first_name": "John", "last_name": "Doe", "email": "john@acme.com", "company_id": company_id},
+    )
+    assert person.status_code == 200
+    person_id = person.json()["id"]
+    assert person.json()["first_name"] == "John"
+    assert person.json()["company_id"] == company_id
+
+    updated_person = client.put(f"/api/v1/persons/{person_id}", json={"phone": "+46 70 123 45 67"})
+    assert updated_person.status_code == 200
+    assert updated_person.json()["phone"] == "+46 70 123 45 67"
+
+    companies = client.get("/api/v1/companies")
+    persons = client.get("/api/v1/persons")
+
+    assert companies.status_code == 200 and companies.json()["total"] == 1
+    assert persons.status_code == 200 and persons.json()["total"] == 1
+
+    company_info = client.get(f"/api/v1/companies/{company_id}/info")
+    assert company_info.status_code == 200
+    assert len(company_info.json()["persons"]) == 1
+
+    person_info = client.get(f"/api/v1/persons/{person_id}/info")
+    assert person_info.status_code == 200
+    assert person_info.json()["company_name"] == "Acme Corporation"
+
+
 def test_jobs_and_finance_crud(client):
     rental_supplier_product = client.post(
         "/api/v1/inventory/products",

@@ -13,9 +13,13 @@ from app.db.session import get_db
 from app.domain.integrations.models import TwentyConfig
 from app.domain.integrations.sync_engine import (
     _log_sync,
+    sync_company_inbound,
+    sync_company_outbound,
     sync_customer_inbound,
     sync_customer_outbound,
     sync_job_inbound,
+    sync_person_inbound,
+    sync_person_outbound,
 )
 from app.domain.integrations.twenty_client import TwentyClient
 
@@ -237,7 +241,7 @@ async def _handle_company_event(
     event_type: str,
     record: dict[str, Any],
 ) -> None:
-    """Sync a Twenty company to a Stockwire customer using the webhook record."""
+    """Sync a Twenty company to a Stockwire Company using the webhook record."""
     from app.domain.realtime.events import emit_realtime_event
 
     twenty_id = record.get("id")
@@ -246,29 +250,29 @@ async def _handle_company_event(
         return
 
     logger.warning("Syncing Twenty company %s to Stockwire (event=%s)", twenty_id, event_type)
-    created = await sync_customer_inbound(db, client, record, twenty_person=None)
+    created = await sync_company_inbound(db, client, record)
 
     if created:
         logger.warning("Twenty company %s CREATED in Stockwire; writing back stockwire fields", twenty_id)
-        from app.domain.customers.models import Customer
+        from app.domain.customers.models import Company
 
-        customer = db.query(Customer).filter(
-            Customer.external_source == "twenty",
-            Customer.external_reference == str(twenty_id),
+        company = db.query(Company).filter(
+            Company.external_source == "twenty",
+            Company.external_reference == str(twenty_id),
         ).first()
-        if customer:
-            await sync_customer_outbound(db, client, customer, force=True)
-            emit_realtime_event("customers.updated", {"action": "created", "id": customer.id})
+        if company:
+            await sync_company_outbound(db, client, company, force=True)
+            emit_realtime_event("companies.updated", {"action": "created", "id": company.id})
     else:
         logger.warning("Twenty company %s UPDATED in Stockwire", twenty_id)
-        from app.domain.customers.models import Customer
+        from app.domain.customers.models import Company
 
-        customer = db.query(Customer).filter(
-            Customer.external_source == "twenty",
-            Customer.external_reference == str(twenty_id),
+        company = db.query(Company).filter(
+            Company.external_source == "twenty",
+            Company.external_reference == str(twenty_id),
         ).first()
-        if customer:
-            emit_realtime_event("customers.updated", {"action": "updated", "id": customer.id})
+        if company:
+            emit_realtime_event("companies.updated", {"action": "updated", "id": company.id})
 
 
 async def _handle_person_event(
@@ -277,41 +281,38 @@ async def _handle_person_event(
     event_type: str,
     record: dict[str, Any],
 ) -> None:
-    """Sync a Twenty person to the linked Stockwire customer's email/phone."""
+    """Sync a Twenty person to a Stockwire Person using the webhook record."""
     from app.domain.realtime.events import emit_realtime_event
 
     person_id = record.get("id")
-    company_id = record.get("companyId")
-    if not company_id:
-        logger.warning("Twenty person %s has no companyId; ignoring", person_id)
+    if not person_id:
+        logger.warning("Twenty person webhook missing record id")
         return
 
-    from app.domain.customers.models import Customer
+    logger.warning("Syncing Twenty person %s to Stockwire (event=%s)", person_id, event_type)
+    created = await sync_person_inbound(db, client, record)
 
-    customer = db.query(Customer).filter(
-        Customer.external_source == "twenty",
-        Customer.external_reference == str(company_id),
-    ).first()
-    if not customer:
-        logger.warning("No Stockwire customer linked to Twenty company %s", company_id)
-        return
+    if created:
+        logger.warning("Twenty person %s CREATED in Stockwire; writing back stockwire fields", person_id)
+        from app.domain.customers.models import Person
 
-    name_obj = record.get("name") or {}
-    full_name = f"{name_obj.get('firstName', '')} {name_obj.get('lastName', '')}".strip()
-    if full_name:
-        customer.name = full_name
+        person = db.query(Person).filter(
+            Person.external_source == "twenty",
+            Person.external_reference == str(person_id),
+        ).first()
+        if person:
+            await sync_person_outbound(db, client, person, force=True)
+            emit_realtime_event("persons.updated", {"action": "created", "id": person.id})
+    else:
+        logger.warning("Twenty person %s UPDATED in Stockwire", person_id)
+        from app.domain.customers.models import Person
 
-    emails = record.get("emails") or {}
-    if isinstance(emails, dict) and emails.get("primaryEmail"):
-        customer.email = emails["primaryEmail"]
-
-    phones = record.get("phones") or {}
-    if isinstance(phones, dict) and phones.get("primaryPhoneNumber"):
-        customer.phone = phones["primaryPhoneNumber"]
-
-    db.commit()
-    logger.warning("Synced Twenty person %s to Stockwire customer %s", person_id, customer.id)
-    emit_realtime_event("customers.updated", {"action": "updated", "id": customer.id})
+        person = db.query(Person).filter(
+            Person.external_source == "twenty",
+            Person.external_reference == str(person_id),
+        ).first()
+        if person:
+            emit_realtime_event("persons.updated", {"action": "updated", "id": person.id})
 
 
 async def _handle_opportunity_event(

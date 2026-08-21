@@ -231,6 +231,7 @@ class ProductSupplier(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     product_id: Mapped[int] = mapped_column(ForeignKey("products.id", ondelete="CASCADE"), index=True)
     supplier_id: Mapped[int] = mapped_column(ForeignKey("customers.id", ondelete="CASCADE"), index=True)
+    supplier_company_id: Mapped[int | None] = mapped_column(ForeignKey("companies.id", ondelete="SET NULL"), nullable=True, index=True)
     is_primary: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     lead_time_days: Mapped[int | None] = mapped_column(Integer, nullable=True)
     unit_cost: Mapped[float | None] = mapped_column(Numeric(10, 2), nullable=True)
@@ -238,7 +239,8 @@ class ProductSupplier(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
 
     product: Mapped[Product] = relationship("Product", back_populates="supplier_links")
-    supplier: Mapped["Customer"] = relationship("Customer", back_populates="supplied_products")
+    supplier_legacy: Mapped["Customer"] = relationship("Customer", back_populates="supplied_products")
+    supplier_company: Mapped["Company | None"] = relationship("Company", back_populates="supplied_products")
 
 
 class DeviceMaintenanceSchedule(Base):

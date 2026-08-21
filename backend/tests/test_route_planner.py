@@ -23,10 +23,10 @@ def _create_product(client, sku="PROD-01", name="Test Product"):
     return resp.json()
 
 
-def _create_customer(client, name="Test Customer"):
+def _create_company(client, name="Test Company"):
     resp = client.post(
-        "/api/v1/customers",
-        json={"name": name, "email": "customer@example.com"},
+        "/api/v1/companies",
+        json={"name": name, "is_customer": True},
     )
     assert resp.status_code in (200, 201)
     return resp.json()
@@ -41,10 +41,10 @@ def _create_venue(client, name="Test Venue", customer_id=None):
     return resp.json()
 
 
-def _create_job(client, customer_id, venue_id, job_code="JOB-001", products=None):
+def _create_job(client, company_id, venue_id, job_code="JOB-001", products=None):
     payload = {
         "job_code": job_code,
-        "customer_id": customer_id,
+        "company_id": company_id,
         "venue_id": venue_id,
         "status": "confirmed",
         "start_date": "2026-08-01",
@@ -221,10 +221,10 @@ def test_route_list_filter_by_status(client):
 # ---------------------------------------------------------------------------
 
 def test_route_stops(client):
-    customer = _create_customer(client)
-    venue = _create_venue(client, customer_id=customer["id"])
-    job1 = _create_job(client, customer["id"], venue["id"], "JOB-S1")
-    job2 = _create_job(client, customer["id"], venue["id"], "JOB-S2")
+    company = _create_company(client)
+    venue = _create_venue(client, customer_id=company["id"])
+    job1 = _create_job(client, company["id"], venue["id"], "JOB-S1")
+    job2 = _create_job(client, company["id"], venue["id"], "JOB-S2")
 
     resp = client.post(
         "/api/v1/route-planner/routes",
@@ -267,9 +267,9 @@ def test_route_stops(client):
 
 
 def test_route_stop_duplicate_job_409(client):
-    customer = _create_customer(client)
-    venue = _create_venue(client, customer_id=customer["id"])
-    job = _create_job(client, customer["id"], venue["id"], "JOB-DUP")
+    company = _create_company(client)
+    venue = _create_venue(client, customer_id=company["id"])
+    job = _create_job(client, company["id"], venue["id"], "JOB-DUP")
 
     resp = client.post(
         "/api/v1/route-planner/routes",
@@ -359,9 +359,9 @@ def test_stop_vehicle_assignment(client):
     _ok(resp)
     v1 = resp.json()
 
-    customer = _create_customer(client)
-    venue = _create_venue(client, customer_id=customer["id"])
-    job = _create_job(client, customer["id"], venue["id"], "JOB-AV")
+    company = _create_company(client)
+    venue = _create_venue(client, customer_id=company["id"])
+    job = _create_job(client, company["id"], venue["id"], "JOB-AV")
 
     resp = client.post(
         "/api/v1/route-planner/routes",
@@ -403,10 +403,10 @@ def test_stop_vehicle_assignment(client):
 # ---------------------------------------------------------------------------
 
 def test_suggest_vehicles_single(client):
-    customer = _create_customer(client)
-    venue = _create_venue(client, customer_id=customer["id"])
+    company = _create_company(client)
+    venue = _create_venue(client, customer_id=company["id"])
     product = _create_product(client, "SUG-01", "Heavy Item")
-    job = _create_job(client, customer["id"], venue["id"], "JOB-SUG", [product])
+    job = _create_job(client, company["id"], venue["id"], "JOB-SUG", [product])
 
     client.post(
         "/api/v1/route-planner/vehicles",
@@ -426,10 +426,10 @@ def test_suggest_vehicles_single(client):
 
 
 def test_suggest_vehicles_combo(client):
-    customer = _create_customer(client)
-    venue = _create_venue(client, customer_id=customer["id"])
+    company = _create_company(client)
+    venue = _create_venue(client, customer_id=company["id"])
     product = _create_product(client, "COMBO-01", "Combo Item")
-    job = _create_job(client, customer["id"], venue["id"], "JOB-COMBO", [product])
+    job = _create_job(client, company["id"], venue["id"], "JOB-COMBO", [product])
 
     client.post(
         "/api/v1/route-planner/vehicles",
@@ -466,10 +466,10 @@ def test_suggest_vehicles_combo(client):
 
 
 def test_suggest_vehicles_trailer_too_heavy(client):
-    customer = _create_customer(client)
-    venue = _create_venue(client, customer_id=customer["id"])
+    company = _create_company(client)
+    venue = _create_venue(client, customer_id=company["id"])
     product = _create_product(client, "HEAVY-01", "Heavy Product")
-    job = _create_job(client, customer["id"], venue["id"], "JOB-HEAVY", [product])
+    job = _create_job(client, company["id"], venue["id"], "JOB-HEAVY", [product])
 
     client.post(
         "/api/v1/route-planner/vehicles",
@@ -496,10 +496,10 @@ def test_suggest_vehicles_trailer_too_heavy(client):
 
 def test_suggest_vehicles_uses_payload_for_trailer_capacity(client):
     """Trailer weight capacity uses max_payload_kg, not max_weight_kg."""
-    customer = _create_customer(client)
-    venue = _create_venue(client, customer_id=customer["id"])
+    company = _create_company(client)
+    venue = _create_venue(client, customer_id=company["id"])
     product = _create_product(client, "CAP-01", "Capacity Item")
-    job = _create_job(client, customer["id"], venue["id"], "JOB-CAP", [product])
+    job = _create_job(client, company["id"], venue["id"], "JOB-CAP", [product])
 
     # Trailer with high max_weight_kg but low max_payload_kg
     client.post(
@@ -528,11 +528,11 @@ def test_suggest_vehicles_uses_payload_for_trailer_capacity(client):
 # ---------------------------------------------------------------------------
 
 def test_packing_list(client):
-    customer = _create_customer(client)
-    venue = _create_venue(client, name="Pack Venue", customer_id=customer["id"])
+    company = _create_company(client)
+    venue = _create_venue(client, name="Pack Venue", customer_id=company["id"])
     product = _create_product(client, "PKL-01", "Packable Item")
-    job1 = _create_job(client, customer["id"], venue["id"], "JOB-P1", [product])
-    job2 = _create_job(client, customer["id"], venue["id"], "JOB-P2", [product])
+    job1 = _create_job(client, company["id"], venue["id"], "JOB-P1", [product])
+    job2 = _create_job(client, company["id"], venue["id"], "JOB-P2", [product])
 
     resp = client.post(
         "/api/v1/route-planner/vehicles",
@@ -596,9 +596,9 @@ def test_packing_list(client):
 # ---------------------------------------------------------------------------
 
 def test_export_google_maps(client):
-    customer = _create_customer(client)
-    venue = _create_venue(client, name="Maps Venue", customer_id=customer["id"])
-    job = _create_job(client, customer["id"], venue["id"], "JOB-MAP")
+    company = _create_company(client)
+    venue = _create_venue(client, name="Maps Venue", customer_id=company["id"])
+    job = _create_job(client, company["id"], venue["id"], "JOB-MAP")
 
     resp = client.post(
         "/api/v1/route-planner/routes",

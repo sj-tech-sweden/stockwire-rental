@@ -21,6 +21,9 @@ class JobBase(BaseModel):
     invoice_paid_at: date | None = None
     email_notifications_enabled: bool = True
     notes: str | None = None
+    # New Company/Person fields (Phase 1 of entity split)
+    company_id: int | None = None
+    contact_person_id: int | None = None
 
 
 class JobCreate(JobBase):
@@ -44,6 +47,9 @@ class JobUpdate(BaseModel):
     invoice_paid_at: date | None = None
     email_notifications_enabled: bool | None = None
     notes: str | None = None
+    # New Company/Person fields (Phase 1 of entity split)
+    company_id: int | None = None
+    contact_person_id: int | None = None
 
 
 class JobRead(JobBase):

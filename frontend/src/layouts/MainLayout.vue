@@ -362,6 +362,7 @@ const navGroups = [
     labelKey: 'app.nav.group.people',
     children: [
       { icon: 'business', labelKey: 'app.nav.companies', to: '/companies' },
+      { icon: 'person', labelKey: 'app.nav.persons', to: '/persons' },
       { icon: 'groups', labelKey: 'app.nav.crew', to: '/crew' },
       { icon: 'place', labelKey: 'app.nav.venues', to: '/venues' },
     ],

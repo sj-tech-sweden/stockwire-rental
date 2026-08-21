@@ -23,6 +23,7 @@ function normalizeTwentyRecordId(recordId) {
 
 const ENTITY_TYPE_MAP = {
   companies: 'company',
+  people: 'person',
   opportunities: 'opportunity',
 }
 
@@ -45,4 +46,14 @@ export function getTwentyCustomerUrl(customer, config) {
 export function getTwentyJobUrl(job, config) {
   if (String(job?.external_source || '').trim().toLowerCase() !== 'twenty') return null
   return getTwentyRecordUrl('opportunities', job?.external_reference, config?.base_url)
+}
+
+export function getTwentyCompanyUrl(company, config) {
+  if (String(company?.external_source || '').trim().toLowerCase() !== 'twenty') return null
+  return getTwentyRecordUrl('companies', company?.external_reference, config?.base_url)
+}
+
+export function getTwentyPersonUrl(person, config) {
+  if (String(person?.external_source || '').trim().toLowerCase() !== 'twenty') return null
+  return getTwentyRecordUrl('people', person?.external_reference, config?.base_url)
 }

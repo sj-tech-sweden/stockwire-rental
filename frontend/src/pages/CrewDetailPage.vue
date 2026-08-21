@@ -61,14 +61,19 @@
               <div class="col-12 col-md-6">
                 <q-input v-model="form.phone" :label="t('customers.phone')" outlined dense :disable="!authStore.canEdit" />
               </div>
-              <div class="col-12 col-md-6">
+            </div>
+            <div class="row q-col-gutter-sm q-mt-sm">
+              <div class="col-12 col-md-4">
+                <q-select v-model="form.supplier_id" :options="filteredSupplierOptions" :label="t('crew.linkSupplier')" outlined dense clearable emit-value map-options use-input :disable="!authStore.canEdit" @filter="filterSuppliers" />
+              </div>
+              <div class="col-12 col-md-4">
+                <q-select v-model="form.person_id" :options="filteredPersonOptions" :label="t('crew.linkPerson')" outlined dense clearable emit-value map-options use-input :disable="!authStore.canEdit" @filter="filterPersons" />
+              </div>
+              <div class="col-12 col-md-4">
                 <q-select v-model="form.user_id" :options="filteredUserOptions" :label="t('crew.linkUser')" outlined dense clearable emit-value map-options use-input :disable="!authStore.canEdit" @filter="filterUsers" />
               </div>
             </div>
             <div class="row q-col-gutter-sm q-mt-sm">
-              <div class="col-12 col-md-6">
-                <q-select v-model="form.supplier_id" :options="filteredSupplierOptions" :label="t('crew.linkSupplier')" outlined dense clearable emit-value map-options use-input :disable="!authStore.canEdit" @filter="filterSuppliers" />
-              </div>
               <div class="col-6 col-md-3">
                 <q-input v-model.number="form.hourly_rate" type="number" min="0" step="0.01" :label="t('crew.hourlyRate')" outlined dense :disable="!authStore.canEdit" />
               </div>
@@ -213,6 +218,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useCrewStore } from '../stores/crew'
 import { useCustomersStore } from '../stores/customers'
+import { usePersonsStore } from '../stores/persons'
 import { useUsersStore } from '../stores/users'
 import { useAuthStore } from '../stores/auth'
 import { api } from '../boot/axios'
@@ -225,6 +231,7 @@ const route = useRoute()
 const router = useRouter()
 const crewStore = useCrewStore()
 const customersStore = useCustomersStore()
+const personsStore = usePersonsStore()
 const usersStore = useUsersStore()
 const authStore = useAuthStore()
 
@@ -239,8 +246,10 @@ const form = ref(emptyForm())
 
 const filteredUserOptions = ref([])
 const filteredSupplierOptions = ref([])
+const filteredPersonOptions = ref([])
 const userSearch = ref('')
 const supplierSearch = ref('')
+const personSearch = ref('')
 
 const showCertDialog = ref(false)
 const newCertTypeId = ref(null)
@@ -267,6 +276,7 @@ function emptyForm() {
     phone: '',
     user_id: null,
     supplier_id: null,
+    person_id: null,
     hourly_rate: null,
     daily_rate: null,
     notes: '',
@@ -302,13 +312,26 @@ function filterSuppliers(val, update) {
   supplierSearch.value = val
   update(() => {
     const term = String(val || '').toLowerCase()
-    if (!customersStore.customers.length) {
-      customersStore.fetchAll().catch(() => {})
+    if (!companiesStore.companies.length) {
+      companiesStore.fetchAll().catch(() => {})
     }
-    filteredSupplierOptions.value = customersStore.customers
+    filteredSupplierOptions.value = companiesStore.companies
       .filter(c => c.is_crew_supplier)
       .filter(c => !term || c.name.toLowerCase().includes(term))
       .map(c => ({ label: c.name, value: c.id }))
+  })
+}
+
+function filterPersons(val, update) {
+  personSearch.value = val
+  update(() => {
+    const term = String(val || '').toLowerCase()
+    if (!personsStore.persons.length) {
+      personsStore.fetchAll().catch(() => {})
+    }
+    filteredPersonOptions.value = personsStore.persons
+      .filter(p => !term || `${p.first_name} ${p.last_name}`.toLowerCase().includes(term) || (p.email || '').toLowerCase().includes(term))
+      .map(p => ({ label: `${p.first_name} ${p.last_name}`, value: p.id }))
   })
 }
 
@@ -342,6 +365,7 @@ function syncFromMember() {
     phone: m.phone || '',
     user_id: m.user_id || null,
     supplier_id: m.supplier_id || null,
+    person_id: m.person_id || null,
     hourly_rate: m.hourly_rate ?? null,
     daily_rate: m.daily_rate ?? null,
     notes: m.notes || '',
@@ -386,7 +410,8 @@ async function loadData() {
   try {
     await Promise.all([
       crewStore.fetchRoles(),
-      customersStore.fetchAll(),
+      companiesStore.fetchAll(),
+      personsStore.fetchAll(),
       usersStore.fetchUsers(),
     ])
     if (!isNew.value) {
@@ -435,6 +460,7 @@ async function saveChanges() {
       phone: form.value.phone || null,
       user_id: form.value.user_id || null,
       supplier_id: form.value.supplier_id || null,
+      person_id: form.value.person_id || null,
       hourly_rate: form.value.hourly_rate,
       daily_rate: form.value.daily_rate,
       notes: form.value.notes || null,

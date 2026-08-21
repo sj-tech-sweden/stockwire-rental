@@ -4,7 +4,6 @@ from sqlalchemy.orm import Session, selectinload
 
 from app.db.session import get_db
 from app.domain.auth.deps import get_current_user
-from app.domain.customers.models import Customer
 from app.domain.auth.models import User
 from app.domain.jobs.models import Job
 from app.domain.crew.models import (
@@ -66,6 +65,8 @@ def _to_crew_certification_read(cert: CrewCertification) -> CrewCertificationRea
 
 
 def _to_crew_member_read(db: Session, member: CrewMember) -> CrewMemberRead:
+    from app.domain.customers.models import Company, Person
+
     skills = [_to_crew_skill_read(sk.skill) for sk in member.skills] if member.skills else []
     certs = []
     for cert_link in member.certifications:
@@ -79,6 +80,16 @@ def _to_crew_member_read(db: Session, member: CrewMember) -> CrewMemberRead:
     preferred_roles = [_to_crew_role_read(r) for r in member.preferred_roles] if member.preferred_roles else []
     user_name = member.user.full_name if member.user else None
     supplier_name = member.supplier.name if member.supplier else None
+    
+    # Get company name from person relationship
+    company_name = None
+    if member.person_id:
+        person = db.get(Person, member.person_id)
+        if person and person.company_id:
+            company = db.get(Company, person.company_id)
+            if company:
+                company_name = company.name
+    
     assignments = []
     if member.assignments:
         for a in member.assignments:
@@ -104,6 +115,7 @@ def _to_crew_member_read(db: Session, member: CrewMember) -> CrewMemberRead:
         phone=member.phone,
         user_id=member.user_id,
         supplier_id=member.supplier_id,
+        person_id=member.person_id,
         hourly_rate=member.hourly_rate,
         daily_rate=member.daily_rate,
         notes=member.notes,
@@ -111,6 +123,7 @@ def _to_crew_member_read(db: Session, member: CrewMember) -> CrewMemberRead:
         created_at=member.created_at,
         user_name=user_name,
         supplier_name=supplier_name,
+        company_name=company_name,
         skills=skills,
         certifications=certs,
         preferred_roles=preferred_roles,
@@ -411,6 +424,7 @@ def create_crew_member(payload: CrewMemberCreate, db: Session = Depends(get_db))
         phone=payload.phone,
         user_id=payload.user_id,
         supplier_id=payload.supplier_id,
+        person_id=payload.person_id,
         hourly_rate=payload.hourly_rate,
         daily_rate=payload.daily_rate,
         notes=payload.notes,
@@ -459,6 +473,8 @@ def update_crew_member(member_id: int, payload: CrewMemberUpdate, db: Session = 
         member.user_id = payload.user_id
     if payload.supplier_id is not None:
         member.supplier_id = payload.supplier_id
+    if payload.person_id is not None:
+        member.person_id = payload.person_id
     if payload.hourly_rate is not None:
         member.hourly_rate = payload.hourly_rate
     if payload.daily_rate is not None:
