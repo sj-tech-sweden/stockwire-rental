@@ -704,10 +704,23 @@ export const useSettingsStore = defineStore('settings', () => {
   }
 
   async function fetchCompanyProfile() {
-    const { data } = await api.get('/api/v1/settings/company-profile')
-    companyProfile.value = normalizeCompanyProfile(data)
-    localStorage.setItem('sw_company_default_language', companyProfile.value.default_language || 'en')
-    return companyProfile.value
+    try {
+      const { data } = await api.get('/api/v1/settings/company-profile')
+      companyProfile.value = normalizeCompanyProfile(data)
+      localStorage.setItem('sw_company_default_language', companyProfile.value.default_language || 'en')
+      await cacheSnapshot('settings.companyProfile', companyProfile.value)
+      return companyProfile.value
+    } catch (error) {
+      if (!isOnline()) {
+        const cached = await readSnapshot('settings.companyProfile')
+        if (cached && typeof cached === 'object') {
+          companyProfile.value = normalizeCompanyProfile(cached)
+          localStorage.setItem('sw_company_default_language', companyProfile.value.default_language || 'en')
+          return companyProfile.value
+        }
+      }
+      throw error
+    }
   }
 
   async function updateCompanyProfile(payload) {
@@ -738,18 +751,30 @@ export const useSettingsStore = defineStore('settings', () => {
   }
 
   async function fetchSmtpSettings() {
-    const { data } = await api.get('/api/v1/settings/email-smtp')
-    smtpSettings.value = {
-      host: String(data?.host || ''),
-      port: Number(data?.port || 587),
-      username: String(data?.username || ''),
-      from_email: String(data?.from_email || ''),
-      from_name: String(data?.from_name || ''),
-      use_tls: Boolean(data?.use_tls),
-      resend_api_key: String(data?.resend_api_key || ''),
-      env_managed: Boolean(data?.env_managed),
+    try {
+      const { data } = await api.get('/api/v1/settings/email-smtp')
+      smtpSettings.value = {
+        host: String(data?.host || ''),
+        port: Number(data?.port || 587),
+        username: String(data?.username || ''),
+        from_email: String(data?.from_email || ''),
+        from_name: String(data?.from_name || ''),
+        use_tls: Boolean(data?.use_tls),
+        resend_api_key: String(data?.resend_api_key || ''),
+        env_managed: Boolean(data?.env_managed),
+      }
+      await cacheSnapshot('settings.smtpSettings', smtpSettings.value)
+      return smtpSettings.value
+    } catch (error) {
+      if (!isOnline()) {
+        const cached = await readSnapshot('settings.smtpSettings')
+        if (cached && typeof cached === 'object') {
+          smtpSettings.value = cached
+          return smtpSettings.value
+        }
+      }
+      throw error
     }
-    return smtpSettings.value
   }
 
   async function updateSmtpSettings(payload) {

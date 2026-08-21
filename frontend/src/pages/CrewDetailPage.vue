@@ -217,7 +217,7 @@ import { useQuasar } from 'quasar'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useCrewStore } from '../stores/crew'
-import { useCustomersStore } from '../stores/customers'
+import { useCompaniesStore } from '../stores/companies'
 import { usePersonsStore } from '../stores/persons'
 import { useUsersStore } from '../stores/users'
 import { useAuthStore } from '../stores/auth'
@@ -230,7 +230,7 @@ const { t, locale } = useI18n()
 const route = useRoute()
 const router = useRouter()
 const crewStore = useCrewStore()
-const customersStore = useCustomersStore()
+const companiesStore = useCompaniesStore()
 const personsStore = usePersonsStore()
 const usersStore = useUsersStore()
 const authStore = useAuthStore()

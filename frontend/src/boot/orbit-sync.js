@@ -1,8 +1,10 @@
 import { api } from './axios'
 import {
+  checkBackendReachability,
   flushQueuedMutations,
   initOrbitSync,
   isOnline,
+  setBackendReachable,
 } from '../services/offline/orbitSync'
 
 async function flushQueue() {
@@ -23,11 +25,21 @@ async function flushQueue() {
 
 export default async () => {
   await initOrbitSync()
+
+  // Check backend reachability on startup
+  await checkBackendReachability()
+
   await flushQueue()
 
   if (typeof window !== 'undefined') {
-    window.addEventListener('online', () => {
+    window.addEventListener('online', async () => {
+      // Re-check backend reachability when browser reports online
+      await checkBackendReachability()
       void flushQueue()
+    })
+
+    window.addEventListener('offline', () => {
+      setBackendReachable(false)
     })
   }
 }
