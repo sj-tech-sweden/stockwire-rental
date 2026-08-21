@@ -1,6 +1,10 @@
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
+
+logger = logging.getLogger(__name__)
 
 from app.api.pagination import PaginationParams, PaginatedResponse, paginate_query
 from app.db.session import get_db
@@ -520,6 +524,7 @@ def delete_company(company_id: int, db: Session = Depends(get_db), current_user:
 
     # Unlink jobs from this company
     company_name = company.name
+    company_external_ref = company.external_reference
     jobs = list(db.scalars(select(Job).where(Job.company_id == company_id)).all())
     for job in jobs:
         job.company_id = None
@@ -540,6 +545,28 @@ def delete_company(company_id: int, db: Session = Depends(get_db), current_user:
     deleted_total.labels(entity="company").inc()
     entities_count.labels(entity="company").dec()
     db.commit()
+
+    # Delete from Twenty CRM if it has a Twenty reference
+    if company_external_ref:
+        try:
+            from app.domain.integrations.models import TwentyConfig
+            from app.domain.integrations.twenty_client import TwentyClient
+
+            config = db.query(TwentyConfig).filter(TwentyConfig.is_active.is_(True)).first()
+            if config and config.api_key:
+                client = TwentyClient(api_key=config.api_key, base_url=config.base_url)
+                import asyncio
+                loop = asyncio.new_event_loop()
+                try:
+                    loop.run_until_complete(client.delete_object("companies", company_external_ref))
+                    logger.info("Deleted company %s from Twenty CRM", company_external_ref)
+                except Exception as e:
+                    logger.warning("Failed to delete company from Twenty: %s", e)
+                finally:
+                    loop.close()
+        except Exception as e:
+            logger.warning("Failed to delete company from Twenty: %s", e)
+
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
@@ -695,6 +722,7 @@ def delete_person(person_id: int, db: Session = Depends(get_db), current_user: U
         )
 
     person_name = f"{person.first_name} {person.last_name}"
+    person_external_ref = person.external_reference
     db.delete(person)
     record_activity(
         db,
@@ -710,4 +738,26 @@ def delete_person(person_id: int, db: Session = Depends(get_db), current_user: U
     deleted_total.labels(entity="person").inc()
     entities_count.labels(entity="person").dec()
     db.commit()
+
+    # Delete from Twenty CRM if it has a Twenty reference
+    if person_external_ref:
+        try:
+            from app.domain.integrations.models import TwentyConfig
+            from app.domain.integrations.twenty_client import TwentyClient
+
+            config = db.query(TwentyConfig).filter(TwentyConfig.is_active.is_(True)).first()
+            if config and config.api_key:
+                client = TwentyClient(api_key=config.api_key, base_url=config.base_url)
+                import asyncio
+                loop = asyncio.new_event_loop()
+                try:
+                    loop.run_until_complete(client.delete_object("people", person_external_ref))
+                    logger.info("Deleted person %s from Twenty CRM", person_external_ref)
+                except Exception as e:
+                    logger.warning("Failed to delete person from Twenty: %s", e)
+                finally:
+                    loop.close()
+        except Exception as e:
+            logger.warning("Failed to delete person from Twenty: %s", e)
+
     return Response(status_code=status.HTTP_204_NO_CONTENT)

@@ -69,11 +69,13 @@ async def _do_sync(db, client) -> None:
                 await sync_company_outbound(db, client, company)
                 if processed % 10 == 0:
                     logger.info("Auto-sync outbound-company: %d processed", processed)
+                    db.expire_all()
             except Exception:
                 logger.exception("Auto-sync: failed to sync company %s", getattr(company, "id", "?"))
         if len(companies) < SYNC_PAGE_SIZE:
             break
         offset += SYNC_PAGE_SIZE
+    db.commit()
     logger.info("Auto-sync stage complete: outbound companies (%d processed)", processed)
 
     # Outbound: persons
@@ -90,11 +92,13 @@ async def _do_sync(db, client) -> None:
                 await sync_person_outbound(db, client, person)
                 if processed % 10 == 0:
                     logger.info("Auto-sync outbound-person: %d processed", processed)
+                    db.expire_all()
             except Exception:
                 logger.exception("Auto-sync: failed to sync person %s", getattr(person, "id", "?"))
         if len(persons) < SYNC_PAGE_SIZE:
             break
         offset += SYNC_PAGE_SIZE
+    db.commit()
     logger.info("Auto-sync stage complete: outbound persons (%d processed)", processed)
 
     # Outbound: jobs
@@ -111,11 +115,13 @@ async def _do_sync(db, client) -> None:
                 await sync_job_outbound(db, client, job)
                 if processed % 10 == 0:
                     logger.info("Auto-sync outbound-job: %d processed", processed)
+                    db.expire_all()
             except Exception:
                 logger.exception("Auto-sync: failed to sync job %s", getattr(job, "id", "?"))
         if len(jobs) < SYNC_PAGE_SIZE:
             break
         offset += SYNC_PAGE_SIZE
+    db.commit()
     logger.info("Auto-sync stage complete: outbound jobs (%d processed)", processed)
 
     # Inbound: companies → Company entities
@@ -151,11 +157,13 @@ async def _do_sync(db, client) -> None:
                         )
                 if processed % 10 == 0:
                     logger.info("Auto-sync inbound-company: %d processed", processed)
+                    db.expire_all()
             except Exception:
                 logger.exception("Auto-sync: failed inbound company %s", company.get("id"))
         if len(companies) < SYNC_PAGE_SIZE:
             break
         offset += SYNC_PAGE_SIZE
+    db.commit()
     logger.info("Auto-sync stage complete: inbound companies (%d processed)", processed)
 
     # Inbound: people → Person entities
@@ -191,11 +199,13 @@ async def _do_sync(db, client) -> None:
                         )
                 if processed % 10 == 0:
                     logger.info("Auto-sync inbound-person: %d processed", processed)
+                    db.expire_all()
             except Exception:
                 logger.exception("Auto-sync: failed inbound person %s", person.get("id"))
         if len(people) < SYNC_PAGE_SIZE:
             break
         offset += SYNC_PAGE_SIZE
+    db.commit()
     logger.info("Auto-sync stage complete: inbound persons (%d processed)", processed)
 
     # Inbound: opportunities → jobs (only update existing Stockwire jobs)
@@ -218,11 +228,13 @@ async def _do_sync(db, client) -> None:
                 updated = await sync_job_inbound(db, client, opp)
                 if processed % 10 == 0:
                     logger.info("Auto-sync inbound-job: %d processed (updated=%s)", processed, updated)
+                    db.expire_all()
             except Exception:
                 logger.exception("Auto-sync: failed inbound opportunity %s", opp.get("id"))
         if len(opps) < SYNC_PAGE_SIZE:
             break
         offset += SYNC_PAGE_SIZE
+    db.commit()
     logger.info("Auto-sync stage complete: inbound jobs (%d processed)", processed)
 
 

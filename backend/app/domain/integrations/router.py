@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 
 from app.db.session import get_db
 from app.domain.auth.deps import get_current_user
-from app.domain.customers.models import Customer
+from app.domain.customers.models import Company, Person
 from app.domain.integrations.schemas import (
     TwentyConfigCreate,
     TwentyConfigRead,
@@ -22,10 +22,12 @@ from app.domain.integrations.schemas import (
 )
 from app.domain.integrations.sync_engine import (
     SYNC_PAGE_SIZE,
-    sync_customer_inbound,
-    sync_customer_outbound,
+    sync_company_inbound,
+    sync_company_outbound,
     sync_job_inbound,
     sync_job_outbound,
+    sync_person_inbound,
+    sync_person_outbound,
 )
 from app.domain.integrations.twenty_client import TwentyClient
 from app.domain.jobs.models import Job
@@ -323,37 +325,64 @@ async def _run_sync_job(job_id: str, payload: TwentySyncTrigger) -> None:
         synced = 0
         failed = 0
 
-        entity_types = payload.entity_types or ["customer", "job"]
+        entity_types = payload.entity_types or ["company", "person", "job"]
         logger.info(
             "Starting background Twenty sync (job=%s): direction=%s, entities=%s",
             job_id, payload.direction, entity_types,
         )
 
         if payload.direction in ("outbound", "both"):
-            if "customer" in entity_types:
-                _update_job(job_id, stage="outbound customers")
+            if "company" in entity_types or "customer" in entity_types:
+                _update_job(job_id, stage="outbound companies")
                 offset = 0
                 processed = 0
-                total_customers = db.query(Customer).count()
-                _update_job(job_id, total=total_customers)
+                total_companies = db.query(Company).count()
+                _update_job(job_id, total=total_companies)
                 while True:
-                    customers = db.query(Customer).offset(offset).limit(SYNC_PAGE_SIZE).all()
-                    if not customers:
+                    companies = db.query(Company).offset(offset).limit(SYNC_PAGE_SIZE).all()
+                    if not companies:
                         break
-                    for customer in customers:
+                    for company in companies:
                         processed += 1
                         try:
-                            await sync_customer_outbound(db, client, customer)
+                            await sync_company_outbound(db, client, company)
                             synced += 1
                         except Exception as exc:
                             failed += 1
-                            logger.exception("Sync failed for customer %s: %s", customer.id, exc)
+                            logger.exception("Sync failed for company %s: %s", company.id, exc)
                         _update_job(job_id, processed=processed, synced=synced, failed=failed)
-                    if len(customers) < SYNC_PAGE_SIZE:
+                    if len(companies) < SYNC_PAGE_SIZE:
                         break
                     offset += SYNC_PAGE_SIZE
                 logger.info(
-                    "Background sync (job=%s) outbound customers complete: synced=%d, failed=%d",
+                    "Background sync (job=%s) outbound companies complete: synced=%d, failed=%d",
+                    job_id, synced, failed,
+                )
+
+            if "person" in entity_types:
+                _update_job(job_id, stage="outbound persons")
+                offset = 0
+                processed = 0
+                total_persons = db.query(Person).count()
+                _update_job(job_id, total=total_persons)
+                while True:
+                    persons = db.query(Person).offset(offset).limit(SYNC_PAGE_SIZE).all()
+                    if not persons:
+                        break
+                    for person in persons:
+                        processed += 1
+                        try:
+                            await sync_person_outbound(db, client, person)
+                            synced += 1
+                        except Exception as exc:
+                            failed += 1
+                            logger.exception("Sync failed for person %s: %s", person.id, exc)
+                        _update_job(job_id, processed=processed, synced=synced, failed=failed)
+                    if len(persons) < SYNC_PAGE_SIZE:
+                        break
+                    offset += SYNC_PAGE_SIZE
+                logger.info(
+                    "Background sync (job=%s) outbound persons complete: synced=%d, failed=%d",
                     job_id, synced, failed,
                 )
 
@@ -385,24 +414,8 @@ async def _run_sync_job(job_id: str, payload: TwentySyncTrigger) -> None:
                 )
 
         if payload.direction in ("inbound", "both"):
-            if "customer" in entity_types:
-                _update_job(job_id, stage="inbound customers")
-                # Pre-fetch all people once and build a company_id → person lookup.
-                people_by_company: dict[str, dict] = {}
-                try:
-                    all_people = await client.search_people(email=None)
-                    for p_edge in all_people:
-                        p_node = p_edge.get("node", p_edge)
-                        comp = p_node.get("company") or {}
-                        if isinstance(comp, dict) and comp.get("id"):
-                            people_by_company.setdefault(comp["id"], p_node)
-                    logger.info(
-                        "Background sync (job=%s) pre-fetched %d people",
-                        job_id, len(people_by_company),
-                    )
-                except Exception:
-                    logger.warning("Background sync (job=%s): could not pre-fetch people", job_id)
-
+            if "company" in entity_types or "customer" in entity_types:
+                _update_job(job_id, stage="inbound companies")
                 offset = 0
                 processed = 0
                 while True:
@@ -421,20 +434,19 @@ async def _run_sync_job(job_id: str, payload: TwentySyncTrigger) -> None:
                         company = edge.get("node", edge)
                         processed += 1
                         try:
-                            matched_person = people_by_company.get(company.get("id") or "")
-                            created = await sync_customer_inbound(db, client, company, matched_person)
+                            created = await sync_company_inbound(db, client, company)
                             synced += 1
                             if created:
                                 try:
-                                    customer = db.query(Customer).filter(
-                                        Customer.external_source == "twenty",
-                                        Customer.external_reference == str(company.get("id")),
+                                    company_entity = db.query(Company).filter(
+                                        Company.external_source == "twenty",
+                                        Company.external_reference == str(company.get("id")),
                                     ).first()
-                                    if customer:
-                                        await sync_customer_outbound(db, client, customer, force=True)
+                                    if company_entity:
+                                        await sync_company_outbound(db, client, company_entity, force=True)
                                 except Exception:
                                     logger.warning(
-                                        "Write-back of stockwire fields failed for customer %s (inbound sync succeeded)",
+                                        "Write-back of stockwire fields failed for company %s (inbound sync succeeded)",
                                         company.get("id"),
                                     )
                         except Exception as exc:
@@ -445,7 +457,54 @@ async def _run_sync_job(job_id: str, payload: TwentySyncTrigger) -> None:
                         break
                     offset += SYNC_PAGE_SIZE
                 logger.info(
-                    "Background sync (job=%s) inbound customers complete: synced=%d, failed=%d",
+                    "Background sync (job=%s) inbound companies complete: synced=%d, failed=%d",
+                    job_id, synced, failed,
+                )
+
+            if "person" in entity_types:
+                _update_job(job_id, stage="inbound persons")
+                offset = 0
+                processed = 0
+                while True:
+                    people_data = await client.list_objects("people", limit=SYNC_PAGE_SIZE, offset=offset)
+                    data_val = people_data.get("data", [])
+                    if isinstance(data_val, list):
+                        people = data_val
+                    elif isinstance(data_val, dict):
+                        inner = data_val.get("people", data_val)
+                        people = inner.get("edges", inner) if isinstance(inner, dict) else inner if isinstance(inner, list) else []
+                    else:
+                        people = []
+                    if not people:
+                        break
+                    for edge in people:
+                        person = edge.get("node", edge)
+                        processed += 1
+                        try:
+                            created = await sync_person_inbound(db, client, person)
+                            synced += 1
+                            if created:
+                                try:
+                                    person_entity = db.query(Person).filter(
+                                        Person.external_source == "twenty",
+                                        Person.external_reference == str(person.get("id")),
+                                    ).first()
+                                    if person_entity:
+                                        await sync_person_outbound(db, client, person_entity, force=True)
+                                except Exception:
+                                    logger.warning(
+                                        "Write-back of stockwire fields failed for person %s (inbound sync succeeded)",
+                                        person.get("id"),
+                                    )
+                        except Exception as exc:
+                            failed += 1
+                            logger.exception("Sync failed for inbound person %s: %s", person.get("id"), exc)
+                        _update_job(job_id, processed=processed, synced=synced, failed=failed)
+                    if len(people) < SYNC_PAGE_SIZE:
+                        break
+                    offset += SYNC_PAGE_SIZE
+                logger.info(
+                    "Background sync (job=%s) inbound persons complete: synced=%d, failed=%d",
                     job_id, synced, failed,
                 )
 

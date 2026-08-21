@@ -158,7 +158,7 @@ export async function initOrbitSync() {
 
 let _backendReachable = true
 let _lastCheckTime = 0
-const CHECK_INTERVAL_MS = 30000
+const CHECK_INTERVAL_MS = 30000 // Re-check backend reachability every 30 seconds
 
 export function isOnline() {
   if (typeof navigator === 'undefined') return true

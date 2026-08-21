@@ -134,22 +134,36 @@ def _customer_to_company_payload(customer: Customer) -> dict:
 
 
 def _sanitize_phone(phone: str) -> str:
-    """Return phone in E.164 format that Twenty CRM accepts."""
+    """Return phone in E.164 format that Twenty CRM accepts.
+
+    Returns empty string if the phone number cannot be reliably converted to E.164.
+    """
+    if not phone:
+        return ""
     # Strip dashes, spaces, parentheses, and leading/trailing whitespace
     cleaned = "".join(c for c in phone if c.isdigit() or c == "+").strip()
     if not cleaned:
         return ""
-    # Already E.164
-    if cleaned.startswith("+"):
+    # Already E.164 (starts with + and has country code)
+    if cleaned.startswith("+") and len(cleaned) >= 10:
         return cleaned
     # 00 prefix → +
     if cleaned.startswith("00"):
-        return "+" + cleaned[2:]
+        result = "+" + cleaned[2:]
+        if len(result) >= 10:
+            return result
     # Swedish mobile/landline: 10 digits starting with 0 → +46
     if len(cleaned) == 10 and cleaned.startswith("0"):
         return "+46" + cleaned[1:]
-    # Return cleaned version as fallback (may still fail validation)
-    return cleaned
+    # Swedish numbers without leading 0: 9 digits → +46 0 + number
+    if len(cleaned) == 9 and not cleaned.startswith("0"):
+        return "+460" + cleaned
+    # If it looks like it has a country code (10+ digits without +), add +
+    if len(cleaned) >= 10:
+        return "+" + cleaned
+    # Cannot reliably convert - return empty to avoid Twenty validation errors
+    logger.debug("Cannot convert phone %r to E.164 format, skipping", phone)
+    return ""
 
 
 def _customer_to_person_payload(customer: Customer) -> dict:
@@ -616,12 +630,31 @@ async def sync_person_outbound(
                 twenty_person_id = None
 
         if not twenty_person_id:
-            result = await client.create_object("people", person_data)
-            twenty_person_id = _extract_twenty_id(result, "people")
-            person.external_source = "twenty"
-            person.external_reference = twenty_person_id
-            person.external_origin = person.external_origin or "stockwire"
-            _log_sync(db, "outbound", "person", person.id, twenty_person_id, "create", "success")
+            try:
+                result = await client.create_object("people", person_data)
+                twenty_person_id = _extract_twenty_id(result, "people")
+                person.external_source = "twenty"
+                person.external_reference = twenty_person_id
+                person.external_origin = person.external_origin or "stockwire"
+                _log_sync(db, "outbound", "person", person.id, twenty_person_id, "create", "success")
+            except httpx.HTTPStatusError as e:
+                # Handle duplicate entry - try to find existing person in Twenty
+                if e.response.status_code == 400 and "duplicate" in str(e.response.text).lower():
+                    logger.info("Person %s may already exist in Twenty, searching for existing", person.id)
+                    existing_twenty_id = await _find_existing_person(
+                        client, person_data.get("companyId"), person.email
+                    )
+                    if existing_twenty_id:
+                        twenty_person_id = existing_twenty_id
+                        person.external_source = "twenty"
+                        person.external_reference = twenty_person_id
+                        person.external_origin = person.external_origin or "stockwire"
+                        _log_sync(db, "outbound", "person", person.id, twenty_person_id, "create", "success")
+                        logger.info("Linked person %s to existing Twenty person %s", person.id, twenty_person_id)
+                    else:
+                        raise
+                else:
+                    raise
 
         db.commit()
     except Exception as e:
@@ -748,8 +781,8 @@ async def sync_person_inbound(db: Session, client: TwentyClient, twenty_person: 
         return False
 
     new_person = Person(
-        first_name=first_name or None,
-        last_name=last_name or None,
+        first_name=first_name or "",
+        last_name=last_name or "",
         email=email,
         phone=phone,
         company_id=company_id,
