@@ -329,7 +329,12 @@ function filterPersons(val, update) {
     if (!personsStore.persons.length) {
       personsStore.fetchAll().catch(() => {})
     }
-    filteredPersonOptions.value = personsStore.persons
+    let persons = personsStore.persons || []
+    // Filter by selected company if one is set
+    if (form.value.supplier_id) {
+      persons = persons.filter(p => p.company_id === form.value.supplier_id)
+    }
+    filteredPersonOptions.value = persons
       .filter(p => !term || `${p.first_name} ${p.last_name}`.toLowerCase().includes(term) || (p.email || '').toLowerCase().includes(term))
       .map(p => ({ label: `${p.first_name} ${p.last_name}`, value: p.id }))
   })
@@ -585,6 +590,33 @@ watch(() => route.path, async (next, prev) => {
   if (next === '/crew/new') {
     form.value = emptyForm()
     member.value = null
+  }
+})
+
+// Auto-set supplier when selecting a person with a company
+watch(() => form.value.person_id, (newPersonId, oldPersonId) => {
+  if (newPersonId && newPersonId !== oldPersonId) {
+    const person = personsStore.persons.find(p => p.id === newPersonId)
+    if (person && person.company_id) {
+      // Check if the company is a crew supplier
+      const company = companiesStore.companies.find(c => c.id === person.company_id)
+      if (company && company.is_crew_supplier) {
+        form.value.supplier_id = person.company_id
+      }
+    }
+  }
+})
+
+// Clear person filter when company changes
+watch(() => form.value.supplier_id, (newSupplierId, oldSupplierId) => {
+  if (newSupplierId !== oldSupplierId) {
+    // Reset person selection if the selected person doesn't belong to the new company
+    if (form.value.person_id) {
+      const person = personsStore.persons.find(p => p.id === form.value.person_id)
+      if (person && person.company_id !== newSupplierId) {
+        form.value.person_id = null
+      }
+    }
   }
 })
 
