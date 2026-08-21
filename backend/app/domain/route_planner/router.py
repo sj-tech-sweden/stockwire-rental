@@ -133,7 +133,7 @@ def _load_route_with_joins(route_id: int, db: Session) -> DeliveryRoute | None:
         select(DeliveryRoute)
         .options(
             joinedload(DeliveryRoute.stops).joinedload(RouteStop.job).joinedload(Job.venue),
-            joinedload(DeliveryRoute.stops).joinedload(RouteStop.job).joinedload(Job.customer),
+            joinedload(DeliveryRoute.stops).joinedload(RouteStop.job).joinedload(Job.customer_legacy),
             joinedload(DeliveryRoute.stops).joinedload(RouteStop.vehicle),
             joinedload(DeliveryRoute.vehicle_assignments).joinedload(RouteVehicle.vehicle),
         )
@@ -200,7 +200,7 @@ def list_routes(
 ):
     q = select(DeliveryRoute).options(
         joinedload(DeliveryRoute.stops).joinedload(RouteStop.job).joinedload(Job.venue),
-        joinedload(DeliveryRoute.stops).joinedload(RouteStop.job).joinedload(Job.customer),
+        joinedload(DeliveryRoute.stops).joinedload(RouteStop.job).joinedload(Job.customer_legacy),
         joinedload(DeliveryRoute.stops).joinedload(RouteStop.vehicle),
         joinedload(DeliveryRoute.vehicle_assignments).joinedload(RouteVehicle.vehicle),
     )

@@ -10,7 +10,7 @@ describe('twenty links', () => {
 
   it('uses configured base urls and ignores unsupported inputs', () => {
     expect(getTwentyRecordUrl('companies', 'cmp_123', 'https://twenty.example.com/api')).toBe('https://twenty.example.com/object/company/cmp_123')
-    expect(getTwentyRecordUrl('people', 'person_1', 'https://api.twenty.com')).toBeNull()
+    expect(getTwentyRecordUrl('people', 'person_1', 'https://api.twenty.com')).toBe('https://app.twenty.com/object/person/person_1')
     expect(getTwentyRecordUrl('companies', '', 'https://api.twenty.com')).toBeNull()
   })
 

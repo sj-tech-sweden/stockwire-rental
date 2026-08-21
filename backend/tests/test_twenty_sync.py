@@ -149,8 +149,8 @@ async def test_list_objects_no_offset_when_zero():
 
 
 @pytest.mark.asyncio
-async def test_do_sync_fetches_people_once_not_per_company():
-    """_do_sync must call search_people exactly once regardless of company count."""
+async def test_do_sync_syncs_companies_persons_and_jobs():
+    """_do_sync must sync companies, persons, and jobs without legacy customer sync."""
     from app.domain.integrations.auto_sync import _do_sync
 
     db = MagicMock()
@@ -170,41 +170,55 @@ async def test_do_sync_fetches_people_once_not_per_company():
             }
         }
     }
-    empty_resp: dict = {"data": {"companies": {"edges": []}, "opportunities": {"edges": []}}}
+    people_resp = {
+        "data": {
+            "people": {
+                "edges": [
+                    {"node": {"id": "p1", "name": {"firstName": "John", "lastName": "Doe"}}},
+                ]
+            }
+        }
+    }
+    empty_resp: dict = {"data": {"companies": {"edges": []}, "people": {"edges": []}, "opportunities": {"edges": []}}}
 
     async def _list_objects(object_name, limit=100, offset=0):
         if object_name == "companies" and offset == 0:
             return companies_resp
+        if object_name == "people" and offset == 0:
+            return people_resp
         return empty_resp
 
     client.list_objects = _list_objects
 
-    search_calls: list = []
+    company_inbound_calls: list = []
+    person_inbound_calls: list = []
+    job_inbound_calls: list = []
 
-    async def _search_people(email=None, name=None):
-        search_calls.append({"email": email, "name": name})
-        return []
+    async def _sync_company_inbound(db, client, company):
+        company_inbound_calls.append(company)
+        return False
 
-    client.search_people = _search_people
-
-    async def _sync_customer_inbound(db, client, company, person):
-        pass
+    async def _sync_person_inbound(db, client, person):
+        person_inbound_calls.append(person)
+        return False
 
     async def _sync_job_inbound(db, client, opp):
-        pass
+        job_inbound_calls.append(opp)
+        return False
 
     with (
-        patch("app.domain.integrations.sync_engine.sync_customer_inbound", _sync_customer_inbound),
-        patch("app.domain.integrations.sync_engine.sync_job_inbound", _sync_job_inbound),
-        patch("app.domain.integrations.sync_engine.sync_customer_outbound", AsyncMock()),
-        patch("app.domain.integrations.sync_engine.sync_job_outbound", AsyncMock()),
-        patch("app.domain.integrations.sync_engine.sync_company_inbound", AsyncMock()),
+        patch("app.domain.integrations.sync_engine.sync_company_inbound", _sync_company_inbound),
         patch("app.domain.integrations.sync_engine.sync_company_outbound", AsyncMock()),
-        patch("app.domain.integrations.sync_engine.sync_person_inbound", AsyncMock()),
+        patch("app.domain.integrations.sync_engine.sync_person_inbound", _sync_person_inbound),
         patch("app.domain.integrations.sync_engine.sync_person_outbound", AsyncMock()),
+        patch("app.domain.integrations.sync_engine.sync_job_inbound", _sync_job_inbound),
+        patch("app.domain.integrations.sync_engine.sync_job_outbound", AsyncMock()),
     ):
         await _do_sync(db, client)
 
-    assert len(search_calls) == 1, (
-        f"search_people should be called once (for pre-fetch), but was called {len(search_calls)} times"
+    assert len(company_inbound_calls) == 3, (
+        f"sync_company_inbound should be called 3 times, but was called {len(company_inbound_calls)} times"
+    )
+    assert len(person_inbound_calls) == 1, (
+        f"sync_person_inbound should be called 1 time, but was called {len(person_inbound_calls)} times"
     )
