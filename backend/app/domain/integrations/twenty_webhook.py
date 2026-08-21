@@ -274,20 +274,6 @@ async def _handle_company_event(
         if company:
             emit_realtime_event("companies.updated", {"action": "updated", "id": company.id})
 
-    # Also sync legacy customer for backward compatibility
-    try:
-        created_legacy = await sync_customer_inbound(db, client, record, twenty_person=None)
-        if created_legacy:
-            from app.domain.customers.models import Customer
-            customer = db.query(Customer).filter(
-                Customer.external_source == "twenty",
-                Customer.external_reference == str(twenty_id),
-            ).first()
-            if customer:
-                await sync_customer_outbound(db, client, customer, force=True)
-    except Exception as e:
-        logger.debug("Legacy customer sync failed (non-critical): %s", e)
-
 
 async def _handle_person_event(
     db: Session,
@@ -327,32 +313,6 @@ async def _handle_person_event(
         ).first()
         if person:
             emit_realtime_event("persons.updated", {"action": "updated", "id": person.id})
-
-    # Also sync legacy customer for backward compatibility
-    try:
-        company_id = record.get("companyId")
-        if company_id:
-            from app.domain.customers.models import Customer
-
-            customer = db.query(Customer).filter(
-                Customer.external_source == "twenty",
-                Customer.external_reference == str(company_id),
-            ).first()
-            if customer:
-                name_obj = record.get("name") or {}
-                full_name = f"{name_obj.get('firstName', '')} {name_obj.get('lastName', '')}".strip()
-                if full_name:
-                    customer.name = full_name
-                emails = record.get("emails") or {}
-                if isinstance(emails, dict) and emails.get("primaryEmail"):
-                    customer.email = emails["primaryEmail"]
-                phones = record.get("phones") or {}
-                if isinstance(phones, dict) and phones.get("primaryPhoneNumber"):
-                    customer.phone = phones["primaryPhoneNumber"]
-                db.commit()
-                emit_realtime_event("customers.updated", {"action": "updated", "id": customer.id})
-    except Exception as e:
-        logger.debug("Legacy customer sync failed (non-critical): %s", e)
 
 
 async def _handle_opportunity_event(

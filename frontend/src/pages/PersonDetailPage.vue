@@ -382,7 +382,7 @@ async function createPerson() {
   saving.value = true
   try {
     const created = await personsStore.createPerson(form.value)
-    $q.notify({ type: 'positive', message: t('persons.created') })
+    $q.notify({ type: 'positive', message: t('persons.createdNotice') })
     router.push(`/persons/${created.id}`)
   } catch (error) {
     console.error('Failed to create person:', error)

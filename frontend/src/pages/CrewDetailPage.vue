@@ -61,9 +61,6 @@
               <div class="col-12 col-md-6">
                 <q-input v-model="form.phone" :label="t('customers.phone')" outlined dense :disable="!authStore.canEdit" />
               </div>
-              <div class="col-12 col-md-6">
-                <q-select v-model="form.user_id" :options="filteredUserOptions" :label="t('crew.linkUser')" outlined dense clearable emit-value map-options use-input :disable="!authStore.canEdit" @filter="filterUsers" />
-              </div>
             </div>
             <div class="row q-col-gutter-sm q-mt-sm">
               <div class="col-12 col-md-4">
@@ -315,10 +312,10 @@ function filterSuppliers(val, update) {
   supplierSearch.value = val
   update(() => {
     const term = String(val || '').toLowerCase()
-    if (!customersStore.customers.length) {
-      customersStore.fetchAll().catch(() => {})
+    if (!companiesStore.companies.length) {
+      companiesStore.fetchAll().catch(() => {})
     }
-    filteredSupplierOptions.value = customersStore.customers
+    filteredSupplierOptions.value = companiesStore.companies
       .filter(c => c.is_crew_supplier)
       .filter(c => !term || c.name.toLowerCase().includes(term))
       .map(c => ({ label: c.name, value: c.id }))
@@ -413,7 +410,8 @@ async function loadData() {
   try {
     await Promise.all([
       crewStore.fetchRoles(),
-      customersStore.fetchAll(),
+      companiesStore.fetchAll(),
+      personsStore.fetchAll(),
       usersStore.fetchUsers(),
     ])
     if (!isNew.value) {

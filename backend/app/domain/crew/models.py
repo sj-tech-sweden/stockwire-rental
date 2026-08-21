@@ -65,7 +65,7 @@ class CrewMember(Base):
     email: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
     phone: Mapped[str | None] = mapped_column(String(50), nullable=True)
     user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
-    supplier_id: Mapped[int | None] = mapped_column(ForeignKey("customers.id", ondelete="SET NULL"), nullable=True, index=True)
+    supplier_id: Mapped[int | None] = mapped_column(ForeignKey("companies.id", ondelete="SET NULL"), nullable=True, index=True)
     person_id: Mapped[int | None] = mapped_column(ForeignKey("persons.id", ondelete="SET NULL"), nullable=True, index=True)
     hourly_rate: Mapped[float | None] = mapped_column(Numeric(10, 2), nullable=True)
     daily_rate: Mapped[float | None] = mapped_column(Numeric(10, 2), nullable=True)
@@ -74,7 +74,7 @@ class CrewMember(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
 
     user: Mapped["User | None"] = relationship()
-    supplier: Mapped["Customer | None"] = relationship()
+    supplier: Mapped["Company | None"] = relationship("Company")
     person: Mapped["Person | None"] = relationship("Person", back_populates="crew_member")
     skills: Mapped[list["CrewMemberSkill"]] = relationship(
         back_populates="crew_member", cascade="all, delete-orphan"

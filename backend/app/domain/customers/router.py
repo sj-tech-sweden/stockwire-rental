@@ -283,6 +283,11 @@ def delete_customer(customer_id: int, db: Session = Depends(get_db), current_use
 companies_router = APIRouter(prefix="/companies", tags=["companies"], dependencies=[Depends(get_current_user)])
 
 
+@companies_router.get("/bootstrap")
+def bootstrap_status() -> dict[str, str]:
+    return {"module": "companies", "status": "scaffolded"}
+
+
 @companies_router.get("", response_model=PaginatedResponse[CompanyRead])
 def list_companies(
     type: str | None = Query(None, description="Filter by type: customer, product_supplier, rental_supplier, crew_supplier"),
@@ -415,9 +420,9 @@ def get_company_info(company_id: int, db: Session = Depends(get_db)) -> CompanyI
                 hourly_rate=float(cm.hourly_rate) if cm.hourly_rate else None,
                 daily_rate=float(cm.daily_rate) if cm.daily_rate else None,
                 is_active=cm.is_active,
-                skills=[sk.skill for sk in cm.skills] if cm.skills else [],
+                skills=[sk.skill.name for sk in cm.skills] if cm.skills else [],
                 certifications=[
-                    {"certification": c.certification, "expires_at": c.expires_at.isoformat() if c.expires_at else None}
+                    {"certification": c.certification.name if c.certification else None, "expires_at": c.expiry_date.isoformat() if c.expiry_date else None}
                     for c in cm.certifications
                 ] if cm.certifications else [],
                 preferred_role_ids=[r.id for r in cm.preferred_roles] if cm.preferred_roles else [],
@@ -545,6 +550,11 @@ def delete_company(company_id: int, db: Session = Depends(get_db), current_user:
 persons_router = APIRouter(prefix="/persons", tags=["persons"], dependencies=[Depends(get_current_user)])
 
 
+@persons_router.get("/bootstrap")
+def bootstrap_status() -> dict[str, str]:
+    return {"module": "persons", "status": "scaffolded"}
+
+
 @persons_router.get("", response_model=PaginatedResponse[PersonRead])
 def list_persons(
     company_id: int | None = Query(None, description="Filter by company ID"),
@@ -614,7 +624,6 @@ def get_person_info(person_id: int, db: Session = Depends(get_db)) -> PersonInfo
         result.crew_member_hourly_rate = float(cm.hourly_rate) if cm.hourly_rate else None
         result.crew_member_daily_rate = float(cm.daily_rate) if cm.daily_rate else None
         result.crew_member_is_active = cm.is_active
-        result.crew_member_active = cm.is_active
         result.crew_member_skills = [sk.skill.name for sk in cm.skills] if cm.skills else []
         result.crew_member_certifications = [c.certification.name for c in cm.certifications] if cm.certifications else []
         result.crew_member_preferred_roles = [r.name for r in cm.preferred_roles] if cm.preferred_roles else []

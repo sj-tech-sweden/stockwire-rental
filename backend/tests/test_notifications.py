@@ -1,20 +1,19 @@
 def test_customer_and_job_notification_toggles_are_persisted(client):
-    customer = client.post(
-        "/api/v1/customers",
+    company = client.post(
+        "/api/v1/companies",
         json={
-            "name": "Notify Customer",
-            "email": "notify@example.com",
+            "name": "Notify Company",
             "email_notifications_enabled": False,
         },
     )
-    assert customer.status_code == 200
-    assert customer.json()["email_notifications_enabled"] is False
+    assert company.status_code == 200
+    assert company.json()["email_notifications_enabled"] is False
 
     job = client.post(
         "/api/v1/jobs",
         json={
             "job_code": "JOB-9001",
-            "customer_id": customer.json()["id"],
+            "company_id": company.json()["id"],
             "email_notifications_enabled": False,
         },
     )

@@ -414,7 +414,7 @@ async function createCompany() {
   saving.value = true
   try {
     const created = await companiesStore.createCompany(form.value)
-    $q.notify({ type: 'positive', message: t('companies.created') })
+    $q.notify({ type: 'positive', message: t('companies.createdNotice') })
     router.push(`/companies/${created.id}`)
   } catch (error) {
     console.error('Failed to create company:', error)

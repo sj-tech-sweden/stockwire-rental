@@ -160,7 +160,6 @@ class PersonRead(PersonBase):
 
 class PersonInfoRead(PersonRead):
     crew_member_id: int | None = None
-    crew_member_active: bool | None = None
     crew_member_name: str | None = None
     crew_member_email: str | None = None
     crew_member_phone: str | None = None

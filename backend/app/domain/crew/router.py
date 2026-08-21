@@ -4,7 +4,6 @@ from sqlalchemy.orm import Session, selectinload
 
 from app.db.session import get_db
 from app.domain.auth.deps import get_current_user
-from app.domain.customers.models import Customer
 from app.domain.auth.models import User
 from app.domain.jobs.models import Job
 from app.domain.crew.models import (

@@ -43,13 +43,11 @@ def _run_twenty_sync_now() -> None:
 
 
 async def _do_sync(db, client) -> None:
-    from app.domain.customers.models import Company, Customer, Person
+    from app.domain.customers.models import Company, Person
     from app.domain.integrations.sync_engine import (
         SYNC_PAGE_SIZE,
         sync_company_inbound,
         sync_company_outbound,
-        sync_customer_inbound,
-        sync_customer_outbound,
         sync_job_inbound,
         sync_job_outbound,
         sync_person_inbound,
@@ -98,27 +96,6 @@ async def _do_sync(db, client) -> None:
             break
         offset += SYNC_PAGE_SIZE
     logger.info("Auto-sync stage complete: outbound persons (%d processed)", processed)
-
-    # Outbound: legacy customers (for backward compatibility)
-    logger.info("Auto-sync stage: outbound legacy customers")
-    offset = 0
-    processed = 0
-    while True:
-        customers = db.query(Customer).offset(offset).limit(SYNC_PAGE_SIZE).all()
-        if not customers:
-            break
-        for customer in customers:
-            processed += 1
-            try:
-                await sync_customer_outbound(db, client, customer)
-                if processed % 10 == 0:
-                    logger.info("Auto-sync outbound-customer: %d processed", processed)
-            except Exception:
-                logger.exception("Auto-sync: failed to sync customer %s", getattr(customer, "id", "?"))
-        if len(customers) < SYNC_PAGE_SIZE:
-            break
-        offset += SYNC_PAGE_SIZE
-    logger.info("Auto-sync stage complete: outbound legacy customers (%d processed)", processed)
 
     # Outbound: jobs
     logger.info("Auto-sync stage: outbound jobs")
@@ -220,61 +197,6 @@ async def _do_sync(db, client) -> None:
             break
         offset += SYNC_PAGE_SIZE
     logger.info("Auto-sync stage complete: inbound persons (%d processed)", processed)
-
-    # Inbound: legacy companies → customers (for backward compatibility)
-    logger.info("Auto-sync stage: inbound legacy customers")
-    # Pre-fetch all people once and build a company_id → person lookup to avoid
-    # one API call per company during the loop below.
-    people_by_company: dict[str, dict] = {}
-    try:
-        all_people = await client.search_people(email=None)
-        for p_edge in all_people:
-            p_node = p_edge.get("node", p_edge)
-            comp = p_node.get("company") or {}
-            if isinstance(comp, dict) and comp.get("id"):
-                people_by_company.setdefault(comp["id"], p_node)
-        logger.info("Auto-sync pre-fetched %d people", len(people_by_company))
-    except Exception:
-        logger.warning("Auto-sync: could not pre-fetch people; person matching will be skipped")
-
-    offset = 0
-    processed = 0
-    while True:
-        companies_data = await client.list_objects("companies", limit=SYNC_PAGE_SIZE, offset=offset)
-        data_val = companies_data.get("data", [])
-        if isinstance(data_val, list):
-            companies = data_val
-        else:
-            companies = data_val.get("companies", {}).get("edges", [])
-        if not companies:
-            break
-        for edge in companies:
-            company = edge.get("node", edge)
-            processed += 1
-            try:
-                matched_person = people_by_company.get(company.get("id") or "")
-                created = await sync_customer_inbound(db, client, company, matched_person)
-                if created:
-                    try:
-                        customer = db.query(Customer).filter(
-                            Customer.external_source == "twenty",
-                            Customer.external_reference == str(company.get("id")),
-                        ).first()
-                        if customer:
-                            await sync_customer_outbound(db, client, customer, force=True)
-                    except Exception:
-                        logger.exception(
-                            "Auto-sync: failed to write back stockwire fields for legacy company %s",
-                            company.get("id"),
-                        )
-                if processed % 10 == 0:
-                    logger.info("Auto-sync inbound-legacy-customer: %d processed", processed)
-            except Exception:
-                logger.exception("Auto-sync: failed inbound legacy company %s", company.get("id"))
-        if len(companies) < SYNC_PAGE_SIZE:
-            break
-        offset += SYNC_PAGE_SIZE
-    logger.info("Auto-sync stage complete: inbound legacy customers (%d processed)", processed)
 
     # Inbound: opportunities → jobs (only update existing Stockwire jobs)
     logger.info("Auto-sync stage: inbound jobs")
