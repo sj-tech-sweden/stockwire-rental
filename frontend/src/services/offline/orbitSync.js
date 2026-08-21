@@ -156,9 +156,37 @@ export async function initOrbitSync() {
   return orbitAvailable
 }
 
+let _backendReachable = true
+let _lastCheckTime = 0
+const CHECK_INTERVAL_MS = 30000
+
 export function isOnline() {
   if (typeof navigator === 'undefined') return true
-  return navigator.onLine
+  return navigator.onLine && _backendReachable
+}
+
+export async function checkBackendReachability() {
+  const now = Date.now()
+  if (now - _lastCheckTime < CHECK_INTERVAL_MS) {
+    return _backendReachable
+  }
+  _lastCheckTime = now
+
+  try {
+    const response = await fetch('/api/v1/health', {
+      method: 'HEAD',
+      cache: 'no-store',
+      signal: AbortSignal.timeout(5000),
+    })
+    _backendReachable = response.ok
+  } catch {
+    _backendReachable = false
+  }
+  return _backendReachable
+}
+
+export function setBackendReachable(reachable) {
+  _backendReachable = reachable
 }
 
 export async function cacheSnapshot(key, payload) {
