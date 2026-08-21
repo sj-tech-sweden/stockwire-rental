@@ -525,7 +525,6 @@ def delete_company(company_id: int, db: Session = Depends(get_db), current_user:
     # Unlink jobs from this company
     company_name = company.name
     company_external_ref = company.external_reference
-    company_external_source = company.external_source
     jobs = list(db.scalars(select(Job).where(Job.company_id == company_id)).all())
     for job in jobs:
         job.company_id = None
@@ -724,7 +723,6 @@ def delete_person(person_id: int, db: Session = Depends(get_db), current_user: U
 
     person_name = f"{person.first_name} {person.last_name}"
     person_external_ref = person.external_reference
-    person_external_source = person.external_source
     db.delete(person)
     record_activity(
         db,
