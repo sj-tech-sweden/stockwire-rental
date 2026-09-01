@@ -17,7 +17,7 @@ dependencies = [
   "pywebpush==2.5.0",
   "sqlalchemy==2.0.52",
   "asyncpg==0.31.0",
-  "psycopg[binary]==3.3.4",
+  "psycopg[binary]==3.3.5",
   "alembic==1.19.1",
   "redis==8.1.0",
   "structlog==26.1.0",
