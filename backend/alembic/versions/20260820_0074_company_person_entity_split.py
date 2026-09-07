@@ -96,6 +96,7 @@ def upgrade() -> None:
 
     # 4. Create default persons from customer names
     # Parse name into first_name/last_name for a default Person linked to the Company
+    # Note: external_origin is set to 'stockwire' so these persons will be synced to Twenty
     op.execute(
         """
         INSERT INTO persons (
@@ -115,7 +116,7 @@ def upgrade() -> None:
             comp.id AS company_id,
             c.external_source,
             c.external_reference,
-            c.external_origin,
+            'stockwire' AS external_origin,
             c.email_notifications_enabled,
             c.preferred_language,
             c.created_at

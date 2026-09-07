@@ -15,6 +15,22 @@
     {
       "matchUpdateTypes": ["patch", "pin", "pinDigest", "digest", "lockFileMaintenance", "rollback", "bump"],
       "addLabels": ["patch"]
+    },
+    {
+      "matchManagers": ["dockerfile", "docker-compose"],
+      "matchDatasources": ["docker"],
+      "groupName": "docker image updates",
+      "automerge": false
+    },
+    {
+      "matchManagers": ["pip_requirements", "pip_setup"],
+      "groupName": "backend dependencies",
+      "automerge": false
+    },
+    {
+      "matchManagers": ["npm"],
+      "groupName": "frontend dependencies",
+      "automerge": false
     }
   ]
 }

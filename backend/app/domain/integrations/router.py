@@ -364,13 +364,20 @@ async def _run_sync_job(job_id: str, payload: TwentySyncTrigger) -> None:
                 offset = 0
                 processed = 0
                 total_persons = db.query(Person).count()
+                logger.warning("Starting outbound persons sync: total=%d", total_persons)
                 _update_job(job_id, total=total_persons)
                 while True:
                     persons = db.query(Person).offset(offset).limit(SYNC_PAGE_SIZE).all()
                     if not persons:
                         break
+                    logger.warning("Processing batch of %d persons (offset=%d)", len(persons), offset)
                     for person in persons:
                         processed += 1
+                        logger.info(
+                            "Syncing person %d: name=%s %s external_origin=%r external_ref=%r",
+                            person.id, person.first_name, person.last_name,
+                            person.external_origin, person.external_reference,
+                        )
                         try:
                             await sync_person_outbound(db, client, person)
                             synced += 1
