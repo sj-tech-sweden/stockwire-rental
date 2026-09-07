@@ -23,7 +23,7 @@
       "automerge": false
     },
     {
-      "matchManagers": ["pip_requirements", "pip_setup"],
+      "matchManagers": ["pyproject"],
       "groupName": "backend dependencies",
       "automerge": false
     },
