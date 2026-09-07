@@ -218,18 +218,63 @@ def _job_to_opportunity_payload(job: Job) -> dict:
     return payload
 
 
-async def _find_existing_person(client: TwentyClient, company_id: str, email: str | None) -> str | None:
-    if not email:
-        return None
-    try:
-        people = await client.search_people(email=email)
-        for person_edge in people:
-            person = person_edge.get("node", person_edge)
-            company_rel = person.get("company") or {}
-            if company_rel.get("id") == company_id:
-                return person.get("id")
-    except Exception:
-        logger.debug("Could not search for existing person with email %s", email)
+async def _find_existing_person(
+    client: TwentyClient, company_id: str, email: str | None, first_name: str | None = None, last_name: str | None = None
+) -> str | None:
+    """Search for an existing person in Twenty by email or name within a company."""
+    logger.warning(
+        "_find_existing_person: company_id=%s email=%s name=%s %s",
+        company_id, email, first_name, last_name,
+    )
+
+    # Try searching by email first
+    if email:
+        try:
+            people = await client.search_people(email=email)
+            if people:
+                logger.warning("search_people by email returned %d results", len(people))
+                for person_edge in people:
+                    person = person_edge.get("node", person_edge)
+                    company_rel = person.get("company") or {}
+                    logger.warning(
+                        "  Found person: id=%s name=%s company_id=%s",
+                        person.get("id"),
+                        person.get("name"),
+                        company_rel.get("id"),
+                    )
+                    if company_rel.get("id") == company_id:
+                        logger.info("Found existing person by email: %s", person.get("id"))
+                        return person.get("id")
+            else:
+                logger.warning("search_people by email returned no results")
+        except Exception as e:
+            logger.warning("Could not search for existing person with email %s: %s", email, e)
+
+    # Try searching by name if email search didn't find anything
+    if first_name:
+        search_name = f"{first_name} {last_name or ''}".strip()
+        try:
+            people = await client.search_people(name=search_name)
+            if people:
+                logger.warning("search_people by name '%s' returned %d results", search_name, len(people))
+                for person_edge in people:
+                    person = person_edge.get("node", person_edge)
+                    company_rel = person.get("company") or {}
+                    logger.warning(
+                        "  Found person: id=%s name=%s company_id=%s",
+                        person.get("id"),
+                        person.get("name"),
+                        company_rel.get("id"),
+                    )
+                    if company_rel.get("id") == company_id:
+                        logger.info("Found existing person by name: %s", person.get("id"))
+                        return person.get("id")
+            else:
+                logger.warning("search_people by name '%s' returned no results", search_name)
+        except Exception as e:
+            logger.warning("Could not search for existing person with name %s: %s", search_name, e)
+
+    logger.warning("_find_existing_person: no match found")
     return None
 
 
@@ -476,7 +521,9 @@ async def sync_job_inbound(db: Session, client: TwentyClient, twenty_opp: dict) 
         "Inbound job update: job_id=%s opp_id=%s name=%r status=%r amount=%s",
         existing.id, opp_id, opp_name, stockwire_status, amount,
     )
-    existing.customer_name = opp_name or existing.customer_name
+    # Truncate customer_name to fit in VARCHAR(255)
+    if opp_name:
+        existing.customer_name = opp_name[:255]
     existing.status = stockwire_status
     if amount:
         existing.sales_price = amount
@@ -600,6 +647,10 @@ async def sync_person_outbound(
     are not pushed back, to avoid overwriting data in Twenty. Use force=True to
     override (e.g. for the one-time stockwire-field write-back after inbound sync).
     """
+    logger.warning(
+        "sync_person_outbound: person_id=%s external_origin=%r external_reference=%r force=%s",
+        person.id, person.external_origin, person.external_reference, force,
+    )
     if person.external_origin == "twenty" and not force:
         logger.debug("Skipping outbound sync for Twenty-originated person %s", person.id)
         return
@@ -613,23 +664,39 @@ async def sync_person_outbound(
             if company and company.external_reference:
                 person_data["companyId"] = company.external_reference
 
+        logger.warning("sync_person_outbound: person_id=%s person_data=%s", person.id, person_data)
         twenty_person_id = None
 
         if person.external_source == "twenty" and person.external_reference:
             twenty_person_id = person.external_reference
+            logger.warning(
+                "Attempting to UPDATE person %s in Twenty (twenty_id=%s)",
+                person.id, twenty_person_id,
+            )
             try:
                 await _safe_update(client, "people", twenty_person_id, person_data)
                 _log_sync(db, "outbound", "person", person.id, twenty_person_id, "update", "success")
-            except TwentyRecordNotFoundError:
-                logger.warning(
-                    "Person %s no longer exists in Twenty; recreating person %s",
-                    twenty_person_id, person.id,
-                )
-                person.external_source = None
-                person.external_reference = None
-                twenty_person_id = None
+                logger.warning("Successfully UPDATED person %s in Twenty", person.id)
+            except (TwentyRecordNotFoundError, httpx.HTTPStatusError) as e:
+                # Person doesn't exist in Twenty - clear reference and recreate
+                is_404 = isinstance(e, httpx.HTTPStatusError) and e.response.status_code == 404
+                is_not_found = isinstance(e, TwentyRecordNotFoundError)
+                if is_404 or is_not_found:
+                    logger.warning(
+                        "Person %s not found in Twenty, will recreate (reason=%s)",
+                        person.id, "404" if is_404 else "not_found",
+                    )
+                    person.external_source = None
+                    person.external_reference = None
+                    twenty_person_id = None
+                else:
+                    raise
 
         if not twenty_person_id:
+            logger.warning(
+                "Attempting to CREATE person %s in Twenty",
+                person.id,
+            )
             try:
                 result = await client.create_object("people", person_data)
                 twenty_person_id = _extract_twenty_id(result, "people")
@@ -637,12 +704,15 @@ async def sync_person_outbound(
                 person.external_reference = twenty_person_id
                 person.external_origin = person.external_origin or "stockwire"
                 _log_sync(db, "outbound", "person", person.id, twenty_person_id, "create", "success")
+                logger.warning("Successfully CREATED person %s in Twenty (twenty_id=%s)", person.id, twenty_person_id)
             except httpx.HTTPStatusError as e:
                 # Handle duplicate entry - try to find existing person in Twenty
                 if e.response.status_code == 400 and "duplicate" in str(e.response.text).lower():
                     logger.info("Person %s may already exist in Twenty, searching for existing", person.id)
+                    name_data = person_data.get("name", {})
                     existing_twenty_id = await _find_existing_person(
-                        client, person_data.get("companyId"), person.email
+                        client, person_data.get("companyId"), person.email,
+                        name_data.get("firstName"), name_data.get("lastName")
                     )
                     if existing_twenty_id:
                         twenty_person_id = existing_twenty_id

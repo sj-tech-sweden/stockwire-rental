@@ -183,8 +183,14 @@ class TwentyClient:
             filters.append('{name: {firstName: {contains: "%s"}}}' % self._sanitize_graphql_string(name))
         filter_str = ", ".join(filters) if filters else "{}"
         query = '{ people(filter: %s) { edges { node { id name { firstName lastName } emails { primaryEmail } company { id } } } } }' % filter_str
-        result = await self.graphql(query)
-        return result.get("data", {}).get("people", {}).get("edges", [])
+        try:
+            result = await self.graphql(query)
+            if result is None:
+                return []
+            return result.get("data", {}).get("people", {}).get("edges", []) or []
+        except Exception as e:
+            logger.warning("search_people failed: %s", e)
+            return []
 
     async def search_companies(self, name: str | None = None, domain: str | None = None) -> list[dict[str, Any]]:
         filters = []
