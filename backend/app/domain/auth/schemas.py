@@ -9,8 +9,8 @@ VALID_ROLES = {"admin", "manager", "viewer"}
 class UserSummary(BaseModel):
     id: int
     email: EmailStr
-    first_name: str = ""
-    last_name: str = ""
+    first_name: str | None = None
+    last_name: str | None = None
     full_name: str
     is_active: bool
     role: str
