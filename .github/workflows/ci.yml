@@ -169,59 +169,27 @@ jobs:
 
       - name: Post screenshots to PR
         if: always()
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const fs = require('fs');
-            const path = require('path');
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          DIR="frontend/tests/e2e/artifacts/screenshots"
+          if [ ! -d "$DIR" ]; then echo "No screenshots found"; exit 0; fi
+          mapfile -t FILES < <(find "$DIR" -maxdepth 1 -name '*.png' -printf '%f\n' | sort)
+          if [ ${#FILES[@]} -eq 0 ]; then echo "No screenshot files found"; exit 0; fi
 
-            const screenshotsDir = 'frontend/tests/e2e/artifacts/screenshots';
-            if (!fs.existsSync(screenshotsDir)) {
-              console.log('No screenshots found');
-              return;
-            }
+          BODY="## 📸 PR Screenshots"$'\n'
+          BODY+=$'\n'"Automated screenshots of key pages captured from this PR:"$'\n'
+          for f in "${FILES[@]}"; do
+            name="${f%.png}"
+            BODY+=$'\n'"- **${name}**: see artifact [\`${f}\`](../artifacts/pr-screenshots)"
+          done
+          BODY+=$'\n'$'\n'"Download the full screenshots from the **pr-screenshots** artifact above."
 
-            const files = fs.readdirSync(screenshotsDir).filter(f => f.endsWith('.png'));
-            if (!files.length) {
-              console.log('No screenshot files found');
-              return;
-            }
-
-            const body = [
-              '## 📸 PR Screenshots',
-              '',
-              'Automated screenshots of key pages captured from this PR:',
-              '',
-              ...files.map(f => {
-                const name = path.basename(f, '.png');
-                return `- **${name}**: see artifact [\`${f}\`](../artifacts/pr-screenshots)`;
-              }),
-              '',
-              '> Download the full screenshots from the **pr-screenshots** artifact above.',
-            ].join('\n');
-
-            // Find existing bot comment to update
-            const { data: comments } = await github.rest.issues.listComments({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.issue.number,
-            });
-            const botComment = comments.find(c =>
-              c.user.type === 'Bot' && c.body.includes('## 📸 PR Screenshots')
-            );
-
-            if (botComment) {
-              await github.rest.issues.updateComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                comment_id: botComment.id,
-                body,
-              });
-            } else {
-              await github.rest.issues.createComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: context.issue.number,
-                body,
-              });
-            }
+          EXISTING=$(gh api "repos/${GITHUB_REPOSITORY}/issues/${PR_NUMBER}/comments" \
+            --jq '.[] | select(.user.type=="Bot" and (.body | contains("## 📸 PR Screenshots"))) | .id' | head -n1)
+          if [ -n "$EXISTING" ]; then
+            gh api -X PATCH "repos/${GITHUB_REPOSITORY}/issues/comments/${EXISTING}" -f "body=${BODY}"
+          else
+            gh api -X POST "repos/${GITHUB_REPOSITORY}/issues/${PR_NUMBER}/comments" -f "body=${BODY}"
+          fi
