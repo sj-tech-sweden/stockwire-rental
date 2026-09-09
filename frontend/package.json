@@ -8,7 +8,12 @@
     "build": "quasar build -m pwa",
     "lint": "echo 'Add eslint config when app modules are in place'",
     "test:smoke": "vitest run",
-    "test:e2e": "playwright test --project=chromium"
+    "test:e2e": "playwright test --project=chromium",
+    "screenshots": "playwright test tests/e2e/screenshots.spec.ts --project=chromium",
+    "screenshots:crew": "SCREENSHOT_PAGES=crew playwright test tests/e2e/screenshots.spec.ts --project=chromium",
+    "screenshots:companies": "SCREENSHOT_PAGES=companies playwright test tests/e2e/screenshots.spec.ts --project=chromium",
+    "screenshots:up": "docker compose -f ../infra/compose/docker-compose.dev.yml up -d --build && echo 'Waiting for backend...' && for i in $(seq 1 30); do curl -sf http://localhost:8000/api/v1/auth/bootstrap-status >/dev/null 2>&1 && echo 'Backend ready!' && break || echo \"  attempt $i/30...\"; sleep 3; done && npm run screenshots",
+    "screenshots:down": "docker compose -f ../infra/compose/docker-compose.dev.yml down"
   },
   "dependencies": {
     "@orbit/data": "^0.17.0",

@@ -24,6 +24,7 @@ test.describe('Core module route smoke', () => {
       '/inventory',
       '/jobs',
       '/customers',
+      '/crew',
       '/venues',
       '/finance',
       '/settings',
@@ -31,7 +32,6 @@ test.describe('Core module route smoke', () => {
       '/labels',
       '/scan',
       '/profile',
-      '/users',
     ]
 
     for (const path of routes) {

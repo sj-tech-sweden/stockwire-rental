@@ -55,32 +55,31 @@ Boot files execute in order at app startup:
 
 ## Pages (26)
 
-| Page | Route | Description |
-|------|-------|-------------|
-| `HomePage.vue` | `/` | Dashboard with overview stats |
-| `LoginPage.vue` | `/login` | Email/password login |
-| `SetupPage.vue` | `/setup` | Initial admin setup |
-| `ForgotPasswordPage.vue` | `/forgot-password` | Password reset request |
-| `ResetPasswordPage.vue` | `/reset-password/:token` | Password reset form |
-| `InventoryPage.vue` | `/inventory` | Products, devices, zones, categories |
-| `JobsPage.vue` | `/jobs` | Job listing |
-| `JobDetailPage.vue` | `/jobs/:jobId` | Job details and requirements |
-| `ProjectsPage.vue` | `/projects` | Project listing |
-| `CompaniesPage.vue` | `/companies` | Customers and suppliers |
-| `CustomerDetailPage.vue` | `/companies/:customerId` | Customer details |
-| `CrewPage.vue` | `/crew` | Crew member listing |
-| `CrewDetailPage.vue` | `/crew/:crewMemberId` | Crew member details |
-| `VenuesPage.vue` | `/venues` | Venue listing |
-| `LabelsPage.vue` | `/labels` | Label template management |
-| `ScanPage.vue` | `/scan` | Barcode/QR scanning |
-| `MaintenancePage.vue` | `/maintenance` | Maintenance and defects |
-| `ActivityPage.vue` | `/activity` | Audit/activity log |
-| `FinancePage.vue` | `/finance` | Financial transactions |
-| `SettingsPage.vue` | `/settings` | App settings (admin only) |
-| `UsersPage.vue` | `/users` | User management (admin only) |
-| `ProfilePage.vue` | `/profile` | Current user profile |
-| `RoutePlannerPage.vue` | `/route-planner` | Route planning |
-| `WarehouseLedsPage.vue` | *(not routed)* | LED controller management |
+| Page | Route | Description | Screenshot |
+|------|-------|-------------|-----------|
+| `HomePage.vue` | `/` | Dashboard with overview stats | ![Dashboard](screenshots/dashboard-dark.png) |
+| `LoginPage.vue` | `/login` | Email/password login | |
+| `SetupPage.vue` | `/setup` | Initial admin setup | |
+| `ForgotPasswordPage.vue` | `/forgot-password` | Password reset request | |
+| `ResetPasswordPage.vue` | `/reset-password/:token` | Password reset form | |
+| `InventoryPage.vue` | `/inventory` | Products, devices, zones, categories | |
+| `JobsPage.vue` | `/jobs` | Job listing | ![Jobs](screenshots/jobs-dark.png) |
+| `JobDetailPage.vue` | `/jobs/:jobId` | Job details and requirements | |
+| `ProjectsPage.vue` | `/projects` | Project listing | |
+| `CompaniesPage.vue` | `/companies` | Customers and suppliers | ![Companies](screenshots/companies-dark.png) |
+| `CustomerDetailPage.vue` | `/companies/:customerId` | Customer details | |
+| `CrewPage.vue` | `/crew` | Crew member listing | ![Crew](screenshots/crew-dark.png) |
+| `CrewDetailPage.vue` | `/crew/:crewMemberId` | Crew member details | |
+| `VenuesPage.vue` | `/venues` | Venue listing | ![Venues](screenshots/venues-dark.png) |
+| `LabelsPage.vue` | `/labels` | Label template management | ![Labels](screenshots/labels-dark.png) |
+| `ScanPage.vue` | `/scan` | Barcode/QR scanning | ![Scan](screenshots/scan-dark.png) |
+| `MaintenancePage.vue` | `/maintenance` | Maintenance and defects | |
+| `ActivityPage.vue` | `/activity` | Audit/activity log | ![Activity](screenshots/activity-dark.png) |
+| `FinancePage.vue` | `/finance` | Financial transactions | ![Finance](screenshots/finance-dark.png) |
+| `SettingsPage.vue` | `/settings` | App settings (admin only) | ![Settings](screenshots/settings-dark.png) |
+| `ProfilePage.vue` | `/profile` | Current user profile | |
+| `RoutePlannerPage.vue` | `/route-planner` | Route planning | |
+| `WarehouseLedsPage.vue` | *(not routed)* | LED controller management | |
 
 **Redirects:**
 - `/defects` → `/maintenance`

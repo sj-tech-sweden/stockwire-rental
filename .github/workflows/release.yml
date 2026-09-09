@@ -82,13 +82,56 @@ jobs:
           TAG="${{ steps.semver.outputs.tag }}"
           RELEASE_SHA="${{ steps.set_release_sha.outputs.sha }}"
 
-          # Generate changelog from RELEASE_SHA so the notes always match the actual --target.
+          # Generate structured changelog
           git fetch --tags
           LATEST=$(git describe --tags --abbrev=0 "${RELEASE_SHA}^" 2>/dev/null || echo "0.0.0")
+
           if [ "$LATEST" = "0.0.0" ]; then
-            NOTES=$(git log --pretty=format:'- %s (%h)' -n 50 "$RELEASE_SHA")
+            RANGE="$RELEASE_SHA"
+            COMMITS=$(git log --pretty=format:'%s|||%h' -n 50 "$RELEASE_SHA")
           else
-            NOTES=$(git log --pretty=format:'- %s (%h)' "${LATEST}..${RELEASE_SHA}")
+            RANGE="${LATEST}..${RELEASE_SHA}"
+            COMMITS=$(git log --pretty=format:'%s|||%h' "$RANGE")
+          fi
+
+          # Categorize commits
+          FEATURES=""
+          FIXES=""
+          BREAKING=""
+          OTHER=""
+          while IFS= read -r line; do
+            [ -z "$line" ] && continue
+            MSG="${line%%|||*}"
+            SHA="${line##*|||}"
+            # Check for conventional commit prefixes
+            if echo "$MSG" | grep -qiE '^feat(\(|:)|^[a-z]+(\(|:).*\bfeat'; then
+              FEATURES="${FEATURES}- ${MSG} (\`${SHA}\`)\n"
+            elif echo "$MSG" | grep -qiE '^fix(\(|:)|^[a-z]+(\(|:).*\bfix'; then
+              FIXES="${FIXES}- ${MSG} (\`${SHA}\`)\n"
+            elif echo "$MSG" | grep -qiE '^breaking|^BREAKING'; then
+              BREAKING="${BREAKING}- ${MSG} (\`${SHA}\`)\n"
+            else
+              OTHER="${OTHER}- ${MSG} (\`${SHA}\`)\n"
+            fi
+          done <<< "$COMMITS"
+
+          # Build release notes
+          NOTES=""
+          TYPE="${{ steps.rtype.outputs.type }}"
+          if [ "$TYPE" = "major" ]; then
+            NOTES="## ⚠️ Breaking Changes\n\n"
+          fi
+          if [ -n "$BREAKING" ]; then
+            NOTES="${NOTES}${BREAKING}\n"
+          fi
+          if [ -n "$FEATURES" ]; then
+            NOTES="${NOTES}## ✨ Features\n\n${FEATURES}\n"
+          fi
+          if [ -n "$FIXES" ]; then
+            NOTES="${NOTES}## 🐛 Bug Fixes\n\n${FIXES}\n"
+          fi
+          if [ -n "$OTHER" ]; then
+            NOTES="${NOTES}## 📦 Other Changes\n\n${OTHER}\n"
           fi
           if [ -z "$NOTES" ]; then
             NOTES="No notable changes"
@@ -101,6 +144,86 @@ jobs:
           fi
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  generate-pr-release-notes:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' && github.event.pull_request.merged == true
+    permissions:
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Generate PR summary
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const pr = context.payload.pull_request;
+            const commits = await github.rest.pulls.listCommits({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: pr.number,
+              per_page: 100,
+            });
+
+            const features = [];
+            const fixes = [];
+            const other = [];
+
+            for (const c of commits.data) {
+              const msg = c.commit.message.split('\n')[0];
+              const sha = c.sha.substring(0, 7);
+              const entry = `- ${msg} (\`${sha}\`)`;
+
+              if (/^feat[(\s:]/i.test(msg) || /feat[(\s:]/i.test(msg)) {
+                features.push(entry);
+              } else if (/^fix[(\s:]/i.test(msg) || /fix[(\s:]/i.test(msg)) {
+                fixes.push(entry);
+              } else {
+                other.push(entry);
+              }
+            }
+
+            const sections = [];
+            if (features.length) sections.push('### ✨ Features\n' + features.join('\n'));
+            if (fixes.length) sections.push('### 🐛 Bug Fixes\n' + fixes.join('\n'));
+            if (other.length) sections.push('### 📦 Other Changes\n' + other.join('\n'));
+
+            const body = [
+              `## Release Notes for v${pr.title || pr.number}`,
+              '',
+              sections.join('\n\n') || 'No conventional commits found.',
+              '',
+              `**Merged:** ${new Date(pr.merged_at).toLocaleDateString()}`,
+              `**Commits:** ${commits.data.length}`,
+            ].join('\n');
+
+            // Find existing bot comment
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: pr.number,
+            });
+            const botComment = comments.find(c =>
+              c.user.type === 'Bot' && c.body.includes('## Release Notes for v')
+            );
+
+            if (botComment) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: botComment.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: pr.number,
+                body,
+              });
+            }
   build-and-push:
     needs: create-release
     permissions:

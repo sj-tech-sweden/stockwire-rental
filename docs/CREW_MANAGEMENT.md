@@ -68,6 +68,8 @@ Certifications are formal qualifications:
 
 ### Crew List
 
+![Crew](screenshots/crew-dark.png)
+
 1. Navigate to `/crew`
 2. View all crew members in a table
 3. Click "Add Crew Member" to create new
