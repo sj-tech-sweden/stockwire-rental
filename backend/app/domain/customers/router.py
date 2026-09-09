@@ -147,7 +147,7 @@ def get_customer_info(customer_id: int, db: Session = Depends(get_db)) -> Custom
                 selectinload(CrewMember.certifications),
                 selectinload(CrewMember.preferred_roles),
             )
-            .order_by(CrewMember.name)
+            .order_by(CrewMember.id)
         ).all())
         result.crew_members = [
             CustomerCrewMemberSummary(
@@ -410,7 +410,7 @@ def get_company_info(company_id: int, db: Session = Depends(get_db)) -> CompanyI
                 selectinload(CrewMember.certifications),
                 selectinload(CrewMember.preferred_roles),
             )
-            .order_by(CrewMember.name)
+            .order_by(Person.last_name, Person.first_name)
         ).all())
         result.crew_members = [
             CompanyCrewMemberSummary(

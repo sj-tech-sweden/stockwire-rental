@@ -499,10 +499,17 @@ def upsert_external_user(
             detail="SSO account is not provisioned and auto-create is disabled",
         )
 
+    # Parse full_name into first_name/last_name
+    name_parts = (full_name or email).strip().split(None, 1)
+    first_name = name_parts[0] if name_parts else ""
+    last_name = name_parts[1] if len(name_parts) > 1 else ""
+
     if existing is None:
         existing = User(
             email=email,
             password_hash=hash_password(secrets.token_urlsafe(48)),
+            first_name=first_name,
+            last_name=last_name,
             full_name=full_name or email,
             role=desired_role,
             is_active=True,
@@ -519,6 +526,8 @@ def upsert_external_user(
             existing.external_provider = provider_key
             existing.external_subject = subject
         if full_name and full_name != existing.full_name:
+            existing.first_name = first_name
+            existing.last_name = last_name
             existing.full_name = full_name
 
     if runtime.sync_roles_on_login and desired_role in VALID_ROLES:

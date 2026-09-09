@@ -61,6 +61,12 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 limiter = Limiter(key_func=get_remote_address, enabled=settings.app_env != "test")
 
 
+def _derive_full_name(first_name: str, last_name: str, fallback_full_name: str = "") -> str:
+    """Derive full_name from first_name and last_name, with fallback."""
+    combined = f"{first_name} {last_name}".strip()
+    return combined if combined else fallback_full_name
+
+
 def _set_refresh_cookie(response: Response, refresh_token: str) -> None:
     max_age = settings.jwt_refresh_expire_days * 24 * 60 * 60
     response.set_cookie(
@@ -329,10 +335,15 @@ def setup_admin(request: Request, payload: UserCreate, response: Response, db: S
     count = db.scalar(select(func.count()).select_from(User))
     if count and count > 0:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Setup already complete")
+    first_name = payload.first_name.strip()
+    last_name = payload.last_name.strip()
+    full_name = _derive_full_name(first_name, last_name, payload.full_name)
     user = User(
         email=payload.email,
         password_hash=hash_password(payload.password),
-        full_name=payload.full_name,
+        first_name=first_name,
+        last_name=last_name,
+        full_name=full_name,
         role="admin",
         is_active=True,
         is_admin=True,
@@ -581,7 +592,12 @@ def update_me(
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email already registered")
 
     current_user.email = normalized_email
-    current_user.full_name = str(payload.full_name or "").strip() or current_user.full_name
+    current_user.first_name = str(payload.first_name or "").strip() or current_user.first_name
+    current_user.last_name = str(payload.last_name or "").strip() or current_user.last_name
+    current_user.full_name = _derive_full_name(
+        current_user.first_name, current_user.last_name,
+        str(payload.full_name or "").strip() or current_user.full_name,
+    )
     current_user.notification_channel = payload.notification_channel
 
     new_password = str(payload.password or "").strip()
@@ -608,13 +624,21 @@ def create_user(
     db: Session = Depends(get_db),
     _: User = Depends(require_admin),
 ) -> User:
-    existing = db.scalar(select(User).where(User.email == payload.email))
+    normalized_email = str(payload.email or "").strip().lower()
+    if not normalized_email:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email is required")
+    existing = db.scalar(select(User).where(func.lower(User.email) == normalized_email))
     if existing:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email already registered")
+    first_name = payload.first_name.strip()
+    last_name = payload.last_name.strip()
+    full_name = _derive_full_name(first_name, last_name, payload.full_name)
     user = User(
-        email=payload.email,
+        email=normalized_email,
         password_hash=hash_password(payload.password),
-        full_name=payload.full_name,
+        first_name=first_name,
+        last_name=last_name,
+        full_name=full_name,
         role=payload.role,
         notification_channel=payload.notification_channel,
         is_active=payload.is_active,
@@ -649,11 +673,20 @@ def update_user(
     user = db.get(User, user_id)
     if user is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    # Normalize email
+    normalized_email = str(payload.email or "").strip().lower()
+    if not normalized_email:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email is required")
+    existing = db.scalar(select(User).where(func.lower(User.email) == normalized_email, User.id != user_id))
+    if existing:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email already registered")
     # Update fields
-    user.email = payload.email
+    user.email = normalized_email
     if payload.password:
         user.password_hash = hash_password(payload.password)
-    user.full_name = payload.full_name
+    user.first_name = payload.first_name.strip()
+    user.last_name = payload.last_name.strip()
+    user.full_name = _derive_full_name(user.first_name, user.last_name, payload.full_name)
     user.role = payload.role
     user.is_active = payload.is_active
     user.is_admin = payload.role == "admin"

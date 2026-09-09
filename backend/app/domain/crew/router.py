@@ -19,6 +19,7 @@ from app.domain.crew.models import (
     JobRequiredSkill,
     JobRoleRequiredCertification,
 )
+from app.domain.customers.models import Person
 from app.domain.crew.schemas import (
     CrewCertificationCreate,
     CrewCertificationRead,
@@ -65,8 +66,6 @@ def _to_crew_certification_read(cert: CrewCertification) -> CrewCertificationRea
 
 
 def _to_crew_member_read(db: Session, member: CrewMember) -> CrewMemberRead:
-    from app.domain.customers.models import Company, Person
-
     skills = [_to_crew_skill_read(sk.skill) for sk in member.skills] if member.skills else []
     certs = []
     for cert_link in member.certifications:
@@ -81,14 +80,10 @@ def _to_crew_member_read(db: Session, member: CrewMember) -> CrewMemberRead:
     user_name = member.user.full_name if member.user else None
     supplier_name = member.supplier.name if member.supplier else None
     
-    # Get company name from person relationship
+    # Derive company name from eagerly-loaded person relationship
     company_name = None
-    if member.person_id:
-        person = db.get(Person, member.person_id)
-        if person and person.company_id:
-            company = db.get(Company, person.company_id)
-            if company:
-                company_name = company.name
+    if member.person and member.person.company:
+        company_name = member.person.company.name
     
     assignments = []
     if member.assignments:
@@ -155,7 +150,14 @@ def _to_job_crew_requirement_read(db: Session, req: JobCrewRequirement) -> JobCr
 
 
 def _to_job_crew_assignment_read(db: Session, assignment: JobCrewAssignment) -> JobCrewAssignmentRead:
-    member = db.get(CrewMember, assignment.crew_member_id)
+    member = db.scalars(
+        select(CrewMember)
+        .where(CrewMember.id == assignment.crew_member_id)
+        .options(
+            selectinload(CrewMember.user),
+            selectinload(CrewMember.person),
+        )
+    ).first()
     member_name = member.name if member else None
     role_name = None
     req = db.get(JobCrewRequirement, assignment.job_crew_requirement_id)
@@ -371,9 +373,10 @@ def list_crew_members(
     active_only: bool = False,
     db: Session = Depends(get_db),
 ) -> list[CrewMemberRead]:
-    q = select(CrewMember).order_by(CrewMember.name).options(
+    q = select(CrewMember).order_by(CrewMember.id).options(
         selectinload(CrewMember.user),
         selectinload(CrewMember.supplier),
+        selectinload(CrewMember.person).selectinload(Person.company),
         selectinload(CrewMember.skills).selectinload(CrewMemberSkill.skill),
         selectinload(CrewMember.certifications).selectinload(CrewMemberCertification.certification),
         selectinload(CrewMember.preferred_roles),
@@ -401,6 +404,7 @@ def get_crew_member(member_id: int, db: Session = Depends(get_db)) -> CrewMember
         .options(
             selectinload(CrewMember.user),
             selectinload(CrewMember.supplier),
+            selectinload(CrewMember.person).selectinload(Person.company),
             selectinload(CrewMember.skills).selectinload(CrewMemberSkill.skill),
             selectinload(CrewMember.certifications).selectinload(CrewMemberCertification.certification),
             selectinload(CrewMember.preferred_roles),
@@ -419,9 +423,6 @@ def get_crew_member(member_id: int, db: Session = Depends(get_db)) -> CrewMember
 def create_crew_member(payload: CrewMemberCreate, db: Session = Depends(get_db)) -> CrewMemberRead:
     _ensure_default_roles(db)
     member = CrewMember(
-        name=payload.name.strip(),
-        email=payload.email,
-        phone=payload.phone,
         user_id=payload.user_id,
         supplier_id=payload.supplier_id,
         person_id=payload.person_id,
@@ -463,12 +464,6 @@ def update_crew_member(member_id: int, payload: CrewMemberUpdate, db: Session = 
     if not member:
         raise HTTPException(status_code=404, detail="Crew member not found")
 
-    if payload.name is not None:
-        member.name = payload.name.strip()
-    if payload.email is not None:
-        member.email = payload.email
-    if payload.phone is not None:
-        member.phone = payload.phone
     if payload.user_id is not None:
         member.user_id = payload.user_id
     if payload.supplier_id is not None:
@@ -814,7 +809,10 @@ def get_crew_suggestions(
         return []
 
     all_members = list(db.scalars(
-        select(CrewMember).where(CrewMember.is_active.is_(True))
+        select(CrewMember).where(CrewMember.is_active.is_(True)).options(
+            selectinload(CrewMember.user),
+            selectinload(CrewMember.person),
+        )
     ).all())
 
     assigned_member_ids: set[int] = set()
@@ -882,7 +880,14 @@ def get_crew_suggestions(
 
 
 def _resolve_crew_member_for_user(db: Session, user: User) -> CrewMember:
-    """Find the CrewMember linked to the current user. Raises 404 if not found."""
+    """Find the CrewMember linked to the current user.
+
+    Tries in order:
+    1. Direct user_id link
+    2. Person record matching the user's email (person_id link)
+    Raises 404 if neither is found.
+    """
+    # 1. Direct user_id link
     member = db.scalars(
         select(CrewMember)
         .where(CrewMember.user_id == user.id)
@@ -891,9 +896,28 @@ def _resolve_crew_member_for_user(db: Session, user: User) -> CrewMember:
             selectinload(CrewMember.certifications).selectinload(CrewMemberCertification.certification),
         )
     ).first()
-    if not member:
-        raise HTTPException(status_code=404, detail="No crew member profile is linked to your account")
-    return member
+    if member:
+        return member
+
+    # 2. Person record matching the user's email
+    if user.email:
+        from app.domain.customers.models import Person
+        person = db.scalars(
+            select(Person).where(func.lower(Person.email) == user.email.lower())
+        ).first()
+        if person:
+            member = db.scalars(
+                select(CrewMember)
+                .where(CrewMember.person_id == person.id)
+                .options(
+                    selectinload(CrewMember.skills).selectinload(CrewMemberSkill.skill),
+                    selectinload(CrewMember.certifications).selectinload(CrewMemberCertification.certification),
+                )
+            ).first()
+            if member:
+                return member
+
+    raise HTTPException(status_code=404, detail="No crew member profile is linked to your account")
 
 
 @router.get("/users/me/skills", response_model=list[CrewSkillRead])
@@ -993,7 +1017,7 @@ def add_my_certification(
         certification_id=payload.certification_type_id,
         certificate_number=payload.certificate_number,
         issued_at=payload.issued_at,
-        expiry_date=payload.expires_at,
+        expiry_date=payload.expiry_date,
     )
     db.add(cert)
     db.commit()

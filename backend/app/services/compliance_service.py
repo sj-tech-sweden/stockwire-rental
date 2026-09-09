@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session, selectinload
 
 from app.domain.crew.models import (
     CrewCertification,
+    CrewMember,
     CrewMemberCertification,
     CrewMemberSkill,
     CrewRole,
@@ -68,7 +69,11 @@ def check_job_crew_compliance(db: Session, job_id: int) -> JobComplianceResult:
         .where(JobCrewRequirement.job_id == job_id)
         .options(
             selectinload(JobCrewRequirement.assignments)
-            .selectinload(JobCrewAssignment.crew_member),
+            .selectinload(JobCrewAssignment.crew_member)
+            .selectinload(CrewMember.user),
+            selectinload(JobCrewRequirement.assignments)
+            .selectinload(JobCrewAssignment.crew_member)
+            .selectinload(CrewMember.person),
             selectinload(JobCrewRequirement.required_skills)
             .selectinload(JobRequiredSkill.skill),
             selectinload(JobCrewRequirement.crew_role)
