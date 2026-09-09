@@ -22,7 +22,7 @@ Closes #
 Related #
 
 ## Screenshots / Recordings
-Add UI evidence for frontend changes.
+Automated screenshots of key pages are captured in the **pr-screenshots** artifact. Add any additional UI evidence for frontend changes here.
 
 ## Release Notes
 - User impact:

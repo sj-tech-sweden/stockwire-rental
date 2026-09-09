@@ -13,6 +13,8 @@ frontend/node_modules/
 # Frontend build artifacts
 frontend/dist/
 frontend/.quasar/
+frontend/test-results/
+frontend/playwright-report/
 
 # Local storage uploads
 backend/data/uploads/

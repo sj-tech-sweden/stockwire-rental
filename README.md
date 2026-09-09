@@ -7,6 +7,8 @@ Rental and warehouse platform in one application with:
 - Separate containers
 - 12-factor operational model
 
+![Dashboard](docs/screenshots/dashboard-dark.png)
+
 ## Current Baseline Status (2026-08-06)
 
 Already delivered in baseline:

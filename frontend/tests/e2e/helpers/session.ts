@@ -24,12 +24,15 @@ export async function ensureLoggedIn(page: Page): Promise<SessionInfo> {
   const bootstrapRes = await page.request.get(`${apiBase}/api/v1/auth/bootstrap-status`)
   expect(bootstrapRes.ok()).toBeTruthy()
   const bootstrapPayload = await bootstrapRes.json()
+  console.log(`[auth] bootstrap-status: ${JSON.stringify(bootstrapPayload)}`)
   let selected = credentialCandidates[0]
 
   if (bootstrapPayload?.setup_needed) {
+    console.log(`[auth] Setup needed, creating admin with ${selected.email}`)
     const setupRes = await page.request.post(`${apiBase}/api/v1/auth/setup`, {
       data: { full_name: 'E2E Admin', email: selected.email, password: selected.password },
     })
+    console.log(`[auth] setup response: ${setupRes.status()}`)
     // Another parallel test/process may complete setup between calls.
     expect([201, 409]).toContain(setupRes.status())
   }
@@ -39,6 +42,7 @@ export async function ensureLoggedIn(page: Page): Promise<SessionInfo> {
     const loginProbe = await page.request.post(`${apiBase}/api/v1/auth/login`, {
       data: { email: candidate.email, password: candidate.password },
     })
+    console.log(`[auth] login probe ${candidate.email}: ${loginProbe.status()}`)
     if (loginProbe.ok()) {
       selected = candidate
       canLogin = true

@@ -43,7 +43,6 @@ const routes = [
     children: [
       { path: '', component: () => import('../pages/HomePage.vue') },
       { path: 'auth', redirect: '/settings?tab=auth' },
-      { path: 'users', component: () => import('../pages/UsersPage.vue') },
       { path: 'inventory', component: () => import('../pages/InventoryPage.vue') },
       { path: 'labels', component: () => import('../pages/LabelsPage.vue') },
       { path: 'scan', component: () => import('../pages/ScanPage.vue') },
