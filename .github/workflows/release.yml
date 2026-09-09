@@ -156,74 +156,40 @@ jobs:
           fetch-depth: 0
 
       - name: Generate PR summary
-        uses: actions/github-script@v9
-        with:
-          script: |
-            const pr = context.payload.pull_request;
-            const commits = await github.rest.pulls.listCommits({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              pull_number: pr.number,
-              per_page: 100,
-            });
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          COMMITS=$(gh api "repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}/commits?per_page=100" \
+            --jq '.[] | "\(.commit.message | split("\n")[0])|\(.sha[0:7])"')
 
-            const features = [];
-            const fixes = [];
-            const other = [];
+          FEATURES=""; FIXES=""; OTHER=""
+          while IFS='|' read -r msg sha; do
+            [ -z "$msg" ] && continue
+            entry="- ${msg} (\`${sha}\`)"
+            if [[ "$msg" =~ ^feat ]]; then
+              FEATURES+="${entry}"$'\n'
+            elif [[ "$msg" =~ ^fix ]]; then
+              FIXES+="${entry}"$'\n'
+            else
+              OTHER+="${entry}"$'\n'
+            fi
+          done <<< "$COMMITS"
 
-            for (const c of commits.data) {
-              const msg = c.commit.message.split('\n')[0];
-              const sha = c.sha.substring(0, 7);
-              const entry = `- ${msg} (\`${sha}\`)`;
+          BODY="## Release Notes for v${{ github.event.pull_request.number }}"$'\n'
+          [ -n "$FEATURES" ] && BODY+=$'\n'"### ✨ Features"$'\n'"${FEATURES}"
+          [ -n "$FIXES" ] && BODY+=$'\n'"### 🐛 Bug Fixes"$'\n'"${FIXES}"
+          [ -n "$OTHER" ] && BODY+=$'\n'"### 📦 Other Changes"$'\n'"${OTHER}"
+          if [ -z "$FEATURES$FIXES$OTHER" ]; then BODY+=$'\n'"No conventional commits found."; fi
+          BODY+=$'\n'$'\n'"**Merged:** ${{ github.event.pull_request.merged_at }}"$'\n'"**Commits:** $(echo "$COMMITS" | grep -c .)"
 
-              if (/^feat[(\s:]/i.test(msg) || /feat[(\s:]/i.test(msg)) {
-                features.push(entry);
-              } else if (/^fix[(\s:]/i.test(msg) || /fix[(\s:]/i.test(msg)) {
-                fixes.push(entry);
-              } else {
-                other.push(entry);
-              }
-            }
-
-            const sections = [];
-            if (features.length) sections.push('### ✨ Features\n' + features.join('\n'));
-            if (fixes.length) sections.push('### 🐛 Bug Fixes\n' + fixes.join('\n'));
-            if (other.length) sections.push('### 📦 Other Changes\n' + other.join('\n'));
-
-            const body = [
-              `## Release Notes for v${pr.title || pr.number}`,
-              '',
-              sections.join('\n\n') || 'No conventional commits found.',
-              '',
-              `**Merged:** ${new Date(pr.merged_at).toLocaleDateString()}`,
-              `**Commits:** ${commits.data.length}`,
-            ].join('\n');
-
-            // Find existing bot comment
-            const { data: comments } = await github.rest.issues.listComments({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: pr.number,
-            });
-            const botComment = comments.find(c =>
-              c.user.type === 'Bot' && c.body.includes('## Release Notes for v')
-            );
-
-            if (botComment) {
-              await github.rest.issues.updateComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                comment_id: botComment.id,
-                body,
-              });
-            } else {
-              await github.rest.issues.createComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: pr.number,
-                body,
-              });
-            }
+          EXISTING=$(gh api "repos/${GITHUB_REPOSITORY}/issues/${PR_NUMBER}/comments" \
+            --jq '.[] | select(.user.type=="Bot" and (.body | contains("## Release Notes for v"))) | .id' | head -n1)
+          if [ -n "$EXISTING" ]; then
+            gh api -X PATCH "repos/${GITHUB_REPOSITORY}/issues/comments/${EXISTING}" -f "body=${BODY}"
+          else
+            gh api -X POST "repos/${GITHUB_REPOSITORY}/issues/${PR_NUMBER}/comments" -f "body=${BODY}"
+          fi
   build-and-push:
     needs: create-release
     permissions:
