@@ -9,6 +9,8 @@ VALID_ROLES = {"admin", "manager", "viewer"}
 class UserSummary(BaseModel):
     id: int
     email: EmailStr
+    first_name: str = ""
+    last_name: str = ""
     full_name: str
     is_active: bool
     role: str
@@ -23,7 +25,9 @@ class UserSummary(BaseModel):
 class UserCreate(BaseModel):
     email: EmailStr
     password: str
-    full_name: str
+    first_name: str = ""
+    last_name: str = ""
+    full_name: str = ""
     is_active: bool = True
     role: Literal["admin", "manager", "viewer"] = "viewer"
     notification_channel: Literal["email", "web_push", "both", "none"] = "both"
@@ -36,7 +40,9 @@ class UserLogin(BaseModel):
 
 class UserSelfUpdate(BaseModel):
     email: EmailStr
-    full_name: str
+    first_name: str = ""
+    last_name: str = ""
+    full_name: str = ""
     password: str | None = None
     notification_channel: Literal["email", "web_push", "both", "none"] = "both"
 

@@ -375,21 +375,19 @@
           <q-form ref="crewFormRef" @submit.prevent="saveCrewMember">
             <div class="row q-col-gutter-sm">
               <div class="col-12 col-md-6">
-                <q-input
-                  v-model="crewMemberForm.name"
-                  :label="t('crew.memberName')"
+                <q-select
+                  v-model="crewMemberForm.person_id"
+                  :options="filteredPersonOptions"
+                  :label="t('crew.linkPerson')"
                   outlined
                   dense
+                  clearable
+                  emit-value
+                  map-options
+                  use-input
+                  @filter="filterPersons"
                   :rules="[v => !!v || t('common.required')]"
                 />
-              </div>
-              <div class="col-12 col-md-6">
-                <q-input v-model="crewMemberForm.email" :label="t('profile.email')" type="email" outlined dense />
-              </div>
-            </div>
-            <div class="row q-col-gutter-sm q-mt-sm">
-              <div class="col-12 col-md-6">
-                <q-input v-model="crewMemberForm.phone" :label="t('customers.phone')" outlined dense />
               </div>
               <div class="col-12 col-md-6">
                 <q-input v-model.number="crewMemberForm.hourly_rate" :label="t('crew.hourlyRate')" type="number" min="0" step="0.01" outlined dense />
@@ -449,6 +447,20 @@
               </q-badge>
             </div>
             <div v-else class="text-caption text-grey-7 q-mb-sm">{{ t('crew.noCertifications') }}</div>
+
+            <q-separator class="q-my-md" />
+            <div class="text-subtitle2 q-mb-sm">{{ t('crew.preferredRoles') }}</div>
+            <q-select
+              v-model="crewMemberForm.preferred_role_ids"
+              :options="crewRoleOptions"
+              multiple
+              emit-value
+              map-options
+              outlined
+              dense
+              clearable
+              use-chips
+            />
           </q-form>
         </q-card-section>
 
@@ -473,6 +485,7 @@ import { useCrewStore } from '../stores/crew'
 import { useInventoryStore } from '../stores/inventory'
 import { useAuthStore } from '../stores/auth'
 import { useSettingsStore } from '../stores/settings'
+import { usePersonsStore } from '../stores/persons'
 import { COUNTRIES } from '../constants/countries'
 import { normalizeCurrencyCode } from '../constants/currencies'
 import { translateMaybePrefillCustomFieldLabel, translateMaybePrefillCustomFieldOption } from '../i18n/prefillContent'
@@ -504,6 +517,7 @@ const crewStore = useCrewStore()
 const inventoryStore = useInventoryStore()
 const authStore = useAuthStore()
 const settingsStore = useSettingsStore()
+const personsStore = usePersonsStore()
 
 const pageLoading = ref(false)
 const saving = ref(false)
@@ -519,6 +533,7 @@ const crewFormRef = ref(null)
 const newSkill = ref('')
 const newCert = ref('')
 const crewMemberForm = ref(emptyCrewMemberForm())
+const filteredPersonOptions = ref([])
 const productInfoDialogOpen = ref(false)
 const selectedProductForInfo = ref(null)
 const productEditDialogOpen = ref(false)
@@ -562,6 +577,7 @@ const form = ref(emptyForm())
 
 const linkedProducts = computed(() => (info.value?.supplied_products || []).filter(p => !p.is_rental_product))
 const linkedRentals = computed(() => (info.value?.supplied_products || []).filter(p => p.is_rental_product))
+const crewRoleOptions = computed(() => crewStore.roles.map(r => ({ label: r.name, value: r.id })))
 
 function formatDate(value) {
   if (!value) return '-'
@@ -579,6 +595,18 @@ function getSkillName(skillId) {
 function getCertName(certId) {
   const cert = crewStore.certifications.find(c => c.id === certId)
   return cert?.name || `Cert #${certId}`
+}
+
+function filterPersons(val, update) {
+  update(() => {
+    const term = String(val || '').toLowerCase()
+    if (!personsStore.persons.length) {
+      personsStore.fetchAll().catch(() => {})
+    }
+    filteredPersonOptions.value = (personsStore.persons || [])
+      .filter(p => !term || `${p.first_name} ${p.last_name}`.toLowerCase().includes(term) || (p.email || '').toLowerCase().includes(term))
+      .map(p => ({ label: `${p.first_name} ${p.last_name}`, value: p.id }))
+  })
 }
 
 function formatMoney(value) {
@@ -661,10 +689,8 @@ function onRentalSaved() {
 function openCrewMember(cm) {
   editingCrewMember.value = cm
   crewMemberForm.value = {
-    name: cm.name || '',
-    email: cm.email || '',
-    phone: cm.phone || '',
     user_id: cm.user_id || null,
+    person_id: cm.person_id || null,
     supplier_id: cm.supplier_id || null,
     hourly_rate: cm.hourly_rate ?? null,
     daily_rate: cm.daily_rate ?? null,
@@ -673,7 +699,7 @@ function openCrewMember(cm) {
     skill_ids: (cm.skills || []).map(s => s.id || s),
     certification_items: (cm.certifications || []).map(c => ({
       certification_id: c.certification?.id || c.certification_id,
-      expiry_date: c.expiry_date || c.expires_at || null,
+      expiry_date: c.expiry_date || null,
     })),
     preferred_role_ids: (cm.preferred_roles || []).map(r => r.id),
   }
@@ -685,10 +711,8 @@ function openCrewMember(cm) {
 function openNewCrewMember() {
   editingCrewMember.value = null
   crewMemberForm.value = {
-    name: '',
-    email: '',
-    phone: '',
     user_id: null,
+    person_id: null,
     supplier_id: currentCustomer.value?.id || null,
     hourly_rate: null,
     daily_rate: null,
@@ -705,10 +729,8 @@ function openNewCrewMember() {
 
 function emptyCrewMemberForm() {
   return {
-    name: '',
-    email: '',
-    phone: '',
     user_id: null,
+    person_id: null,
     supplier_id: null,
     hourly_rate: null,
     daily_rate: null,
@@ -863,8 +885,10 @@ async function loadData() {
       settingsStore.fetchCompanyProfile(),
       settingsStore.fetchTwentyConfig().then(data => { twentyConfig.value = data }).catch(() => { twentyConfig.value = null }),
       inventoryStore.fetchAll(),
+      crewStore.fetchRoles(),
       crewStore.fetchSkills(),
       crewStore.fetchCertifications(),
+      personsStore.fetchAll(),
     ])
 
     if (isNewCustomer.value) {

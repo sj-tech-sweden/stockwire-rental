@@ -1,6 +1,6 @@
-from datetime import datetime, date
+from datetime import UTC, datetime, date
 
-from sqlalchemy import Boolean, Column, DateTime, Date, ForeignKey, Integer, Numeric, String, Table, Text, UniqueConstraint
+from sqlalchemy import Boolean, Column, DateTime, Date, ForeignKey, Integer, Numeric, String, Table, Text, UniqueConstraint, CheckConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -12,7 +12,7 @@ class CrewSkill(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(120), unique=True, index=True)
     category: Mapped[str | None] = mapped_column(String(100), nullable=True, index=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
 
     member_links: Mapped[list["CrewMemberSkill"]] = relationship(
         back_populates="skill", cascade="all, delete-orphan"
@@ -28,7 +28,7 @@ class CrewCertification(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(120), unique=True, index=True)
     category: Mapped[str | None] = mapped_column(String(100), nullable=True, index=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
 
     member_links: Mapped[list["CrewMemberCertification"]] = relationship(
         back_populates="certification", cascade="all, delete-orphan"
@@ -43,7 +43,7 @@ class CrewRole(Base):
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     is_default: Mapped[bool] = mapped_column(Boolean, default=False)
     sort_order: Mapped[int] = mapped_column(Integer, default=0)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
 
     crew_requirements: Mapped[list["JobCrewRequirement"]] = relationship(
         back_populates="crew_role"
@@ -59,11 +59,14 @@ class CrewRole(Base):
 
 class CrewMember(Base):
     __tablename__ = "crew_members"
+    __table_args__ = (
+        CheckConstraint(
+            "user_id IS NOT NULL OR person_id IS NOT NULL",
+            name="ck_crew_member_user_or_person_required",
+        ),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    name: Mapped[str] = mapped_column(String(255), index=True)
-    email: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
-    phone: Mapped[str | None] = mapped_column(String(50), nullable=True)
     user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
     supplier_id: Mapped[int | None] = mapped_column(ForeignKey("companies.id", ondelete="SET NULL"), nullable=True, index=True)
     person_id: Mapped[int | None] = mapped_column(ForeignKey("persons.id", ondelete="SET NULL"), nullable=True, index=True)
@@ -71,7 +74,7 @@ class CrewMember(Base):
     daily_rate: Mapped[float | None] = mapped_column(Numeric(10, 2), nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
 
     user: Mapped["User | None"] = relationship()
     supplier: Mapped["Company | None"] = relationship("Company")
@@ -90,6 +93,31 @@ class CrewMember(Base):
         back_populates="preferred_members"
     )
 
+    @property
+    def name(self) -> str:
+        """Derive name from linked Person or User."""
+        if self.person:
+            return self.person.full_name
+        if self.user:
+            return self.user.full_name
+        return ""
+
+    @property
+    def email(self) -> str | None:
+        """Derive email from linked Person or User."""
+        if self.person:
+            return self.person.email
+        if self.user:
+            return self.user.email
+        return None
+
+    @property
+    def phone(self) -> str | None:
+        """Derive phone from linked Person."""
+        if self.person:
+            return self.person.phone
+        return None
+
 
 crew_member_preferred_roles = Table(
     "crew_member_preferred_roles",
@@ -106,7 +134,7 @@ class CrewMemberSkill(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     crew_member_id: Mapped[int] = mapped_column(ForeignKey("crew_members.id", ondelete="CASCADE"), index=True)
     skill_id: Mapped[int] = mapped_column(ForeignKey("crew_skills.id", ondelete="CASCADE"), index=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
 
     crew_member: Mapped[CrewMember] = relationship(back_populates="skills")
     skill: Mapped[CrewSkill] = relationship(back_populates="member_links")
@@ -123,7 +151,7 @@ class CrewMemberCertification(Base):
     issued_at: Mapped[date | None] = mapped_column(Date, nullable=True)
     expiry_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     document_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
 
     crew_member: Mapped[CrewMember] = relationship(back_populates="certifications")
     certification: Mapped[CrewCertification] = relationship(back_populates="member_links")
@@ -140,7 +168,7 @@ class JobCrewRequirement(Base):
     quantity_assigned: Mapped[int] = mapped_column(Integer, default=0)
     hourly_rate: Mapped[float | None] = mapped_column(Numeric(10, 2), nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
 
     job: Mapped["Job"] = relationship(back_populates="crew_requirements")
     crew_role: Mapped[CrewRole | None] = relationship(back_populates="crew_requirements")
@@ -178,7 +206,7 @@ class JobCrewAssignment(Base):
     status: Mapped[str] = mapped_column(String(30), default="assigned", index=True)
     hourly_rate_override: Mapped[float | None] = mapped_column(Numeric(10, 2), nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
 
     job_crew_requirement: Mapped[JobCrewRequirement] = relationship(back_populates="assignments")
     crew_member: Mapped[CrewMember] = relationship(back_populates="assignments")
@@ -193,7 +221,7 @@ class EquipmentRequiredCertification(Base):
     certification_type_id: Mapped[int] = mapped_column(
         ForeignKey("crew_certifications.id", ondelete="CASCADE"), primary_key=True
     )
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
 
     product: Mapped["Product"] = relationship(back_populates="required_certifications")
     certification_type: Mapped[CrewCertification] = relationship()
@@ -208,7 +236,7 @@ class JobRoleRequiredCertification(Base):
     certification_type_id: Mapped[int] = mapped_column(
         ForeignKey("crew_certifications.id", ondelete="CASCADE"), primary_key=True
     )
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
 
     job_role: Mapped[CrewRole] = relationship(back_populates="required_certifications")
     certification_type: Mapped[CrewCertification] = relationship()

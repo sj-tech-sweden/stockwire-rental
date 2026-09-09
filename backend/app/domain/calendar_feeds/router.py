@@ -94,7 +94,10 @@ def get_feed(token: str, db: Session = Depends(get_db)) -> Response:
             .join(Job, Job.id == JobCrewRequirement.job_id)
             .where(Job.start_date.isnot(None))
             .options(
-                selectinload(JobCrewAssignment.crew_member),
+                selectinload(JobCrewAssignment.crew_member)
+                .selectinload(CrewMember.user),
+                selectinload(JobCrewAssignment.crew_member)
+                .selectinload(CrewMember.person),
                 selectinload(JobCrewAssignment.job_crew_requirement)
                 .selectinload(JobCrewRequirement.crew_role),
                 selectinload(JobCrewAssignment.job_crew_requirement)

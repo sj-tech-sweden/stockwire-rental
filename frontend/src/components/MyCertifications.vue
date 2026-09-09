@@ -78,7 +78,7 @@
               <q-input v-model="newCert.issued_at" :label="t('crew.issuedDate')" outlined dense type="date" />
             </div>
             <div class="col-6">
-              <q-input v-model="newCert.expires_at" :label="t('crew.expiryDate')" outlined dense type="date" />
+              <q-input v-model="newCert.expiry_date" :label="t('crew.expiryDate')" outlined dense type="date" />
             </div>
           </div>
         </q-card-section>
@@ -119,7 +119,7 @@ const newCert = ref({
   certification_type_id: null,
   certificate_number: '',
   issued_at: '',
-  expires_at: '',
+  expiry_date: '',
 })
 
 const certTypeOptions = ref([])
@@ -188,7 +188,7 @@ async function addCert() {
       certification_type_id: newCert.value.certification_type_id,
       certificate_number: newCert.value.certificate_number || null,
       issued_at: newCert.value.issued_at || null,
-      expires_at: newCert.value.expires_at || null,
+      expiry_date: newCert.value.expiry_date || null,
     })
     certifications.value.push(cert)
     cancelAdd()
@@ -202,7 +202,7 @@ async function addCert() {
 
 function cancelAdd() {
   showAddDialog.value = false
-  newCert.value = { certification_type_id: null, certificate_number: '', issued_at: '', expires_at: '' }
+  newCert.value = { certification_type_id: null, certificate_number: '', issued_at: '', expiry_date: '' }
 }
 
 async function removeCert(cert) {

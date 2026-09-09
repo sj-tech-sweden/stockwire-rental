@@ -69,9 +69,6 @@ class CrewMemberCertificationItem(BaseModel):
 
 
 class CrewMemberBase(BaseModel):
-    name: str
-    email: str | None = None
-    phone: str | None = None
     user_id: int | None = None
     supplier_id: int | None = None
     person_id: int | None = None  # Link to Person entity
@@ -86,11 +83,14 @@ class CrewMemberCreate(CrewMemberBase):
     certification_items: list[CrewMemberCertificationItem] = Field(default_factory=list)
     preferred_role_ids: list[int] = Field(default_factory=list)
 
+    @model_validator(mode="after")
+    def validate_user_or_person(self):
+        if self.user_id is None and self.person_id is None:
+            raise ValueError("At least one of user_id or person_id is required")
+        return self
+
 
 class CrewMemberUpdate(BaseModel):
-    name: str | None = None
-    email: str | None = None
-    phone: str | None = None
     user_id: int | None = None
     supplier_id: int | None = None
     person_id: int | None = None
@@ -135,8 +135,18 @@ class CrewMemberAssignmentRead(BaseModel):
     model_config = {"from_attributes": True}
 
 
-class CrewMemberRead(CrewMemberBase):
+class CrewMemberRead(BaseModel):
     id: int
+    name: str
+    email: str | None = None
+    phone: str | None = None
+    user_id: int | None = None
+    supplier_id: int | None = None
+    person_id: int | None = None
+    hourly_rate: Decimal | None = None
+    daily_rate: Decimal | None = None
+    notes: str | None = None
+    is_active: bool
     created_at: datetime
     user_name: str | None = None
     supplier_name: str | None = None
@@ -259,7 +269,7 @@ class SelfCertificationCreate(BaseModel):
     certification_type_id: int
     certificate_number: str | None = None
     issued_at: date | None = None
-    expires_at: date | None = None
+    expiry_date: date | None = None
 
 
 class SelfCertificationUpdate(BaseModel):

@@ -79,9 +79,9 @@
       </template>
     </q-table>
 
-    <CustomerDeleteDialog
+    <CompanyDeleteDialog
       v-model="deleteDialogOpen"
-      :customer="deleteTarget"
+      :company="deleteTarget"
       @deleted="onCustomerDeleted"
     />
   </q-page>
@@ -92,16 +92,16 @@ import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 
-import { useCustomersStore } from '../stores/customers'
+import { useCompaniesStore } from '../stores/companies'
 import { useCustomFieldsStore } from '../stores/customFields'
 import { useAuthStore } from '../stores/auth'
 import { useCompactGrid } from '../composables/useCompactGrid'
-import CustomerDeleteDialog from '../components/CustomerDeleteDialog.vue'
+import CompanyDeleteDialog from '../components/CompanyDeleteDialog.vue'
 
 const compactGrid = useCompactGrid(1024)
 const route = useRoute()
 const router = useRouter()
-const store = useCustomersStore()
+const store = useCompaniesStore()
 const customFieldsStore = useCustomFieldsStore()
 const authStore = useAuthStore()
 const { t } = useI18n()
@@ -128,7 +128,7 @@ const columns = [
 ]
 
 const filteredCustomers = computed(() => {
-  let list = store.customers
+  let list = store.companies
 
   if (filterType.value === 'customer') {
     list = list.filter(c => c.is_customer)
@@ -152,7 +152,7 @@ const filteredCustomers = computed(() => {
 async function focusCustomerFromQuery() {
   const focusId = Number(route.query.focusCustomerId || 0)
   if (!focusId) return
-  const customer = store.customers.find(item => item.id === focusId)
+  const customer = store.companies.find(item => item.id === focusId)
   if (customer) {
     openDetail(customer)
   }

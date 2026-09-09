@@ -28,12 +28,12 @@
       <q-card class="ec-card">
         <q-card-section>
           <div class="row items-center q-mb-sm">
-            <div class="text-body1">{{ form.name || t('crew.memberName') }}</div>
-            <q-badge v-if="form.is_active" color="positive" :label="t('crew.active')" class="q-ml-sm" />
+            <div class="text-body1">{{ member?.name || t('crew.memberName') }}</div>
+            <q-badge v-if="member?.is_active" color="positive" :label="t('crew.active')" class="q-ml-sm" />
             <q-badge v-else color="grey" :label="t('crew.inactive')" class="q-ml-sm" />
           </div>
-          <div class="text-caption text-grey-7" v-if="form.email">{{ form.email }}</div>
-          <div class="text-caption text-grey-7" v-if="form.phone">{{ form.phone }}</div>
+          <div class="text-caption text-grey-7" v-if="member?.email">{{ member.email }}</div>
+          <div class="text-caption text-grey-7" v-if="member?.phone">{{ member.phone }}</div>
           <div class="text-caption text-grey-7" v-if="!isNew">Created: {{ formatDate(member?.created_at) }}</div>
         </q-card-section>
       </q-card>
@@ -50,27 +50,14 @@
         <q-card-section class="q-pt-none">
           <q-form ref="formRef" @submit.prevent="isNew ? createMember() : saveChanges()">
             <div class="row q-col-gutter-sm">
-              <div class="col-12 col-md-6">
-                <q-input v-model="form.name" :label="t('crew.memberName')" outlined dense :disable="!authStore.canEdit" :rules="[v => !!v || t('common.required')]" />
-              </div>
-              <div class="col-12 col-md-6">
-                <q-input v-model="form.email" :label="t('profile.email')" type="email" outlined dense :disable="!authStore.canEdit" />
-              </div>
-            </div>
-            <div class="row q-col-gutter-sm q-mt-sm">
-              <div class="col-12 col-md-6">
-                <q-input v-model="form.phone" :label="t('customers.phone')" outlined dense :disable="!authStore.canEdit" />
-              </div>
-            </div>
-            <div class="row q-col-gutter-sm q-mt-sm">
               <div class="col-12 col-md-4">
-                <q-select v-model="form.supplier_id" :options="filteredSupplierOptions" :label="t('crew.linkSupplier')" outlined dense clearable emit-value map-options use-input :disable="!authStore.canEdit" @filter="filterSuppliers" />
+                <q-select v-model="form.user_id" :options="filteredUserOptions" :label="t('crew.linkUser')" outlined dense clearable emit-value map-options use-input :disable="!authStore.canEdit" @filter="filterUsers" />
               </div>
               <div class="col-12 col-md-4">
                 <q-select v-model="form.person_id" :options="filteredPersonOptions" :label="t('crew.linkPerson')" outlined dense clearable emit-value map-options use-input :disable="!authStore.canEdit" @filter="filterPersons" />
               </div>
               <div class="col-12 col-md-4">
-                <q-select v-model="form.user_id" :options="filteredUserOptions" :label="t('crew.linkUser')" outlined dense clearable emit-value map-options use-input :disable="!authStore.canEdit" @filter="filterUsers" />
+                <q-select v-model="form.supplier_id" :options="filteredSupplierOptions" :label="t('crew.linkSupplier')" outlined dense clearable emit-value map-options use-input :disable="!authStore.canEdit" @filter="filterSuppliers" />
               </div>
             </div>
             <div class="row q-col-gutter-sm q-mt-sm">
@@ -271,9 +258,6 @@ const feedUrl = computed(() => {
 
 function emptyForm() {
   return {
-    name: '',
-    email: '',
-    phone: '',
     user_id: null,
     supplier_id: null,
     person_id: null,
@@ -365,9 +349,6 @@ function syncFromMember() {
   }
   const m = member.value
   form.value = {
-    name: m.name || '',
-    email: m.email || '',
-    phone: m.phone || '',
     user_id: m.user_id || null,
     supplier_id: m.supplier_id || null,
     person_id: m.person_id || null,
@@ -438,9 +419,16 @@ async function createMember() {
   saving.value = true
   try {
     const payload = {
-      ...form.value,
-      name: form.value.name.trim(),
+      user_id: form.value.user_id || null,
+      person_id: form.value.person_id || null,
+      supplier_id: form.value.supplier_id || null,
+      hourly_rate: form.value.hourly_rate,
+      daily_rate: form.value.daily_rate,
+      notes: form.value.notes || null,
+      is_active: form.value.is_active,
       skill_ids: form.value.skills.map(s => s.id || s.value),
+      certification_items: form.value.certification_items,
+      preferred_role_ids: form.value.preferred_role_ids,
     }
     const saved = await crewStore.createMember(payload)
     $q.notify({ type: 'positive', message: t('crew.memberCreated') })
@@ -460,12 +448,9 @@ async function saveChanges() {
   saving.value = true
   try {
     const payload = {
-      name: form.value.name.trim(),
-      email: form.value.email || null,
-      phone: form.value.phone || null,
       user_id: form.value.user_id || null,
-      supplier_id: form.value.supplier_id || null,
       person_id: form.value.person_id || null,
+      supplier_id: form.value.supplier_id || null,
       hourly_rate: form.value.hourly_rate,
       daily_rate: form.value.daily_rate,
       notes: form.value.notes || null,
