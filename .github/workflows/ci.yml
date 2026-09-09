@@ -194,7 +194,7 @@ jobs:
               '',
               ...files.map(f => {
                 const name = path.basename(f, '.png');
-                return `- **${name}**: see artifact [\`${f}\`](../artifacts/pr-screenshots)';
+                return `- **${name}**: see artifact [\`${f}\`](../artifacts/pr-screenshots)`;
               }),
               '',
               '> Download the full screenshots from the **pr-screenshots** artifact above.',
