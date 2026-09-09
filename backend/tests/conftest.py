@@ -28,6 +28,16 @@ def test_engine():
         poolclass=StaticPool,
     )
     Base.metadata.create_all(bind=engine)
+    # Redirect the application's global session factory to the test database so
+    # that background tasks, startup seeding, and the auto-sync scheduler query
+    # the same (fully migrated) schema as the test suite, instead of the
+    # production DATABASE_URL. The call sites import SessionLocal lazily, so
+    # rebinding the module attribute here takes effect for them.
+    import app.db.session as _session_module
+
+    _session_module.SessionLocal = sessionmaker(
+        bind=engine, autoflush=False, autocommit=False
+    )
     yield engine
     Base.metadata.drop_all(bind=engine)
 
