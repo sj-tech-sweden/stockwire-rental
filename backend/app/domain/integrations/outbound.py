@@ -47,3 +47,67 @@ async def push_person_to_twenty(person_id: int) -> None:
             )
     finally:
         db.close()
+
+
+async def push_company_to_twenty(company_id: int) -> None:
+    """Push a single Company to Twenty CRM if the integration is active.
+
+    See :func:`push_person_to_twenty` for the gating/error-handling rationale.
+    """
+    from app.db.session import SessionLocal
+    from app.domain.customers.models import Company
+    from app.domain.integrations.models import TwentyConfig
+    from app.domain.integrations.sync_engine import sync_company_outbound
+    from app.domain.integrations.twenty_client import TwentyClient
+
+    db = SessionLocal()
+    try:
+        config = db.query(TwentyConfig).first()
+        if not config or not config.is_active or not config.api_key:
+            return
+
+        company = db.get(Company, company_id)
+        if company is None:
+            return
+
+        client = TwentyClient(api_key=config.api_key, base_url=config.base_url)
+        try:
+            await sync_company_outbound(db, client, company)
+        except Exception:
+            logger.exception(
+                "Outbound webhook: failed to push company %s to Twenty", company_id
+            )
+    finally:
+        db.close()
+
+
+async def push_job_to_twenty(job_id: int) -> None:
+    """Push a single Job to Twenty CRM (as an opportunity) if the integration is active.
+
+    See :func:`push_person_to_twenty` for the gating/error-handling rationale.
+    """
+    from app.db.session import SessionLocal
+    from app.domain.integrations.models import TwentyConfig
+    from app.domain.integrations.sync_engine import sync_job_outbound
+    from app.domain.integrations.twenty_client import TwentyClient
+    from app.domain.jobs.models import Job
+
+    db = SessionLocal()
+    try:
+        config = db.query(TwentyConfig).first()
+        if not config or not config.is_active or not config.api_key:
+            return
+
+        job = db.get(Job, job_id)
+        if job is None:
+            return
+
+        client = TwentyClient(api_key=config.api_key, base_url=config.base_url)
+        try:
+            await sync_job_outbound(db, client, job)
+        except Exception:
+            logger.exception(
+                "Outbound webhook: failed to push job %s to Twenty", job_id
+            )
+    finally:
+        db.close()

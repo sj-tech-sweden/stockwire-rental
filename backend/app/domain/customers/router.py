@@ -37,7 +37,7 @@ from app.domain.inventory.models import Device, ProductSupplier
 from app.services.metrics import created_total, deleted_total, entities_count
 from app.domain.jobs.models import Job
 from app.domain.realtime.events import emit_realtime_event
-from app.domain.integrations.outbound import push_person_to_twenty
+from app.domain.integrations.outbound import push_company_to_twenty, push_person_to_twenty
 
 customers_router = APIRouter(prefix="/customers", tags=["customers"], dependencies=[Depends(get_current_user)])
 
@@ -441,7 +441,7 @@ def get_company_info(company_id: int, db: Session = Depends(get_db)) -> CompanyI
 
 
 @companies_router.post("", response_model=CompanyRead)
-def create_company(payload: CompanyCreate, db: Session = Depends(get_db), current_user: User = Depends(require_editor)) -> Company:
+def create_company(payload: CompanyCreate, background_tasks: BackgroundTasks, db: Session = Depends(get_db), current_user: User = Depends(require_editor)) -> Company:
     company = Company(**payload.model_dump())
     db.add(company)
     db.flush()
@@ -460,11 +460,12 @@ def create_company(payload: CompanyCreate, db: Session = Depends(get_db), curren
     created_total.labels(entity="company").inc()
     entities_count.labels(entity="company").inc()
     db.commit()
+    background_tasks.add_task(push_company_to_twenty, company.id)
     return company
 
 
 @companies_router.put("/{company_id}", response_model=CompanyRead)
-def update_company(company_id: int, payload: CompanyUpdate, db: Session = Depends(get_db), current_user: User = Depends(require_editor)) -> Company:
+def update_company(company_id: int, payload: CompanyUpdate, background_tasks: BackgroundTasks, db: Session = Depends(get_db), current_user: User = Depends(require_editor)) -> Company:
     company = db.get(Company, company_id)
     if company is None:
         raise HTTPException(status_code=404, detail="Company not found")
@@ -484,6 +485,7 @@ def update_company(company_id: int, payload: CompanyUpdate, db: Session = Depend
     )
     emit_realtime_event("companies.updated", {"entity": "company", "action": "update", "id": company.id})
     db.commit()
+    background_tasks.add_task(push_company_to_twenty, company.id)
     return company
 
 
