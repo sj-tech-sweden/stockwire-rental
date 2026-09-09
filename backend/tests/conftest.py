@@ -33,9 +33,7 @@ def test_engine():
     # the same (fully migrated) schema as the test suite, instead of the
     # production DATABASE_URL. The call sites import SessionLocal lazily, so
     # rebinding the module attribute here takes effect for them.
-    import app.db.session as _session_module
-
-    _session_module.SessionLocal = sessionmaker(
+    app.db.session.SessionLocal = sessionmaker(
         bind=engine, autoflush=False, autocommit=False
     )
     yield engine
