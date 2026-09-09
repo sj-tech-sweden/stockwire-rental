@@ -30,7 +30,14 @@ async def push_person_to_twenty(person_id: int) -> None:
 
     db = SessionLocal()
     try:
-        config = db.query(TwentyConfig).first()
+        try:
+            config = db.query(TwentyConfig).first()
+        except Exception:
+            logger.warning(
+                "Outbound webhook: TwentyConfig unavailable, skipping push for person %s",
+                person_id,
+            )
+            return
         if not config or not config.is_active or not config.api_key:
             return
 
@@ -62,7 +69,14 @@ async def push_company_to_twenty(company_id: int) -> None:
 
     db = SessionLocal()
     try:
-        config = db.query(TwentyConfig).first()
+        try:
+            config = db.query(TwentyConfig).first()
+        except Exception:
+            logger.warning(
+                "Outbound webhook: TwentyConfig unavailable, skipping push for company %s",
+                company_id,
+            )
+            return
         if not config or not config.is_active or not config.api_key:
             return
 
@@ -94,7 +108,14 @@ async def push_job_to_twenty(job_id: int) -> None:
 
     db = SessionLocal()
     try:
-        config = db.query(TwentyConfig).first()
+        try:
+            config = db.query(TwentyConfig).first()
+        except Exception:
+            logger.warning(
+                "Outbound webhook: TwentyConfig unavailable, skipping push for job %s",
+                job_id,
+            )
+            return
         if not config or not config.is_active or not config.api_key:
             return
 
