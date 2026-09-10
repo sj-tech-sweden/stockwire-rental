@@ -81,6 +81,7 @@ jobs:
         run: |
           TAG="${{ steps.semver.outputs.tag }}"
           RELEASE_SHA="${{ steps.set_release_sha.outputs.sha }}"
+          TYPE="${{ steps.rtype.outputs.type }}"
 
           # Generate structured changelog
           git fetch --tags
@@ -94,53 +95,42 @@ jobs:
             COMMITS=$(git log --pretty=format:'%s|||%h' "$RANGE")
           fi
 
-          # Categorize commits
-          FEATURES=""
-          FIXES=""
-          BREAKING=""
-          OTHER=""
+          # Categorize commits (accumulate REAL newlines via $'\n', not literal \n)
+          FEATURES=""; FIXES=""; BREAKING=""; OTHER=""
           while IFS= read -r line; do
             [ -z "$line" ] && continue
             MSG="${line%%|||*}"
             SHA="${line##*|||}"
-            # Check for conventional commit prefixes
+            entry="- ${MSG} (\`${SHA}\`)"
             if echo "$MSG" | grep -qiE '^feat(\(|:)|^[a-z]+(\(|:).*\bfeat'; then
-              FEATURES="${FEATURES}- ${MSG} (\`${SHA}\`)\n"
+              FEATURES+="${entry}"$'\n'
             elif echo "$MSG" | grep -qiE '^fix(\(|:)|^[a-z]+(\(|:).*\bfix'; then
-              FIXES="${FIXES}- ${MSG} (\`${SHA}\`)\n"
+              FIXES+="${entry}"$'\n'
             elif echo "$MSG" | grep -qiE '^breaking|^BREAKING'; then
-              BREAKING="${BREAKING}- ${MSG} (\`${SHA}\`)\n"
+              BREAKING+="${entry}"$'\n'
             else
-              OTHER="${OTHER}- ${MSG} (\`${SHA}\`)\n"
+              OTHER+="${entry}"$'\n'
             fi
           done <<< "$COMMITS"
 
-          # Build release notes
-          NOTES=""
-          TYPE="${{ steps.rtype.outputs.type }}"
-          if [ "$TYPE" = "major" ]; then
-            NOTES="## ⚠️ Breaking Changes\n\n"
-          fi
-          if [ -n "$BREAKING" ]; then
-            NOTES="${NOTES}${BREAKING}\n"
-          fi
-          if [ -n "$FEATURES" ]; then
-            NOTES="${NOTES}## ✨ Features\n\n${FEATURES}\n"
-          fi
-          if [ -n "$FIXES" ]; then
-            NOTES="${NOTES}## 🐛 Bug Fixes\n\n${FIXES}\n"
-          fi
-          if [ -n "$OTHER" ]; then
-            NOTES="${NOTES}## 📦 Other Changes\n\n${OTHER}\n"
-          fi
-          if [ -z "$NOTES" ]; then
-            NOTES="No notable changes"
-          fi
+          # Assemble release notes with real line breaks into a file
+          NOTES_FILE="$(mktemp)"
+          {
+            if [ "$TYPE" = "major" ]; then
+              echo "## ⚠️ Breaking Changes"
+              echo ""
+            fi
+            [ -n "$BREAKING" ] && printf '%s\n' "$BREAKING"
+            if [ -n "$FEATURES" ]; then echo "## ✨ Features"; echo ""; printf '%s\n' "$FEATURES"; fi
+            if [ -n "$FIXES" ]; then echo "## 🐛 Bug Fixes"; echo ""; printf '%s\n' "$FIXES"; fi
+            if [ -n "$OTHER" ]; then echo "## 📦 Other Changes"; echo ""; printf '%s\n' "$OTHER"; fi
+            if [ -z "$BREAKING$FEATURES$FIXES$OTHER" ]; then echo "No notable changes"; fi
+          } > "$NOTES_FILE"
 
           if gh release view "$TAG" >/dev/null 2>&1; then
-            gh release edit "$TAG" --title "$TAG" --notes "$NOTES" --target "$RELEASE_SHA"
+            gh release edit "$TAG" --title "$TAG" --notes-file "$NOTES_FILE" --target "$RELEASE_SHA"
           else
-            gh release create "$TAG" --title "$TAG" --notes "$NOTES" --target "$RELEASE_SHA"
+            gh release create "$TAG" --title "$TAG" --notes-file "$NOTES_FILE" --target "$RELEASE_SHA"
           fi
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
