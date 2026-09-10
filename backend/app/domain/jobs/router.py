@@ -5,7 +5,7 @@ from urllib.request import Request
 from urllib.parse import urljoin
 from urllib.error import HTTPError, URLError
 
-from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Response, status
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
@@ -19,6 +19,7 @@ from app.domain.customers.models import Customer
 from app.domain.jobs.models import Job, JobRequirement
 from app.domain.inventory.models import Product
 from app.domain.realtime.events import emit_realtime_event
+from app.domain.integrations.outbound import push_job_to_twenty
 from app.services.metrics import created_total, deleted_total, entities_count
 from app.domain.jobs.schemas import (
     JobCreate,
@@ -82,7 +83,7 @@ def generate_job_code(db: Session = Depends(get_db), prefix: str = "JOB-") -> di
 
 
 @router.post("", response_model=JobRead)
-def create_job(payload: JobCreate, db: Session = Depends(get_db), current_user: User = Depends(require_editor)) -> Job:
+def create_job(payload: JobCreate, background_tasks: BackgroundTasks, db: Session = Depends(get_db), current_user: User = Depends(require_editor)) -> Job:
     job = Job(**_prepare_job_payload(payload.model_dump(), db))
     db.add(job)
     db.commit()
@@ -101,11 +102,12 @@ def create_job(payload: JobCreate, db: Session = Depends(get_db), current_user: 
     created_total.labels(entity="job").inc()
     entities_count.labels(entity="job").inc()
     db.commit()
+    background_tasks.add_task(push_job_to_twenty, job.id)
     return job
 
 
 @router.put("/{job_id}", response_model=JobRead)
-def update_job(job_id: int, payload: JobUpdate, db: Session = Depends(get_db), current_user: User = Depends(require_editor)) -> Job:
+def update_job(job_id: int, payload: JobUpdate, background_tasks: BackgroundTasks, db: Session = Depends(get_db), current_user: User = Depends(require_editor)) -> Job:
     job = db.get(Job, job_id)
     if job is None:
         raise HTTPException(status_code=404, detail="Job not found")
@@ -125,6 +127,7 @@ def update_job(job_id: int, payload: JobUpdate, db: Session = Depends(get_db), c
     )
     emit_realtime_event("jobs.updated", {"entity": "job", "action": "update", "id": job.id})
     db.commit()
+    background_tasks.add_task(push_job_to_twenty, job.id)
     return job
 
 

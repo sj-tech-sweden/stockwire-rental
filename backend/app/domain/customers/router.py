@@ -1,6 +1,6 @@
 import logging
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Response, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
@@ -37,6 +37,7 @@ from app.domain.inventory.models import Device, ProductSupplier
 from app.services.metrics import created_total, deleted_total, entities_count
 from app.domain.jobs.models import Job
 from app.domain.realtime.events import emit_realtime_event
+from app.domain.integrations.outbound import push_company_to_twenty, push_person_to_twenty
 
 customers_router = APIRouter(prefix="/customers", tags=["customers"], dependencies=[Depends(get_current_user)])
 
@@ -440,7 +441,7 @@ def get_company_info(company_id: int, db: Session = Depends(get_db)) -> CompanyI
 
 
 @companies_router.post("", response_model=CompanyRead)
-def create_company(payload: CompanyCreate, db: Session = Depends(get_db), current_user: User = Depends(require_editor)) -> Company:
+def create_company(payload: CompanyCreate, background_tasks: BackgroundTasks, db: Session = Depends(get_db), current_user: User = Depends(require_editor)) -> Company:
     company = Company(**payload.model_dump())
     db.add(company)
     db.flush()
@@ -459,11 +460,12 @@ def create_company(payload: CompanyCreate, db: Session = Depends(get_db), curren
     created_total.labels(entity="company").inc()
     entities_count.labels(entity="company").inc()
     db.commit()
+    background_tasks.add_task(push_company_to_twenty, company.id)
     return company
 
 
 @companies_router.put("/{company_id}", response_model=CompanyRead)
-def update_company(company_id: int, payload: CompanyUpdate, db: Session = Depends(get_db), current_user: User = Depends(require_editor)) -> Company:
+def update_company(company_id: int, payload: CompanyUpdate, background_tasks: BackgroundTasks, db: Session = Depends(get_db), current_user: User = Depends(require_editor)) -> Company:
     company = db.get(Company, company_id)
     if company is None:
         raise HTTPException(status_code=404, detail="Company not found")
@@ -483,6 +485,7 @@ def update_company(company_id: int, payload: CompanyUpdate, db: Session = Depend
     )
     emit_realtime_event("companies.updated", {"entity": "company", "action": "update", "id": company.id})
     db.commit()
+    background_tasks.add_task(push_company_to_twenty, company.id)
     return company
 
 
@@ -658,7 +661,7 @@ def get_person_info(person_id: int, db: Session = Depends(get_db)) -> PersonInfo
 
 
 @persons_router.post("", response_model=PersonRead)
-def create_person(payload: PersonCreate, db: Session = Depends(get_db), current_user: User = Depends(require_editor)) -> Person:
+def create_person(payload: PersonCreate, background_tasks: BackgroundTasks, db: Session = Depends(get_db), current_user: User = Depends(require_editor)) -> Person:
     person = Person(**payload.model_dump())
     db.add(person)
     db.flush()
@@ -677,11 +680,12 @@ def create_person(payload: PersonCreate, db: Session = Depends(get_db), current_
     created_total.labels(entity="person").inc()
     entities_count.labels(entity="person").inc()
     db.commit()
+    background_tasks.add_task(push_person_to_twenty, person.id)
     return person
 
 
 @persons_router.put("/{person_id}", response_model=PersonRead)
-def update_person(person_id: int, payload: PersonUpdate, db: Session = Depends(get_db), current_user: User = Depends(require_editor)) -> Person:
+def update_person(person_id: int, payload: PersonUpdate, background_tasks: BackgroundTasks, db: Session = Depends(get_db), current_user: User = Depends(require_editor)) -> Person:
     person = db.get(Person, person_id)
     if person is None:
         raise HTTPException(status_code=404, detail="Person not found")
@@ -701,6 +705,7 @@ def update_person(person_id: int, payload: PersonUpdate, db: Session = Depends(g
     )
     emit_realtime_event("persons.updated", {"entity": "person", "action": "update", "id": person.id})
     db.commit()
+    background_tasks.add_task(push_person_to_twenty, person.id)
     return person
 
 
