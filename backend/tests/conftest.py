@@ -32,8 +32,12 @@ def test_engine():
     # that background tasks, startup seeding, and the auto-sync scheduler query
     # the same (fully migrated) schema as the test suite, instead of the
     # production DATABASE_URL. The call sites import SessionLocal lazily, so
-    # rebinding the module attribute here takes effect for them.
-    app.db.session.SessionLocal = sessionmaker(
+    # rebinding the module attribute here takes effect for them. (Note: `app`
+    # is already bound to the FastAPI instance in this module, so reference the
+    # session module explicitly to avoid the name clash.)
+    from app.db import session as _session_module
+
+    _session_module.SessionLocal = sessionmaker(
         bind=engine, autoflush=False, autocommit=False
     )
     yield engine
