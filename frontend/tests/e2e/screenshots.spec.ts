@@ -65,7 +65,7 @@ function getChangedFiles(): string[] {
 }
 
 function getAffectedPages(changedFiles: string[]): typeof allPages {
-  if (!changedFiles.length) return allPages
+  if (!changedFiles.length) return []
 
   const affected = new Set<string>()
   for (const file of changedFiles) {
@@ -76,7 +76,7 @@ function getAffectedPages(changedFiles: string[]): typeof allPages {
     }
   }
 
-  if (affected.size === 0) return allPages
+  if (affected.size === 0) return []
   affected.add('/')
   return allPages.filter(p => affected.has(p.path))
 }
