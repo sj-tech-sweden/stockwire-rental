@@ -1,20 +1,74 @@
 {
-  "Stockwire": {
+  "stockwire": {
     "color": {
-      "brand-green": { "$type": "color", "$value": "#3F873F" },
-      "brand-green-600": { "$type": "color", "$value": "#2D9148" },
-      "brand-green-dark": { "$type": "color", "$value": "#35A853" },
-      "profile-blue": { "$type": "color", "$value": "#4F80FF" },
-      "success": { "$type": "color", "$value": "#3F873F" },
-      "warning": { "$type": "color", "$value": "#F7B84B" },
-      "danger": { "$type": "color", "$value": "#E65656" },
-      "info": { "$type": "color", "$value": "#3F873F" },
-      "surface-900": { "$type": "color", "$value": "#0C1114" },
-      "surface-800": { "$type": "color", "$value": "#11181D" },
-      "surface-700": { "$type": "color", "$value": "#182228" },
-      "text-primary": { "$type": "color", "$value": "#E9F1EE" },
-      "text-secondary": { "$type": "color", "$value": "#A8BAB1" },
-      "border-subtle": { "$type": "color", "$value": "#243138" }
+      "$type": "color",
+      "brand": {
+        "green": { "$value": "#3F873F" },
+        "green-600": { "$value": "#2D9148" },
+        "green-dark": { "$value": "#35A853" }
+      },
+      "profile": {
+        "primary-blue": { "$value": "#4F80FF" }
+      },
+      "semantic": {
+        "success": { "$value": "#3F873F" },
+        "warning": { "$value": "#F7B84B" },
+        "danger": { "$value": "#E65656" },
+        "info": { "$value": "#3F873F" }
+      }
+    },
+    "surface": {
+      "$type": "color",
+      "900": { "$value": "#0C1114" },
+      "800": { "$value": "#11181D" },
+      "700": { "$value": "#182228" }
+    },
+    "text": {
+      "$type": "color",
+      "primary": { "$value": "#E9F1EE" },
+      "secondary": { "$value": "#A8BAB1" }
+    },
+    "border": {
+      "$type": "color",
+      "subtle": { "$value": "#243138" }
+    },
+    "font": {
+      "$type": "fontFamily",
+      "heading": { "$value": ["Raleway", "Arial", "sans-serif"] },
+      "body": { "$value": ["Myriad Pro", "Myriad Roman", "Arial", "sans-serif"] },
+      "numeric": { "$value": ["Myriad Pro", "Myriad Roman", "Arial", "sans-serif"] }
+    },
+    "font-weight": {
+      "$type": "fontWeight",
+      "regular": { "$value": 400 },
+      "semibold": { "$value": 600 },
+      "bold": { "$value": 700 }
+    },
+    "font-size": {
+      "$type": "dimension",
+      "xs": { "$value": "0.75rem" },
+      "sm": { "$value": "0.875rem" },
+      "base": { "$value": "1rem" },
+      "lg": { "$value": "1.1rem" },
+      "xl": { "$value": "1.25rem" },
+      "2xl": { "$value": "1.5rem" },
+      "3xl": { "$value": "2rem" }
+    },
+    "spacing": {
+      "$type": "dimension",
+      "xs": { "$value": "4px" },
+      "sm": { "$value": "8px" },
+      "md": { "$value": "16px" },
+      "lg": { "$value": "24px" },
+      "xl": { "$value": "32px" },
+      "2xl": { "$value": "48px" }
+    },
+    "radius": {
+      "$type": "dimension",
+      "sm": { "$value": "4px" },
+      "md": { "$value": "8px" },
+      "lg": { "$value": "12px" },
+      "xl": { "$value": "16px" }
     }
   }
 }

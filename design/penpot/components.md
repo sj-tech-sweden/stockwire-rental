@@ -3,6 +3,8 @@
 Use this document to build reusable components in the Penpot `Stockwire Library`.
 All values reference `design/tokens/tokens.json`.
 
+> **How to turn these specs into Penpot components:** Draw each element on the canvas, select its layers, then right-click and choose **Create component** (Ctrl+K / Cmd+K). The **Add component** button in the Assets panel is only for importing existing component files.
+
 ## Buttons
 
 ### Primary Button

@@ -3,6 +3,8 @@
 This guide assumes you are using **Penpot Cloud** (`design.penpot.app`) or a
 self-hosted Penpot instance with the same features.
 
+> **Note:** Penpot's built-in design token support does **not** require the Tokens Studio plugin. The plugin referenced in older guides is mainly for Figma. Use Penpot's native **Tokens** panel instead.
+
 ## What you will create
 
 1. A **Design System Library** file in Penpot.
@@ -16,44 +18,50 @@ self-hosted Penpot instance with the same features.
 3. Inside the project, create a file named `Stockwire Library`.
 4. Open the file.
 
-## Step 2 — Import design tokens
+## Step 2 — Import design tokens (native Penpot Tokens)
 
-Penpot supports the W3C Design Tokens Format through the **Tokens Studio for Penpot** plugin (or Penpot's native Tokens feature, depending on your version).
+Penpot has a built-in **Tokens** panel that supports the W3C Design Tokens Format.
 
-### Using the Tokens Studio plugin
+1. Open the **Tokens** panel (usually in the right sidebar or under the design tab).
+2. Choose **Import tokens** or **Load from file**.
+3. Upload `design/tokens/tokens.penpot.json`.
+4. Penpot will create token groups for:
+   - `stockwire.color.brand.*`
+   - `stockwire.color.semantic.*`
+   - `stockwire.surface.*`
+   - `stockwire.text.*`
+   - `stockwire.border.*`
+   - `stockwire.font.*`
+   - `stockwire.spacing.*`
+   - `stockwire.radius.*`
+5. Apply the tokens to your local fills, strokes, and text styles.
 
-1. In Penpot, open the plugin panel and launch **Tokens Studio**.
-2. Choose **Import tokens**.
-3. Upload `design/tokens/tokens.json`.
-4. The plugin will create tokens for:
-   - Brand colors (`stockwire.color.brand.*`)
-   - Semantic colors (`stockwire.color.semantic.*`)
-   - Surfaces (`stockwire.surface.*`)
-   - Text colors (`stockwire.text.*`)
-   - Border colors (`stockwire.border.*`)
-   - Font families, weights, sizes
-   - Spacing, radius, shadow, motion
-5. Apply the tokens to your local styles so they can be used across components.
-
-> **Tip:** If the plugin does not yet support all token types, import the color tokens first, then add typography and spacing manually.
+> **If import fails:** Penpot versions vary. If the W3C format is not accepted, use `design/tokens/tokens.json` (full W3C) or add the colors manually from the list in Step 4.
 
 ## Step 3 — Import brand assets
 
+> **Note:** Dragging an SVG into Penpot imports it as a group of shapes, **not** as a component. You must convert the imported group into a component afterwards.
+
 1. Create a board/page named `Brand Assets`.
-2. Drag and drop the SVGs from `design/assets/` into Penpot:
+2. Drag and drop the SVGs from `design/assets/` onto the canvas:
    - `logo.svg`
    - `logo-mark.svg`
    - `cable-motif.svg`
-3. Convert each imported SVG to a **Component** (`Create component`).
-4. Name them:
+3. Select each imported SVG group on the canvas.
+4. Right-click and choose **Create component** (or press **Ctrl+K** / **Cmd+K**).
+5. In the **Components** panel (or right sidebar), rename each component:
    - `Logo / Full`
    - `Logo / Mark`
    - `Motif / Cable Wave`
 
+> **Why the "Add component" button opens a file browser:** That button is for importing `.penpot` component files, not for turning canvas objects into components. Always use **Create component** from the canvas context menu instead.
+
 ## Step 4 — Build the color library
 
+If the token import worked, Penpot should already have these as tokens. If not, add them manually:
+
 1. Open **Assets > Colors**.
-2. Add the following solid colors, naming them to match the tokens:
+2. Add the following solid colors:
    - `brand/green` #3F873F
    - `brand/green-600` #2D9148
    - `brand/green-dark` #35A853
@@ -82,7 +90,9 @@ Penpot supports the W3C Design Tokens Format through the **Tokens Studio for Pen
 
 ## Step 6 — Build component library
 
-Create a page named `Components`. Use the component spec in `components.md` to build:
+Create a page named `Components`. Use the component spec in `components.md` to draw each element on the canvas.
+
+Components to build:
 
 - `Button / Primary`
 - `Button / Secondary`
@@ -101,7 +111,20 @@ Create a page named `Components`. Use the component spec in `components.md` to b
 - `Banner / Warning`
 - `Banner / Danger`
 
-For each component, use the tokens/colors above and mark it as a **Component**.
+### How to create a component in Penpot
+
+1. Draw the element on the canvas using Penpot shapes, text, and the colors/typography from your library.
+2. Select all the layers that belong to the element.
+3. Right-click the selection and choose **Create component** (shortcut: **Ctrl+K** / **Cmd+K**).
+4. Penpot adds the component to the **Components** panel.
+5. Rename it there to match the naming above (e.g., `Button / Primary`).
+6. To reuse it, drag the component from the Components panel onto another page, or copy an instance and paste it.
+
+### Tips
+
+- Group related layers first (**Ctrl+G** / **Cmd+G**) if it makes the component easier to select.
+- Apply the tokens/colors before creating the component, so every instance stays linked to the library.
+- Use **slash naming** (`Button / Primary`) so the Components panel organizes them into folders.
 
 ## Step 7 — Publish as shared library
 
@@ -125,11 +148,12 @@ Enable the shared library in each file and use the components/colors/typography 
 
 When the design system evolves:
 
-1. Update `design/tokens/tokens.json`.
-2. Update the Penpot library tokens/colors.
-3. Update affected components.
-4. Republish the library.
-5. Notify the team to accept library updates in their design files.
+1. Update `design/tokens/tokens.json` (source of truth).
+2. Update `design/tokens/tokens.penpot.json` if the Penpot format changes.
+3. Update the Penpot library tokens/colors.
+4. Update affected components.
+5. Republish the library.
+6. Notify the team to accept library updates in their design files.
 
 ## Exporting from Penpot back to code
 
