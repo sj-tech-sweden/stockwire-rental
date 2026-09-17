@@ -1,0 +1,20 @@
+{
+  "Stockwire": {
+    "color": {
+      "brand-green": { "$type": "color", "$value": "#3F873F" },
+      "brand-green-600": { "$type": "color", "$value": "#2D9148" },
+      "brand-green-dark": { "$type": "color", "$value": "#35A853" },
+      "profile-blue": { "$type": "color", "$value": "#4F80FF" },
+      "success": { "$type": "color", "$value": "#3F873F" },
+      "warning": { "$type": "color", "$value": "#F7B84B" },
+      "danger": { "$type": "color", "$value": "#E65656" },
+      "info": { "$type": "color", "$value": "#3F873F" },
+      "surface-900": { "$type": "color", "$value": "#0C1114" },
+      "surface-800": { "$type": "color", "$value": "#11181D" },
+      "surface-700": { "$type": "color", "$value": "#182228" },
+      "text-primary": { "$type": "color", "$value": "#E9F1EE" },
+      "text-secondary": { "$type": "color", "$value": "#A8BAB1" },
+      "border-subtle": { "$type": "color", "$value": "#243138" }
+    }
+  }
+}

@@ -84,6 +84,22 @@ If the profile is revised, replace in one place:
 - focus-visible styling mandatory
 - reduced-motion variant for animations
 
+## Design system artifacts
+
+The canonical design tokens, SVG assets, and Penpot import guide live in:
+
+- `design/README.md` — overview of the design system
+- `design/tokens/tokens.json` — W3C Design Tokens Format (Penpot-compatible)
+- `design/tokens/tokens.css` — CSS custom properties
+- `design/tokens/quasar-brand.json` — Quasar brand config mapping
+- `design/assets/*.svg` — logo, mark, cable motif
+- `design/penpot/IMPORT_GUIDE.md` — how to build a Penpot library
+- `design/penpot/components.md` — component library spec
+- `design/penpot/templates.md` — page templates and improvement ideas
+- `scripts/validate_design_tokens.py` — token sync validator
+
+Use these files as the single source of truth when designing in Penpot or implementing new UI in the Quasar frontend.
+
 ## Related docs
 
 - `docs/ROADMAP_FROM_ISSUES.md`

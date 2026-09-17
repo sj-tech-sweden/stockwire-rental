@@ -170,7 +170,7 @@ export default configure(function () {
           secondary: '#26A69A',
           accent: '#35A853',
           dark: '#0C1114',
-          positive: '#43C36B',
+          positive: '#3F873F',
           negative: '#E65656',
           info: '#3F873F',
           warning: '#F7B84B'

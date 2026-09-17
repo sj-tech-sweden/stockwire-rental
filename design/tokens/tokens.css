@@ -1,0 +1,95 @@
+/*
+ * Stockwire Rental — Design Tokens (CSS Custom Properties)
+ *
+ * Source: design/tokens/tokens.json
+ * Drop these into frontend/src/css/app.css to keep the Quasar app aligned.
+ */
+
+:root {
+  /* Brand colors */
+  --ec-primary: #3F873F;
+  --ec-primary-600: #2D9148;
+  --ec-accent: #35A853;
+  --ec-profile-blue: #4F80FF;
+
+  /* Semantic colors */
+  --ec-success: #3F873F;
+  --ec-warning: #F7B84B;
+  --ec-danger: #E65656;
+  --ec-info: #3F873F;
+
+  /* Surfaces */
+  --ec-surface-900: #0C1114;
+  --ec-surface-800: #11181D;
+  --ec-surface-700: #182228;
+
+  /* Text */
+  --ec-text-primary: #E9F1EE;
+  --ec-text-secondary: #A8BAB1;
+
+  /* Border */
+  --ec-border-subtle: #243138;
+
+  /* Typography */
+  --ec-font-heading: "Raleway", Arial, sans-serif;
+  --ec-font-body: "Myriad Pro", "Myriad Roman", Arial, sans-serif;
+  --ec-font-numeric: "Myriad Pro", "Myriad Roman", Arial, sans-serif;
+
+  --ec-font-regular: 400;
+  --ec-font-semibold: 600;
+  --ec-font-bold: 700;
+
+  /* Spacing */
+  --ec-space-xs: 4px;
+  --ec-space-sm: 8px;
+  --ec-space-md: 16px;
+  --ec-space-lg: 24px;
+  --ec-space-xl: 32px;
+  --ec-space-2xl: 48px;
+
+  /* Radius */
+  --ec-radius-sm: 4px;
+  --ec-radius-md: 8px;
+  --ec-radius-lg: 12px;
+  --ec-radius-xl: 16px;
+
+  /* Shadows */
+  --ec-shadow-card: 0 1px 0 rgba(0, 0, 0, 0.25);
+  --ec-shadow-elevated: 0 4px 12px rgba(0, 0, 0, 0.35);
+
+  /* Motion */
+  --ec-duration-fast: 150ms;
+  --ec-duration-base: 250ms;
+  --ec-duration-slow: 350ms;
+}
+
+/* Dark theme (default) */
+html.q-dark,
+body.q-dark,
+html.body--dark,
+body.body--dark {
+  --ec-bg: radial-gradient(circle at top left, #14222a 0%, #0c1114 55%, #090d10 100%);
+  --ec-surface: var(--ec-surface-700);
+  --ec-drawer-bg: var(--ec-surface-800);
+  --ec-drawer-text: #b8ccc4;
+  --ec-text: var(--ec-text-primary);
+}
+
+/* Light theme */
+html:not(.q-dark):not(.body--dark),
+body:not(.q-dark):not(.body--dark),
+html.body--light,
+body.body--light {
+  --ec-bg: linear-gradient(90deg, #f7fcf7, #f3f9f3 40%);
+  --ec-surface: #ffffff;
+  --ec-drawer-bg: #f6faf6;
+  --ec-drawer-text: #2f3a3a;
+  --ec-text: #111827;
+}
+
+/* Quasar brand alias variables */
+:root {
+  --q-color-primary: var(--ec-primary);
+  --q-color-primary-7: #2f6b30;
+  --q-color-primary-9: #1f4d21;
+}
