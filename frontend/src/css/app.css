@@ -116,6 +116,17 @@ body:not(.body--dark):not(.q-dark) .ec-header {
   box-shadow: 0 1px 0 rgba(0,0,0,0.25) !important;
 }
 
+/* Nested card used inside another card (e.g. integration sub-sections) so it reads as a distinct surface */
+.ec-card--inset {
+  background: rgba(255, 255, 255, 0.04) !important;
+  border-color: rgba(63, 135, 63, 0.22) !important;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.3) !important;
+}
+body:not(.body--dark) .ec-card--inset {
+  background: rgba(0, 0, 0, 0.03) !important;
+  border-color: rgba(63, 135, 63, 0.28) !important;
+}
+
 /* Ensure inner card sections don't force a white background */
 .ec-card .q-card__section,
 .ec-card .q-card__actions {
@@ -650,6 +661,11 @@ body.body--dark .ec-card .q-table tbody td {
 .ec-chip--info {
   background: rgba(63, 135, 63, 0.16);
   color: #43C36B;
+}
+
+.ec-chip--neutral {
+  background: rgba(128, 128, 128, 0.18);
+  color: var(--ec-text-secondary);
 }
 
 /* Scanner target */

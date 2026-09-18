@@ -22,7 +22,7 @@
       <q-tab-panel name="auth" class="q-pa-none">
         <q-card class="ec-card q-pa-md">
           <div class="row items-center q-mb-sm">
-            <div class="text-subtitle1 col">{{ t('settings.auth.title') }}</div>
+            <div class="ec-card-title col">{{ t('settings.auth.title') }}</div>
             <q-btn color="primary" icon="person_add" :label="t('settings.auth.newUser')" unelevated @click="openCreateUser" />
           </div>
 
@@ -78,7 +78,7 @@
                       <div class="text-subtitle2">{{ props.row.full_name || props.row.email }}</div>
                       <q-badge :label="props.row.role" :color="roleColor(props.row.role)" />
                     </div>
-                    <div class="text-caption text-grey-7">{{ props.row.email }}</div>
+                    <div class="text-caption ec-text-muted">{{ props.row.email }}</div>
                   </q-card-section>
                   <q-card-section class="q-pt-none q-pb-sm">
                     <div class="text-caption">{{ t('settings.auth.status') }}: {{ props.row.is_active ? t('settings.auth.active') : t('settings.auth.inactive') }}</div>
@@ -98,11 +98,11 @@
               </div>
             </template>
           </q-table>
+        </q-card>
 
-          <q-separator class="q-my-md" />
-
+        <q-card class="ec-card q-pa-md q-mt-md">
           <div class="row items-center q-mb-sm">
-            <div class="text-subtitle2 col">{{ t('settings.auth.apiKeys') }}</div>
+            <div class="ec-card-title col">{{ t('settings.auth.apiKeys') }}</div>
             <q-btn color="primary" icon="vpn_key" :label="t('settings.auth.newApiKey')" unelevated @click="openCreateApiKey" />
           </div>
 
@@ -140,7 +140,7 @@
                       <div class="text-subtitle2">{{ props.row.name }}</div>
                       <q-badge :label="props.row.is_admin ? t('settings.auth.apiKeyAdmin') : t('settings.auth.apiKeyScoped')" :color="props.row.is_admin ? 'negative' : 'primary'" />
                     </div>
-                    <div class="text-caption text-grey-7">Created: {{ new Date(props.row.created_at).toLocaleDateString() }}</div>
+                    <div class="text-caption ec-text-muted">Created: {{ new Date(props.row.created_at).toLocaleDateString() }}</div>
                   </q-card-section>
                   <q-card-actions align="right">
                     <q-btn flat dense icon="delete" color="negative" @click="deleteApiKey(props.row)" />
@@ -149,11 +149,11 @@
               </div>
             </template>
           </q-table>
+        </q-card>
 
-          <q-separator class="q-my-md" />
-
-          <div class="text-subtitle2 q-mb-sm">{{ t('settings.sso.title') }}</div>
-          <div class="text-caption text-grey-7 q-mb-sm">{{ t('settings.sso.description') }}</div>
+        <q-card class="ec-card q-pa-md q-mt-md">
+          <div class="ec-card-title q-mb-sm">{{ t('settings.sso.title') }}</div>
+          <div class="text-caption ec-text-muted q-mb-sm">{{ t('settings.sso.description') }}</div>
 
           <div class="row q-col-gutter-sm q-mb-sm">
             <div class="col-12 col-md-3">
@@ -179,7 +179,7 @@
           </div>
 
           <div class="text-subtitle2 q-mt-md q-mb-sm">{{ t('settings.sso.groupRoleMapping') }}</div>
-          <div class="text-caption text-grey-7 q-mb-sm">{{ t('settings.sso.groupRoleMappingHint') }}</div>
+          <div class="text-caption ec-text-muted q-mb-sm">{{ t('settings.sso.groupRoleMappingHint') }}</div>
           <div
             v-for="(row, index) in authSsoDraft.group_role_rows"
             :key="`group-role-${index}`"
@@ -206,12 +206,11 @@
           <q-btn flat dense icon="add" color="primary" :label="t('settings.sso.addGroupMapping')" class="q-mb-md" @click="addGroupRoleRow" />
 
           <div class="text-subtitle2 q-mb-sm">{{ t('settings.sso.oidcProviders') }}</div>
-          <div class="text-caption text-grey-7 q-mb-sm">{{ t('settings.sso.oidcProvidersHint') }}</div>
+          <div class="text-caption ec-text-muted q-mb-sm">{{ t('settings.sso.oidcProvidersHint') }}</div>
           <div
             v-for="(provider, index) in authSsoDraft.oidc_providers"
             :key="`oidc-${provider._draftKey || index}`"
-            class="q-pa-sm q-mb-sm"
-            style="border: 1px solid #d7dee6; border-radius: 10px"
+            class="ec-card ec-card--inset q-pa-md q-mb-md"
           >
             <div class="row q-col-gutter-sm q-mb-sm">
               <div class="col-12 col-md-3"><q-input v-model="provider.key" :label="t('settings.sso.providerKey')" outlined dense /></div>
@@ -237,12 +236,11 @@
           <q-btn flat dense icon="add" color="primary" :label="t('settings.sso.addOidcProvider')" class="q-mb-md" @click="addOidcProvider" />
 
           <div class="text-subtitle2 q-mb-sm">{{ t('settings.sso.samlProviders') }}</div>
-          <div class="text-caption text-grey-7 q-mb-sm">{{ t('settings.sso.samlProvidersHint') }}</div>
+          <div class="text-caption ec-text-muted q-mb-sm">{{ t('settings.sso.samlProvidersHint') }}</div>
           <div
             v-for="(provider, index) in authSsoDraft.saml_providers"
             :key="`saml-${provider._draftKey || index}`"
-            class="q-pa-sm q-mb-sm"
-            style="border: 1px solid #d7dee6; border-radius: 10px"
+            class="ec-card ec-card--inset q-pa-md q-mb-md"
           >
             <div class="row q-col-gutter-sm q-mb-sm">
               <div class="col-12 col-md-3"><q-input v-model="provider.key" :label="t('settings.sso.providerKey')" outlined dense /></div>
@@ -282,7 +280,7 @@
       <q-tab-panel name="company" class="q-pa-none">
         <q-card class="ec-card q-pa-md">
           <div class="text-subtitle1 q-mb-sm">{{ t('settings.company.title') }}</div>
-          <div class="text-caption text-grey-7 q-mb-md">{{ t('settings.company.description') }}</div>
+          <div class="text-caption ec-text-muted q-mb-md">{{ t('settings.company.description') }}</div>
 
           <div class="text-subtitle2 q-mb-sm">{{ t('settings.company.branding') }}</div>
           <div class="row q-col-gutter-sm q-mb-sm">
@@ -319,10 +317,10 @@
               />
             </div>
             <div class="col-12 col-md-6">
-              <div class="text-caption text-grey-7">{{ t('settings.company.logoHint') }}</div>
+              <div class="text-caption ec-text-muted">{{ t('settings.company.logoHint') }}</div>
             </div>
             <div class="col-12">
-              <div class="text-caption text-grey-7">{{ t('settings.company.defaultLanguageHint') }}</div>
+              <div class="text-caption ec-text-muted">{{ t('settings.company.defaultLanguageHint') }}</div>
             </div>
           </div>
 
@@ -330,7 +328,7 @@
             <div v-for="slot in companyLogoSlots" :key="slot.key" class="col-12 col-md-6">
               <q-card flat bordered class="q-pa-sm">
                 <div class="text-subtitle2">{{ slot.label }}</div>
-                <div class="text-caption text-grey-7 q-mb-sm">{{ slot.hint }}</div>
+                <div class="text-caption ec-text-muted q-mb-sm">{{ slot.hint }}</div>
                 <div class="row q-gutter-xs q-mb-sm">
                   <q-chip v-for="usage in slot.usage" :key="`${slot.key}-${usage}`" dense color="blue-1" text-color="blue-10">
                     {{ usage }}
@@ -357,7 +355,7 @@
                   <q-btn flat color="negative" :label="t('scan.clear')" @click="clearCompanyLogoSlot(slot.key)" />
                 </div>
                 <div v-if="currentCompanyLogoPreviewUrl(slot)" class="q-mt-sm">
-                  <div class="text-caption text-grey-7 q-mb-xs">{{ t('settings.company.currentLogo') }}</div>
+                  <div class="text-caption ec-text-muted q-mb-xs">{{ t('settings.company.currentLogo') }}</div>
                   <q-img :src="currentCompanyLogoPreviewUrl(slot)" style="width: 180px; height: 92px" fit="contain" :alt="slot.label" />
                 </div>
               </q-card>
@@ -452,7 +450,7 @@
                       <div class="text-subtitle2">{{ customFieldLabel(props.row.label) }}</div>
                       <q-badge color="primary" :label="props.row.value_type" />
                     </div>
-                    <div class="text-caption text-grey-7">{{ props.row.key }}</div>
+                    <div class="text-caption ec-text-muted">{{ props.row.key }}</div>
                   </q-card-section>
                   <q-card-section class="q-pt-none q-pb-sm">
                     <div class="text-caption">{{ props.row.is_required ? t('settings.customFields.required') : t('settings.customFields.optional') }}</div>
@@ -471,11 +469,11 @@
 
       <q-tab-panel name="inventory" class="q-pa-none">
         <q-card class="ec-card q-pa-md">
-          <div class="text-subtitle1 q-mb-sm">{{ t('settings.inventory.title') }}</div>
+           <div class="ec-card-title q-mb-sm">{{ t('settings.inventory.title') }}</div>
           <div class="text-body2 q-mb-md">{{ t('settings.inventory.description') }}</div>
 
           <div class="text-subtitle2 q-mb-sm">{{ t('settings.inventory.locationTypeOptions') }}</div>
-          <div class="text-caption text-grey-7 q-mb-sm">{{ t('settings.inventory.locationTypeOptionsHint') }}</div>
+          <div class="text-caption ec-text-muted q-mb-sm">{{ t('settings.inventory.locationTypeOptionsHint') }}</div>
 
           <div class="row q-col-gutter-sm q-mb-sm">
             <div class="col-12 col-md-6">
@@ -506,11 +504,11 @@
               {{ option }}
             </q-chip>
           </div>
+        </q-card>
 
-          <q-separator class="q-my-md" />
-
-          <div class="text-subtitle2 q-mb-sm">{{ t('settings.inventory.productBrandManufacturerDefaults') }}</div>
-          <div class="text-caption text-grey-7 q-mb-sm">{{ t('settings.inventory.productBrandManufacturerDefaultsHint') }}</div>
+        <q-card class="ec-card q-pa-md q-mt-md">
+          <div class="ec-card-title q-mb-sm">{{ t('settings.inventory.productBrandManufacturerDefaults') }}</div>
+          <div class="text-caption ec-text-muted q-mb-sm">{{ t('settings.inventory.productBrandManufacturerDefaultsHint') }}</div>
 
           <div class="row q-col-gutter-sm q-mb-sm">
             <div class="col-12 col-md-6">
@@ -589,7 +587,7 @@
           </div>
 
           <div class="text-subtitle2 q-mb-sm">{{ t('settings.inventory.brandLinksPreferredManufacturer') }}</div>
-          <div class="text-caption text-grey-7 q-mb-sm">{{ t('settings.inventory.brandLinksPreferredManufacturerHint') }}</div>
+          <div class="text-caption ec-text-muted q-mb-sm">{{ t('settings.inventory.brandLinksPreferredManufacturerHint') }}</div>
           <q-table
             :rows="brandRows"
             :columns="brandLinkColumns"
@@ -740,10 +738,11 @@
             @click="resetProductDefaultsToDefaults"
           />
 
-          <q-separator class="q-my-md" />
+        </q-card>
 
-          <div class="text-subtitle2 q-mb-sm">{{ t('settings.inventory.categoryPrefillTitle') }}</div>
-          <div class="text-caption text-grey-7 q-mb-sm">{{ t('settings.inventory.categoryPrefillHint') }}</div>
+        <q-card class="ec-card q-pa-md q-mt-md">
+          <div class="ec-card-title q-mb-sm">{{ t('settings.inventory.categoryPrefillTitle') }}</div>
+          <div class="text-caption ec-text-muted q-mb-sm">{{ t('settings.inventory.categoryPrefillHint') }}</div>
           <q-input
             v-model="categoryPrefillDraftText"
             type="textarea"
@@ -782,22 +781,23 @@
       </q-tab-panel>
 
       <q-tab-panel name="integrations" class="q-pa-none">
-        <q-card class="ec-card q-pa-md">
-          <div class="text-subtitle1 q-mb-sm">{{ t('settings.integrations.title') }}</div>
-          <div class="text-body2 q-mb-md">{{ t('settings.integrations.description') }}</div>
+         <q-card class="ec-card q-pa-md">
+           <div class="ec-card-title q-mb-sm">{{ t('settings.integrations.title') }}</div>
+           <div class="text-body2 q-mb-md">{{ t('settings.integrations.description') }}</div>
+         </q-card>
 
-          <div class="row items-center justify-between q-mb-sm">
-            <div class="text-subtitle2">{{ t('settings.integrations.eventoryInstances') }}</div>
-            <q-btn color="secondary" icon="add" :label="t('settings.integrations.addInstance')" dense unelevated @click="addEventoryInstance" />
-          </div>
-          <div class="text-caption text-grey-7 q-mb-sm">{{ t('settings.integrations.eventoryInstancesHint') }}</div>
+         <q-card class="ec-card q-pa-md q-mt-md">
+           <div class="row items-center justify-between q-mb-sm">
+             <div class="ec-card-title">{{ t('settings.integrations.eventoryInstances') }}</div>
+             <q-btn color="secondary" icon="add" :label="t('settings.integrations.addInstance')" dense unelevated @click="addEventoryInstance" />
+           </div>
+           <div class="text-caption ec-text-muted q-mb-sm">{{ t('settings.integrations.eventoryInstancesHint') }}</div>
 
-          <div
-            v-for="(instance, index) in integrationsDraft.eventory_instances"
-            :key="instance._draftKey || index"
-            class="q-pa-sm q-mb-sm"
-            style="border: 1px solid #d7dee6; border-radius: 10px"
-          >
+           <div
+             v-for="(instance, index) in integrationsDraft.eventory_instances"
+             :key="instance._draftKey || index"
+             class="ec-card ec-card--inset q-pa-md q-mb-md"
+           >
             <div class="row q-col-gutter-sm q-mb-sm">
               <div class="col-12 col-md-4">
                 <q-input
@@ -892,15 +892,14 @@
                 @click="syncEventoryProducts(instance.id)"
               />
               <q-badge
-                v-if="integrationResult('eventory', instance.id)"
-                :class="integrationResult('eventory', instance.id).ok ? 'ec-chip ec-chip--success' : 'ec-chip ec-chip--danger'"
-                :label="integrationResult('eventory', instance.id).ok ? t('settings.integrations.connected') : t('settings.integrations.failed')"
+                :class="integrationHealth('eventory', instance.id).chipClass"
+                :label="integrationHealth('eventory', instance.id).label"
               />
-              <span v-if="integrationResult('eventory', instance.id)" class="text-caption text-grey-7">
+              <span v-if="integrationResult('eventory', instance.id)" class="text-caption ec-text-muted">
                 {{ integrationResult('eventory', instance.id).message }}
               </span>
             </div>
-            <div v-if="eventoryPreviewResult(instance.id)" class="text-caption text-grey-8 q-mt-xs">
+            <div v-if="eventoryPreviewResult(instance.id)" class="text-caption ec-text-muted q-mt-xs">
               {{ t('settings.integrations.previewCount', { count: eventoryPreviewResult(instance.id).count }) }}
             </div>
             <q-table
@@ -914,7 +913,7 @@
               hide-pagination
               class="q-mt-sm"
             />
-            <div v-if="eventorySyncResult(instance.id)" class="text-caption text-grey-8 q-mt-xs">
+            <div v-if="eventorySyncResult(instance.id)" class="text-caption ec-text-muted q-mt-xs">
               {{ eventorySyncResult(instance.id).message }}
             </div>
             <q-banner
@@ -929,32 +928,31 @@
                 track-color="rgba(255,255,255,0.35)"
               />
             </q-banner>
-            <div class="text-caption text-grey-7 q-mt-xs">
+            <div class="text-caption ec-text-muted q-mt-xs">
               {{ t('settings.integrations.lastSync') }}: {{ eventorySyncStamp(instance) }}
             </div>
           </div>
 
-          <div class="row justify-end q-mt-sm">
-            <q-btn color="positive" :label="t('settings.integrations.eventory.save')" unelevated :loading="integrationsSaving" @click="saveIntegrations" />
-          </div>
+           <div class="row justify-end q-mt-sm">
+             <q-btn color="positive" :label="t('settings.integrations.eventory.save')" unelevated :loading="integrationsSaving" @click="saveIntegrations" />
+           </div>
+         </q-card>
 
-          <q-separator class="q-my-md" />
+         <q-card class="ec-card q-pa-md q-mt-md">
+           <div class="row items-center justify-between q-mb-sm">
+             <div class="ec-card-title">{{ t('settings.integrations.productionplanner.title') }}</div>
+             <q-toggle
+               v-model="integrationsDraft.productionplanner.enabled"
+               :label="t('settings.integrations.productionplanner.enabled')"
+               color="primary"
+             />
+           </div>
+           <div class="text-caption ec-text-muted q-mb-sm">{{ t('settings.integrations.productionplanner.description') }}</div>
 
-          <div class="row items-center justify-between q-mb-sm">
-            <div class="text-subtitle2">{{ t('settings.integrations.productionplanner.title') }}</div>
-            <q-toggle
-              v-model="integrationsDraft.productionplanner.enabled"
-              :label="t('settings.integrations.productionplanner.enabled')"
-              color="primary"
-            />
-          </div>
-          <div class="text-caption text-grey-7 q-mb-sm">{{ t('settings.integrations.productionplanner.description') }}</div>
-
-          <div class="q-pa-sm q-mb-sm" style="border: 1px solid #d7dee6; border-radius: 10px">
             <div class="row q-col-gutter-sm q-mb-sm">
-              <div class="col-12 col-md-6">
-                <q-input
-                  v-model="integrationsDraft.productionplanner.api_key"
+               <div class="col-12 col-md-6">
+                 <q-input
+                   v-model="integrationsDraft.productionplanner.api_key"
                   :label="t('settings.integrations.productionplanner.apiKey')"
                   :placeholder="integrationsDraft.productionplanner.has_api_key && !integrationsDraft.productionplanner.api_key ? t('settings.integrations.productionplanner.apiKeySaved') : t('settings.integrations.productionplanner.apiKeyPlaceholder')"
                   :hint="integrationsDraft.productionplanner.has_api_key && !integrationsDraft.productionplanner.api_key ? t('settings.integrations.productionplanner.apiKeySavedHint') : t('settings.integrations.productionplanner.apiKeyHint')"
@@ -983,36 +981,33 @@
                 @click="testIntegration('productionplanner', integrationsDraft.productionplanner, 'productionplanner')"
               />
               <q-badge
-                v-if="integrationResult('productionplanner', 'productionplanner')"
-                :class="integrationResult('productionplanner', 'productionplanner').ok ? 'ec-chip ec-chip--success' : 'ec-chip ec-chip--danger'"
-                :label="integrationResult('productionplanner', 'productionplanner').ok ? t('settings.integrations.productionplanner.connected') : t('settings.integrations.productionplanner.failed')"
+                :class="integrationHealth('productionplanner', 'productionplanner').chipClass"
+                :label="integrationHealth('productionplanner', 'productionplanner').label"
               />
-              <span v-if="integrationResult('productionplanner', 'productionplanner')" class="text-caption text-grey-7">
+              <span v-if="integrationResult('productionplanner', 'productionplanner')" class="text-caption ec-text-muted">
                 {{ integrationResult('productionplanner', 'productionplanner').message }}
               </span>
             </div>
-            <div class="row justify-end q-mt-sm">
-              <q-btn color="positive" :label="t('settings.integrations.productionplanner.save')" unelevated :loading="integrationsSaving" @click="saveProductionPlanner" />
-            </div>
-          </div>
+             <div class="row justify-end q-mt-sm">
+               <q-btn color="positive" :label="t('settings.integrations.productionplanner.save')" unelevated :loading="integrationsSaving" @click="saveProductionPlanner" />
+             </div>
+         </q-card>
 
-          <q-separator class="q-my-md" />
+         <q-card class="ec-card q-pa-md q-mt-md">
+           <div class="row items-center justify-between q-mb-sm">
+             <div class="ec-card-title">{{ t('settings.integrations.twenty.title') }}</div>
+             <q-toggle
+               v-model="twentyDraft.enabled"
+               :label="t('settings.integrations.twenty.enabled')"
+               color="primary"
+             />
+           </div>
+           <div class="text-caption ec-text-muted q-mb-sm">{{ t('settings.integrations.twenty.description') }}</div>
 
-          <div class="row items-center justify-between q-mb-sm">
-            <div class="text-subtitle2">{{ t('settings.integrations.twenty.title') }}</div>
-            <q-toggle
-              v-model="twentyDraft.enabled"
-              :label="t('settings.integrations.twenty.enabled')"
-              color="primary"
-            />
-          </div>
-          <div class="text-caption text-grey-7 q-mb-sm">{{ t('settings.integrations.twenty.description') }}</div>
-
-          <div class="q-pa-sm q-mb-sm" style="border: 1px solid #d7dee6; border-radius: 10px">
             <div class="row q-col-gutter-sm q-mb-sm">
-              <div class="col-12 col-md-5">
-                <q-input
-                  v-model="twentyDraft.api_key"
+               <div class="col-12 col-md-5">
+                 <q-input
+                   v-model="twentyDraft.api_key"
                   :label="t('settings.integrations.twenty.apiKey')"
                   :placeholder="twentyDraft.has_api_key && !twentyDraft.api_key ? t('settings.integrations.twenty.apiKeySaved') : t('settings.integrations.twenty.apiKeyPlaceholder')"
                   :hint="twentyDraft.has_api_key && !twentyDraft.api_key ? t('settings.integrations.twenty.apiKeySavedHint') : t('settings.integrations.twenty.apiKeyHint')"
@@ -1081,11 +1076,10 @@
                 @click="testTwentyConnection"
               />
               <q-badge
-                v-if="twentyTestResult"
-                :class="twentyTestResult.success ? 'ec-chip ec-chip--success' : 'ec-chip ec-chip--danger'"
-                :label="twentyTestResult.success ? t('settings.integrations.twenty.connected') : t('settings.integrations.twenty.failed')"
+                :class="integrationHealth('twenty', 'twenty').chipClass"
+                :label="integrationHealth('twenty', 'twenty').label"
               />
-              <span v-if="twentyTestResult" class="text-caption text-grey-7">
+              <span v-if="twentyTestResult" class="text-caption ec-text-muted">
                 {{ twentyTestResult.message }}
                 <template v-if="twentyTestResult.workspace_name"> — {{ twentyTestResult.workspace_name }}</template>
               </span>
@@ -1097,19 +1091,19 @@
               <div class="text-subtitle2 q-mb-sm">{{ t('settings.integrations.twenty.syncStatus') }}</div>
               <div v-if="twentySyncStatus" class="row q-col-gutter-sm q-mb-sm">
                 <div class="col-12 col-md-4">
-                  <div class="text-caption text-grey-7">{{ t('settings.integrations.twenty.lastSync') }}</div>
+                  <div class="text-caption ec-text-muted">{{ t('settings.integrations.twenty.lastSync') }}</div>
                   <div>{{ twentySyncStatus.last_sync_at ? new Date(twentySyncStatus.last_sync_at).toLocaleString() : t('settings.integrations.twenty.never') }}</div>
                 </div>
                 <div class="col-12 col-md-4">
-                  <div class="text-caption text-grey-7">{{ t('settings.integrations.twenty.totalSynced') }}</div>
+                  <div class="text-caption ec-text-muted">{{ t('settings.integrations.twenty.totalSynced') }}</div>
                   <div>{{ twentySyncStatus.total_synced }}</div>
                 </div>
                 <div class="col-12 col-md-4">
-                  <div class="text-caption text-grey-7">{{ t('settings.integrations.twenty.totalFailed') }}</div>
+                  <div class="text-caption ec-text-muted">{{ t('settings.integrations.twenty.totalFailed') }}</div>
                   <div :class="twentySyncStatus.total_failed > 0 ? 'text-negative' : ''">{{ twentySyncStatus.total_failed }}</div>
                 </div>
                 <div v-if="twentySyncStatus.next_sync_at" class="col-12">
-                  <div class="text-caption text-grey-7">{{ t('settings.integrations.twenty.nextSync') }}</div>
+                  <div class="text-caption ec-text-muted">{{ t('settings.integrations.twenty.nextSync') }}</div>
                   <div>{{ new Date(twentySyncStatus.next_sync_at).toLocaleString() }}</div>
                 </div>
               </div>
@@ -1146,7 +1140,7 @@
                   color="secondary"
                   class="q-mt-xs"
                 />
-                <div class="text-caption text-grey-7 q-mt-xs">
+                <div class="text-caption ec-text-muted q-mt-xs">
                   {{ t('settings.integrations.twenty.schemaProvisioning', {
                     stage: twentySchemaJob.stage || t('settings.integrations.twenty.syncQueued'),
                     processed: twentySchemaJob.processed ?? 0,
@@ -1162,7 +1156,7 @@
                   class="q-mt-xs"
                   :indeterminate="!twentySyncJob.total"
                 />
-                <div class="text-caption text-grey-7 q-mt-xs">
+                <div class="text-caption ec-text-muted q-mt-xs">
                   {{ t('settings.integrations.twenty.syncProgress', {
                     stage: twentySyncJob.stage || t('settings.integrations.twenty.syncQueued'),
                     processed: twentySyncJob.processed ?? 0,
@@ -1177,7 +1171,7 @@
                 </div>
               </div>
               <div v-if="twentySyncStatus?.recent_logs?.length" class="q-mt-sm">
-                <div class="text-caption text-grey-7 q-mb-xs">{{ t('settings.integrations.twenty.recentLogs') }}</div>
+                <div class="text-caption ec-text-muted q-mb-xs">{{ t('settings.integrations.twenty.recentLogs') }}</div>
                 <q-table
                   :rows="twentySyncStatus.recent_logs.slice(0, 10)"
                   :columns="twentyLogColumns"
@@ -1190,24 +1184,22 @@
               </div>
             </template>
 
-            <div class="row justify-end q-mt-sm">
-              <q-btn color="positive" :label="t('settings.integrations.twenty.save')" unelevated :loading="integrationsSaving" @click="saveTwentyConfig" />
-            </div>
-          </div>
+             <div class="row justify-end q-mt-sm">
+               <q-btn color="positive" :label="t('settings.integrations.twenty.save')" unelevated :loading="integrationsSaving" @click="saveTwentyConfig" />
+             </div>
+         </q-card>
 
-          <q-separator class="q-my-md" />
-
-          <div class="row items-center justify-between q-mb-sm">
-            <div class="text-subtitle2">{{ t('settings.integrations.stockwire.title') }}</div>
-            <q-btn color="secondary" icon="add" :label="t('settings.integrations.stockwire.addInstance')" dense unelevated @click="addStockwireInstance" />
-          </div>
-          <div class="text-caption text-grey-7 q-mb-sm">{{ t('settings.integrations.stockwire.description') }}</div>
+         <q-card class="ec-card q-pa-md q-mt-md">
+           <div class="row items-center justify-between q-mb-sm">
+             <div class="ec-card-title">{{ t('settings.integrations.stockwire.title') }}</div>
+             <q-btn color="secondary" icon="add" :label="t('settings.integrations.stockwire.addInstance')" dense unelevated @click="addStockwireInstance" />
+           </div>
+           <div class="text-caption ec-text-muted q-mb-sm">{{ t('settings.integrations.stockwire.description') }}</div>
 
           <div
             v-for="(instance, index) in integrationsDraft.stockwire_instances"
             :key="instance.id || index"
-            class="q-pa-sm q-mb-sm"
-            style="border: 1px solid #d7dee6; border-radius: 10px"
+            class="ec-card ec-card--inset q-pa-md q-mb-md"
           >
             <div class="row q-col-gutter-sm q-mb-sm">
               <div class="col-12 col-md-4">
@@ -1285,16 +1277,15 @@
                 @click="testStockwireConnection(instance, instance.id)"
               />
               <q-badge
-                v-if="stockwireTestResult(instance.id)"
-                :color="stockwireTestResult(instance.id).ok ? 'positive' : 'negative'"
-                :label="stockwireTestResult(instance.id).ok ? t('settings.integrations.stockwire.connected') : t('settings.integrations.stockwire.failed')"
+                :class="integrationHealth('stockwire', instance.id).chipClass"
+                :label="integrationHealth('stockwire', instance.id).label"
               />
-              <span v-if="stockwireTestResult(instance.id)" class="text-caption text-grey-7">
+              <span v-if="stockwireTestResult(instance.id)" class="text-caption ec-text-muted">
                 {{ stockwireTestResult(instance.id).message }}
               </span>
             </div>
             <div class="q-mb-sm">
-              <div class="text-caption text-grey-7 q-mb-xs">{{ t('settings.integrations.stockwire.searchRemoteCustomers') }}</div>
+              <div class="text-caption ec-text-muted q-mb-xs">{{ t('settings.integrations.stockwire.searchRemoteCustomers') }}</div>
               <div class="row q-col-gutter-sm">
                 <div class="col-12 col-md-8">
                   <q-input
@@ -1318,10 +1309,10 @@
                 </div>
               </div>
               <div v-if="stockwireSearchResults[instance.id]" class="q-mt-sm">
-                <div v-if="!stockwireSearchResults[instance.id].customers.length" class="text-caption text-grey-7">
+                <div v-if="!stockwireSearchResults[instance.id].customers.length" class="text-caption ec-text-muted">
                   {{ t('settings.integrations.stockwire.noSearchResults') }}
                 </div>
-                <div v-else class="text-caption text-grey-7 q-mb-xs">
+                <div v-else class="text-caption ec-text-muted q-mb-xs">
                   {{ t('settings.integrations.stockwire.searchResults', { count: stockwireSearchResults[instance.id].count }) }}
                 </div>
                 <q-list v-if="stockwireSearchResults[instance.id].customers.length" dense bordered separator class="rounded-borders">
@@ -1350,17 +1341,19 @@
         </q-card>
       </q-tab-panel>
 
-      <q-tab-panel name="email" class="q-pa-none">
-        <q-card class="ec-card q-pa-md">
-          <div class="text-subtitle1 q-mb-sm">{{ t('settings.email.title') }}</div>
-          <div class="text-body2 q-mb-md">{{ t('settings.email.description') }}</div>
+       <q-tab-panel name="email" class="q-pa-none">
+         <q-card class="ec-card q-pa-md">
+           <div class="ec-card-title q-mb-sm">{{ t('settings.email.title') }}</div>
+           <div class="text-body2 q-mb-md">{{ t('settings.email.description') }}</div>
 
-          <q-banner v-if="settingsStore.smtpSettings.env_managed" class="bg-info text-white q-mb-md rounded-borders" dense>
-            {{ t('settings.email.envManagedBanner') }}
-          </q-banner>
+           <q-banner v-if="settingsStore.smtpSettings.env_managed" class="bg-info text-white q-mb-md rounded-borders" dense>
+             {{ t('settings.email.envManagedBanner') }}
+           </q-banner>
+         </q-card>
 
-          <q-form @submit.prevent="saveSmtpSettings">
-            <div class="text-subtitle2 q-mb-sm">{{ t('settings.email.resendTitle') }}</div>
+         <q-form @submit.prevent="saveSmtpSettings" class="q-mt-md">
+           <q-card class="ec-card ec-card--inset q-pa-md q-mb-md">
+             <div class="ec-card-title q-mb-sm">{{ t('settings.email.resendTitle') }}</div>
             <div class="row q-col-gutter-sm q-mb-md">
               <div class="col-12">
                 <q-input
@@ -1373,11 +1366,11 @@
                   autocomplete="new-password"
                 />
               </div>
-            </div>
+             </div>
+           </q-card>
 
-            <q-separator class="q-mb-md" />
-
-            <div class="text-subtitle2 q-mb-sm">{{ t('settings.email.connection') }}</div>
+           <q-card class="ec-card ec-card--inset q-pa-md q-mb-md">
+             <div class="ec-card-title q-mb-sm">{{ t('settings.email.connection') }}</div>
             <div class="row q-col-gutter-sm q-mb-md">
               <div class="col-12 col-md-6">
                 <q-input
@@ -1409,9 +1402,11 @@
                   :disable="settingsStore.smtpSettings.env_managed"
                 />
               </div>
-            </div>
+             </div>
+           </q-card>
 
-            <div class="text-subtitle2 q-mb-sm">{{ t('settings.email.senderInfo') }}</div>
+           <q-card class="ec-card ec-card--inset q-pa-md q-mb-md">
+             <div class="ec-card-title q-mb-sm">{{ t('settings.email.senderInfo') }}</div>
             <div class="row q-col-gutter-sm q-mb-md">
               <div class="col-12 col-md-4">
                 <q-input
@@ -1485,10 +1480,10 @@
                 :disable="!smtpTestEmail || !smtpTestEmail.includes('@')"
                 @click="testSmtpSettings"
               />
-            </div>
-          </q-form>
-        </q-card>
-      </q-tab-panel>
+             </div>
+           </q-card>
+           </q-form>
+       </q-tab-panel>
 
       <q-tab-panel name="notifications" class="q-pa-none">
         <NotificationsSettings />
@@ -1526,13 +1521,13 @@
           </div>
 
           <div class="row items-center q-gutter-xs q-mb-sm">
-            <div class="text-caption text-grey-7 q-mr-xs">{{ t('settings.offlineQueue.policy') }}:</div>
+            <div class="text-caption ec-text-muted q-mr-xs">{{ t('settings.offlineQueue.policy') }}:</div>
             <q-badge color="secondary" :label="t('settings.offlineQueue.policyMerge')" />
             <q-badge color="primary" :label="t('settings.offlineQueue.policyLww')" />
             <q-badge color="warning" text-color="dark" :label="t('settings.offlineQueue.policyGuarded')" />
           </div>
 
-          <div class="text-caption text-grey-7 q-mb-sm">
+          <div class="text-caption ec-text-muted q-mb-sm">
             Pending operations: {{ offlineQueueRows.length }}
             <span v-if="offlineQueueFailedIds.length"> · Failed pending retry: {{ offlineQueueFailedIds.length }}</span>
             <span v-if="offlineQueueDeferredIds.length"> · Blocked unresolved: {{ offlineQueueDeferredIds.length }}</span>
@@ -1585,8 +1580,8 @@
 
       <q-tab-panel name="llm" class="q-pa-none">
         <q-card class="ec-card q-pa-md">
-          <div class="text-subtitle1 q-mb-sm">{{ t('settings.llm.title') }}</div>
-          <div class="text-caption text-grey-7 q-mb-md">{{ t('settings.llm.description') }}</div>
+           <div class="ec-card-title q-mb-sm">{{ t('settings.llm.title') }}</div>
+          <div class="text-caption ec-text-muted q-mb-md">{{ t('settings.llm.description') }}</div>
 
           <div class="row q-col-gutter-sm q-mb-md">
             <div class="col-12 col-md-6">
@@ -1598,11 +1593,14 @@
                   <q-btn flat dense round :icon="showLlmApiKey ? 'visibility_off' : 'visibility'" @click="showLlmApiKey = !showLlmApiKey" />
                 </template>
               </q-input>
-            </div>
-          </div>
+             </div>
+           </div>
+         </q-card>
 
-          <div class="q-mb-md">
-            <div class="text-subtitle2 q-mb-xs">{{ t('settings.llm.model') }}</div>
+         <q-card class="ec-card q-pa-md q-mt-md">
+           <div class="ec-card-title q-mb-sm">{{ t('settings.llm.configuration') }}</div>
+           <div class="q-mb-md">
+             <div class="text-subtitle2 q-mb-xs">{{ t('settings.llm.model') }}</div>
             <div v-if="llmModels.length" class="q-mb-xs">
               <q-select
                 v-model="llmDraft.model"
@@ -1678,26 +1676,32 @@
 
       <q-tab-panel name="about" class="q-pa-none">
         <q-card class="ec-card q-pa-md">
-          <div class="text-subtitle1 q-mb-sm">{{ t('settings.about.title') }}</div>
-          <div class="text-caption text-grey-7 q-mb-md">{{ t('settings.about.description') }}</div>
+           <div class="ec-card-title q-mb-sm">{{ t('settings.about.title') }}</div>
+           <div class="text-caption ec-text-muted q-mb-md">{{ t('settings.about.description') }}</div>
+         </q-card>
 
-          <div class="row q-col-gutter-sm q-mb-md items-center">
+         <q-card class="ec-card q-pa-md q-mt-md">
+           <div class="ec-card-title q-mb-sm">{{ t('settings.about.systemInfo') }}</div>
+           <div class="row q-col-gutter-sm q-mb-md items-center">
+             <div class="col-12 col-md-6">
+               <div class="text-body2 ec-text-muted">{{ t('settings.about.imageTag') }}</div>
+               <div class="text-h6">{{ versionInfo.image_tag || '—' }}</div>
+             </div>
             <div class="col-12 col-md-6">
-              <div class="text-body2 text-grey-6">{{ t('settings.about.imageTag') }}</div>
-              <div class="text-h6">{{ versionInfo.image_tag || '—' }}</div>
-            </div>
-            <div class="col-12 col-md-6">
-              <div class="text-body2 text-grey-6">{{ t('settings.about.valkeyVersion') }}</div>
+              <div class="text-body2 ec-text-muted">{{ t('settings.about.valkeyVersion') }}</div>
               <div class="text-h6">{{ versionInfo.valkey_version || '—' }}</div>
             </div>
             <div class="col-12 col-md-6">
-              <div class="text-body2 text-grey-6">{{ t('settings.about.postgresVersion') }}</div>
-              <div class="text-h6">{{ versionInfo.postgres_version || '—' }}</div>
-            </div>
-          </div>
+               <div class="text-body2 ec-text-muted">{{ t('settings.about.postgresVersion') }}</div>
+               <div class="text-h6">{{ versionInfo.postgres_version || '—' }}</div>
+             </div>
+           </div>
+         </q-card>
 
-          <div class="row q-col-gutter-sm q-mb-md items-center">
-            <div class="col-auto">
+         <q-card class="ec-card q-pa-md q-mt-md">
+           <div class="ec-card-title q-mb-sm">{{ t('settings.about.updates') }}</div>
+           <div class="row q-col-gutter-sm q-mb-md items-center">
+             <div class="col-auto">
               <q-btn
                 color="primary"
                 icon="system_update"
@@ -1739,7 +1743,7 @@
                 @click="clearCacheAndUpdate"
               />
             </div>
-            <div class="col-auto text-caption text-grey-7">
+            <div class="col-auto text-caption ec-text-muted">
               {{ t('settings.about.clearCacheHint') }}
             </div>
           </div>
@@ -1762,7 +1766,7 @@
             <div class="text-subtitle2 q-mb-sm">{{ t('settings.about.releaseNotes') }}</div>
             <q-card flat bordered class="q-pa-sm">
               <pre v-if="versionCheckResult.latest_release_notes" class="text-body2" style="white-space: pre-wrap; margin: 0">{{ versionCheckResult.latest_release_notes }}</pre>
-              <div v-else class="text-caption text-grey-7">{{ t('settings.about.noReleaseNotes') }}</div>
+              <div v-else class="text-caption ec-text-muted">{{ t('settings.about.noReleaseNotes') }}</div>
             </q-card>
           </template>
         </q-card>
@@ -3007,6 +3011,52 @@ function isIntegrationTesting(plugin, target = 'default') {
     return !!integrationTesting.value.eventoryInstances?.[target]
   }
   return !!integrationTesting.value[plugin]
+}
+
+function integrationEnabled(plugin, target = 'default') {
+  if (plugin === 'eventory') {
+    const instance = (integrationsDraft.value.eventory_instances || []).find(i => String(i?.id || '').trim() === String(target || '').trim())
+    return !!instance?.enabled
+  }
+  if (plugin === 'productionplanner') return !!integrationsDraft.value.productionplanner?.enabled
+  if (plugin === 'twenty') return !!twentyDraft.value.enabled
+  if (plugin === 'stockwire') {
+    const instance = (integrationsDraft.value.stockwire_instances || []).find(i => String(i?.id || '').trim() === String(target || '').trim())
+    return !!instance?.enabled
+  }
+  return false
+}
+
+function integrationConnectedLabel(plugin) {
+  if (plugin === 'productionplanner') return t('settings.integrations.productionplanner.connected')
+  if (plugin === 'twenty') return t('settings.integrations.twenty.connected')
+  if (plugin === 'stockwire') return t('settings.integrations.stockwire.connected')
+  return t('settings.integrations.connected')
+}
+
+function integrationFailedLabel(plugin) {
+  if (plugin === 'productionplanner') return t('settings.integrations.productionplanner.failed')
+  if (plugin === 'twenty') return t('settings.integrations.twenty.failed')
+  if (plugin === 'stockwire') return t('settings.integrations.stockwire.failed')
+  return t('settings.integrations.failed')
+}
+
+function integrationHealth(plugin, target = 'default') {
+  let res = integrationResult(plugin, target)
+  if (plugin === 'twenty' && twentyTestResult.value) {
+    res = { ok: !!twentyTestResult.value.success, message: twentyTestResult.value.message }
+  }
+  if (res) {
+    return {
+      ok: res.ok,
+      label: res.ok ? integrationConnectedLabel(plugin) : integrationFailedLabel(plugin),
+      chipClass: res.ok ? 'ec-chip ec-chip--success' : 'ec-chip ec-chip--danger',
+    }
+  }
+  if (integrationEnabled(plugin, target)) {
+    return { ok: null, label: t('settings.integrations.notTested'), chipClass: 'ec-chip ec-chip--warning' }
+  }
+  return { ok: null, label: t('settings.integrations.disabled'), chipClass: 'ec-chip ec-chip--neutral' }
 }
 
 function isEventoryPreviewLoading(instanceId) {

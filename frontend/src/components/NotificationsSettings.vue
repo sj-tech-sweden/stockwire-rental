@@ -7,7 +7,7 @@
           <div class="text-subtitle1 text-weight-medium">
             {{ t('settings.notifications.quickActions') }}
           </div>
-          <div class="text-caption text-grey-7">
+          <div class="text-caption ec-text-muted">
             {{ t('settings.notifications.quickActionsHint') }}
           </div>
         </div>
@@ -28,7 +28,7 @@
         <div class="text-subtitle1 text-weight-medium q-mb-md">
           {{ t('settings.notifications.preferences') }}
         </div>
-        <div class="text-caption text-grey-7 q-mb-md">
+        <div class="text-caption ec-text-muted q-mb-md">
           {{ t('settings.notifications.preferencesHint') }}
         </div>
         <q-table
@@ -91,7 +91,7 @@
             @click="openCreateTemplate"
           />
         </div>
-        <div class="text-caption text-grey-7 q-mb-md">
+        <div class="text-caption ec-text-muted q-mb-md">
           {{ t('settings.notifications.templatesHint') }}
         </div>
 
@@ -215,7 +215,7 @@
 
           <div class="q-mt-sm q-mb-md">
             <q-badge :color="recipientColor(templateForm.recipient_type)" :label="recipientLabel(templateForm.recipient_type)" />
-            <span class="text-caption text-grey-7 q-ml-sm">
+            <span class="text-caption ec-text-muted q-ml-sm">
               {{ recipientHint(templateForm.recipient_type) }}
             </span>
           </div>
@@ -248,7 +248,7 @@
             class="q-mt-md"
           />
 
-          <div class="text-caption text-grey-7 q-mt-sm">
+          <div class="text-caption ec-text-muted q-mt-sm">
             {{ t('settings.notifications.templateHelp') }}
           </div>
         </q-card-section>

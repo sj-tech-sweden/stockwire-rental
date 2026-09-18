@@ -107,7 +107,18 @@ These opportunities are based on the design system in `design/` and the current 
 - Add **integration health indicators** (connected / disconnected chips).
 - Show inline validation hints using `Body / Muted`.
 
-**Status:** Started. Added `.ec-page-title`, `.ec-card`, `.ec-chip--success`, `.ec-chip--danger`, and `:no-data-label` messages. Grouped organization/profile fields and integration health into styled cards with status chips.
+**Status:** Done.
+- Added `.ec-page-title`, `.ec-card`, `.ec-card-title`, `.ec-chip--success/--danger/--warning/--info`, `.ec-text-muted`, and `:no-data-label` messages.
+- Grouped the long single-card tabs into multiple `ec-card`s, each with an `.ec-card-title`:
+  - **Auth:** Users · API Keys · Single Sign-On (OIDC/SAML provider blocks are now nested `ec-card`s).
+  - **Company:** Organization & branding · Address & contact.
+  - **Inventory:** Location types · Product brand/manufacturer defaults · Category prefill.
+  - **Email:** header card + Resend · SMTP connection · Sender info (form preserved).
+  - **Integrations:** one top-level `ec-card` per integration — **Eventory**, **Production Planner**, **Twenty**, **Stockwire** — instead of a single wrapper card. Eventory and Stockwire (which support multiple instances) use nested `ec-card--inset` cards for each instance. OIDC/SAML providers in the SSO tab are also nested `ec-card--inset` cards.
+- **LLM:** split into *Endpoint* and *Model & Configuration* cards.
+- **About:** split into *System information* and *Updates & maintenance* cards (plus the header card).
+- Integration health: a persistent status chip now appears for **every** integration (Eventory, Production Planner, Twenty, Stockwire) via a new `integrationHealth()` helper — `Connected` (green) when a test passed, `Failed` (red) when it failed, `Not tested` (amber) when enabled but untested, and `Disabled` (neutral) when toggled off. The Warehouse LEDs device status badge uses `ec-chip--success/--danger`.
+- Inline validation/muted hints: replaced all `text-grey-6/7/8` caption classes with the token-aligned `.ec-text-muted` (Body / Muted) across `SettingsPage.vue`, `NotificationsSettings.vue`, and `CalendarFeedsSettings.vue`.
 
 ## 10. Route planner enhancements
 
