@@ -1629,6 +1629,7 @@ export default {
     replacementCost: 'Replacement cost',
     maintenanceInterval: 'Maintenance interval ({unit})',
     power: 'Power ({unit})',
+    isPublic: 'Publish to public catalog',
     weight: 'Weight ({unit})',
     height: 'Height ({unit})',
     width: 'Width ({unit})',

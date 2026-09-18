@@ -74,6 +74,7 @@ class Product(Base):
     crew_certifications: Mapped[str | None] = mapped_column(Text, nullable=True)
     crew_rate_type: Mapped[str | None] = mapped_column(String(20), nullable=True)
     crew_hourly_rate: Mapped[float | None] = mapped_column(Numeric(10, 2), nullable=True)
+    is_public: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
 
     category_node: Mapped["InventoryCategory | None"] = relationship(back_populates="products")
