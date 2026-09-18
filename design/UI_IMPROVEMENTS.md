@@ -127,11 +127,27 @@ These opportunities are based on the design system in `design/` and the current 
 - Verify 4.5:1 contrast for all body text.
 - Add a `prefers-reduced-motion` variant for animations.
 
-**Status:** Done.
-- Expanded global `:focus-visible` styles in `frontend/src/css/app.css` to cover links, buttons, inputs, selects, textareas, tabbable elements, Quasar buttons, items, tabs, radios, checkboxes, toggles, btn-toggles, expansion items, fields, sliders, chips, pagination, stepper tabs, carousel controls, tree nodes, and menu items.
+**Status:** Partially done / revised.
 - Added a `prefers-reduced-motion: reduce` media query that disables animations and transitions for users who request reduced motion.
 - Replaced low-contrast Quasar `text-grey-*` muted captions with `.ec-text-muted` (which uses `--ec-text-secondary`) in `FinancePage.vue`, `CrewPage.vue`, `ProfilePage.vue`, `WarehouseLedsPage.vue`, and `ProjectsPage.vue`.
 - Added `scripts/verify_contrast.py` to check WCAG contrast ratios for design tokens against both dark and light surfaces. All token pairs pass the required thresholds.
+- NOTE: A broad global `:focus-visible` override was added then reverted. It stacked multiple focus boxes on complex components like `q-field` (the browser/Quasar default outline plus the custom one). Focus styling is now left to Quasar's built-in defaults, which already provide visible focus indicators.
+
+## 12. Scan experience — tactile polish
+
+**Current state:** Scan page is functional but could be more tactile.
+**Improvement:**
+- Increase touch targets to at least 64px.
+- Add haptic-compatible feedback states (visual + optional vibration).
+- Show device/product thumbnail after a successful scan.
+- Use `Scanner / Target` and `Scan Feedback / Success` components from the library.
+
+**Status:** Done.
+- Created `frontend/src/components/ScannerTarget.vue` and `frontend/src/components/ScanFeedback.vue` matching the library specs (`design/penpot/components.md` §Scanner).
+- `ScanPage.vue` now renders the `ScannerTarget` component; on a scan result a `ScanFeedback` (success/error) with optional product/device thumbnail is shown with a pulse animation.
+- Added tactile feedback: visual pulse on the target plus `navigator.vibrate()` haptics on success/error (gracefully no-op when unsupported).
+- Increased touch targets: primary scan submit button and scan action toggles to 64px min-height; toggles to 56px.
+- Unified off-brand banner colors (`bg-teal-8`/`bg-amber-8`/`bg-positive`/`bg-negative`) with the brand-aligned `ec-banner--success/warning/info/danger` utility classes (also applied to `FieldScanDialog.vue`).
 
 ## How to use Penpot for these
 

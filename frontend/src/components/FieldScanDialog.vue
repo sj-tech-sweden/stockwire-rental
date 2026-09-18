@@ -67,7 +67,7 @@
             </div>
           </div>
         </div>
-        <q-banner v-if="captureError" class="bg-negative text-white q-mt-sm rounded-borders" dense>{{ captureError }}</q-banner>
+        <q-banner v-if="captureError" class="ec-banner ec-banner--danger q-mt-sm rounded-borders" dense>{{ captureError }}</q-banner>
       </q-card-section>
       <q-card-actions align="right">
         <q-btn flat :label="t('app.actions.close')" @click="$emit('update:modelValue', false)" />

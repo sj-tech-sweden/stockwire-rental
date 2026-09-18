@@ -2416,6 +2416,8 @@ export default {
     scanOrTypeDeviceCodeFirst: 'Scan or type a device code first.',
     scanProcessed: 'Scan processed',
     scanFailed: 'Scan failed',
+    scanSuccess: 'Scanned',
+    scanFailedShort: 'Scan failed',
     deviceNotFound: 'Device not found',
     cameraApiNotSupported: 'Camera API not supported in this browser.',
     barcodeDetectionNotSupported: 'Barcode detection not supported in this browser.',
