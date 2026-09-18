@@ -1,8 +1,35 @@
 <template>
   <q-page class="q-pa-md ec-page">
     <div class="row items-center q-mb-md">
-      <div class="text-h5 col">{{ t('projects.title') }}</div>
+      <div class="ec-page-title col">{{ t('projects.title') }}</div>
       <q-btn v-if="authStore.canEdit" color="primary" icon="add" :label="t('projects.newProject')" unelevated @click="openCreate" />
+    </div>
+
+    <div class="row q-col-gutter-md q-mb-md">
+      <div class="col-6 col-md-3">
+        <q-card flat bordered class="ec-card q-pa-md">
+          <div class="ec-metric-label">{{ t('projects.totalProjects') }}</div>
+          <div class="ec-metric-value">{{ projectsStore.projects.length }}</div>
+        </q-card>
+      </div>
+      <div class="col-6 col-md-3">
+        <q-card flat bordered class="ec-card q-pa-md">
+          <div class="ec-metric-label">{{ t('projects.activeProjects') }}</div>
+          <div class="ec-metric-value">{{ activeProjectsCount }}</div>
+        </q-card>
+      </div>
+      <div class="col-6 col-md-3">
+        <q-card flat bordered class="ec-card q-pa-md">
+          <div class="ec-metric-label">{{ t('projects.completedProjects') }}</div>
+          <div class="ec-metric-value">{{ completedProjectsCount }}</div>
+        </q-card>
+      </div>
+      <div class="col-6 col-md-3">
+        <q-card flat bordered class="ec-card q-pa-md">
+          <div class="ec-metric-label">{{ t('projects.cancelledProjects') }}</div>
+          <div class="ec-metric-value">{{ cancelledProjectsCount }}</div>
+        </q-card>
+      </div>
     </div>
 
     <q-table
@@ -17,6 +44,7 @@
       :pagination="{ rowsPerPage: 50, sortBy: 'created_at', descending: true }"
       :rows-per-page-options="[25, 50, 100, 0]"
       class="ec-card"
+      :no-data-label="t('projects.noProjects')"
     >
       <template #top-right>
         <q-input v-model="search" dense outlined clearable :placeholder="t('projects.searchProjects')">
@@ -112,10 +140,10 @@
 
       <template #item="props">
         <div class="q-pa-xs col-12">
-          <q-card flat bordered>
+          <q-card flat bordered class="ec-card">
             <q-card-section class="q-pb-sm">
               <div class="text-subtitle2">{{ props.row.name }}</div>
-              <div class="text-caption text-grey-7">
+              <div class="text-caption ec-text-muted">
                 <q-badge :color="statusColor(props.row.status)" :label="statusLabel(props.row.status)" class="q-mr-sm" />
                 {{ props.row.customer_name || '-' }} · {{ props.row.venue_name || '-' }}
               </div>
@@ -181,6 +209,7 @@ import { useJobsStore } from '../stores/jobs'
 import { useSettingsStore } from '../stores/settings'
 import ProjectDialog from '../components/ProjectDialog.vue'
 import ProjectDeleteDialog from '../components/ProjectDeleteDialog.vue'
+import { useCompactGrid } from '../composables/useCompactGrid'
 
 const $q = useQuasar()
 const router = useRouter()
@@ -194,6 +223,7 @@ const jobsStore = useJobsStore()
 const settingsStore = useSettingsStore()
 
 const productionplannerEnabled = computed(() => settingsStore.integrations?.productionplanner?.enabled === true)
+const compactGrid = useCompactGrid(1024)
 
 const search = ref('')
 const pageLoading = ref(false)
@@ -201,8 +231,6 @@ const dialogOpen = ref(false)
 const editing = ref(null)
 const deleteDialogOpen = ref(false)
 const deleteTarget = ref(null)
-
-const compactGrid = computed(() => $q.screen.width < 600)
 
 const columns = computed(() => [
   { name: 'name', label: t('projects.name'), field: 'name', sortable: true, align: 'left' },
@@ -217,6 +245,10 @@ const columns = computed(() => [
   { name: 'created_at', label: t('projects.created'), field: 'created_at', sortable: true, align: 'left', format: formatDate },
   { name: 'actions', label: '', field: 'actions', align: 'right' },
 ])
+
+const activeProjectsCount = computed(() => projectsStore.projects.filter(p => p.status === 'active').length)
+const completedProjectsCount = computed(() => projectsStore.projects.filter(p => p.status === 'completed').length)
+const cancelledProjectsCount = computed(() => projectsStore.projects.filter(p => p.status === 'cancelled').length)
 
 const filteredProjects = computed(() => {
   const term = search.value.trim().toLowerCase()

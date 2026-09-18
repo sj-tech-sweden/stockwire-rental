@@ -1,8 +1,35 @@
 <template>
   <q-page class="q-pa-md ec-page">
     <div class="row items-center q-mb-md">
-      <div class="text-h5 col">{{ t('activity.title') }}</div>
+      <div class="ec-page-title col">{{ t('activity.title') }}</div>
       <q-btn color="primary" icon="refresh" :label="t('home.refresh')" unelevated @click="refresh" :loading="store.loading" />
+    </div>
+
+    <div class="row q-col-gutter-md q-mb-md">
+      <div class="col-6 col-md-3">
+        <q-card flat bordered class="ec-card q-pa-md">
+          <div class="ec-metric-label">{{ t('activity.totalActivity') }}</div>
+          <div class="ec-metric-value">{{ store.logs.length }}</div>
+        </q-card>
+      </div>
+      <div class="col-6 col-md-3">
+        <q-card flat bordered class="ec-card q-pa-md">
+          <div class="ec-metric-label">{{ t('activity.createCount') }}</div>
+          <div class="ec-metric-value">{{ createCount }}</div>
+        </q-card>
+      </div>
+      <div class="col-6 col-md-3">
+        <q-card flat bordered class="ec-card q-pa-md">
+          <div class="ec-metric-label">{{ t('activity.updateCount') }}</div>
+          <div class="ec-metric-value">{{ updateCount }}</div>
+        </q-card>
+      </div>
+      <div class="col-6 col-md-3">
+        <q-card flat bordered class="ec-card q-pa-md">
+          <div class="ec-metric-label">{{ t('activity.deleteCount') }}</div>
+          <div class="ec-metric-value">{{ deleteCount }}</div>
+        </q-card>
+      </div>
     </div>
 
     <div class="row q-col-gutter-sm q-mb-sm">
@@ -26,6 +53,7 @@
       :loading="store.loading"
       :pagination="{ rowsPerPage: 25 }"
       :rows-per-page-options="[25, 50, 100]"
+      :no-data-label="t('activity.noActivity')"
     >
       <template #body-cell-created_at="props">
         <q-td :props="props">{{ formatTs(props.value) }}</q-td>
@@ -55,7 +83,7 @@
       </template>
       <template #item="props">
         <div class="q-pa-xs col-12">
-          <q-card flat bordered>
+          <q-card flat bordered class="ec-card">
             <q-card-section class="q-pb-sm">
               <div class="row items-center justify-between">
                 <div class="text-subtitle2">{{ entityLabel(props.row) }}</div>
@@ -107,6 +135,10 @@ const columns = [
   { name: 'message', label: t('activity.message'), field: 'message', sortable: true, align: 'left' },
   { name: 'user', label: t('activity.user'), field: 'user_full_name', sortable: true, align: 'left' },
 ]
+
+const createCount = computed(() => store.logs.filter(log => log.action === 'create').length)
+const updateCount = computed(() => store.logs.filter(log => log.action === 'update').length)
+const deleteCount = computed(() => store.logs.filter(log => log.action === 'delete').length)
 
 const filteredLogs = computed(() => {
   const term = search.value.trim().toLowerCase()

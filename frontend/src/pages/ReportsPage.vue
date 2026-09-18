@@ -1,6 +1,6 @@
 <template>
   <q-page class="q-pa-md ec-page">
-    <div class="text-h5 q-mb-md">{{ t('reports.title') }}</div>
+    <div class="ec-page-title q-mb-md">{{ t('reports.title') }}</div>
 
     <q-tabs v-model="tab" inline-label align="left" class="q-mb-md">
       <q-tab name="letterheads" icon="description" :label="t('reports.letterheads')" />

@@ -23,10 +23,11 @@ design/
 │   ├── cable-motif.svg       # Curved cable signature element
 │   └── components/           # Ready-made SVG component templates for Penpot
 ├── penpot/
-│   ├── IMPORT_GUIDE.md       # How to import this system into Penpot
-│   ├── components.md         # Component library spec
-│   └── templates.md          # Page templates / wireframes
-└── UI_IMPROVEMENTS.md        # Concrete improvement opportunities
+│   ├── IMPORT_GUIDE.md         # How to import this system into Penpot
+│   ├── CURRENT_PAGES_IMPORT.md # Import existing screenshots as reference boards
+│   ├── components.md           # Component library spec
+│   └── templates.md            # Page templates / wireframes
+└── UI_IMPROVEMENTS.md          # Concrete improvement opportunities
 ```
 
 ## Brand direction

@@ -2,7 +2,7 @@
   <q-page class="q-pa-md">
     <q-card class="ec-card q-pa-md" style="max-width: 720px; margin: 0 auto;">
       <div class="text-h6 q-mb-sm">{{ t('profile.title') }}</div>
-      <div class="text-caption text-grey-7 q-mb-md">
+      <div class="text-caption ec-text-muted q-mb-md">
         {{ t('profile.description') }}
       </div>
 
@@ -79,7 +79,7 @@
 
         <div class="q-mt-md">
           <div class="text-subtitle2 q-mb-sm">{{ t('profile.webNotifications') }}</div>
-          <div class="text-caption text-grey-7 q-mb-sm">{{ t('profile.webNotificationsDescription') }}</div>
+          <div class="text-caption ec-text-muted q-mb-sm">{{ t('profile.webNotificationsDescription') }}</div>
           <div class="row items-center q-gutter-sm">
             <q-btn
               color="secondary"
@@ -88,7 +88,7 @@
               :disable="saving || !canUseWebPush"
               @click="enableWebNotifications"
             />
-            <span class="text-caption text-grey-7">{{ webPushStatus }}</span>
+            <span class="text-caption ec-text-muted">{{ webPushStatus }}</span>
           </div>
         </div>
 
@@ -108,7 +108,7 @@
       <template v-if="crewCalendarUrl">
         <q-separator class="q-my-md" />
         <div class="text-subtitle1 q-mb-sm">{{ t('profile.crewCalendar') }}</div>
-        <div class="text-caption text-grey-7 q-mb-sm">{{ t('profile.crewCalendarDescription') }}</div>
+        <div class="text-caption ec-text-muted q-mb-sm">{{ t('profile.crewCalendarDescription') }}</div>
         <div class="row items-center q-gutter-sm">
           <q-input
             :model-value="crewCalendarUrl"
@@ -133,13 +133,15 @@
     <!-- Per-user notification preferences (start from company defaults) -->
     <q-card class="ec-card q-pa-md q-mt-md" style="max-width: 720px; margin: 0 auto;">
       <div class="text-subtitle1 q-mb-sm">{{ t('profile.myNotificationPreferences') }}</div>
-      <div class="text-caption text-grey-7 q-mb-md">{{ t('profile.myNotificationPreferencesHint') }}</div>
+      <div class="text-caption ec-text-muted q-mb-md">{{ t('profile.myNotificationPreferencesHint') }}</div>
       <q-table
         :rows="myPrefs"
         :columns="myPrefColumns"
         row-key="event_type"
         flat
         dense
+        :grid="compactGrid"
+        :hide-header="compactGrid"
         :loading="loadingMyPrefs"
         hide-bottom
       >
@@ -184,6 +186,44 @@
             />
           </q-td>
         </template>
+
+        <template #item="props">
+          <div class="q-pa-xs col-12">
+            <q-card flat bordered class="ec-card">
+              <q-card-section class="q-pb-sm">
+                <div class="text-subtitle2">{{ translateEventType(props.row.event_type) }}</div>
+                <q-badge
+                  :color="props.row.is_override ? 'warning' : 'grey'"
+                  :label="props.row.is_override ? t('profile.myPrefOverridden') : t('profile.myPrefGlobalDefault')"
+                  class="q-mt-xs"
+                />
+              </q-card-section>
+              <q-card-section class="q-pt-none q-pb-sm">
+                <div class="row items-center justify-between q-mb-sm">
+                  <div class="text-caption ec-text-muted">{{ t('profile.myPrefEmail') }}</div>
+                  <q-toggle
+                    :model-value="props.row.email_enabled"
+                    @update:model-value="toggleMyPref(props.row, 'email_enabled', $event)"
+                    color="primary"
+                    dense
+                  />
+                </div>
+                <div class="row items-center justify-between">
+                  <div class="text-caption ec-text-muted">{{ t('profile.myPrefWebPush') }}</div>
+                  <q-toggle
+                    :model-value="props.row.web_push_enabled"
+                    @update:model-value="toggleMyPref(props.row, 'web_push_enabled', $event)"
+                    color="primary"
+                    dense
+                  />
+                </div>
+              </q-card-section>
+              <q-card-actions v-if="props.row.is_override" align="right">
+                <q-btn flat dense size="sm" icon="restart_alt" :label="t('profile.myPrefReset')" @click="resetMyPref(props.row)" />
+              </q-card-actions>
+            </q-card>
+          </div>
+        </template>
       </q-table>
     </q-card>
   </q-page>
@@ -200,10 +240,12 @@ import { getApiBaseUrl } from '../utils/runtime-config'
 import { resolveAppLocale, setLocale, setUserLocalePreference } from '../i18n'
 import MySkills from '../components/MySkills.vue'
 import MyCertifications from '../components/MyCertifications.vue'
+import { useCompactGrid } from '../composables/useCompactGrid'
 
 const $q = useQuasar()
 const authStore = useAuthStore()
 const { t } = useI18n()
+const compactGrid = useCompactGrid(1024)
 
 const saving = ref(false)
 const showPassword = ref(false)

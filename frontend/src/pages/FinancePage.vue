@@ -1,7 +1,7 @@
 <template>
   <q-page class="q-pa-md ec-page">
     <div class="row items-center q-mb-md">
-      <div class="text-h5 col">{{ t('finance.title') }}</div>
+      <div class="ec-page-title col">{{ t('finance.title') }}</div>
       <div class="row q-gutter-sm">
         <q-btn color="primary" icon="refresh" :label="t('finance.reload')" unelevated @click="reload" :loading="isLoading" />
         <q-btn
@@ -19,36 +19,36 @@
       <div class="col-12 col-sm-6 col-lg-3">
         <q-card flat bordered class="ec-card">
           <q-card-section>
-            <div class="text-caption text-grey-7">{{ t('finance.pendingAmount') }}</div>
-            <div class="text-h6">{{ formatMoney(summary.pending_amount) }}</div>
-            <div class="text-caption text-grey-6">{{ t('finance.transactionsCount', { count: summary.pending_count }) }}</div>
+            <div class="ec-metric-label">{{ t('finance.pendingAmount') }}</div>
+            <div class="ec-metric-value">{{ formatMoney(summary.pending_amount) }}</div>
+            <div class="text-caption ec-text-muted">{{ t('finance.transactionsCount', { count: summary.pending_count }) }}</div>
           </q-card-section>
         </q-card>
       </div>
       <div class="col-12 col-sm-6 col-lg-3">
         <q-card flat bordered class="ec-card">
           <q-card-section>
-            <div class="text-caption text-grey-7">{{ t('finance.overdueAmount') }}</div>
-            <div class="text-h6 text-negative">{{ formatMoney(summary.overdue_amount) }}</div>
-            <div class="text-caption text-grey-6">{{ t('finance.overdueCount', { count: summary.overdue_count }) }}</div>
+            <div class="ec-metric-label">{{ t('finance.overdueAmount') }}</div>
+            <div class="ec-metric-value ec-text-danger">{{ formatMoney(summary.overdue_amount) }}</div>
+            <div class="text-caption ec-text-muted">{{ t('finance.overdueCount', { count: summary.overdue_count }) }}</div>
           </q-card-section>
         </q-card>
       </div>
       <div class="col-12 col-sm-6 col-lg-3">
         <q-card flat bordered class="ec-card">
           <q-card-section>
-            <div class="text-caption text-grey-7">{{ t('finance.completedAmount') }}</div>
-            <div class="text-h6 text-positive">{{ formatMoney(summary.completed_amount) }}</div>
-            <div class="text-caption text-grey-6">{{ t('finance.completedCount', { count: summary.completed_count }) }}</div>
+            <div class="ec-metric-label">{{ t('finance.completedAmount') }}</div>
+            <div class="ec-metric-value ec-text-success">{{ formatMoney(summary.completed_amount) }}</div>
+            <div class="text-caption ec-text-muted">{{ t('finance.completedCount', { count: summary.completed_count }) }}</div>
           </q-card-section>
         </q-card>
       </div>
       <div class="col-12 col-sm-6 col-lg-3">
         <q-card flat bordered class="ec-card">
           <q-card-section>
-            <div class="text-caption text-grey-7">{{ t('finance.allTransactions') }}</div>
-            <div class="text-h6">{{ summary.total_transactions }}</div>
-            <div class="text-caption text-grey-6">{{ t('finance.currentDataset') }}</div>
+            <div class="ec-metric-label">{{ t('finance.allTransactions') }}</div>
+            <div class="ec-metric-value">{{ summary.total_transactions }}</div>
+            <div class="text-caption ec-text-muted">{{ t('finance.currentDataset') }}</div>
           </q-card-section>
         </q-card>
       </div>
@@ -58,54 +58,54 @@
       <div class="col-12 col-sm-6 col-lg-3">
         <q-card flat bordered class="ec-card">
           <q-card-section>
-            <div class="text-caption text-grey-7">{{ t('finance.projectedJobValue') }}</div>
-            <div class="text-h6">{{ formatMoney(jobInsights.projected_total_value) }}</div>
-            <div class="text-caption text-grey-6">{{ t('finance.jobsTotal', { count: jobInsights.jobs_total }) }}</div>
+            <div class="ec-metric-label">{{ t('finance.projectedJobValue') }}</div>
+            <div class="ec-metric-value">{{ formatMoney(jobInsights.projected_total_value) }}</div>
+            <div class="text-caption ec-text-muted">{{ t('finance.jobsTotal', { count: jobInsights.jobs_total }) }}</div>
           </q-card-section>
         </q-card>
       </div>
       <div class="col-12 col-sm-6 col-lg-3">
         <q-card flat bordered class="ec-card">
           <q-card-section>
-            <div class="text-caption text-grey-7">{{ t('finance.activePipeline') }}</div>
-            <div class="text-h6">{{ formatMoney(jobInsights.projected_active_value) }}</div>
-            <div class="text-caption text-grey-6">{{ t('finance.activeJobsCount', { count: jobInsights.jobs_active }) }}</div>
+            <div class="ec-metric-label">{{ t('finance.activePipeline') }}</div>
+            <div class="ec-metric-value">{{ formatMoney(jobInsights.projected_active_value) }}</div>
+            <div class="text-caption ec-text-muted">{{ t('finance.activeJobsCount', { count: jobInsights.jobs_active }) }}</div>
           </q-card-section>
         </q-card>
       </div>
       <div class="col-12 col-sm-6 col-lg-3">
         <q-card flat bordered class="ec-card">
           <q-card-section>
-            <div class="text-caption text-grey-7">{{ t('finance.collectedTransactions') }}</div>
-            <div class="text-h6 text-positive">{{ formatMoney(jobInsights.collected_total) }}</div>
-            <div class="text-caption text-grey-6">{{ t('finance.fromCompletedTransactions') }}</div>
+            <div class="ec-metric-label">{{ t('finance.collectedTransactions') }}</div>
+            <div class="ec-metric-value ec-text-success">{{ formatMoney(jobInsights.collected_total) }}</div>
+            <div class="text-caption ec-text-muted">{{ t('finance.fromCompletedTransactions') }}</div>
           </q-card-section>
         </q-card>
       </div>
       <div class="col-12 col-sm-6 col-lg-3">
         <q-card flat bordered class="ec-card">
           <q-card-section>
-            <div class="text-caption text-grey-7">{{ t('finance.completedJobsValue') }}</div>
-            <div class="text-h6">{{ formatMoney(jobInsights.projected_completed_value) }}</div>
-            <div class="text-caption text-grey-6">{{ t('finance.completedJobsCount', { count: jobInsights.jobs_completed }) }}</div>
+            <div class="ec-metric-label">{{ t('finance.completedJobsValue') }}</div>
+            <div class="ec-metric-value">{{ formatMoney(jobInsights.projected_completed_value) }}</div>
+            <div class="text-caption ec-text-muted">{{ t('finance.completedJobsCount', { count: jobInsights.jobs_completed }) }}</div>
           </q-card-section>
         </q-card>
       </div>
       <div class="col-12 col-sm-6 col-lg-3">
         <q-card flat bordered class="ec-card">
           <q-card-section>
-            <div class="text-caption text-grey-7">{{ t('finance.salesPaid') }}</div>
-            <div class="text-h6 text-positive">{{ formatMoney(jobInsights.sales_paid_value) }}</div>
-            <div class="text-caption text-grey-6">{{ t('finance.paidJobsCount', { count: jobInsights.invoice_paid_jobs }) }}</div>
+            <div class="ec-metric-label">{{ t('finance.salesPaid') }}</div>
+            <div class="ec-metric-value ec-text-success">{{ formatMoney(jobInsights.sales_paid_value) }}</div>
+            <div class="text-caption ec-text-muted">{{ t('finance.paidJobsCount', { count: jobInsights.invoice_paid_jobs }) }}</div>
           </q-card-section>
         </q-card>
       </div>
       <div class="col-12 col-sm-6 col-lg-3">
         <q-card flat bordered class="ec-card">
           <q-card-section>
-            <div class="text-caption text-grey-7">{{ t('finance.salesUnpaid') }}</div>
-            <div class="text-h6 text-negative">{{ formatMoney(jobInsights.sales_unpaid_value) }}</div>
-            <div class="text-caption text-grey-6">{{ t('finance.unpaidJobsCount', { count: jobInsights.invoice_unpaid_jobs }) }}</div>
+            <div class="ec-metric-label">{{ t('finance.salesUnpaid') }}</div>
+            <div class="ec-metric-value ec-text-danger">{{ formatMoney(jobInsights.sales_unpaid_value) }}</div>
+            <div class="text-caption ec-text-muted">{{ t('finance.unpaidJobsCount', { count: jobInsights.invoice_unpaid_jobs }) }}</div>
           </q-card-section>
         </q-card>
       </div>
@@ -115,27 +115,27 @@
       <div class="col-12 col-sm-6 col-lg-4">
         <q-card flat bordered class="ec-card">
           <q-card-section>
-            <div class="text-caption text-grey-7">{{ t('finance.warehouseProductsValue') }}</div>
-            <div class="text-h6">{{ formatMoney(summary.warehouse_products_value) }}</div>
-            <div class="text-caption text-grey-6">{{ t('finance.fromProductReplaceCost') }}</div>
+            <div class="ec-metric-label">{{ t('finance.warehouseProductsValue') }}</div>
+            <div class="ec-metric-value">{{ formatMoney(summary.warehouse_products_value) }}</div>
+            <div class="text-caption ec-text-muted">{{ t('finance.fromProductReplaceCost') }}</div>
           </q-card-section>
         </q-card>
       </div>
       <div class="col-12 col-sm-6 col-lg-4">
         <q-card flat bordered class="ec-card">
           <q-card-section>
-            <div class="text-caption text-grey-7">{{ t('finance.warehouseDevicesValue') }}</div>
-            <div class="text-h6">{{ formatMoney(summary.warehouse_devices_value) }}</div>
-            <div class="text-caption text-grey-6">{{ t('finance.fromDevicePurchasePrice') }}</div>
+            <div class="ec-metric-label">{{ t('finance.warehouseDevicesValue') }}</div>
+            <div class="ec-metric-value">{{ formatMoney(summary.warehouse_devices_value) }}</div>
+            <div class="text-caption ec-text-muted">{{ t('finance.fromDevicePurchasePrice') }}</div>
           </q-card-section>
         </q-card>
       </div>
       <div class="col-12 col-sm-6 col-lg-4">
         <q-card flat bordered class="ec-card">
           <q-card-section>
-            <div class="text-caption text-grey-7">{{ t('finance.warehouseTotalValue') }}</div>
-            <div class="text-h6">{{ formatMoney(summary.warehouse_total_value) }}</div>
-            <div class="text-caption text-grey-6">{{ t('finance.productsPlusDevices') }}</div>
+            <div class="ec-metric-label">{{ t('finance.warehouseTotalValue') }}</div>
+            <div class="ec-metric-value">{{ formatMoney(summary.warehouse_total_value) }}</div>
+            <div class="text-caption ec-text-muted">{{ t('finance.productsPlusDevices') }}</div>
           </q-card-section>
         </q-card>
       </div>
@@ -151,8 +151,11 @@
           dense
           flat
           bordered
+          :grid="compactGrid"
+          :hide-header="compactGrid"
           :pagination="{ rowsPerPage: 8 }"
           hide-bottom
+          :no-data-label="t('finance.noTopJobs')"
         >
           <template #body-cell-estimated_value="props">
             <q-td :props="props">{{ formatMoney(props.value) }}</q-td>
@@ -165,14 +168,49 @@
               <q-badge :color="props.value === 'completed' ? 'positive' : (props.value === 'cancelled' ? 'grey' : 'info')" :label="jobStatusLabel(props.value)" />
             </q-td>
           </template>
-          <template #body-cell-completion_percent="props">
-            <q-td :props="props">{{ props.value }}%</q-td>
-          </template>
-        </q-table>
-      </q-card-section>
-    </q-card>
+      <template #body-cell-completion_percent="props">
+        <q-td :props="props">{{ props.value }}%</q-td>
+      </template>
 
-    <q-card flat bordered class="ec-card q-mb-md">
+      <template #item="props">
+        <div class="q-pa-xs col-12">
+          <q-card flat bordered class="ec-card">
+            <q-card-section class="q-pb-sm">
+              <div class="text-subtitle2">{{ props.row.job_code }}</div>
+              <div class="text-caption ec-text-muted">{{ props.row.customer_name || '-' }}</div>
+            </q-card-section>
+            <q-card-section class="q-pt-none q-pb-sm">
+              <div class="row q-col-gutter-sm">
+                <div class="col-6">
+                  <div class="text-caption ec-text-muted">{{ t('finance.status') }}</div>
+                  <q-badge :color="props.row.status === 'completed' ? 'positive' : (props.row.status === 'cancelled' ? 'grey' : 'info')" :label="jobStatusLabel(props.row.status)" />
+                </div>
+                <div class="col-6">
+                  <div class="text-caption ec-text-muted">{{ t('finance.reqLines') }}</div>
+                  <div class="text-caption">{{ props.row.requirement_lines }}</div>
+                </div>
+                <div class="col-6">
+                  <div class="text-caption ec-text-muted">{{ t('finance.pickPercent') }}</div>
+                  <div class="text-caption">{{ props.row.completion_percent }}%</div>
+                </div>
+                <div class="col-6">
+                  <div class="text-caption ec-text-muted">{{ t('finance.projectedValue') }}</div>
+                  <div class="text-caption">{{ formatMoney(props.row.estimated_value) }}</div>
+                </div>
+                <div class="col-6">
+                  <div class="text-caption ec-text-muted">{{ t('finance.collected') }}</div>
+                  <div class="text-caption">{{ formatMoney(props.row.completed_transaction_total) }}</div>
+                </div>
+              </div>
+            </q-card-section>
+          </q-card>
+        </div>
+      </template>
+    </q-table>
+  </q-card-section>
+</q-card>
+
+<q-card flat bordered class="ec-card q-mb-md">
       <q-card-section class="q-gutter-sm row items-end">
         <q-select
           v-model="filters.status"
@@ -231,10 +269,13 @@
       row-key="id"
       flat
       bordered
+      :grid="compactGrid"
+      :hide-header="compactGrid"
       :loading="isLoading"
       :pagination="{ rowsPerPage: 50 }"
       :rows-per-page-options="[25, 50, 100, 0]"
       class="ec-card"
+      :no-data-label="t('finance.noTransactions')"
     >
       <template #body-cell-transaction_type="props">
         <q-td :props="props">
@@ -294,6 +335,59 @@
           />
         </q-td>
       </template>
+
+      <template #item="props">
+        <div class="q-pa-xs col-12">
+          <q-card flat bordered class="ec-card">
+            <q-card-section class="q-pb-sm">
+              <div class="row items-center justify-between">
+                <div class="text-subtitle2">#{{ props.row.id }}</div>
+                <div class="row q-gutter-xs">
+                  <q-badge color="primary" text-color="white" :label="typeLabel(props.row.transaction_type)" />
+                  <q-badge :color="statusColor(props.row)" :label="statusLabel(props.row.status, props.row.is_overdue)" />
+                </div>
+              </div>
+              <div class="text-caption ec-text-muted">{{ props.row.customer_name || '-' }} · {{ props.row.job_code || '-' }}</div>
+            </q-card-section>
+            <q-card-section class="q-pt-none q-pb-sm">
+              <div class="row q-col-gutter-sm">
+                <div class="col-6">
+                  <div class="text-caption ec-text-muted">{{ t('finance.amount') }}</div>
+                  <div class="text-caption">{{ formatMoney(props.row.amount, props.row.currency) }}</div>
+                </div>
+                <div class="col-6">
+                  <div class="text-caption ec-text-muted">{{ t('finance.currencyShort') }}</div>
+                  <div class="text-caption">{{ props.row.currency || '-' }}</div>
+                </div>
+                <div class="col-6">
+                  <div class="text-caption ec-text-muted">{{ t('finance.transactionDate') }}</div>
+                  <div class="text-caption">{{ formatDateTime(props.row.transaction_date) }}</div>
+                </div>
+                <div class="col-6">
+                  <div class="text-caption ec-text-muted">{{ t('finance.dueDate') }}</div>
+                  <div class="text-caption">
+                    {{ formatDateTime(props.row.due_date) }}
+                    <span v-if="props.row.is_overdue" class="text-negative">({{ t('finance.daysOverdue', { days: props.row.days_overdue }) }})</span>
+                  </div>
+                </div>
+              </div>
+            </q-card-section>
+            <q-card-actions v-if="authStore.canEdit" align="right">
+              <q-btn
+                v-if="props.row.status !== 'completed'"
+                flat
+                dense
+                round
+                icon="done"
+                color="positive"
+                @click="settle(props.row)"
+              />
+              <q-btn flat dense round icon="edit" color="primary" @click="editing = props.row; dialogOpen = true" />
+              <q-btn flat dense round icon="delete" color="negative" @click="remove(props.row)" />
+            </q-card-actions>
+          </q-card>
+        </div>
+      </template>
     </q-table>
 
     <TransactionDialog
@@ -315,6 +409,7 @@ import { useFinanceStore } from '../stores/finance'
 import { useJobsStore } from '../stores/jobs'
 import { useSettingsStore } from '../stores/settings'
 import { normalizeCurrencyCode } from '../constants/currencies'
+import { useCompactGrid } from '../composables/useCompactGrid'
 
 const $q = useQuasar()
 const authStore = useAuthStore()
@@ -322,6 +417,7 @@ const store = useFinanceStore()
 const jobsStore = useJobsStore()
 const settingsStore = useSettingsStore()
 const { t } = useI18n()
+const compactGrid = useCompactGrid(1024)
 
 const dialogOpen = ref(false)
 const editing = ref(null)

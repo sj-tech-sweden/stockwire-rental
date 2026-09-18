@@ -1,6 +1,6 @@
 <template>
   <q-layout view="hHh lpR fFf" class="ec-layout">
-    <q-header elevated class="ec-header" :style="headerStyle" ref="headerRef">
+    <q-header elevated class="ec-header" :style="headerStyle">
       <q-toolbar>
         <q-btn
           flat
@@ -9,7 +9,6 @@
           icon="menu"
           :aria-label="t('app.menu')"
           @click="handleMenuClick"
-          :style="{ color: headerStyle.color }"
         />
         <q-toolbar-title class="title row items-center no-wrap q-gutter-sm">
           <q-img
@@ -28,7 +27,6 @@
               round
               :icon="$q.dark.isActive ? 'light_mode' : 'dark_mode'"
               @click="toggleDark"
-              :style="{ color: headerStyle.color }"
               :aria-label="t('app.toggleDarkMode')"
             />
           <q-btn
@@ -37,7 +35,6 @@
               icon="smart_toy"
               :color="assistantStore.isOpen ? 'primary' : undefined"
               @click="assistantStore.toggle()"
-              :style="{ color: assistantStore.isOpen ? undefined : headerStyle.color }"
               :aria-label="t('assistant.title')"
             />
         </div>
@@ -49,9 +46,8 @@
             class="text-caption ec-username"
             :label="authStore.me.full_name"
             @click="goToProfile"
-            :style="{ color: headerStyle.color }"
           />
-          <q-btn flat dense round icon="logout" :aria-label="t('app.actions.logout')" @click="logout" :style="{ color: headerStyle.color }" />
+          <q-btn flat dense round icon="logout" :aria-label="t('app.actions.logout')" @click="logout" />
         </div>
       </q-toolbar>
     </q-header>
@@ -67,96 +63,119 @@
       :behavior="isPhone ? 'mobile' : 'desktop'"
       class="ec-drawer"
     >
-      <q-scroll-area class="fit">
+       <q-scroll-area class="fit">
         <q-list padding>
-          <q-item-label header class="ec-drawer-header">{{ t('app.navigation') }}</q-item-label>
+          <q-item-label v-if="!isFolded" header class="ec-drawer-header">{{ t('app.navigation') }}</q-item-label>
 
-          <!-- Home -->
-          <q-item
-            clickable
-            v-ripple
-            to="/"
-            @click="onChildNavigate"
-          >
-            <q-item-section avatar>
-              <q-icon name="home" class="text-primary" />
-            </q-item-section>
-            <q-item-section :class="$q.dark.isActive ? 'text-grey-3' : 'text-grey-8'">
-              {{ t('app.nav.home') }}
-            </q-item-section>
-          </q-item>
-          <q-separator />
-
-          <!-- Grouped nav items -->
-          <q-expansion-item
-            v-for="group in navGroups"
-            :key="group.key"
-            :label="t(group.labelKey)"
-            :icon="group.icon"
-            v-model="expandedGroups[group.key]"
-            :header-inset-level="0"
-            content-inset-level="0.4"
-            dense
-          >
+          <!-- Folded (mini) view: flat icons for every page so nested routes stay reachable -->
+          <template v-if="isFolded">
             <q-item
-              v-for="child in group.children"
-              :key="child.to"
+              v-for="item in allNavItems"
+              :key="item.to"
               clickable
               v-ripple
-              :to="child.to"
+              :to="item.to"
+              @click="onChildNavigate"
+              dense
+            >
+              <q-item-section avatar>
+                <q-icon :name="item.icon" class="text-primary" />
+              </q-item-section>
+              <q-tooltip anchor="center right" self="center left" :offset="[8, 0]">
+                {{ t(item.labelKey) }}
+              </q-tooltip>
+            </q-item>
+          </template>
+
+          <!-- Expanded view: grouped navigation -->
+          <template v-else>
+            <!-- Home -->
+            <q-item
+              clickable
+              v-ripple
+              to="/"
               @click="onChildNavigate"
             >
               <q-item-section avatar>
-                <q-icon :name="child.icon" class="text-primary" />
+                <q-icon name="home" class="text-primary" />
               </q-item-section>
               <q-item-section :class="$q.dark.isActive ? 'text-grey-3' : 'text-grey-8'">
-                {{ t(child.labelKey) }}
+                {{ t('app.nav.home') }}
               </q-item-section>
             </q-item>
-          </q-expansion-item>
+            <q-separator />
 
-          <!-- Standalone items -->
-          <q-separator />
-          <q-item
-            clickable
-            v-ripple
-            to="/activity"
-            @click="onChildNavigate"
-          >
-            <q-item-section avatar>
-              <q-icon name="history" class="text-primary" />
-            </q-item-section>
-            <q-item-section :class="$q.dark.isActive ? 'text-grey-3' : 'text-grey-8'">
-              {{ t('app.nav.activity') }}
-            </q-item-section>
-          </q-item>
-          <q-item
-            clickable
-            v-ripple
-            to="/reports"
-            @click="onChildNavigate"
-          >
-            <q-item-section avatar>
-              <q-icon name="summarize" class="text-primary" />
-            </q-item-section>
-            <q-item-section :class="$q.dark.isActive ? 'text-grey-3' : 'text-grey-8'">
-              {{ t('app.nav.reports') }}
-            </q-item-section>
-          </q-item>
-          <q-item
-            v-if="authStore.canManageSettings"
-            clickable
-            v-ripple
-            to="/settings"
-            @click="onChildNavigate"
-          >
-            <q-item-section avatar>
-              <q-icon name="tune" class="text-primary" />
-            </q-item-section>
-            <q-item-section :class="$q.dark.isActive ? 'text-grey-3' : 'text-grey-8'">
-              {{ t('app.nav.settings') }}
-            </q-item-section>
-          </q-item>
+            <!-- Grouped nav items -->
+            <q-expansion-item
+              v-for="group in navGroups"
+              :key="group.key"
+              :label="t(group.labelKey)"
+              :icon="group.icon"
+              v-model="expandedGroups[group.key]"
+              :header-inset-level="0"
+              content-inset-level="0.2"
+              dense
+            >
+              <q-item
+                v-for="child in group.children"
+                :key="child.to"
+                clickable
+                v-ripple
+                :to="child.to"
+                @click="onChildNavigate"
+              >
+                <q-item-section avatar>
+                  <q-icon :name="child.icon" class="text-primary" />
+                </q-item-section>
+                <q-item-section :class="$q.dark.isActive ? 'text-grey-3' : 'text-grey-8'">
+                  {{ t(child.labelKey) }}
+                </q-item-section>
+              </q-item>
+            </q-expansion-item>
+
+            <!-- Standalone items -->
+            <q-separator />
+            <q-item
+              clickable
+              v-ripple
+              to="/activity"
+              @click="onChildNavigate"
+            >
+              <q-item-section avatar>
+                <q-icon name="history" class="text-primary" />
+              </q-item-section>
+              <q-item-section :class="$q.dark.isActive ? 'text-grey-3' : 'text-grey-8'">
+                {{ t('app.nav.activity') }}
+              </q-item-section>
+            </q-item>
+            <q-item
+              clickable
+              v-ripple
+              to="/reports"
+              @click="onChildNavigate"
+            >
+              <q-item-section avatar>
+                <q-icon name="summarize" class="text-primary" />
+              </q-item-section>
+              <q-item-section :class="$q.dark.isActive ? 'text-grey-3' : 'text-grey-8'">
+                {{ t('app.nav.reports') }}
+              </q-item-section>
+            </q-item>
+            <q-item
+              v-if="authStore.canManageSettings"
+              clickable
+              v-ripple
+              to="/settings"
+              @click="onChildNavigate"
+            >
+              <q-item-section avatar>
+                <q-icon name="tune" class="text-primary" />
+              </q-item-section>
+              <q-item-section :class="$q.dark.isActive ? 'text-grey-3' : 'text-grey-8'">
+                {{ t('app.nav.settings') }}
+              </q-item-section>
+            </q-item>
+          </template>
         </q-list>
       </q-scroll-area>
     </q-drawer>
@@ -181,7 +200,7 @@
 </template>
 
 <script setup>
-import { ref, computed, reactive, onMounted, watch, nextTick, onUnmounted } from 'vue'
+import { ref, computed, reactive, onMounted, watch } from 'vue'
 import { useQuasar } from 'quasar'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
@@ -201,18 +220,10 @@ const router = useRouter()
 const $q = useQuasar()
 const { t } = useI18n()
 
-const headerRef = ref(null)
-const headerStyle = computed(() => {
-  const dark = $q.dark.isActive
-  const bg = dark ? '#182228' : '#f3f9f3'
-  const text = dark ? '#E9F1EE' : '#0f1720'
-  return {
-    backgroundColor: bg,
-    color: text,
-    '--ec-header-bg': bg,
-    '--ec-header-text': text
-  }
-})
+const headerStyle = computed(() => ({
+  background: $q.dark.isActive ? 'var(--ec-header-bg-dark)' : 'var(--ec-header-bg-light)',
+  color: $q.dark.isActive ? 'var(--ec-header-text-dark)' : 'var(--ec-header-text-light)',
+}))
 
 const headerLogoUrl = computed(() => {
   const profile = settingsStore.companyProfile || {}
@@ -230,41 +241,7 @@ const headerLogoUrl = computed(() => {
   ].map(value => String(value || '').trim()).find(Boolean) || ''
 })
 
-function applyInlineHeaderStyles() {
-  const comp = headerRef.value
-  const el = comp && comp.$el ? comp.$el : comp
-  if (!el || !el.style) return
-  const dark = $q.dark.isActive
-  const bg = dark ? '#182228' : '#f3f9f3'
-  const text = dark ? '#E9F1EE' : '#0f1720'
-  el.style.setProperty('--ec-header-bg', bg, 'important')
-  el.style.setProperty('--ec-header-text', text, 'important')
-  el.style.setProperty('background-color', bg, 'important')
-  el.style.setProperty('color', text, 'important')
-}
-
 onMounted(() => {
-  applyInlineHeaderStyles()
-  watch(() => $q.dark.isActive, async () => {
-    await nextTick()
-    applyInlineHeaderStyles()
-  })
-
-  const domObserver = new MutationObserver((mutations) => {
-    for (const m of mutations) {
-      if (m.type === 'attributes' && m.attributeName === 'class') {
-        applyInlineHeaderStyles()
-        return
-      }
-      if (m.type === 'childList' && m.addedNodes.length) {
-        applyInlineHeaderStyles()
-        return
-      }
-    }
-  })
-  domObserver.observe(document.body, { attributes: true, attributeFilter: ['class'], childList: true, subtree: true })
-  onUnmounted(() => domObserver.disconnect())
-
   if (authStore.me) {
     settingsStore.fetchCompanyProfile().catch(() => {})
   }
@@ -389,7 +366,26 @@ const isDesktop = computed(() => $q.screen.width >= 1024)
 
 const miniActive = computed(() => isMiniMode.value || forceMini.value)
 
-const drawerWidth = computed(() => 220)
+const isFolded = computed(() => miniActive.value && !drawerExpanded.value)
+
+const drawerWidth = computed(() => 280)
+
+const allNavItems = computed(() => {
+  const items = [
+    { icon: 'home', labelKey: 'app.nav.home', to: '/' },
+  ]
+  navGroups.forEach((group) => {
+    group.children.forEach((child) => {
+      items.push({ icon: child.icon, labelKey: child.labelKey, to: child.to })
+    })
+  })
+  items.push({ icon: 'history', labelKey: 'app.nav.activity', to: '/activity' })
+  items.push({ icon: 'summarize', labelKey: 'app.nav.reports', to: '/reports' })
+  if (authStore.canManageSettings) {
+    items.push({ icon: 'tune', labelKey: 'app.nav.settings', to: '/settings' })
+  }
+  return items
+})
 
 function setDrawerForScreen() {
   if (forceMini.value) {

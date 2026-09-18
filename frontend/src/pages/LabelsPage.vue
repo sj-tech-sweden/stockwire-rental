@@ -1,5 +1,6 @@
 <template>
   <q-page class="q-pa-md labels-page">
+    <div class="ec-page-title q-mb-md">{{ t('app.nav.labels') }}</div>
     <div class="row items-center q-col-gutter-sm q-mb-md">
       <div class="col-12 col-md-3">
         <q-select v-model="selectedTemplateId" :options="templateOptions" :label="t('labels.template')" outlined dense emit-value map-options clearable @update:model-value="loadTemplate" />

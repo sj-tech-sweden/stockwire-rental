@@ -26,6 +26,17 @@
 
   /* Border */
   --ec-border-subtle: #243138;
+
+  /* Header (defaults to dark theme; overridden below for light) */
+  --ec-header-bg: #182228;
+  --ec-header-text: #e9f1ee;
+
+  /* Constant header tokens, independent of theme class placement, used by the
+     layout's reactive inline style so the banner always matches the mode. */
+  --ec-header-bg-dark: #182228;
+  --ec-header-text-dark: #e9f1ee;
+  --ec-header-bg-light: #f3f9f3;
+  --ec-header-text-light: #0f1720;
 }
 
 /* Some environments put Quasar's dark class on the <html> element instead of <body>.
@@ -40,6 +51,8 @@ body.body--dark {
   --ec-drawer-bg: #11181d;
   --ec-drawer-text: #b8ccc4;
   --ec-text: #e9f1ee;
+  --ec-header-bg: #182228;
+  --ec-header-text: #e9f1ee;
 }
 
 /* Light mode variables when Quasar dark is not active (handle html variants too) */
@@ -52,6 +65,8 @@ body.body--light {
   --ec-drawer-bg: #f6faf6;
   --ec-drawer-text: #2f3a3a;
   --ec-text: #111827;
+  --ec-header-bg: #f3f9f3;
+  --ec-header-text: #0f1720;
 }
 
 /* Map Quasar primary color variables to brand green */
@@ -67,8 +82,20 @@ body {
   font-family: "Myriad Roman", "Myriad Pro", Arial, sans-serif;
 }
 
-.ec-header {
-  /* header background set per theme below */
+/* Header banner theme — keyed off Quasar's `body--dark` class (which Quasar
+   reliably applies to <body>) and the constant tokens so the banner always
+   matches the active mode regardless of CSS-variable cascade. */
+body.body--dark .ec-header,
+html.q-dark .ec-header {
+  background-color: var(--ec-header-bg-dark) !important;
+  color: var(--ec-header-text-dark) !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06) !important;
+}
+
+body:not(.body--dark):not(.q-dark) .ec-header {
+  background-color: var(--ec-header-bg-light) !important;
+  color: var(--ec-header-text-light) !important;
+  border-bottom: 1px solid rgba(15, 23, 32, 0.06) !important;
 }
 
 .ec-page {
@@ -101,7 +128,7 @@ body {
   font-size: 1.1rem;
   font-weight: 600;
   letter-spacing: 0.02em;
-  color: #e9f1ee;
+  color: var(--ec-text-primary);
 }
 
 /* Improve readability for small header captions (user name) */
@@ -109,14 +136,7 @@ body {
   font-family: "Segoe UI", "Helvetica Neue", "Source Sans Pro", Arial, sans-serif;
   font-weight: 600;
   font-size: 0.9rem;
-}
-
-/* Color for dark vs light modes */
-body.q-dark .ec-header .text-caption {
-  color: #d0d8d6; /* light grey on dark */
-}
-body:not(.q-dark) .ec-header .text-caption {
-  color: #333333; /* dark grey on light */
+  color: var(--ec-header-text) !important;
 }
 
 .ec-drawer {
@@ -198,6 +218,23 @@ body.body--dark .q-drawer__content .q-scrollarea__content {
   text-transform: uppercase;
 }
 
+/* Prevent drawer items from causing horizontal scroll on narrow widths */
+.ec-drawer .q-item,
+.ec-drawer .q-expansion-item__header {
+  min-width: 0;
+}
+
+.ec-drawer .q-item__section--main {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.ec-drawer .q-item__section--main > * {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .ec-drawer .q-item {
   color: var(--ec-drawer-text);
   border-radius: 8px;
@@ -262,18 +299,24 @@ body.q-dark .q-field__label,
 body.q-dark .q-field__label--float,
 body.q-dark .q-field__hint,
 body.q-dark .q-field__native {
-  color: #cfdfe6 !important;
+  color: var(--ec-text-secondary) !important;
 }
 
 body:not(.q-dark) .q-field__label,
 body:not(.q-dark) .q-field__label--float,
 body:not(.q-dark) .q-field__hint,
 body:not(.q-dark) .q-field__native {
-  color: #374151 !important;
+  color: var(--ec-text-secondary) !important;
 }
 
 /* Utility brand color class */
 .ec-brand-green { color: var(--ec-primary) !important }
+
+/* Active card variant - green left rail for items that need attention */
+.ec-card.ec-card--active,
+.ec-card--active {
+  border-left: 4px solid var(--ec-primary);
+}
 
 /* Improve visibility for user full name labels in lists */
 .user-fullname {
@@ -289,141 +332,47 @@ body.body--dark {
   --ec-drawer-bg: #11181d;
   --ec-drawer-text: #b8ccc4;
   --ec-text: #e9f1ee;
+  --ec-header-bg: #182228;
+  --ec-header-text: #e9f1ee;
 }
 
-/* Header username visibility across themes */
+/* Header username visibility */
 .ec-username {
   opacity: 1 !important;
-}
-body.q-dark .ec-header {
-  background: linear-gradient(90deg, rgba(24,34,40,0.95) 0%, rgba(17,24,29,0.9) 60%, rgba(12,17,20,0.9) 100%);
-}
-
-body:not(.q-dark) .ec-header {
-  background: linear-gradient(90deg,#f3f9f3 0%, #eef6ef 60%);
-}
-
-body.q-dark .ec-username {
-  color: var(--ec-text) !important;
+  color: var(--ec-header-text) !important;
   font-weight: 700;
+}
+
+body.q-dark .ec-username,
+body.body--dark .ec-username {
   text-shadow: 0 1px 0 rgba(0,0,0,0.45);
 }
-body:not(.q-dark) .ec-username {
-  color: var(--ec-text) !important;
-  font-weight: 700;
-  text-shadow: none;
-}
 
-/* Ensure header icons, buttons and title use readable colors in both theme class variants
-   Cover both Quasar's `q-dark` and `body--dark` class names to be safe. */
-body.q-dark .ec-header .q-btn,
-body.q-dark .ec-header .q-btn .q-icon,
-body.q-dark .ec-header .q-icon,
-body.q-dark .ec-header .q-toolbar-title,
-body.body--dark .ec-header .q-btn,
-body.body--dark .ec-header .q-btn .q-icon,
-body.body--dark .ec-header .q-icon,
-body.body--dark .ec-header .q-toolbar-title {
-  color: var(--ec-text) !important;
-}
-
-body:not(.q-dark) .ec-header .q-btn,
-body:not(.q-dark) .ec-header .q-btn .q-icon,
-body:not(.q-dark) .ec-header .q-icon,
-body:not(.q-dark) .ec-header .q-toolbar-title,
-body.body--light .ec-header .q-btn,
-body.body--light .ec-header .q-btn .q-icon,
-body.body--light .ec-header .q-icon,
-body.body--light .ec-header .q-toolbar-title {
-  color: #0f1720 !important;
-}
-
-/* Make sure the small icons (dark/light toggle, logout) have visible backgrounds when needed */
-.ec-header .q-btn--flat.q-btn--dense {
-  background: transparent !important;
-}
-.ec-header .q-btn--flat.q-btn--dense .q-icon {
-  font-size: 18px;
-}
-
-/* Stronger header background rules to ensure the header follows the active theme.
-   Targets Quasar's header variant classes and uses !important to override inline
-   or high-specificity rules applied by Quasar runtime. */
-body.q-dark .q-header.ec-header,
-body.body--dark .q-header.ec-header,
-body.q-dark .ec-header,
-body.body--dark .ec-header {
-  background-color: var(--ec-surface-700) !important;
-  background-image: none !important;
-  color: var(--ec-text) !important;
-  border-bottom: 1px solid rgba(255,255,255,0.04) !important;
-}
-
-body:not(.q-dark) .q-header.ec-header,
-body.body--light .q-header.ec-header,
-body:not(.q-dark) .ec-header,
-body.body--light .ec-header {
-  background-color: #f3f9f3 !important;
-  background-image: none !important;
-  color: #0f1720 !important;
-  border-bottom: 1px solid rgba(15,23,32,0.06) !important;
-}
-
-/* Ensure toolbar title, icons and action buttons inside the header inherit readable color */
-body.q-dark .ec-header .q-toolbar-title,
-body.body--dark .ec-header .q-toolbar-title,
-body.q-dark .ec-header .q-btn,
-body.body--dark .ec-header .q-btn,
-body.q-dark .ec-header .q-icon,
-body.body--dark .ec-header .q-icon {
-  color: var(--ec-text) !important;
-}
-
-body:not(.q-dark) .ec-header .q-toolbar-title,
-body.body--light .ec-header .q-toolbar-title,
-body:not(.q-dark) .ec-header .q-btn,
-body.body--light .ec-header .q-btn,
-body:not(.q-dark) .ec-header .q-icon,
-body.body--light .ec-header .q-icon {
-  color: #0f1720 !important;
-}
-
-/* Fallback: make header title bold for extra legibility */
+/* Ensure header icons, buttons and title use readable colors */
 .ec-header .q-toolbar-title {
   font-weight: 600;
 }
 
-/* Prefer inline CSS variables set on the header element; this lets the
-   runtime binding in `MainLayout.vue` win over other styles. */
-.ec-header,
-.q-header.ec-header {
-  background-color: var(--ec-header-bg) !important;
-  color: var(--ec-header-text) !important;
-  background-image: none !important;
-}
-
-.ec-header .q-toolbar-title,
 .ec-header .q-btn,
-.ec-header .q-icon {
+.ec-header .q-btn .q-icon,
+.ec-header .q-icon,
+.ec-header .q-toolbar-title,
+.ec-header i.material-icons,
+.ec-header .q-icon * {
   color: var(--ec-header-text) !important;
   background: transparent !important;
+  -webkit-text-fill-color: var(--ec-header-text) !important;
+  -webkit-text-stroke-color: var(--ec-header-text) !important;
+  fill: currentColor !important;
+  stroke: currentColor !important;
 }
 
-/* Ensure header action buttons don't get dark filled backgrounds */
-.ec-header .q-btn--flat,
-.ec-header .q-btn--flat .q-icon {
-  background: transparent !important;
-  color: var(--ec-header-text) !important;
-}
-
-/* Force all q-btn internals in the header to be transparent and inherit header text color.
-   This covers Quasar's layered elements like .q-btn__bg, .q-btn__content and svg fills. */
+/* Force all q-btn internals in the header to be transparent and inherit header text color */
 .ec-header .q-btn,
 .ec-header .q-btn .q-btn__content,
 .ec-header .q-btn .q-btn__bg,
 .ec-header .q-btn .q-btn__wrapper,
 .ec-header .q-btn .q-btn__inner,
-.ec-header .q-btn .q-icon,
 .ec-header .q-btn svg {
   background: transparent !important;
   color: var(--ec-header-text) !important;
@@ -431,28 +380,21 @@ body.body--light .ec-header .q-icon {
   stroke: currentColor !important;
 }
 
-/* Force material icon ligatures and any text-fill to use the header text color */
-.ec-header .q-icon,
-.ec-header i.material-icons,
-.ec-header .q-icon * {
-  color: var(--ec-header-text) !important;
-  -webkit-text-fill-color: var(--ec-header-text) !important;
-  -webkit-text-stroke-color: var(--ec-header-text) !important;
-  fill: currentColor !important;
-  stroke: currentColor !important;
-}
-
-/* Quasar sometimes applies background through the pseudo-element on the button content */
 .ec-header .q-btn .q-btn__content::before,
 .ec-header .q-btn .q-btn__bg::before {
   background: transparent !important;
 }
 
-/* Ensure dense/flat round buttons also inherit color */
+/* Make sure flat header buttons stay transparent */
+.ec-header .q-btn--flat,
+.ec-header .q-btn--flat.q-btn--dense,
 .ec-header .q-btn--flat.q-btn--round,
 .ec-header .q-btn--flat.q-btn--dense.q-btn--round {
   background: transparent !important;
-  color: var(--ec-header-text) !important;
+}
+
+.ec-header .q-btn--flat.q-btn--dense .q-icon {
+  font-size: 18px;
 }
 
 body.body--light {
@@ -461,20 +403,22 @@ body.body--light {
   --ec-drawer-bg: #f6faf6;
   --ec-drawer-text: #2f3a3a;
   --ec-text: #111827;
+  --ec-header-bg: #f3f9f3;
+  --ec-header-text: #0f1720;
 }
 
 body.body--dark .q-field__label,
 body.body--dark .q-field__label--float,
 body.body--dark .q-field__hint,
 body.body--dark .q-field__native {
-  color: #cfdfe6 !important;
+  color: var(--ec-text-secondary) !important;
 }
 
 body.body--light .q-field__label,
 body.body--light .q-field__label--float,
 body.body--light .q-field__hint,
 body.body--light .q-field__native {
-  color: #374151 !important;
+  color: var(--ec-text-secondary) !important;
 }
 
 /* Drawer and card fallbacks for body--dark */
@@ -600,5 +544,200 @@ body.body--dark .ec-card .q-table tbody td {
   /* Stack card header buttons vertically on very small screens */
   .ec-page .q-card__section.row.items-center {
     flex-wrap: wrap;
+  }
+}
+
+/* ── Design system utilities ─────────────────────────────────────────────── */
+
+/* Page title */
+.ec-page-title {
+  font-family: var(--ec-font-heading);
+  font-size: 1.5rem;
+  font-weight: var(--ec-font-semibold);
+  color: var(--ec-text);
+  line-height: 1.2;
+}
+
+/* Card / section title */
+.ec-card-title {
+  font-family: var(--ec-font-heading);
+  font-size: 1.1rem;
+  font-weight: var(--ec-font-semibold);
+  color: var(--ec-text);
+  line-height: 1.3;
+}
+
+/* Dashboard metric cards */
+.ec-metric-label {
+  font-family: var(--ec-font-body);
+  font-size: 0.75rem;
+  font-weight: var(--ec-font-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--ec-text-secondary);
+}
+
+.ec-metric-value {
+  font-family: var(--ec-font-heading);
+  font-size: 1.5rem;
+  font-weight: var(--ec-font-semibold);
+  color: var(--ec-text);
+  line-height: 1.2;
+}
+
+/* Empty state */
+.ec-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: var(--ec-space-xl) var(--ec-space-md);
+  color: var(--ec-text-secondary);
+}
+
+.ec-empty-state__icon {
+  color: var(--ec-primary);
+  opacity: 0.8;
+  margin-bottom: var(--ec-space-md);
+}
+
+.ec-empty-state__title {
+  font-family: var(--ec-font-heading);
+  font-size: 1.1rem;
+  font-weight: var(--ec-font-semibold);
+  color: var(--ec-text);
+  margin-bottom: var(--ec-space-sm);
+}
+
+.ec-empty-state__text {
+  font-family: var(--ec-font-body);
+  font-size: 0.875rem;
+  color: var(--ec-text-secondary);
+  max-width: 320px;
+  margin-bottom: var(--ec-space-md);
+}
+
+/* Status chips */
+.ec-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-family: var(--ec-font-body);
+  font-size: 0.75rem;
+  font-weight: var(--ec-font-semibold);
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.ec-chip--success {
+  background: rgba(63, 135, 63, 0.16);
+  color: #43C36B;
+}
+
+.ec-chip--warning {
+  background: rgba(247, 184, 75, 0.16);
+  color: #F7B84B;
+}
+
+.ec-chip--danger {
+  background: rgba(230, 86, 86, 0.16);
+  color: #E65656;
+}
+
+.ec-chip--info {
+  background: rgba(63, 135, 63, 0.16);
+  color: #43C36B;
+}
+
+/* Scanner target */
+.ec-scanner-target {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 160px;
+  padding: var(--ec-space-lg);
+  background: var(--ec-surface-800);
+  border: 2px dashed var(--ec-primary);
+  border-radius: var(--ec-radius-lg);
+  color: var(--ec-text);
+  text-align: center;
+}
+
+.ec-scanner-target__icon {
+  color: var(--ec-primary);
+  font-size: 48px;
+  margin-bottom: var(--ec-space-sm);
+}
+
+.ec-scanner-target__label {
+  font-family: var(--ec-font-heading);
+  font-size: 1.1rem;
+  font-weight: var(--ec-font-semibold);
+}
+
+/* Focus ring utility */
+.ec-focus-ring:focus-visible,
+.ec-focus-ring:focus {
+  outline: 2px solid var(--ec-primary);
+  outline-offset: 2px;
+}
+
+/* Global visible focus rings for keyboard navigation */
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+[tabindex]:not([tabindex="-1"]):focus-visible,
+.q-btn:focus-visible,
+.q-item:focus-visible,
+.q-tab:focus-visible,
+.q-radio:focus-visible .q-radio__inner,
+.q-checkbox:focus-visible .q-checkbox__inner,
+.q-toggle:focus-visible .q-toggle__inner,
+.q-btn-toggle .q-btn:focus-visible,
+.q-expansion-item:focus-visible .q-expansion-item__header,
+.q-field--focused .q-field__control,
+.q-field__native:focus-visible,
+.q-slider:focus-visible .q-slider__thumb,
+.q-range:focus-visible .q-range__thumb,
+.q-chip:focus-visible,
+.q-pagination .q-btn:focus-visible,
+.q-stepper__tab:focus-visible,
+.q-carousel__control:focus-visible,
+.q-tree__node-header:focus-visible,
+.q-menu .q-item:focus-visible {
+  outline: 2px solid var(--ec-primary) !important;
+  outline-offset: 2px !important;
+}
+
+/* Ensure focus rings are not clipped by overflow hidden on cards/panels */
+.ec-card,
+.q-card,
+.q-tab-panel,
+.q-menu {
+  --ec-focus-visible: visible;
+}
+
+/* Status text helpers */
+.ec-text-success { color: #43C36B !important; }
+.ec-text-warning { color: #F7B84B !important; }
+.ec-text-danger { color: #E65656 !important; }
+.ec-text-info { color: var(--ec-profile-blue) !important; }
+.ec-text-muted { color: var(--ec-text-secondary) !important; }
+
+/* Respect user's motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }

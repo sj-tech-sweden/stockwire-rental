@@ -1,8 +1,67 @@
 <template>
   <q-page class="q-pa-md ec-page">
     <div class="row items-center q-mb-md">
-      <div class="text-h5 col">{{ t('app.nav.crew') }}</div>
+      <div class="ec-page-title col">{{ t('app.nav.crew') }}</div>
       <q-btn v-if="authStore.canEdit" color="primary" :icon="activeTab === 'members' ? 'person_add' : 'add'" :label="createBtnLabel" unelevated @click="openCreate" />
+    </div>
+
+    <div class="row q-col-gutter-md q-mb-md">
+      <template v-if="activeTab === 'members'">
+        <div class="col-6 col-md-3">
+          <q-card flat bordered class="ec-card q-pa-md">
+            <div class="ec-metric-label">{{ t('crew.totalMembers') }}</div>
+            <div class="ec-metric-value">{{ crewStore.members.length }}</div>
+          </q-card>
+        </div>
+        <div class="col-6 col-md-3">
+          <q-card flat bordered class="ec-card q-pa-md">
+            <div class="ec-metric-label">{{ t('crew.activeMembers') }}</div>
+            <div class="ec-metric-value ec-text-success">{{ activeMembersCount }}</div>
+          </q-card>
+        </div>
+        <div class="col-6 col-md-3">
+          <q-card flat bordered class="ec-card q-pa-md">
+            <div class="ec-metric-label">{{ t('crew.inactiveMembers') }}</div>
+            <div class="ec-metric-value ec-text-danger">{{ inactiveMembersCount }}</div>
+          </q-card>
+        </div>
+        <div class="col-6 col-md-3">
+          <q-card flat bordered class="ec-card q-pa-md">
+            <div class="ec-metric-label">{{ t('crew.withSkills') }}</div>
+            <div class="ec-metric-value">{{ membersWithSkillsCount }}</div>
+          </q-card>
+        </div>
+      </template>
+      <template v-else-if="activeTab === 'roles'">
+        <div class="col-6 col-md-3">
+          <q-card flat bordered class="ec-card q-pa-md">
+            <div class="ec-metric-label">{{ t('crew.totalRoles') }}</div>
+            <div class="ec-metric-value">{{ crewStore.roles.length }}</div>
+          </q-card>
+        </div>
+        <div class="col-6 col-md-3">
+          <q-card flat bordered class="ec-card q-pa-md">
+            <div class="ec-metric-label">{{ t('crew.defaultRoles') }}</div>
+            <div class="ec-metric-value">{{ defaultRolesCount }}</div>
+          </q-card>
+        </div>
+      </template>
+      <template v-else-if="activeTab === 'skills'">
+        <div class="col-6 col-md-3">
+          <q-card flat bordered class="ec-card q-pa-md">
+            <div class="ec-metric-label">{{ t('crew.totalSkills') }}</div>
+            <div class="ec-metric-value">{{ crewStore.skills.length }}</div>
+          </q-card>
+        </div>
+      </template>
+      <template v-else-if="activeTab === 'certifications'">
+        <div class="col-6 col-md-3">
+          <q-card flat bordered class="ec-card q-pa-md">
+            <div class="ec-metric-label">{{ t('crew.totalCertifications') }}</div>
+            <div class="ec-metric-value">{{ crewStore.certifications.length }}</div>
+          </q-card>
+        </div>
+      </template>
     </div>
 
     <q-tabs v-model="activeTab" inline-label align="left" class="q-mb-md" @update:model-value="onTabChange">
@@ -19,10 +78,13 @@
         :columns="roleColumns"
         row-key="id"
         flat bordered
+        :grid="compactGrid"
+        :hide-header="compactGrid"
         :loading="crewStore.loadingRoles"
         :filter="roleSearch"
         :pagination="{ rowsPerPage: 50 }"
         class="ec-card"
+        :no-data-label="t('crew.noRoles')"
       >
         <template #top-right>
           <q-input v-model="roleSearch" dense outlined clearable :placeholder="t('crew.searchRoles')">
@@ -42,6 +104,24 @@
             <q-badge v-if="props.row.is_default" color="grey" :label="t('crew.default')" />
           </q-td>
         </template>
+
+        <template #item="props">
+          <div class="q-pa-xs col-12">
+            <q-card flat bordered class="ec-card">
+              <q-card-section class="q-pb-sm">
+                <div class="text-subtitle2">{{ props.row.name }}</div>
+                <div class="text-caption ec-text-muted">{{ props.row.description || '-' }}</div>
+              </q-card-section>
+              <q-card-section class="q-pt-none q-pb-sm">
+                <q-badge v-if="props.row.is_default" color="grey" :label="t('crew.default')" />
+              </q-card-section>
+              <q-card-actions v-if="authStore.canEdit" align="right">
+                <q-btn flat dense round icon="edit" color="primary" @click="openEditRole(props.row)" />
+                <q-btn flat dense round icon="delete" color="negative" @click="confirmDeleteRole(props.row)" />
+              </q-card-actions>
+            </q-card>
+          </div>
+        </template>
       </q-table>
     </div>
 
@@ -52,10 +132,13 @@
         :columns="skillColumns"
         row-key="id"
         flat bordered
+        :grid="compactGrid"
+        :hide-header="compactGrid"
         :loading="loadingSkills"
         :filter="skillSearch"
         :pagination="{ rowsPerPage: 50 }"
         class="ec-card"
+        :no-data-label="t('crew.noSkills')"
       >
         <template #top-right>
           <q-input v-model="skillSearch" dense outlined clearable :placeholder="t('crew.searchSkills')">
@@ -68,6 +151,20 @@
             <q-btn flat round dense icon="delete" color="negative" @click="confirmDeleteSkill(props.row)" />
           </q-td>
         </template>
+
+        <template #item="props">
+          <div class="q-pa-xs col-12">
+            <q-card flat bordered class="ec-card">
+              <q-card-section class="q-pb-sm">
+                <div class="text-subtitle2">{{ props.row.name }}</div>
+                <div class="text-caption ec-text-muted">{{ props.row.category || '-' }}</div>
+              </q-card-section>
+              <q-card-actions v-if="authStore.canEdit" align="right">
+                <q-btn flat dense round icon="delete" color="negative" @click="confirmDeleteSkill(props.row)" />
+              </q-card-actions>
+            </q-card>
+          </div>
+        </template>
       </q-table>
     </div>
 
@@ -78,10 +175,13 @@
         :columns="certColumns"
         row-key="id"
         flat bordered
+        :grid="compactGrid"
+        :hide-header="compactGrid"
         :loading="loadingCerts"
         :filter="certSearch"
         :pagination="{ rowsPerPage: 50 }"
         class="ec-card"
+        :no-data-label="t('crew.noCertifications')"
       >
         <template #top-right>
           <q-input v-model="certSearch" dense outlined clearable :placeholder="t('crew.searchCertifications')">
@@ -94,6 +194,20 @@
             <q-btn flat round dense icon="delete" color="negative" @click="confirmDeleteCert(props.row)" />
           </q-td>
         </template>
+
+        <template #item="props">
+          <div class="q-pa-xs col-12">
+            <q-card flat bordered class="ec-card">
+              <q-card-section class="q-pb-sm">
+                <div class="text-subtitle2">{{ props.row.name }}</div>
+                <div class="text-caption ec-text-muted">{{ props.row.category || '-' }}</div>
+              </q-card-section>
+              <q-card-actions v-if="authStore.canEdit" align="right">
+                <q-btn flat dense round icon="delete" color="negative" @click="confirmDeleteCert(props.row)" />
+              </q-card-actions>
+            </q-card>
+          </div>
+        </template>
       </q-table>
     </div>
 
@@ -104,10 +218,13 @@
         :columns="memberColumns"
         row-key="id"
         flat bordered
+        :grid="compactGrid"
+        :hide-header="compactGrid"
         :loading="crewStore.loadingMembers"
         :filter="memberSearch"
         :pagination="{ rowsPerPage: 50 }"
         class="ec-card"
+        :no-data-label="t('crew.noMembers')"
         @row-click="onMemberClick"
         @row-dblclick="onMemberDblClick"
       >
@@ -134,7 +251,7 @@
         <template #body-cell-skills="props">
           <q-td :props="props">
             <q-badge v-for="skill in (props.row.skills || []).slice(0, 3)" :key="skill.id || skill" color="teal" class="q-mr-xs" :label="skill.name || skill" />
-            <span v-if="(props.row.skills || []).length > 3" class="text-caption text-grey-7">+{{ props.row.skills.length - 3 }}</span>
+            <span v-if="(props.row.skills || []).length > 3" class="text-caption ec-text-muted">+{{ props.row.skills.length - 3 }}</span>
           </q-td>
         </template>
 
@@ -142,6 +259,35 @@
           <q-td :props="props" auto-width>
             <q-icon :name="props.row.is_active ? 'check_circle' : 'cancel'" :color="props.row.is_active ? 'positive' : 'negative'" />
           </q-td>
+        </template>
+
+        <template #item="props">
+          <div class="q-pa-xs col-12">
+            <q-card flat bordered class="ec-card" @click="router.push(`/crew/${props.row.id}`)">
+              <q-card-section class="q-pb-sm">
+                <div class="row items-center justify-between">
+                  <div class="text-subtitle2">{{ props.row.name }}</div>
+                  <q-icon :name="props.row.is_active ? 'check_circle' : 'cancel'" :color="props.row.is_active ? 'positive' : 'negative'" />
+                </div>
+                <div class="q-mt-xs">
+                  <q-badge v-if="props.row.user_id" color="blue" :label="t('crew.internal')" />
+                  <q-badge v-else-if="props.row.supplier_id" color="orange" :label="t('crew.external')" />
+                  <q-badge v-else color="grey" :label="t('crew.standalone')" />
+                </div>
+              </q-card-section>
+              <q-card-section class="q-pt-none q-pb-sm">
+                <div class="text-caption ec-text-muted">{{ t('crew.skills') }}</div>
+                <div>
+                  <q-badge v-for="skill in (props.row.skills || []).slice(0, 5)" :key="skill.id || skill" color="teal" class="q-mr-xs q-mb-xs" :label="skill.name || skill" />
+                  <span v-if="(props.row.skills || []).length > 5" class="text-caption ec-text-muted">+{{ props.row.skills.length - 5 }}</span>
+                  <span v-if="!(props.row.skills || []).length" class="text-caption ec-text-muted">-</span>
+                </div>
+              </q-card-section>
+              <q-card-actions align="right">
+                <q-btn flat dense round icon="open_in_new" color="primary" @click.stop="router.push(`/crew/${props.row.id}`)" />
+              </q-card-actions>
+            </q-card>
+          </div>
         </template>
       </q-table>
     </div>
@@ -201,12 +347,14 @@ import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useCrewStore } from '../stores/crew'
 import { useAuthStore } from '../stores/auth'
+import { useCompactGrid } from '../composables/useCompactGrid'
 
 const $q = useQuasar()
 const { t } = useI18n()
 const router = useRouter()
 const crewStore = useCrewStore()
 const authStore = useAuthStore()
+const compactGrid = useCompactGrid(1024)
 
 const activeTab = ref('roles')
 const roleSearch = ref('')
@@ -233,6 +381,11 @@ const createBtnLabel = computed(() => {
   if (activeTab.value === 'certifications') return t('crew.createCertification')
   return t('crew.newMember')
 })
+
+const activeMembersCount = computed(() => crewStore.members.filter(m => m.is_active).length)
+const inactiveMembersCount = computed(() => crewStore.members.length - activeMembersCount.value)
+const membersWithSkillsCount = computed(() => crewStore.members.filter(m => (m.skills || []).length > 0).length)
+const defaultRolesCount = computed(() => crewStore.roles.filter(r => r.is_default).length)
 
 const roleColumns = computed(() => [
   { name: 'name', label: t('crew.roleName'), field: 'name', align: 'left', sortable: true },

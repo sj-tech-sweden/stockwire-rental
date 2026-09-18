@@ -26,6 +26,8 @@
         <q-table
           :rows="controllers" :columns="controllerColumns" row-key="id"
           flat bordered :loading="store.loading"
+          :grid="compactGrid"
+          :hide-header="compactGrid"
           :pagination="{ rowsPerPage: 25 }"
           class="ec-card"
         >
@@ -49,6 +51,42 @@
               <q-btn flat round dense icon="delete" color="negative" @click="confirmDeleteController(props.row)" />
             </q-td>
           </template>
+
+          <template #item="props">
+            <div class="q-pa-xs col-12">
+              <q-card flat bordered class="ec-card">
+                <q-card-section class="q-pb-sm">
+                  <div class="row items-center justify-between">
+                    <div class="text-subtitle2">{{ props.row.controller_id }}</div>
+                    <q-badge :color="props.row.status === 'online' ? 'positive' : 'grey'" :label="props.row.status" />
+                  </div>
+                  <div class="text-caption ec-text-muted">{{ props.row.display_name || '-' }}</div>
+                </q-card-section>
+                <q-card-section class="q-pt-none q-pb-sm">
+                  <div class="row q-col-gutter-sm">
+                    <div class="col-6">
+                      <div class="text-caption ec-text-muted">{{ t('warehouseLeds.form.ledCount') }}</div>
+                      <div class="text-caption">{{ props.row.led_count }}</div>
+                    </div>
+                    <div class="col-6">
+                      <div class="text-caption ec-text-muted">IP</div>
+                      <div class="text-caption">{{ props.row.ip_address || '-' }}</div>
+                    </div>
+                    <div class="col-12">
+                      <div class="text-caption ec-text-muted">{{ t('warehouseLeds.lastSeen') }}</div>
+                      <div class="text-caption">{{ props.row.last_seen ? new Date(props.row.last_seen).toLocaleString() : '-' }}</div>
+                    </div>
+                  </div>
+                </q-card-section>
+                <q-card-actions align="right">
+                  <q-btn flat dense round icon="edit" color="primary" @click="openEditController(props.row)" />
+                  <q-btn flat dense round icon="settings" color="secondary" @click="openControllerZones(props.row)" />
+                  <q-btn flat dense round icon="download" color="info" @click="downloadYaml(props.row)" />
+                  <q-btn flat dense round icon="delete" color="negative" @click="confirmDeleteController(props.row)" />
+                </q-card-actions>
+              </q-card>
+            </div>
+          </template>
         </q-table>
       </q-tab-panel>
 
@@ -62,6 +100,8 @@
         <q-table
           :rows="mappings" :columns="mappingColumns" row-key="id"
           flat bordered :loading="store.loading"
+          :grid="compactGrid"
+          :hide-header="compactGrid"
           :pagination="{ rowsPerPage: 25 }"
           class="ec-card"
         >
@@ -82,6 +122,40 @@
               <q-btn flat round dense icon="edit" color="primary" @click="openEditMapping(props.row)" />
               <q-btn flat round dense icon="delete" color="negative" @click="confirmDeleteMapping(props.row)" />
             </q-td>
+          </template>
+
+          <template #item="props">
+            <div class="q-pa-xs col-12">
+              <q-card flat bordered class="ec-card">
+                <q-card-section class="q-pb-sm">
+                  <div class="row items-center justify-between">
+                    <div class="text-subtitle2">{{ props.row.bin_label }}</div>
+                    <q-badge :style="{ backgroundColor: props.row.default_color }" :label="props.row.default_color" />
+                  </div>
+                  <div class="text-caption ec-text-muted">{{ props.row.shelf_label || '-' }}</div>
+                </q-card-section>
+                <q-card-section class="q-pt-none q-pb-sm">
+                  <div class="row q-col-gutter-sm">
+                    <div class="col-6">
+                      <div class="text-caption ec-text-muted">{{ t('warehouseLeds.zone') }}</div>
+                      <div class="text-caption">{{ props.row.zone_code || '-' }}</div>
+                    </div>
+                    <div class="col-6">
+                      <div class="text-caption ec-text-muted">{{ t('warehouseLeds.controller') }}</div>
+                      <div class="text-caption">{{ props.row.controller_id || '-' }}</div>
+                    </div>
+                    <div class="col-12">
+                      <div class="text-caption ec-text-muted">{{ t('warehouseLeds.form.pixelRange') }}</div>
+                      <div class="text-caption">{{ props.row.pixel_start }} - {{ props.row.pixel_end }}</div>
+                    </div>
+                  </div>
+                </q-card-section>
+                <q-card-actions align="right">
+                  <q-btn flat dense round icon="edit" color="primary" @click="openEditMapping(props.row)" />
+                  <q-btn flat dense round icon="delete" color="negative" @click="confirmDeleteMapping(props.row)" />
+                </q-card-actions>
+              </q-card>
+            </div>
           </template>
         </q-table>
       </q-tab-panel>
@@ -226,11 +300,13 @@ import { useI18n } from 'vue-i18n'
 import { useWarehouseLedsStore } from '../stores/warehouseLeds'
 import { useAuthStore } from '../stores/auth'
 import { api } from '../boot/axios'
+import { useCompactGrid } from '../composables/useCompactGrid'
 
 const $q = useQuasar()
 const { t } = useI18n()
 const store = useWarehouseLedsStore()
 const authStore = useAuthStore()
+const compactGrid = useCompactGrid(1024)
 
 const tab = ref('controllers')
 const controllers = computed(() => store.controllers)

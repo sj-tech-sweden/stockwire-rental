@@ -5,7 +5,7 @@
         <q-btn flat icon="arrow_back" :label="isPhone ? undefined : t('jobs.backToJobs')" @click="goBack" />
       </div>
       <div class="col">
-        <div class="text-h5 text-break">{{ isNewJob ? t('jobs.newJob') : (currentJob?.job_code || t('jobs.viewJob')) }}</div>
+        <div class="ec-page-title text-break">{{ isNewJob ? t('jobs.newJob') : (currentJob?.job_code || t('jobs.viewJob')) }}</div>
       </div>
       <div class="col-auto" v-if="authStore.canEdit && !isNewJob">
         <q-btn
@@ -388,41 +388,33 @@
           <div class="text-subtitle2 q-mb-sm">{{ t('jobs.requirementsSummary') }}</div>
           <div class="row q-col-gutter-sm q-mb-md">
             <div class="col-12 col-sm-6 col-lg-3">
-              <q-card flat bordered>
-                <q-card-section>
-                  <div class="text-caption text-grey-7">{{ t('jobs.totalWeight') }}</div>
-                  <div class="text-subtitle1">{{ t('jobs.weightKg', { value: formatDecimal(summaryTotals.weightKg) }) }}</div>
-                </q-card-section>
+              <q-card flat bordered class="ec-card q-pa-sm">
+                <div class="ec-metric-label">{{ t('jobs.totalWeight') }}</div>
+                <div class="ec-metric-value">{{ t('jobs.weightKg', { value: formatDecimal(summaryTotals.weightKg) }) }}</div>
               </q-card>
             </div>
             <div class="col-12 col-sm-6 col-lg-3">
-              <q-card flat bordered>
-                <q-card-section>
-                  <div class="text-caption text-grey-7">{{ t('jobs.totalVolume') }}</div>
-                  <div class="text-subtitle1">{{ t('jobs.volumeM3', { value: formatDecimal(summaryTotals.volumeM3) }) }}</div>
-                </q-card-section>
+              <q-card flat bordered class="ec-card q-pa-sm">
+                <div class="ec-metric-label">{{ t('jobs.totalVolume') }}</div>
+                <div class="ec-metric-value">{{ t('jobs.volumeM3', { value: formatDecimal(summaryTotals.volumeM3) }) }}</div>
               </q-card>
             </div>
             <div class="col-12 col-sm-6 col-lg-3">
-              <q-card flat bordered>
-                <q-card-section>
-                  <div class="text-caption text-grey-7">{{ t('jobs.totalReplacementCost') }}</div>
-                  <div class="text-subtitle1">{{ formatMoney(summaryTotals.replacementCost) }}</div>
-                </q-card-section>
+              <q-card flat bordered class="ec-card q-pa-sm">
+                <div class="ec-metric-label">{{ t('jobs.totalReplacementCost') }}</div>
+                <div class="ec-metric-value">{{ formatMoney(summaryTotals.replacementCost) }}</div>
               </q-card>
             </div>
             <div class="col-12 col-sm-6 col-lg-3">
-              <q-card flat bordered>
-                <q-card-section>
-                  <div class="text-caption text-grey-7">{{ t('jobs.projectedPriceFromRequirements') }}</div>
-                  <div class="text-subtitle1">{{ formatMoney(summaryTotals.projectedPrice) }}</div>
-                </q-card-section>
+              <q-card flat bordered class="ec-card q-pa-sm">
+                <div class="ec-metric-label">{{ t('jobs.projectedPriceFromRequirements') }}</div>
+                <div class="ec-metric-value">{{ formatMoney(summaryTotals.projectedPrice) }}</div>
               </q-card>
             </div>
           </div>
 
           <div v-if="jobRequirementRows.length" class="column q-gutter-sm">
-            <q-card v-for="row in jobRequirementRows" :key="row.product_id" flat bordered>
+            <q-card v-for="row in jobRequirementRows" :key="row.product_id" flat bordered class="ec-card">
               <q-card-section>
                 <div class="row q-col-gutter-sm items-center">
                   <div class="col-12 col-md">
@@ -452,9 +444,10 @@
               </q-card-section>
             </q-card>
           </div>
-          <q-banner v-else class="bg-grey-2 text-grey-8 rounded-borders">
-            {{ t('jobs.noRequirements') }}
-          </q-banner>
+          <div v-else class="ec-empty-state">
+            <q-icon name="inventory_2" size="32px" class="ec-empty-state__icon" />
+            <div class="ec-empty-state__title">{{ t('jobs.noRequirements') }}</div>
+          </div>
         </q-card-section>
       </q-card>
 

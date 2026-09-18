@@ -1,8 +1,29 @@
 <template>
   <q-page class="q-pa-md ec-page">
     <div class="row items-center q-mb-md">
-      <div class="text-h5 col">{{ t('customers.title') }}</div>
+      <div class="ec-page-title col">{{ t('customers.title') }}</div>
       <q-btn v-if="authStore.canEdit" color="primary" icon="person_add" :label="t('customers.newCustomer')" unelevated @click="openCreate" />
+    </div>
+
+    <div class="row q-col-gutter-md q-mb-md">
+      <div class="col-6 col-md-4">
+        <q-card flat bordered class="ec-card q-pa-md">
+          <div class="ec-metric-label">{{ t('customers.totalCompanies') }}</div>
+          <div class="ec-metric-value">{{ store.companies.length }}</div>
+        </q-card>
+      </div>
+      <div class="col-6 col-md-4">
+        <q-card flat bordered class="ec-card q-pa-md">
+          <div class="ec-metric-label">{{ t('customers.customerCount') }}</div>
+          <div class="ec-metric-value">{{ customerCount }}</div>
+        </q-card>
+      </div>
+      <div class="col-6 col-md-4">
+        <q-card flat bordered class="ec-card q-pa-md">
+          <div class="ec-metric-label">{{ t('customers.supplierCount') }}</div>
+          <div class="ec-metric-value">{{ supplierCount }}</div>
+        </q-card>
+      </div>
     </div>
 
     <q-tabs v-model="filterType" inline-label align="left" class="q-mb-md">
@@ -26,6 +47,7 @@
       :pagination="{ rowsPerPage: 50 }"
       :rows-per-page-options="[25, 50, 100, 0]"
       class="ec-card"
+      :no-data-label="t('customers.noCompanies')"
       @row-dblclick="(evt, row) => openDetail(row)"
     >
       <template #top-right>
@@ -53,7 +75,7 @@
 
       <template #item="props">
         <div class="q-pa-xs col-12">
-          <q-card flat bordered @dblclick="openDetail(props.row)">
+          <q-card flat bordered class="ec-card" @dblclick="openDetail(props.row)">
             <q-card-section class="q-pb-sm">
               <div class="text-subtitle2">{{ props.row.name }}</div>
               <div class="text-caption text-grey-7">{{ props.row.email || t('customers.noEmail') }}</div>
@@ -126,6 +148,9 @@ const columns = [
   },
   { name: 'actions', label: '', field: 'actions', align: 'right' },
 ]
+
+const customerCount = computed(() => store.companies.filter(c => c.is_customer).length)
+const supplierCount = computed(() => store.companies.filter(c => c.is_product_supplier || c.is_rental_supplier || c.is_crew_supplier).length)
 
 const filteredCustomers = computed(() => {
   let list = store.companies

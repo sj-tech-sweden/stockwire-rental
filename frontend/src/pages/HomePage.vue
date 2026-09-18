@@ -1,33 +1,33 @@
 <template>
   <q-page class="q-pa-md ec-page">
     <div class="row items-center q-mb-md">
-      <div class="text-h5 col">{{ t('home.title') }}</div>
+      <div class="ec-page-title col">{{ t('home.title') }}</div>
       <q-btn color="primary" icon="refresh" :label="t('home.refresh')" unelevated :loading="loading" @click="loadDashboard" />
     </div>
 
     <div class="row q-col-gutter-sm q-mb-md">
       <div class="col-12 col-sm-6 col-md-3">
         <q-card class="ec-card q-pa-md cursor-pointer" clickable @click="openSettingsPage">
-          <div class="text-caption text-grey-6">{{ t('home.backendHealth') }}</div>
-          <div class="text-h6">{{ status }}</div>
+          <div class="ec-metric-label">{{ t('home.backendHealth') }}</div>
+          <div class="ec-metric-value">{{ status }}</div>
         </q-card>
       </div>
       <div class="col-12 col-sm-6 col-md-3">
         <q-card class="ec-card q-pa-md cursor-pointer" clickable @click="openInventoryTab('products')">
-          <div class="text-caption text-grey-6">{{ t('home.products') }}</div>
-          <div class="text-h6">{{ store.products.length }}</div>
+          <div class="ec-metric-label">{{ t('home.products') }}</div>
+          <div class="ec-metric-value">{{ store.products.length }}</div>
         </q-card>
       </div>
       <div class="col-12 col-sm-6 col-md-3">
         <q-card class="ec-card q-pa-md cursor-pointer" clickable @click="openInventoryDevices()">
-          <div class="text-caption text-grey-6">{{ t('home.devices') }}</div>
-          <div class="text-h6">{{ store.devices.length }}</div>
+          <div class="ec-metric-label">{{ t('home.devices') }}</div>
+          <div class="ec-metric-value">{{ store.devices.length }}</div>
         </q-card>
       </div>
       <div class="col-12 col-sm-6 col-md-3">
         <q-card class="ec-card q-pa-md cursor-pointer" clickable @click="openInventoryDevices('in_use')">
-          <div class="text-caption text-grey-6">{{ t('home.checkedOutDevices') }}</div>
-          <div class="text-h6">{{ store.checkedOutDevices.length }}</div>
+          <div class="ec-metric-label">{{ t('home.checkedOutDevices') }}</div>
+          <div class="ec-metric-value">{{ store.checkedOutDevices.length }}</div>
         </q-card>
       </div>
     </div>
@@ -35,26 +35,89 @@
     <div class="row q-col-gutter-sm q-mb-md">
       <div class="col-12 col-sm-6 col-md-3">
         <q-card class="ec-card q-pa-md cursor-pointer" clickable @click="openInventoryDevices('available')">
-          <div class="text-caption text-grey-6">{{ t('home.availableDevices') }}</div>
-          <div class="text-h6 text-positive">{{ availableDevices }}</div>
+          <div class="ec-metric-label">{{ t('home.availableDevices') }}</div>
+          <div class="ec-metric-value ec-text-success">{{ availableDevices }}</div>
         </q-card>
       </div>
       <div class="col-12 col-sm-6 col-md-3">
         <q-card class="ec-card q-pa-md cursor-pointer" clickable @click="openInventoryDevices('in_use')">
-          <div class="text-caption text-grey-6">{{ t('home.inUseDevices') }}</div>
-          <div class="text-h6 text-info">{{ inUseDevices }}</div>
+          <div class="ec-metric-label">{{ t('home.inUseDevices') }}</div>
+          <div class="ec-metric-value ec-text-info">{{ inUseDevices }}</div>
         </q-card>
       </div>
       <div class="col-12 col-sm-6 col-md-3">
         <q-card class="ec-card q-pa-md cursor-pointer" clickable @click="openInventoryDevices('maintenance')">
-          <div class="text-caption text-grey-6">{{ t('home.maintenanceDevices') }}</div>
-          <div class="text-h6 text-negative">{{ maintenanceDevices }}</div>
+          <div class="ec-metric-label">{{ t('home.maintenanceDevices') }}</div>
+          <div class="ec-metric-value ec-text-danger">{{ maintenanceDevices }}</div>
         </q-card>
       </div>
       <div class="col-12 col-sm-6 col-md-3">
         <q-card class="ec-card q-pa-md cursor-pointer" clickable @click="openJobsPage()">
-          <div class="text-caption text-grey-6">{{ t('home.activeJobs') }}</div>
-          <div class="text-h6 text-warning">{{ activeJobs }}</div>
+          <div class="ec-metric-label">{{ t('home.activeJobs') }}</div>
+          <div class="ec-metric-value ec-text-warning">{{ activeJobs }}</div>
+        </q-card>
+      </div>
+    </div>
+
+    <div class="row q-col-gutter-sm q-mb-md">
+      <!-- Warehouse snapshot -->
+      <div class="col-12 col-md-4">
+        <q-card class="ec-card q-pa-md full-height cursor-pointer" :class="{ 'ec-card--active': activeHighlights.length }" clickable @click="openWarehouseLedsPage()">
+          <div class="row items-center q-mb-sm">
+            <div class="text-subtitle1 col">{{ t('home.warehouseSnapshot') }}</div>
+            <q-badge :color="onlineControllers > 0 ? 'positive' : 'grey'" text-color="white" :label="String(onlineControllers)" />
+          </div>
+          <q-list v-if="activeHighlights.length" dense separator>
+            <q-item v-for="(highlight, idx) in activeHighlights" :key="idx">
+              <q-item-section avatar>
+                <q-badge rounded :style="{ backgroundColor: highlight.color }" class="q-mr-sm">&nbsp;</q-badge>
+              </q-item-section>
+              <q-item-section>
+                <q-item-label>{{ highlight.label }}</q-item-label>
+                <q-item-label caption>{{ highlight.controllerId }}</q-item-label>
+              </q-item-section>
+            </q-item>
+          </q-list>
+          <div v-else class="ec-empty-state q-pa-md">
+            <div class="ec-empty-state__text">{{ t('home.noActiveHighlights') }}</div>
+          </div>
+        </q-card>
+      </div>
+
+      <!-- Offline queue status -->
+      <div class="col-12 col-md-4">
+        <q-card class="ec-card q-pa-md full-height cursor-pointer" :class="{ 'ec-card--active': offlineQueueAttention }" clickable @click="openOfflineQueuePage()">
+          <div class="row items-center q-mb-sm">
+            <div class="text-subtitle1 col">{{ t('home.offlineQueue') }}</div>
+            <q-badge :color="onlineStatus ? 'positive' : 'warning'" :label="onlineStatus ? t('home.online') : t('home.offline')" />
+          </div>
+          <div class="ec-metric-value">{{ pendingMutationCount }}</div>
+          <div class="ec-metric-label">{{ t('home.pendingOperations') }}</div>
+          <div v-if="!onlineStatus" class="text-caption ec-text-warning q-mt-sm">{{ t('home.offlineQueueHint') }}</div>
+        </q-card>
+      </div>
+
+      <!-- Today's crew availability -->
+      <div class="col-12 col-md-4">
+        <q-card class="ec-card q-pa-md full-height cursor-pointer" clickable @click="openCrewPage()">
+          <div class="row items-center q-mb-sm">
+            <div class="text-subtitle1 col">{{ t('home.crewAvailability') }}</div>
+            <q-badge color="info" text-color="white" :label="String(activeCrewMembers.length)" />
+          </div>
+          <q-list v-if="activeCrewSample.length" dense separator>
+            <q-item v-for="member in activeCrewSample" :key="member.id" clickable @click.stop="router.push(`/crew/${member.id}`)">
+              <q-item-section>
+                <q-item-label>{{ member.name }}</q-item-label>
+                <q-item-label v-if="member.skills?.length" caption>
+                  <q-badge v-for="skill in member.skills.slice(0, 2)" :key="skill.id || skill" color="teal" class="q-mr-xs" :label="skill.name || skill" />
+                  <span v-if="member.skills.length > 2" class="ec-text-muted">+{{ member.skills.length - 2 }}</span>
+                </q-item-label>
+              </q-item-section>
+            </q-item>
+          </q-list>
+          <div v-else class="ec-empty-state q-pa-md">
+            <div class="ec-empty-state__text">{{ t('home.noActiveCrew') }}</div>
+          </div>
         </q-card>
       </div>
     </div>
@@ -75,9 +138,9 @@
                 </q-item-label>
               </q-item-section>
             </q-item>
-            <q-item v-if="!lowAvailabilityProducts.length">
-              <q-item-section>
-                <q-item-label caption>{{ t('home.noLowAvailability') }}</q-item-label>
+            <q-item v-if="!lowAvailabilityProducts.length" class="q-pa-md">
+              <q-item-section class="ec-empty-state">
+                <div class="ec-empty-state__text">{{ t('home.noLowAvailability') }}</div>
               </q-item-section>
             </q-item>
           </q-list>
@@ -97,9 +160,9 @@
                 <q-item-label caption>{{ job.start_date || '-' }} · {{ job.status || '-' }}</q-item-label>
               </q-item-section>
             </q-item>
-            <q-item v-if="!jobsStartingThisWeek.length">
-              <q-item-section>
-                <q-item-label caption>{{ t('home.noJobsThisWeek') }}</q-item-label>
+            <q-item v-if="!jobsStartingThisWeek.length" class="q-pa-md">
+              <q-item-section class="ec-empty-state">
+                <div class="ec-empty-state__text">{{ t('home.noJobsThisWeek') }}</div>
               </q-item-section>
             </q-item>
           </q-list>
@@ -128,9 +191,9 @@
                 </q-item-label>
               </q-item-section>
             </q-item>
-            <q-item v-if="!upcomingJobs.length">
-              <q-item-section>
-                <q-item-label caption>{{ t('home.noUpcomingJobs') }}</q-item-label>
+            <q-item v-if="!upcomingJobs.length" class="q-pa-md">
+              <q-item-section class="ec-empty-state">
+                <div class="ec-empty-state__text">{{ t('home.noUpcomingJobs') }}</div>
               </q-item-section>
             </q-item>
           </q-list>
@@ -152,9 +215,9 @@
                 <q-badge :color="item.success ? 'positive' : 'negative'" :label="item.success ? t('home.ok') : t('home.failed')" />
               </q-item-section>
             </q-item>
-            <q-item v-if="!recentScanActivity.length">
-              <q-item-section>
-                <q-item-label caption>{{ t('home.noRecentScanActivity') }}</q-item-label>
+            <q-item v-if="!recentScanActivity.length" class="q-pa-md">
+              <q-item-section class="ec-empty-state">
+                <div class="ec-empty-state__text">{{ t('home.noRecentScanActivity') }}</div>
               </q-item-section>
             </q-item>
           </q-list>
@@ -172,6 +235,9 @@ import { useRouter } from 'vue-router'
 import { api } from '../boot/axios'
 import { useInventoryStore } from '../stores/inventory'
 import { useJobsStore } from '../stores/jobs'
+import { useCrewStore } from '../stores/crew'
+import { useWarehouseLedsStore } from '../stores/warehouseLeds'
+import { isOnline, listQueuedMutations } from '../services/offline/orbitSync'
 import { dashboardJobRoute, dashboardProductRoute, dashboardScanRoute } from '../utils/dashboard-links'
 
 const { t } = useI18n()
@@ -180,6 +246,10 @@ const status = ref('unknown')
 const loading = ref(false)
 const store = useInventoryStore()
 const jobsStore = useJobsStore()
+const crewStore = useCrewStore()
+const ledsStore = useWarehouseLedsStore()
+const queuedMutations = ref([])
+const onlineStatus = ref(true)
 
 const availableDevices = computed(() => store.devices.filter(item => String(item.status || '').toLowerCase() === 'available').length)
 const inUseDevices = computed(() => store.devices.filter(item => String(item.status || '').toLowerCase() === 'in_use').length)
@@ -268,6 +338,24 @@ const recentScanActivity = computed(() => {
     .slice(0, 8)
 })
 
+const activeCrewMembers = computed(() => (crewStore.members || []).filter(m => m.is_active !== false))
+const activeCrewSample = computed(() => activeCrewMembers.value.slice(0, 5))
+
+const onlineControllers = computed(() => (ledsStore.statuses || []).filter(s => s.status === 'online').length)
+const activeHighlights = computed(() => {
+  return (ledsStore.statuses || []).flatMap(s => {
+    const highlights = s.highlighted_zones || s.highlighted_bins || s.highlighted || []
+    return highlights.map(h => ({
+      controllerId: s.controller_id,
+      label: h.bin_label || h.zone_code || h.label || String(h.id || ''),
+      color: h.color || s.color || '#3F873F',
+    }))
+  }).slice(0, 6)
+})
+
+const pendingMutationCount = computed(() => queuedMutations.value.length)
+const offlineQueueAttention = computed(() => pendingMutationCount.value > 0 || !onlineStatus.value)
+
 async function loadHealth() {
   try {
     const response = await api.get('/api/v1/health/live')
@@ -341,6 +429,18 @@ async function openScanActivityTarget(item) {
   await router.push(dashboardScanRoute(item))
 }
 
+async function openWarehouseLedsPage() {
+  await router.push({ path: '/warehouse-leds' })
+}
+
+async function openOfflineQueuePage() {
+  await router.push({ path: '/settings', query: { tab: 'offline-queue' } })
+}
+
+async function openCrewPage() {
+  await router.push({ path: '/crew' })
+}
+
 async function loadDashboard() {
   loading.value = true
   try {
@@ -350,7 +450,13 @@ async function loadDashboard() {
       jobsStore.fetchAll(),
       store.fetchCheckedOutDevices(),
       store.fetchAuditLogs(80),
+      crewStore.fetchMembers(),
+      ledsStore.fetchStatuses(),
     ])
+    onlineStatus.value = isOnline()
+    queuedMutations.value = await listQueuedMutations()
+  } catch (error) {
+    console.error('Failed to load dashboard:', error)
   } finally {
     loading.value = false
   }

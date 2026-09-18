@@ -157,7 +157,7 @@ function childGrandChildren(child) {
 }
 
 .cross-section-cell:hover {
-  border-color: var(--q-primary, #3F873F);
+  border-color: var(--q-primary, var(--ec-primary));
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 

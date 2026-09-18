@@ -1,7 +1,7 @@
 <template>
   <q-page class="q-pa-md ec-page">
     <div class="row items-center q-mb-md">
-      <div class="text-h5 col">{{ t('maintenance.title') }}</div>
+      <div class="ec-page-title col">{{ t('maintenance.title') }}</div>
       <q-btn color="primary" icon="refresh" :label="t('maintenance.refresh')" unelevated @click="refresh" :loading="loading" />
     </div>
 
@@ -41,6 +41,27 @@
         </div>
       </div>
 
+      <div class="row q-col-gutter-sm q-mb-md">
+        <div class="col-6 col-sm-4 col-md-3">
+          <q-card class="ec-card q-pa-sm">
+            <div class="ec-metric-label">{{ t('maintenance.totalDefects') }}</div>
+            <div class="ec-metric-value">{{ defectReports.length }}</div>
+          </q-card>
+        </div>
+        <div class="col-6 col-sm-4 col-md-3">
+          <q-card class="ec-card q-pa-sm">
+            <div class="ec-metric-label">{{ t('maintenance.openDefects') }}</div>
+            <div class="ec-metric-value">{{ openDefectCount }}</div>
+          </q-card>
+        </div>
+        <div class="col-6 col-sm-4 col-md-3">
+          <q-card class="ec-card q-pa-sm">
+            <div class="ec-metric-label">{{ t('maintenance.criticalDefects') }}</div>
+            <div class="ec-metric-value" :class="criticalDefectCount > 0 ? 'ec-text-danger' : ''">{{ criticalDefectCount }}</div>
+          </q-card>
+        </div>
+      </div>
+
       <div v-if="selectedDefects.length" class="row items-center q-gutter-sm q-mb-sm">
         <q-badge color="primary" :label="t('maintenance.selectedCount', { count: selectedDefects.length })" />
         <q-btn color="negative" icon="delete" :label="t('maintenance.bulkDelete')" unelevated @click="runBulkDeleteDefects" />
@@ -59,6 +80,7 @@
         :loading="loading"
         :pagination="{ rowsPerPage: 25 }"
         :rows-per-page-options="[25, 50, 100]"
+        :no-data-label="t('maintenance.noDefects')"
       >
         <template #body-cell-asset_tag="props">
           <q-td :props="props">
@@ -175,6 +197,27 @@
         <q-btn class="q-ml-sm" color="secondary" icon="build" :label="t('maintenance.createTask')" unelevated @click="openCreateMaintenance('task')" />
       </div>
 
+      <div class="row q-col-gutter-sm q-mb-md">
+        <div class="col-6 col-sm-4 col-md-3">
+          <q-card class="ec-card q-pa-sm">
+            <div class="ec-metric-label">{{ t('maintenance.totalTasks') }}</div>
+            <div class="ec-metric-value">{{ store.maintenances.length }}</div>
+          </q-card>
+        </div>
+        <div class="col-6 col-sm-4 col-md-3">
+          <q-card class="ec-card q-pa-sm">
+            <div class="ec-metric-label">{{ t('maintenance.pendingTasks') }}</div>
+            <div class="ec-metric-value" :class="pendingTaskCount > 0 ? 'ec-text-warning' : ''">{{ pendingTaskCount }}</div>
+          </q-card>
+        </div>
+        <div class="col-6 col-sm-4 col-md-3">
+          <q-card class="ec-card q-pa-sm">
+            <div class="ec-metric-label">{{ t('maintenance.overdueTasks') }}</div>
+            <div class="ec-metric-value" :class="overdueTaskCount > 0 ? 'ec-text-danger' : ''">{{ overdueTaskCount }}</div>
+          </q-card>
+        </div>
+      </div>
+
       <div v-if="selectedMaintenance.length" class="row items-center q-gutter-sm q-mb-sm">
         <q-badge color="primary" :label="t('maintenance.selectedCount', { count: selectedMaintenance.length })" />
         <q-btn color="secondary" icon="edit" :label="t('maintenance.bulkEdit')" unelevated @click="bulkMaintenanceDialogOpen = true" />
@@ -194,6 +237,7 @@
         :loading="store.loading"
         :pagination="{ rowsPerPage: 50 }"
         :rows-per-page-options="[10, 25, 50, 100, 200]"
+        :no-data-label="t('maintenance.noTasks')"
       >
         <template #body-cell-source="props">
           <q-td :props="props">
@@ -248,6 +292,21 @@
         <q-btn class="q-ml-sm" color="positive" icon="event_repeat" :label="t('maintenance.createSchedule')" unelevated @click="openCreateMaintenance('schedule')" />
       </div>
 
+      <div class="row q-col-gutter-sm q-mb-md">
+        <div class="col-6 col-sm-4 col-md-3">
+          <q-card class="ec-card q-pa-sm">
+            <div class="ec-metric-label">{{ t('maintenance.totalSchedules') }}</div>
+            <div class="ec-metric-value">{{ store.maintenanceSchedules.length }}</div>
+          </q-card>
+        </div>
+        <div class="col-6 col-sm-4 col-md-3">
+          <q-card class="ec-card q-pa-sm">
+            <div class="ec-metric-label">{{ t('maintenance.activeSchedules') }}</div>
+            <div class="ec-metric-value">{{ activeScheduleCount }}</div>
+          </q-card>
+        </div>
+      </div>
+
       <div v-if="selectedSchedules.length" class="row items-center q-gutter-sm q-mb-sm">
         <q-badge color="primary" :label="t('maintenance.selectedCount', { count: selectedSchedules.length })" />
         <q-btn color="secondary" icon="edit" :label="t('maintenance.bulkEdit')" unelevated @click="bulkScheduleDialogOpen = true" />
@@ -267,6 +326,7 @@
         :loading="store.loading"
         :pagination="{ rowsPerPage: 50 }"
         :rows-per-page-options="[10, 25, 50, 100, 200]"
+        :no-data-label="t('maintenance.noSchedules')"
       >
         <template #body-cell-id="props">
           <q-td :props="props">#{{ props.row.id }}</q-td>
@@ -359,6 +419,13 @@ const deviceInfoTarget = ref(null)
 
 const defectReports = computed(() => store.defectReports)
 const pendingTaskCount = computed(() => store.maintenances.filter(m => m.status !== 'completed' && m.status !== 'canceled').length)
+const openDefectCount = computed(() => store.defectReports.filter(d => d.status === 'open' || d.status === 'in_progress').length)
+const criticalDefectCount = computed(() => store.defectReports.filter(d => d.severity === 'high' || d.severity === 'critical').length)
+const overdueTaskCount = computed(() => {
+  const today = new Date().toISOString().slice(0, 10)
+  return store.maintenances.filter(m => m.status !== 'completed' && m.status !== 'canceled' && m.scheduled_date && m.scheduled_date < today).length
+})
+const activeScheduleCount = computed(() => store.maintenanceSchedules.filter(s => s.is_active !== false).length)
 
 const { defectReports: _dr } = store
 

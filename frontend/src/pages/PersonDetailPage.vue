@@ -5,7 +5,7 @@
         <q-btn flat icon="arrow_back" :label="t('persons.backToPersons')" @click="goBack" />
       </div>
       <div class="col">
-        <div class="text-h5">{{ isNewPerson ? t('persons.newPerson') : personFullName }}</div>
+        <div class="ec-page-title">{{ isNewPerson ? t('persons.newPerson') : personFullName }}</div>
       </div>
       <div class="col-auto row q-gutter-sm">
         <q-btn v-if="!isNewPerson && authStore.canEdit" color="negative" outline icon="delete" :label="t('persons.delete')" @click="confirmDelete" />
