@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="240" height="44" viewBox="0 0 240 44">
+  <rect width="240" height="44" rx="8" fill="rgba(63,135,63,0.08)"/>
+  <text x="48" y="28" font-family="Myriad Pro, Arial, sans-serif" font-size="15" font-weight="400" fill="#E9F1EE">Active item</text>
+</svg>

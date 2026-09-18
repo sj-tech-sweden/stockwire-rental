@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="320" height="160" viewBox="0 0 320 160">
+  <rect width="320" height="160" rx="8" fill="#182228"/>
+  <rect x="0" y="0" width="320" height="160" rx="8" fill="none" stroke="rgba(63,135,63,0.08)" stroke-width="1"/>
+  <rect x="0" y="12" width="3" height="136" rx="1.5" fill="#3F873F"/>
+  <text x="24" y="40" font-family="Raleway, Arial, sans-serif" font-size="20" font-weight="600" fill="#E9F1EE">Active card</text>
+  <text x="24" y="72" font-family="Myriad Pro, Arial, sans-serif" font-size="14" font-weight="400" fill="#A8BAB1">Highlighted with green rail.</text>
+</svg>

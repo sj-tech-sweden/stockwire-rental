@@ -3,7 +3,7 @@
     <!-- Header row -->
     <div class="row items-center q-pa-md q-pb-sm">
       <q-icon name="alt_route" size="md" color="primary" class="q-mr-sm" />
-      <div class="text-h5">{{ t('routePlanner.title') }}</div>
+      <div class="ec-page-title">{{ t('routePlanner.title') }}</div>
       <q-space />
       <q-btn
         unelevated
@@ -35,6 +35,34 @@
         :label="t('routePlanner.routeStatus')"
         style="min-width: 160px"
       />
+    </div>
+
+    <!-- Metrics -->
+    <div class="row q-col-gutter-md q-px-md q-pb-sm">
+      <div class="col-6 col-md-3">
+        <q-card flat bordered class="ec-card q-pa-md">
+          <div class="ec-metric-label">{{ t('routePlanner.totalRoutes') }}</div>
+          <div class="ec-metric-value">{{ store.routes.length }}</div>
+        </q-card>
+      </div>
+      <div class="col-6 col-md-3">
+        <q-card flat bordered class="ec-card q-pa-md">
+          <div class="ec-metric-label">{{ t('routePlanner.plannedRoutes') }}</div>
+          <div class="ec-metric-value">{{ plannedRoutesCount }}</div>
+        </q-card>
+      </div>
+      <div class="col-6 col-md-3">
+        <q-card flat bordered class="ec-card q-pa-md">
+          <div class="ec-metric-label">{{ t('routePlanner.inProgressRoutes') }}</div>
+          <div class="ec-metric-value">{{ inProgressRoutesCount }}</div>
+        </q-card>
+      </div>
+      <div class="col-6 col-md-3">
+        <q-card flat bordered class="ec-card q-pa-md">
+          <div class="ec-metric-label">{{ t('routePlanner.completedRoutes') }}</div>
+          <div class="ec-metric-value">{{ completedRoutesCount }}</div>
+        </q-card>
+      </div>
     </div>
 
     <!-- Main content -->
@@ -71,9 +99,9 @@
                 </q-item-section>
               </q-item>
             </q-list>
-            <div v-else class="text-center text-grey q-pa-xl">
-              <q-icon name="alt_route" size="48px" color="grey-4" class="q-mb-md" /><br />
-              {{ t('routePlanner.noRoutes') }}
+            <div v-else class="ec-empty-state q-pa-xl">
+              <q-icon name="alt_route" size="48px" class="ec-empty-state__icon" />
+              <div class="ec-empty-state__title">{{ t('routePlanner.noRoutes') }}</div>
             </div>
           </q-scroll-area>
         </div>
@@ -95,7 +123,7 @@
               </div>
 
               <!-- Route metadata card -->
-              <q-card flat bordered class="q-mb-md">
+              <q-card flat bordered class="ec-card q-mb-md">
                 <q-card-section class="q-gutter-sm">
                   <div class="row q-gutter-md" :class="{ 'column': isMobile }">
                     <q-input
@@ -134,7 +162,7 @@
               </q-card>
 
               <!-- Assigned vehicles -->
-              <q-card flat bordered class="q-mb-md">
+              <q-card flat bordered class="ec-card q-mb-md">
                 <q-card-section class="q-pa-sm">
                   <div class="row items-center q-mb-sm">
                     <div class="text-subtitle2"><q-icon name="local_shipping" size="xs" class="q-mr-xs" />{{ t('routePlanner.assignedVehicles') }}</div>
@@ -257,9 +285,9 @@
                   </q-item-section>
                 </q-item>
               </q-list>
-              <div v-else class="text-center text-grey q-pa-xl">
-                <q-icon name="add_shopping_cart" size="48px" color="grey-4" class="q-mb-sm" /><br />
-                {{ t('routePlanner.noStops') }}
+              <div v-else class="ec-empty-state q-pa-xl">
+                <q-icon name="add_shopping_cart" size="48px" class="ec-empty-state__icon" />
+                <div class="ec-empty-state__title">{{ t('routePlanner.noStops') }}</div>
               </div>
 
               <!-- Summary -->
@@ -272,11 +300,9 @@
           </q-scroll-area>
 
           <!-- Empty state -->
-          <div v-else class="full-height flex flex-center text-grey">
-            <div class="text-center">
-              <q-icon name="alt_route" size="64px" color="grey-4" class="q-mb-md" /><br />
-              {{ t('routePlanner.selectRoute') }}
-            </div>
+          <div v-else class="full-height flex flex-center ec-empty-state">
+            <q-icon name="alt_route" size="64px" class="ec-empty-state__icon" />
+            <div class="ec-empty-state__title">{{ t('routePlanner.selectRoute') }}</div>
           </div>
         </div>
       </template>
@@ -298,7 +324,7 @@
 
     <!-- Create route dialog -->
     <q-dialog v-model="showCreateRoute" persistent>
-      <q-card style="min-width: 400px">
+      <q-card style="min-width: 400px" class="ec-card">
         <q-card-section class="text-h6">{{ t('routePlanner.createRoute') }}</q-card-section>
         <q-card-section>
           <q-form @submit="onCreateRoute" class="q-gutter-md">
@@ -412,6 +438,10 @@ const totalVolume = computed(() => {
   }
   return v.toFixed(2)
 })
+
+const plannedRoutesCount = computed(() => store.routes.filter(r => r.status === 'planned').length)
+const inProgressRoutesCount = computed(() => store.routes.filter(r => r.status === 'in_progress').length)
+const completedRoutesCount = computed(() => store.routes.filter(r => r.status === 'completed').length)
 
 function statusColor(status) {
   const map = { planned: 'blue', in_progress: 'orange', completed: 'green', cancelled: 'grey' }

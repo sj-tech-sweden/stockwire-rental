@@ -1,0 +1,14 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "description": "Quasar framework brand configuration matching design/tokens/tokens.json",
+  "brand": {
+    "primary": "#3F873F",
+    "secondary": "#26A69A",
+    "accent": "#35A853",
+    "dark": "#0C1114",
+    "positive": "#43C36B",
+    "negative": "#E65656",
+    "info": "#3F873F",
+    "warning": "#F7B84B"
+  }
+}

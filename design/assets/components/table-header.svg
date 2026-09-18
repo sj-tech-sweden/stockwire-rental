@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="600" height="44" viewBox="0 0 600 44">
+  <rect width="600" height="44" fill="#11181D"/>
+  <rect x="0" y="43" width="600" height="1" fill="#243138"/>
+  <text x="16" y="28" font-family="Raleway, Arial, sans-serif" font-size="12" font-weight="600" fill="#A8BAB1" letter-spacing="0.08em">COLUMN 1</text>
+  <text x="216" y="28" font-family="Raleway, Arial, sans-serif" font-size="12" font-weight="600" fill="#A8BAB1" letter-spacing="0.08em">COLUMN 2</text>
+  <text x="416" y="28" font-family="Raleway, Arial, sans-serif" font-size="12" font-weight="600" fill="#A8BAB1" letter-spacing="0.08em">COLUMN 3</text>
+</svg>

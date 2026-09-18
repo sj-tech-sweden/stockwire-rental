@@ -1,8 +1,29 @@
 <template>
   <q-page class="q-pa-md ec-page">
     <div class="row items-center q-mb-md">
-      <div class="text-h5 col">{{ t('venues.title') }}</div>
+      <div class="ec-page-title col">{{ t('venues.title') }}</div>
       <q-btn v-if="authStore.canEdit" color="primary" icon="add_location" :label="t('venues.newVenue')" unelevated @click="openCreate" />
+    </div>
+
+    <div class="row q-col-gutter-md q-mb-md">
+      <div class="col-6 col-md-4">
+        <q-card flat bordered class="ec-card q-pa-md">
+          <div class="ec-metric-label">{{ t('venues.totalVenues') }}</div>
+          <div class="ec-metric-value">{{ store.venues.length }}</div>
+        </q-card>
+      </div>
+      <div class="col-6 col-md-4">
+        <q-card flat bordered class="ec-card q-pa-md">
+          <div class="ec-metric-label">{{ t('venues.withAddress') }}</div>
+          <div class="ec-metric-value">{{ venuesWithAddress }}</div>
+        </q-card>
+      </div>
+      <div class="col-6 col-md-4">
+        <q-card flat bordered class="ec-card q-pa-md">
+          <div class="ec-metric-label">{{ t('venues.withContact') }}</div>
+          <div class="ec-metric-value">{{ venuesWithContact }}</div>
+        </q-card>
+      </div>
     </div>
 
     <q-table
@@ -18,6 +39,7 @@
       :pagination="{ rowsPerPage: 50 }"
       :rows-per-page-options="[25, 50, 100, 0]"
       class="ec-card"
+      :no-data-label="t('venues.noVenuesFound')"
     >
       <template #top-right>
         <q-input v-model="search" dense outlined clearable :placeholder="t('venues.search')">
@@ -64,7 +86,7 @@
 
       <template #item="props">
         <div class="q-pa-xs col-12">
-          <q-card flat bordered>
+          <q-card flat bordered class="ec-card">
             <q-card-section class="q-pb-sm">
               <div class="text-subtitle2">{{ props.row.name }}</div>
               <div class="text-caption text-grey-7">{{ props.row.city || t('venues.noCity') }}</div>
@@ -155,6 +177,9 @@ const columns = [
   },
   { name: 'actions', label: '', field: 'actions', align: 'right' },
 ]
+
+const venuesWithAddress = computed(() => store.venues.filter(v => v.address || v.city).length)
+const venuesWithContact = computed(() => store.venues.filter(v => v.phone || v.email).length)
 
 const filteredVenues = computed(() => {
   const term = search.value.trim().toLowerCase()

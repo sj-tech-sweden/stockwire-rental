@@ -2,11 +2,9 @@
   <q-page class="scan-page q-pa-md">
     <div class="scan-shell">
       <q-card class="scanner-card q-pa-lg q-mb-md">
-        <div class="text-center q-mb-md">
-          <div class="scanner-icon-wrap q-mb-sm">
-            <q-icon name="qr_code_scanner" size="42px" color="white" />
-          </div>
-          <div class="text-h5 text-white">{{ t('scan.title') }}</div>
+        <div class="ec-scanner-target q-mb-md">
+          <q-icon class="ec-scanner-target__icon" name="qr_code_scanner" size="42px" />
+          <div class="ec-scanner-target__label">{{ t('scan.title') }}</div>
           <div class="text-caption text-grey-4">{{ t('scan.subtitle') }}</div>
         </div>
 
@@ -412,9 +410,9 @@
                 <q-item-label caption>{{ item.message }}</q-item-label>
               </q-item-section>
             </q-item>
-            <q-item v-if="!recentMovedDevices.length">
-              <q-item-section>
-                <q-item-label caption>{{ t('scan.noMovesYet') }}</q-item-label>
+            <q-item v-if="!recentMovedDevices.length" class="q-pa-md">
+              <q-item-section class="ec-empty-state">
+                <div class="ec-empty-state__text">{{ t('scan.noMovesYet') }}</div>
               </q-item-section>
             </q-item>
           </q-list>
@@ -441,9 +439,9 @@
                 <q-item-label caption>{{ item.message }}</q-item-label>
               </q-item-section>
             </q-item>
-            <q-item v-if="!recentMovedDevices.length">
-              <q-item-section>
-                <q-item-label caption>{{ t('scan.noMovesYet') }}</q-item-label>
+            <q-item v-if="!recentMovedDevices.length" class="q-pa-md">
+              <q-item-section class="ec-empty-state">
+                <div class="ec-empty-state__text">{{ t('scan.noMovesYet') }}</div>
               </q-item-section>
             </q-item>
           </q-list>
@@ -974,9 +972,9 @@
               <q-item-label caption>{{ formatScanTime(item.created_at) }}</q-item-label>
             </q-item-section>
           </q-item>
-          <q-item v-if="!recentRentalAuditRows.length">
-            <q-item-section>
-              <q-item-label caption>{{ t('scan.noRentalScansYet') }}</q-item-label>
+          <q-item v-if="!recentRentalAuditRows.length" class="q-pa-md">
+            <q-item-section class="ec-empty-state">
+              <div class="ec-empty-state__text">{{ t('scan.noRentalScansYet') }}</div>
             </q-item-section>
           </q-item>
         </q-list>
@@ -2940,7 +2938,7 @@ onBeforeUnmount(() => {
   width: 78px;
   height: 78px;
   border-radius: 18px;
-  background: linear-gradient(135deg, #3f873f, #2f6b30);
+  background: linear-gradient(135deg, var(--ec-primary), #2f6b30);
 }
 
 .step-row {
@@ -2972,7 +2970,7 @@ onBeforeUnmount(() => {
 }
 
 .step-active .step-dot {
-  background: #3f873f;
+  background: var(--ec-primary);
   color: #fff;
 }
 
@@ -2986,7 +2984,7 @@ onBeforeUnmount(() => {
 }
 
 .step-pending {
-  color: #9ca3af;
+  color: var(--ec-text-secondary);
 }
 
 .step-pending .step-dot {

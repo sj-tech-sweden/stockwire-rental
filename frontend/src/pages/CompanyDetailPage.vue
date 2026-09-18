@@ -5,7 +5,7 @@
         <q-btn flat icon="arrow_back" :label="t('companies.backToCompanies')" @click="goBack" />
       </div>
       <div class="col">
-        <div class="text-h5">{{ isNewCompany ? t('companies.newCompany') : (currentCompany?.name || t('companies.title')) }}</div>
+        <div class="ec-page-title">{{ isNewCompany ? t('companies.newCompany') : (currentCompany?.name || t('companies.title')) }}</div>
       </div>
       <div class="col-auto row q-gutter-sm">
         <q-btn v-if="!isNewCompany && authStore.canEdit" color="negative" outline icon="delete" :label="t('companies.delete')" @click="confirmDelete" />
@@ -187,7 +187,10 @@
                 </q-item>
               </q-list>
             </template>
-            <div v-else class="text-caption text-grey-7">{{ t('companies.noPersons') }}</div>
+            <div v-else class="ec-empty-state">
+              <q-icon name="people" size="32px" class="ec-empty-state__icon" />
+              <div class="ec-empty-state__title">{{ t('companies.noPersons') }}</div>
+            </div>
           </q-card-section>
         </q-card>
 
@@ -220,7 +223,10 @@
                 </q-item>
               </q-list>
             </template>
-            <div v-else class="text-caption text-grey-7">{{ t('companies.noLinkedJobs') }}</div>
+            <div v-else class="ec-empty-state">
+              <q-icon name="work" size="32px" class="ec-empty-state__icon" />
+              <div class="ec-empty-state__title">{{ t('companies.noLinkedJobs') }}</div>
+            </div>
           </q-card-section>
         </q-card>
 
@@ -254,7 +260,10 @@
                 </q-item>
               </q-list>
             </template>
-            <div v-else class="text-caption text-grey-7">{{ t('companies.noCrewMembers') }}</div>
+            <div v-else class="ec-empty-state">
+              <q-icon name="group" size="32px" class="ec-empty-state__icon" />
+              <div class="ec-empty-state__title">{{ t('companies.noCrewMembers') }}</div>
+            </div>
           </q-card-section>
         </q-card>
       </template>

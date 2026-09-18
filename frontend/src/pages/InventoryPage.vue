@@ -1,7 +1,7 @@
 <template>
   <q-page class="q-pa-md ec-page">
     <div class="row items-center q-mb-md">
-      <div class="text-h5 col">{{ t('app.nav.inventory') }}</div>
+      <div class="ec-page-title col">{{ t('app.nav.inventory') }}</div>
       <q-btn class="q-mr-sm" color="secondary" :label="t('inventory.importData')" icon="upload_file" @click="openImportDialog" />
       <q-btn color="primary" :label="t('finance.reload')" icon="refresh" unelevated @click="loadAll" :loading="store.loading" />
     </div>
@@ -27,14 +27,40 @@
     <q-tab-panels v-model="tab" animated>
       <q-tab-panel name="overview" class="q-pa-none">
         <q-card class="ec-card q-pa-md">
-          <div class="text-subtitle1">{{ t('inventory.overview.products', { count: inventoryProductCount }) }}</div>
-          <div class="text-subtitle1">{{ t('inventory.overview.rentals', { count: rentalProducts.length }) }}</div>
-          <div class="text-subtitle1">{{ t('inventory.overview.devices', { count: store.devices.length }) }}</div>
-          <div class="text-subtitle1">{{ t('inventory.overview.categories', { count: categoryOverviewCount }) }}</div>
-          <div class="text-subtitle1">{{ t('inventory.overview.storageLocations', { count: store.zones.length }) }}</div>
-          <div class="text-subtitle1">{{ t('inventory.overview.maintenancePending', { count: overviewMaintenancePendingCount }) }}</div>
-          <div class="text-subtitle1">{{ t('inventory.overview.mostUsedDevice', { device: overviewMostUsedDeviceLabel }) }}</div>
-          <div class="text-subtitle1">{{ t('inventory.overview.mostUsedProductByDays', { product: overviewMostUsedProductByUsageDaysLabel }) }}</div>
+          <div class="row q-col-gutter-sm">
+            <div class="col-12 col-sm-6 col-md-3">
+              <div class="ec-metric-label">{{ t('inventory.overview.productsLabel') }}</div>
+              <div class="ec-metric-value">{{ inventoryProductCount }}</div>
+            </div>
+            <div class="col-12 col-sm-6 col-md-3">
+              <div class="ec-metric-label">{{ t('inventory.overview.rentalsLabel') }}</div>
+              <div class="ec-metric-value">{{ rentalProducts.length }}</div>
+            </div>
+            <div class="col-12 col-sm-6 col-md-3">
+              <div class="ec-metric-label">{{ t('inventory.overview.devicesLabel') }}</div>
+              <div class="ec-metric-value">{{ store.devices.length }}</div>
+            </div>
+            <div class="col-12 col-sm-6 col-md-3">
+              <div class="ec-metric-label">{{ t('inventory.overview.categoriesLabel') }}</div>
+              <div class="ec-metric-value">{{ categoryOverviewCount }}</div>
+            </div>
+            <div class="col-12 col-sm-6 col-md-3">
+              <div class="ec-metric-label">{{ t('inventory.overview.storageLocationsLabel') }}</div>
+              <div class="ec-metric-value">{{ store.zones.length }}</div>
+            </div>
+            <div class="col-12 col-sm-6 col-md-3">
+              <div class="ec-metric-label">{{ t('inventory.overview.maintenancePendingLabel') }}</div>
+              <div class="ec-metric-value" :class="overviewMaintenancePendingCount > 0 ? 'ec-text-warning' : ''">{{ overviewMaintenancePendingCount }}</div>
+            </div>
+            <div class="col-12 col-sm-6 col-md-3">
+              <div class="ec-metric-label">{{ t('inventory.overview.mostUsedDeviceLabel') }}</div>
+              <div class="ec-metric-value text-body2" style="font-size: 1rem">{{ overviewMostUsedDeviceLabel }}</div>
+            </div>
+            <div class="col-12 col-sm-6 col-md-3">
+              <div class="ec-metric-label">{{ t('inventory.overview.mostUsedProductByDaysLabel') }}</div>
+              <div class="ec-metric-value text-body2" style="font-size: 1rem">{{ overviewMostUsedProductByUsageDaysLabel }}</div>
+            </div>
+          </div>
         </q-card>
 
         <q-card v-if="store.lowStockItems.length" class="ec-card q-pa-md q-mt-md">
@@ -130,6 +156,7 @@
             rowsPerPage: 200
             }"
           :rows-per-page-options="[10, 25, 50, 100, 200, 0]"
+          :no-data-label="t('inventory.noProducts')"
           class="ec-card inventory-products-table"
           @row-dblclick="(evt, row) => openProductInfo(row)"
         >
@@ -303,6 +330,7 @@
             :hide-header="compactGrid"
             :pagination="{ rowsPerPage: 50 }"
             :rows-per-page-options="[10, 25, 50, 100, 200]"
+            :no-data-label="t('inventory.noRentalProducts')"
           >
             <template #body-cell-eventory_available_qty="props">
               <q-td :props="props" class="text-right">
@@ -443,6 +471,7 @@
           :loading="store.loading"
           :pagination="{ rowsPerPage: 50 }"
           :rows-per-page-options="[10, 25, 50, 100, 200]"
+          :no-data-label="t('inventory.noDevices')"
           class="ec-card"
           @row-dblclick="(evt, row) => { deviceInfoTarget = row; deviceInfoDialogOpen = true }"
         >
@@ -2529,7 +2558,7 @@ async function onLocationDropToRoot() {
   width: 66px;
   height: 66px;
   border-radius: 16px;
-  background: linear-gradient(135deg, #3f873f, #2f6b30);
+  background: linear-gradient(135deg, var(--ec-primary), #2f6b30);
 }
 
 .device-capture-camera-wrap {

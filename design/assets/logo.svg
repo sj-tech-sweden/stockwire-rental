@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 64" fill="none">
+  <!-- Logo mark -->
+  <rect x="0" y="0" width="64" height="64" rx="12" fill="#11181D"/>
+  <path d="M18 20c0-2.21 1.79-4 4-4s4 1.79 4 4v8c0 2.21 1.79 4 4 4s4-1.79 4-4v-8c0-2.21 1.79-4 4-4s4 1.79 4 4v24c0 2.21-1.79 4-4 4s-4-1.79-4-4V36c0-2.21-1.79-4-4-4s-4 1.79-4 4v8c0 2.21-1.79 4-4 4s-4-1.79-4-4V20z" fill="#3F873F"/>
+
+  <!-- Wordmark -->
+  <text x="76" y="42" font-family="Raleway, Arial, sans-serif" font-size="28" font-weight="600" fill="#E9F1EE">Stockwire</text>
+</svg>

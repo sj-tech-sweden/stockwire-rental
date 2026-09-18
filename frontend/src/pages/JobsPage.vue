@@ -1,8 +1,19 @@
 <template>
   <q-page class="q-pa-md ec-page">
     <div class="row items-center q-mb-md">
-      <div class="text-h5 col">{{ t('jobs.title') }}</div>
-      <q-btn v-if="jobsFeedUrl" flat dense icon="calendar_month" :label="t('jobs.calendarFeed')" class="q-mr-sm" @click="copyToClipboard(jobsFeedUrl)" />
+      <div class="ec-page-title col">{{ t('jobs.title') }}</div>
+      <q-btn-toggle
+        v-model="viewMode"
+        flat
+        dense
+        toggle-color="primary"
+        class="q-mr-sm"
+        :options="[
+          { label: t('jobs.viewTable'), value: 'table', icon: 'table_rows' },
+          { label: t('jobs.viewCalendar'), value: 'calendar', icon: 'view_agenda' },
+        ]"
+      />
+      <q-btn v-if="jobsFeedUrl" flat dense icon="calendar_month" :label="t('jobs.calendarFeed')" :title="t('jobs.calendarFeedTitle')" class="q-mr-sm" @click="copyToClipboard(jobsFeedUrl)" />
       <q-btn v-if="authStore.canEdit" color="primary" icon="add" :label="t('jobs.newJob')" unelevated @click="openCreate" />
     </div>
 
@@ -83,7 +94,23 @@
       </div>
     </div>
 
+    <div class="row q-col-gutter-sm q-mb-md">
+      <div class="col-6 col-sm-4 col-md-2">
+        <q-card class="ec-card q-pa-sm">
+          <div class="ec-metric-label">{{ t('jobs.totalJobs') }}</div>
+          <div class="ec-metric-value">{{ jobsStore.jobs.length }}</div>
+        </q-card>
+      </div>
+      <div v-for="status in JOB_STATUSES" :key="status.value" class="col-6 col-sm-4 col-md-2">
+        <q-card class="ec-card q-pa-sm">
+          <div class="ec-metric-label">{{ statusLabel(status.value) }}</div>
+          <div class="ec-metric-value">{{ jobStatusCounts[status.value] || 0 }}</div>
+        </q-card>
+      </div>
+    </div>
+
     <q-table
+      v-if="viewMode === 'table'"
       :rows="visibleJobs"
       :columns="columns"
       row-key="id"
@@ -94,6 +121,7 @@
       :loading="pageLoading || jobsStore.loading"
       :pagination="{ rowsPerPage: 50, sortBy: 'start_date', descending: false }"
       :rows-per-page-options="[25, 50, 100, 0]"
+      :no-data-label="noDataLabel"
       class="ec-card"
       @row-dblclick="(evt, row) => router.push(`/jobs/${row.id}`)"
     >
@@ -175,7 +203,7 @@
                 <div class="text-subtitle2">{{ props.row.job_code }}</div>
                 <q-badge :color="statusColor(props.row.status)" :label="statusLabel(props.row.status)" />
               </div>
-              <div class="text-caption text-grey-7">{{ props.row.description || t('jobs.noDescription') }}</div>
+              <div class="text-caption ec-text-muted">{{ props.row.description || t('jobs.noDescription') }}</div>
             </q-card-section>
             <q-card-section class="q-pt-none q-pb-sm">
               <div class="text-caption" v-if="props.row.company_name">{{ t('jobs.company') }}: {{ props.row.company_name }}</div>
@@ -213,6 +241,45 @@
         </div>
       </template>
     </q-table>
+
+    <!-- Calendar view -->
+    <div v-else class="row q-col-gutter-sm">
+      <div class="col-12 col-md-6">
+        <q-card class="ec-card q-pa-md">
+          <q-date
+            v-model="calendarDate"
+            :events="calendarEvents"
+            event-color="primary"
+            today-btn
+            class="full-width"
+            :locale="calendarLocale"
+            first-day-of-week="1"
+          />
+        </q-card>
+      </div>
+      <div class="col-12 col-md-6">
+        <q-card class="ec-card q-pa-md full-height">
+          <div class="text-subtitle1 q-mb-sm">{{ t('jobs.jobsOnDate', { date: formatDate(calendarDate.replace(/\//g, '-')) }) }}</div>
+          <q-list v-if="jobsForCalendarDate.length" dense separator>
+            <q-item v-for="job in jobsForCalendarDate" :key="job.id" clickable :to="`/jobs/${job.id}`">
+              <q-item-section>
+                <q-item-label>{{ job.job_code }}</q-item-label>
+                <q-item-label caption>
+                  <q-badge :color="statusColor(job.status)" :label="statusLabel(job.status)" class="q-mr-xs" />
+                  {{ job.company_name || customerNameForId(job.customer_id) || t('jobs.unassigned') }}
+                </q-item-label>
+              </q-item-section>
+              <q-item-section side>
+                <q-item-label caption>{{ job.start_date || '-' }} {{ t('jobs.to') }} {{ job.end_date || '-' }}</q-item-label>
+              </q-item-section>
+            </q-item>
+          </q-list>
+          <div v-else class="ec-empty-state q-pa-md">
+            <div class="ec-empty-state__text">{{ t('jobs.noJobsOnDate') }}</div>
+          </div>
+        </q-card>
+      </div>
+    </div>
 
     <JobDeleteDialog
       v-model="deleteDialogOpen"
@@ -259,6 +326,8 @@ const { t, locale } = useI18n()
 const $q = useQuasar()
 
 const pageLoading = ref(false)
+const viewMode = ref('table')
+const calendarDate = ref(new Date().toISOString().slice(0, 10).replace(/-/g, '/'))
 const search = ref('')
 const selectedStatuses = ref([])
 const filterCompanyId = ref(null)
@@ -414,6 +483,15 @@ const filterProjectId = computed(() => {
   return raw ? Number(raw) : null
 })
 
+const jobStatusCounts = computed(() => {
+  const counts = {}
+  for (const job of jobsStore.jobs || []) {
+    const value = String(job.status || '').toLowerCase()
+    counts[value] = (counts[value] || 0) + 1
+  }
+  return counts
+})
+
 const visibleJobs = computed(() => {
   const term = search.value.trim().toLowerCase()
   return jobsWithProject.value.filter(job => {
@@ -440,6 +518,37 @@ const hasActiveFilters = computed(() =>
   filterStartDateTo.value !== '' ||
   search.value.trim() !== ''
 )
+
+const noDataLabel = computed(() => {
+  if (jobsStore.jobs.length === 0) return t('jobs.noJobs')
+  if (hasActiveFilters.value) return t('jobs.noJobsMatchFilters')
+  return t('jobs.noJobs')
+})
+
+const isSwedish = computed(() => String(locale.value || 'en').toLowerCase().startsWith('sv'))
+
+const calendarLocale = computed(() => {
+  if (!isSwedish.value) return undefined
+  return {
+    days: ['Söndag', 'Måndag', 'Tisdag', 'Onsdag', 'Torsdag', 'Fredag', 'Lördag'],
+    daysShort: ['Sön', 'Mån', 'Tis', 'Ons', 'Tor', 'Fre', 'Lör'],
+    months: ['Januari', 'Februari', 'Mars', 'April', 'Maj', 'Juni', 'Juli', 'Augusti', 'September', 'Oktober', 'November', 'December'],
+    monthsShort: ['Jan', 'Feb', 'Mar', 'Apr', 'Maj', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dec'],
+  }
+})
+
+const calendarEvents = computed(() =>
+  visibleJobs.value
+    .map(job => normalizeDate(job.start_date))
+    .filter(Boolean)
+    .map(date => date.replace(/-/g, '/'))
+)
+
+const jobsForCalendarDate = computed(() => {
+  const selected = normalizeDate(calendarDate.value.replace(/\//g, '-'))
+  if (!selected) return []
+  return visibleJobs.value.filter(job => normalizeDate(job.start_date) === selected)
+})
 
 function clearAllFilters() {
   selectedStatuses.value = []

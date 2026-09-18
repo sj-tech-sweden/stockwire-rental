@@ -21,7 +21,7 @@
           <div class="ec-avatar">
             <svg width="72" height="72" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
               <circle cx="12" cy="12" r="12" fill="#0B1220" />
-              <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-3.31 0-6 2.69-6 6h12c0-3.31-2.69-6-6-6z" fill="#3F873F" />
+              <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-3.31 0-6 2.69-6 6h12c0-3.31-2.69-6-6-6z" fill="var(--ec-primary)" />
             </svg>
           </div>
         </div>
@@ -160,7 +160,7 @@ async function submit() {
   color: var(--ec-text);
 }
 .ec-brand-green { color: #19A974 !important }
-.text-muted { color: #9aa6b2 }
+.text-muted { color: var(--ec-text-secondary) }
 .ec-logo svg { border-radius: 6px }
 .ec-avatar { display: inline-flex; justify-content: center; }
 
@@ -168,9 +168,9 @@ async function submit() {
 .ec-auth-card .q-field__label,
 .ec-auth-card .q-field__label--float,
 .ec-auth-card .q-field__hint {
-  color: #cfdfe6 !important;
+  color: var(--ec-text-secondary) !important;
 }
 .ec-auth-card .q-field__native {
-  color: #e6eef3 !important;
+  color: var(--ec-text-primary) !important;
 }
 </style>

@@ -5,7 +5,7 @@
         <q-btn flat icon="arrow_back" :label="t('crew.backToMembers')" @click="goBack" />
       </div>
       <div class="col">
-        <div class="text-h5">{{ isNew ? t('crew.newMember') : (member?.name || t('crew.members')) }}</div>
+        <div class="ec-page-title">{{ isNew ? t('crew.newMember') : (member?.name || t('crew.members')) }}</div>
       </div>
       <div class="col-auto row q-gutter-sm">
         <q-btn v-if="!isNew && authStore.canEdit" color="negative" outline icon="delete" :label="t('app.actions.delete')" @click="confirmDelete" />
@@ -88,7 +88,10 @@
               <span v-if="skill.category" class="text-caption q-ml-xs">({{ skill.category }})</span>
             </q-badge>
           </div>
-          <div v-else class="text-caption text-grey-7">{{ t('crew.noSkills') }}</div>
+          <div v-else class="ec-empty-state">
+            <q-icon name="school" size="32px" class="ec-empty-state__icon" />
+            <div class="ec-empty-state__title">{{ t('crew.noSkills') }}</div>
+          </div>
         </q-card-section>
       </q-card>
 
@@ -124,7 +127,10 @@
               <q-btn v-if="authStore.canEdit" flat dense icon="close" size="xs" @click="removeCertification(cert)" />
             </div>
           </div>
-          <div v-else class="text-caption text-grey-7">{{ t('crew.noCertifications') }}</div>
+          <div v-else class="ec-empty-state">
+            <q-icon name="verified" size="32px" class="ec-empty-state__icon" />
+            <div class="ec-empty-state__title">{{ t('crew.noCertifications') }}</div>
+          </div>
         </q-card-section>
       </q-card>
 

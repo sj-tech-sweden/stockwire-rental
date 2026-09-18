@@ -1,6 +1,6 @@
 <template>
   <q-page class="q-pa-md ec-page">
-    <div class="text-h5 q-mb-md">{{ t('settings.title') }}</div>
+    <div class="ec-page-title q-mb-md">{{ t('settings.title') }}</div>
 
     <q-tabs v-model="tab" inline-label align="left" class="q-mb-md">
       <q-tab name="auth" icon="manage_accounts" :label="t('settings.tabs.auth')" />
@@ -38,6 +38,7 @@
             :loading="authLoading"
             :pagination="{ rowsPerPage: 50 }"
             :rows-per-page-options="[25, 50, 100, 0]"
+            :no-data-label="t('settings.auth.noUsers')"
             class="q-mb-md"
           >
             <template #top-right>
@@ -116,6 +117,7 @@
             :loading="authLoading"
             :pagination="{ rowsPerPage: 50 }"
             :rows-per-page-options="[25, 50, 100, 0]"
+            :no-data-label="t('settings.auth.noApiKeys')"
           >
             <template #body-cell-is_admin="props">
               <q-td :props="props">
@@ -891,7 +893,7 @@
               />
               <q-badge
                 v-if="integrationResult('eventory', instance.id)"
-                :color="integrationResult('eventory', instance.id).ok ? 'positive' : 'negative'"
+                :class="integrationResult('eventory', instance.id).ok ? 'ec-chip ec-chip--success' : 'ec-chip ec-chip--danger'"
                 :label="integrationResult('eventory', instance.id).ok ? t('settings.integrations.connected') : t('settings.integrations.failed')"
               />
               <span v-if="integrationResult('eventory', instance.id)" class="text-caption text-grey-7">
@@ -982,7 +984,7 @@
               />
               <q-badge
                 v-if="integrationResult('productionplanner', 'productionplanner')"
-                :color="integrationResult('productionplanner', 'productionplanner').ok ? 'positive' : 'negative'"
+                :class="integrationResult('productionplanner', 'productionplanner').ok ? 'ec-chip ec-chip--success' : 'ec-chip ec-chip--danger'"
                 :label="integrationResult('productionplanner', 'productionplanner').ok ? t('settings.integrations.productionplanner.connected') : t('settings.integrations.productionplanner.failed')"
               />
               <span v-if="integrationResult('productionplanner', 'productionplanner')" class="text-caption text-grey-7">
@@ -1080,7 +1082,7 @@
               />
               <q-badge
                 v-if="twentyTestResult"
-                :color="twentyTestResult.success ? 'positive' : 'negative'"
+                :class="twentyTestResult.success ? 'ec-chip ec-chip--success' : 'ec-chip ec-chip--danger'"
                 :label="twentyTestResult.success ? t('settings.integrations.twenty.connected') : t('settings.integrations.twenty.failed')"
               />
               <span v-if="twentyTestResult" class="text-caption text-grey-7">

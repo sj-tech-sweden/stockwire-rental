@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="320" height="160" viewBox="0 0 320 160">
+  <rect width="320" height="160" rx="8" fill="#182228"/>
+  <rect x="0" y="0" width="320" height="160" rx="8" fill="none" stroke="rgba(63,135,63,0.08)" stroke-width="1"/>
+  <text x="24" y="40" font-family="Raleway, Arial, sans-serif" font-size="20" font-weight="600" fill="#E9F1EE">Card title</text>
+  <text x="24" y="72" font-family="Myriad Pro, Arial, sans-serif" font-size="14" font-weight="400" fill="#A8BAB1">Card content goes here.</text>
+</svg>
