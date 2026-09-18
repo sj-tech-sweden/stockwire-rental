@@ -23,7 +23,7 @@
           >
             <template #body-cell-status="props">
               <q-td :props="props">
-                <q-badge :color="props.row.status === 'online' ? 'positive' : 'grey'" :label="props.row.status" />
+                <q-badge :class="props.row.status === 'online' ? 'ec-chip ec-chip--success' : 'ec-chip ec-chip--danger'" :label="props.row.status" />
               </q-td>
             </template>
 

@@ -558,6 +558,8 @@ export default {
     llm: {
       title: 'AI Assistant Configuration',
       description: 'Configure the LLM backend for the Stockwire AI Assistant. Supports Ollama (local), Google Gemini, OpenAI, and OpenCode.',
+      endpoint: 'Endpoint',
+      configuration: 'Model & Configuration',
       baseUrl: 'API Base URL',
       baseUrlPlaceholder: 'http://localhost:11434/v1',
       apiKey: 'API Key',
@@ -825,6 +827,8 @@ export default {
       syncNow: 'Sync now',
       connected: 'Connected',
       failed: 'Failed',
+      notTested: 'Not tested',
+      disabled: 'Disabled',
       previewCount: 'Preview: {count} products available.',
       lastSync: 'Last sync',
       eventory: {
@@ -994,6 +998,8 @@ export default {
     about: {
       title: 'About',
       description: 'Application version information and update check.',
+      systemInfo: 'System information',
+      updates: 'Updates & maintenance',
       frontendVersion: 'Frontend version',
       backendVersion: 'Backend version',
       imageTag: 'Image tag',

@@ -4,7 +4,7 @@
       <div class="text-subtitle1 col">{{ t('settings.calendarFeeds.title') }}</div>
       <q-btn color="primary" icon="add" :label="t('settings.calendarFeeds.newFeed')" unelevated @click="openCreate" />
     </div>
-    <div class="text-caption text-grey-7 q-mb-md">{{ t('settings.calendarFeeds.description') }}</div>
+    <div class="text-caption ec-text-muted q-mb-md">{{ t('settings.calendarFeeds.description') }}</div>
 
     <q-table
       :rows="feeds"
@@ -43,7 +43,7 @@
                 <div class="text-subtitle2">{{ props.row.name }}</div>
                 <q-badge :color="props.row.feed_type === 'jobs' ? 'primary' : 'secondary'" :label="props.row.feed_type" />
               </div>
-              <div class="text-caption text-grey-7">{{ props.row.token }}</div>
+              <div class="text-caption ec-text-muted">{{ props.row.token }}</div>
             </q-card-section>
             <q-card-actions align="right">
               <q-btn flat dense icon="content_copy" color="primary" @click="copyUrl(props.row)" />
