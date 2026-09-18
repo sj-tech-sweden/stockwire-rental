@@ -2404,6 +2404,8 @@ export default {
     scanOrTypeDeviceCodeFirst: 'Skanna eller skriv en enhetskod först.',
     scanProcessed: 'Skanning behandlad',
     scanFailed: 'Skanning misslyckades',
+    scanSuccess: 'Skannad',
+    scanFailedShort: 'Skanning misslyckades',
     deviceNotFound: 'Enheten hittades inte',
     cameraApiNotSupported: 'Kamera-API stöds inte i denna webbläsare.',
     barcodeDetectionNotSupported: 'Streckkodsdetektering stöds inte i denna webbläsare.',

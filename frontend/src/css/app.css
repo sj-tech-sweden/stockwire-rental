@@ -691,6 +691,17 @@ body.body--dark .ec-card .q-table tbody td {
 .ec-text-info { color: var(--ec-profile-blue) !important; }
 .ec-text-muted { color: var(--ec-text-secondary) !important; }
 
+/* Semantic banner surfaces — brand-aligned, theme-independent */
+.ec-banner {
+  border-radius: var(--ec-radius-md, 8px);
+  padding: 8px 12px;
+  font-weight: 500;
+}
+.ec-banner--success { background: var(--ec-success); color: #fff; }
+.ec-banner--warning { background: var(--ec-warning); color: #1a1a1a; }
+.ec-banner--info { background: var(--ec-profile-blue); color: #fff; }
+.ec-banner--danger { background: var(--ec-danger); color: #fff; }
+
 /* Respect user's motion preferences */
 @media (prefers-reduced-motion: reduce) {
   *,

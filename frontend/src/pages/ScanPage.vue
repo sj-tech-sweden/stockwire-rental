@@ -2,11 +2,13 @@
   <q-page class="scan-page q-pa-md">
     <div class="scan-shell">
       <q-card class="scanner-card q-pa-lg q-mb-md">
-        <div class="ec-scanner-target q-mb-md">
-          <q-icon class="ec-scanner-target__icon" name="qr_code_scanner" size="42px" />
-          <div class="ec-scanner-target__label">{{ t('scan.title') }}</div>
-          <div class="text-caption text-grey-4">{{ t('scan.subtitle') }}</div>
-        </div>
+        <ScannerTarget
+          class="q-mb-md"
+          icon="qr_code_scanner"
+          :title="t('scan.title')"
+          :subtitle="t('scan.subtitle')"
+          :feedback="scannerFeedback"
+        />
 
         <div class="row q-mb-md">
           <q-btn-toggle
@@ -79,13 +81,13 @@
           </div>
         </div>
 
-        <q-banner v-if="scanAction === 'assign_component' && componentDestinationReady" class="bg-teal-8 text-white q-mb-md rounded-borders">
+        <q-banner v-if="scanAction === 'assign_component' && componentDestinationReady" class="ec-banner ec-banner--info q-mb-md rounded-borders">
           {{ t('scan.componentDestinationReady', { device: componentDestinationLabel }) }}
           <q-btn flat dense no-caps class="q-ml-sm" :label="t('scan.changeDestination')" @click="clearComponentDestination" />
           <div class="text-caption q-mt-xs">{{ t('scan.step2ComponentHelp') }}</div>
         </q-banner>
 
-        <q-banner v-if="scanAction === 'assign_component' && !componentDestinationReady" class="bg-amber-8 text-black q-mb-md rounded-borders" dense>
+        <q-banner v-if="scanAction === 'assign_component' && !componentDestinationReady" class="ec-banner ec-banner--warning q-mb-md rounded-borders" dense>
           {{ t('scan.step1RequiredComponent') }}
         </q-banner>
 
@@ -103,27 +105,27 @@
           </div>
         </div>
 
-        <q-banner v-if="scanAction === 'move' && moveDestinationReady" class="bg-teal-8 text-white q-mb-md rounded-borders">
+        <q-banner v-if="scanAction === 'move' && moveDestinationReady" class="ec-banner ec-banner--info q-mb-md rounded-borders">
           {{ t('scan.destination') }}: {{ moveDestinationLabel }}
           <q-btn flat dense no-caps class="q-ml-sm" :label="t('scan.changeDestination')" @click="clearMoveDestination" />
           <div class="text-caption q-mt-xs">{{ t('scan.step2DestinationHelp') }}</div>
         </q-banner>
 
-        <q-banner v-if="scanAction === 'move' && !moveDestinationReady" class="bg-amber-8 text-black q-mb-md rounded-borders" dense>
+        <q-banner v-if="scanAction === 'move' && !moveDestinationReady" class="ec-banner ec-banner--warning q-mb-md rounded-borders" dense>
           {{ t('scan.step1RequiredMove') }}
         </q-banner>
 
-        <q-banner v-if="(scanAction === 'job_out' || scanAction === 'rental_job_out' || scanAction === 'job_in' || scanAction === 'rental_job_in') && activeJobCode" class="bg-primary text-white q-mb-md rounded-borders">
+        <q-banner v-if="(scanAction === 'job_out' || scanAction === 'rental_job_out' || scanAction === 'job_in' || scanAction === 'rental_job_in') && activeJobCode" class="ec-banner ec-banner--success q-mb-md rounded-borders">
           {{ t('scan.jobSelected') }}: {{ activeJobCode }}
           <span v-if="activeJobId"> (#{{ activeJobId }})</span>
           <q-btn flat dense no-caps class="q-ml-sm" :label="t('scan.change')" @click="clearActiveJob" />
         </q-banner>
 
-        <q-banner v-if="scanAction === 'job_in' && globalCheckin" class="bg-teal-8 text-white q-mb-md rounded-borders" dense>
+        <q-banner v-if="scanAction === 'job_in' && globalCheckin" class="ec-banner ec-banner--info q-mb-md rounded-borders" dense>
           {{ t('scan.step2ScanAndSubmit', { item: t('scan.device').toLowerCase(), submit: scanSubmitLabel }) }}
         </q-banner>
 
-        <q-banner v-if="(scanAction === 'job_out' || scanAction === 'rental_job_out' || scanAction === 'job_in' || scanAction === 'rental_job_in') && activeJobCode" class="bg-teal-8 text-white q-mb-md rounded-borders" dense>
+        <q-banner v-if="(scanAction === 'job_out' || scanAction === 'rental_job_out' || scanAction === 'job_in' || scanAction === 'rental_job_in') && activeJobCode" class="ec-banner ec-banner--info q-mb-md rounded-borders" dense>
           {{ t('scan.step2ScanAndSubmit', { item: scanAction === 'rental_job_out' ? t('scan.rental').toLowerCase() : t('scan.device').toLowerCase(), submit: scanSubmitLabel }) }}
         </q-banner>
 
@@ -238,7 +240,7 @@
               />
             </div>
             <div class="col-12 col-md-2">
-              <q-btn color="primary" unelevated icon="qr_code_scanner" :label="scanSubmitLabel" type="submit" :loading="saving" class="full-width" />
+              <q-btn color="primary" unelevated icon="qr_code_scanner" :label="scanSubmitLabel" type="submit" :loading="saving" class="full-width scan-submit-btn" />
             </div>
           </div>
         </q-form>
@@ -377,7 +379,7 @@
 
         <LocateDeviceMapDialog v-model="lookupMapOpen" :device-id="lookupMapDeviceId" :highlight-duration="30" />
 
-        <q-banner v-if="scanResultMessage" class="q-mt-md rounded-borders" :class="scanResultSuccess ? 'bg-positive text-white' : 'bg-negative text-white'" dense>
+        <q-banner v-if="scanResultMessage" class="q-mt-md rounded-borders" :class="scanResultSuccess ? 'ec-banner ec-banner--success' : 'ec-banner ec-banner--danger'" dense>
           {{ scanResultMessage }}
         </q-banner>
 
@@ -758,7 +760,7 @@
           </div>
           <q-linear-progress rounded size="12px" color="positive" track-color="grey-4" :value="globalCheckinProgress.percent / 100" />
         </div>
-        <q-banner v-if="scanToLocationMode && pendingLocationForDevice" dense rounded class="bg-orange-1 text-orange-9 q-mb-sm">
+        <q-banner v-if="scanToLocationMode && pendingLocationForDevice" dense rounded class="ec-banner ec-banner--warning q-mb-sm">
           {{ t('scan.awaitingLocationScan', { assetTag: pendingLocationForDevice.assetTag }) }}
           <template #action>
             <q-btn flat dense :label="t('scan.skipLocationScan')" @click="pendingLocationForDevice = null" />
@@ -1011,6 +1013,7 @@ import { useWarehouseLedsStore } from '../stores/warehouseLeds'
 import { useCompactGrid } from '../composables/useCompactGrid'
 import { useProductImage } from '../composables/useProductImage'
 import { shouldSuppressDuplicateCameraScan } from '../utils/scan-camera'
+import ScannerTarget from '../components/ScannerTarget.vue'
 import ShortcutHelpDialog from '../components/ShortcutHelpDialog.vue'
 import DefectReportDialog from '../components/DefectReportDialog.vue'
 import ProductLocationMapDialog from '../components/ProductLocationMapDialog.vue'
@@ -1049,6 +1052,7 @@ const activeJobId = ref(null)
 
 const scanResultMessage = ref('')
 const scanResultSuccess = ref(false)
+const scannerFeedback = ref(null) // { type, icon, label, sublabel, thumbnail } | null
 const lastLookupCode = ref('')
 const lastLookupResult = ref(null)
 const { imageUrl: lookupProductImageUrl, fetchImage: fetchLookupProductImage, cleanup: clearLookupProductImage } = useProductImage()
@@ -2185,6 +2189,50 @@ function focusScanCodeInput() {
   })
 }
 
+// ── Tactile feedback ──────────────────────────────────────────────────────────
+
+function haptic(pattern) {
+  if (typeof navigator === 'undefined' || typeof navigator.vibrate !== 'function') return
+  try {
+    navigator.vibrate(pattern === 'success' ? 30 : [40, 30, 40])
+  } catch {
+    // vibration not supported / blocked — ignore
+  }
+}
+
+function updateScannerFeedback() {
+  const message = scanResultMessage.value
+  if (!message) {
+    scannerFeedback.value = null
+    return
+  }
+  const ok = scanResultSuccess.value
+  const device = lastLookupResult.value?.device_details
+  const product = lastLookupResult.value?.product_details
+  if (ok && (device || product)) {
+    scannerFeedback.value = {
+      type: 'success',
+      icon: 'check_circle',
+      label: device?.asset_tag || product?.name || t('scan.scanSuccess'),
+      sublabel: device && product?.name ? product.name : (device?.status || ''),
+      thumbnail: lookupProductImageUrl.value || null,
+    }
+  } else {
+    scannerFeedback.value = {
+      type: ok ? 'success' : 'error',
+      icon: ok ? 'check_circle' : 'error',
+      label: ok ? t('scan.scanSuccess') : t('scan.scanFailedShort'),
+      sublabel: message,
+    }
+  }
+  haptic(ok ? 'success' : 'error')
+}
+
+watch(
+  () => [scanResultMessage.value, scanResultSuccess.value, lookupProductImageUrl.value],
+  () => updateScannerFeedback(),
+)
+
 function firstQueryValue(value) {
   return Array.isArray(value) ? value[0] : value
 }
@@ -2216,6 +2264,7 @@ function onActionChanged() {
   scanCode.value = ''
   scanResultMessage.value = ''
   scanResultSuccess.value = false
+  scannerFeedback.value = null
   workflowDeviceSelections.value = {}
   pendingLocationForDevice.value = null
   scanJobCode.value = ''
@@ -2636,10 +2685,10 @@ async function runScanAction() {
         ? null
         : activeJobCode.value,
     })
-    if (scanAction.value === 'lookup' && response.success) {
+    if (response.success) {
       lastLookupCode.value = response.asset_tag || code
       lastLookupResult.value = response
-      fetchLookupProductImage(response.product_details?.id)
+      if (response.product_details?.id) fetchLookupProductImage(response.product_details.id)
     }
     if (scanAction.value === 'job_in') {
       lastIntakeResult.value = response.success && Number(response.device_id || 0) > 0 ? response : null
@@ -3105,5 +3154,19 @@ onBeforeUnmount(() => {
 
 .checked-out-card {
   background: rgba(255, 255, 255, 0.96);
+}
+
+/* Tactile sizing — touch targets >= 64px for primary actions */
+.scan-submit-btn {
+  min-height: 64px;
+  font-size: 1rem;
+}
+
+.scan-shell .q-btn-toggle .q-btn {
+  min-height: 64px;
+}
+
+.scan-shell .q-toggle {
+  min-height: 56px;
 }
 </style>
