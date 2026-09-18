@@ -1626,6 +1626,7 @@ export default {
     replacementCost: 'Ersättningskostnad',
     maintenanceInterval: 'Underhållsintervall ({unit})',
     power: 'Effekt ({unit})',
+    isPublic: 'Publicera i offentlig katalog',
     weight: 'Vikt ({unit})',
     height: 'Höjd ({unit})',
     width: 'Bredd ({unit})',

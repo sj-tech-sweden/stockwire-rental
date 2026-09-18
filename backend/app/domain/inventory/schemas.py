@@ -90,6 +90,7 @@ class ProductBase(BaseModel):
     crew_certifications: str | None = None
     crew_rate_type: str | None = None
     crew_hourly_rate: Decimal | None = None
+    is_public: bool = False
 
 
 class ProductCreate(ProductBase):
@@ -124,6 +125,7 @@ class ProductUpdate(BaseModel):
     crew_certifications: str | None = None
     crew_rate_type: str | None = None
     crew_hourly_rate: Decimal | None = None
+    is_public: bool | None = None
 
 
 class ProductBulkUpdateRequest(BaseModel):
@@ -729,6 +731,23 @@ class GenerateShelvesRequest(BaseModel):
     prefix: str = Field(default="Shelf")
     child_type: str = Field(default="shelf")
     naming_format: str = Field(default="numeric", pattern="^(numeric|alphabetic)$")
+
+
+class PublicProductRead(BaseModel):
+    id: int
+    sku: str
+    name: str
+    category: str
+    brand: str | None = None
+    product_type: str
+    daily_rate: Decimal
+    rental_price: Decimal
+    weight_kg: Decimal | None = None
+    height_cm: Decimal | None = None
+    width_cm: Decimal | None = None
+    depth_cm: Decimal | None = None
+
+    model_config = {"from_attributes": True}
 
 
 ProductRead.model_rebuild()

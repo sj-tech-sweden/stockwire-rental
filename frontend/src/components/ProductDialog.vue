@@ -148,6 +148,11 @@
             <div class="col-12 col-md-4"><q-input v-model.number="productForm.maintenance_interval_days" type="number" :label="t('inventory.maintenanceInterval', { unit: t('inventory.unitDays') })" :suffix="t('inventory.unitDays')" outlined dense /></div>
             <div class="col-12 col-md-4"><q-input v-model.number="productForm.power_consumption_watts" type="number" step="0.01" :label="t('inventory.power', { unit: t('inventory.unitWatts') })" :suffix="t('inventory.unitWatts')" outlined dense /></div>
           </div>
+          <div class="row q-col-gutter-sm q-mt-sm">
+            <div class="col-12">
+              <q-toggle v-model="productForm.is_public" :label="t('inventory.isPublic')" />
+            </div>
+          </div>
 
           <q-separator class="q-my-md" />
           <div class="text-subtitle2 q-mb-sm">{{ t('inventory.physicalSpecs') }}</div>
@@ -660,6 +665,7 @@ const emptyProductForm = () => ({
   maintenance_interval_days: null, power_consumption_watts: null, daily_rate: 0, replace_cost: 0,
   min_stock_level: null,
   min_order_qty: null,
+  is_public: false,
 })
 const productForm = ref(emptyProductForm())
 
@@ -1141,6 +1147,7 @@ function openEditProduct(product) {
     replace_cost: product.replace_cost ?? 0,
     min_stock_level: product.min_stock_level ?? null,
     min_order_qty: product.min_order_qty ?? null,
+    is_public: product.is_public ?? false,
   }
   applySkuPrefixForType(productForm.value.product_type)
   productDialogError.value = ''
@@ -1276,6 +1283,7 @@ async function saveProduct() {
       replace_cost: Number(productForm.value.replace_cost || 0),
       min_stock_level: productForm.value.product_type === 'consumable' ? productForm.value.min_stock_level : null,
       min_order_qty: productForm.value.product_type === 'consumable' ? productForm.value.min_order_qty : null,
+      is_public: !!productForm.value.is_public,
     }
 
     let savedProduct
