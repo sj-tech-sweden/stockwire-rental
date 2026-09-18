@@ -679,49 +679,10 @@ body.body--dark .ec-card .q-table tbody td {
   font-weight: var(--ec-font-semibold);
 }
 
-/* Focus ring utility */
-.ec-focus-ring:focus-visible,
-.ec-focus-ring:focus {
-  outline: 2px solid var(--ec-primary);
-  outline-offset: 2px;
-}
-
-/* Global visible focus rings for keyboard navigation */
-a:focus-visible,
-button:focus-visible,
-input:focus-visible,
-select:focus-visible,
-textarea:focus-visible,
-[tabindex]:not([tabindex="-1"]):focus-visible,
-.q-btn:focus-visible,
-.q-item:focus-visible,
-.q-tab:focus-visible,
-.q-radio:focus-visible .q-radio__inner,
-.q-checkbox:focus-visible .q-checkbox__inner,
-.q-toggle:focus-visible .q-toggle__inner,
-.q-btn-toggle .q-btn:focus-visible,
-.q-expansion-item:focus-visible .q-expansion-item__header,
-.q-field--focused .q-field__control,
-.q-field__native:focus-visible,
-.q-slider:focus-visible .q-slider__thumb,
-.q-range:focus-visible .q-range__thumb,
-.q-chip:focus-visible,
-.q-pagination .q-btn:focus-visible,
-.q-stepper__tab:focus-visible,
-.q-carousel__control:focus-visible,
-.q-tree__node-header:focus-visible,
-.q-menu .q-item:focus-visible {
-  outline: 2px solid var(--ec-primary) !important;
-  outline-offset: 2px !important;
-}
-
-/* Ensure focus rings are not clipped by overflow hidden on cards/panels */
-.ec-card,
-.q-card,
-.q-tab-panel,
-.q-menu {
-  --ec-focus-visible: visible;
-}
+/* Focus styling is intentionally left to Quasar's defaults, which already
+   provide a visible focus highlight on buttons, links, fields and other
+   interactive components. Overriding focus rings globally produced stacked
+   boxes on complex components like q-field. */
 
 /* Status text helpers */
 .ec-text-success { color: #43C36B !important; }
