@@ -7,7 +7,6 @@ if any required contrast threshold is missed.
 """
 
 import json
-import re
 import sys
 from pathlib import Path
 
