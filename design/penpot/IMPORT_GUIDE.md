@@ -90,7 +90,42 @@ If the token import worked, Penpot should already have these as tokens. If not, 
 
 ## Step 6 — Build component library
 
-Create a page named `Components`. Use the component spec in `components.md` to draw each element on the canvas.
+Create a page named `Components`. You have two options:
+
+### Option A — Use the SVG templates (faster)
+
+Ready-made SVGs live in `design/assets/components/`. Drag them onto the canvas, convert each to a component, and edit the text as needed.
+
+Available templates:
+
+- `button-primary.svg` → `Button / Primary`
+- `button-secondary.svg` → `Button / Secondary`
+- `button-danger.svg` → `Button / Danger`
+- `card-default.svg` → `Card / Default`
+- `card-active.svg` → `Card / Active`
+- `input-outlined.svg` → `Input / Outlined`
+- `input-filled.svg` → `Input / Filled`
+- `chip-success.svg` → `Chip / Status / Success`
+- `chip-warning.svg` → `Chip / Status / Warning`
+- `chip-danger.svg` → `Chip / Status / Danger`
+- `banner-success.svg` → `Banner / Success`
+- `banner-warning.svg` → `Banner / Warning`
+- `banner-danger.svg` → `Banner / Danger`
+- `drawer-item.svg` → `Drawer / Item`
+- `drawer-item-active.svg` → `Drawer / Active`
+- `table-header.svg` → `Table / Header`
+- `table-row.svg` → `Table / Row`
+
+For each:
+
+1. Drag the SVG onto the canvas.
+2. Select the imported group.
+3. Right-click → **Create component**.
+4. Rename in the Components panel (e.g., `Button / Primary`).
+
+### Option B — Draw from the spec
+
+Use `components.md` to draw each element manually. This is more work but gives you full control over states and auto-layout.
 
 Components to build:
 
@@ -113,11 +148,11 @@ Components to build:
 
 ### How to create a component in Penpot
 
-1. Draw the element on the canvas using Penpot shapes, text, and the colors/typography from your library.
+1. Draw or import the element on the canvas.
 2. Select all the layers that belong to the element.
 3. Right-click the selection and choose **Create component** (shortcut: **Ctrl+K** / **Cmd+K**).
 4. Penpot adds the component to the **Components** panel.
-5. Rename it there to match the naming above (e.g., `Button / Primary`).
+5. Rename it there to match the naming above.
 6. To reuse it, drag the component from the Components panel onto another page, or copy an instance and paste it.
 
 ### Tips

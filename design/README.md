@@ -20,7 +20,8 @@ design/
 ├── assets/
 │   ├── logo.svg              # Stockwire wordmark + mark
 │   ├── logo-mark.svg         # Cable mark only
-│   └── cable-motif.svg       # Curved cable signature element
+│   ├── cable-motif.svg       # Curved cable signature element
+│   └── components/           # Ready-made SVG component templates for Penpot
 ├── penpot/
 │   ├── IMPORT_GUIDE.md       # How to import this system into Penpot
 │   ├── components.md         # Component library spec

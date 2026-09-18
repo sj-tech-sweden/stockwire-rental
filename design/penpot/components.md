@@ -3,15 +3,17 @@
 Use this document to build reusable components in the Penpot `Stockwire Library`.
 All values reference `design/tokens/tokens.json`.
 
-> **How to turn these specs into Penpot components:** Draw each element on the canvas, select its layers, then right-click and choose **Create component** (Ctrl+K / Cmd+K). The **Add component** button in the Assets panel is only for importing existing component files.
+> **How to turn these specs into Penpot components:** You can either drag the ready-made SVGs from `design/assets/components/` onto the canvas and convert them, or draw each element manually. Either way, select the layers and right-click → **Create component** (Ctrl+K / Cmd+K). The **Add component** button in the Assets panel is only for importing existing component files.
 
 ## Buttons
 
 ### Primary Button
 
-- **Background:** `brand/green` (#3F873F)
-- **Text:** White, Raleway 600, 14px
+- **Height:** 44px minimum (touch target)
+- **Width:** fits the label + padding (do not force a fixed width unless labels are equal)
 - **Padding:** 12px vertical, 20px horizontal
+- **Background:** `brand/green` (#3F873F)
+- **Text:** White, Raleway 600, 14px, line-height 20px
 - **Radius:** 8px
 - **Hover:** `brand/green-600` (#2D9148)
 - **Focus ring:** 2px outline `brand/green` with 2px offset
@@ -20,18 +22,20 @@ All values reference `design/tokens/tokens.json`.
 
 ### Secondary Button
 
+- **Height:** 44px minimum
+- **Padding:** 12px vertical, 20px horizontal
 - **Background:** transparent
 - **Border:** 1px `border/subtle` (#243138)
-- **Text:** `text/primary` (#E9F1EE), Raleway 600, 14px
-- **Padding:** 12px vertical, 20px horizontal
+- **Text:** `text/primary` (#E9F1EE), Raleway 600, 14px, line-height 20px
 - **Radius:** 8px
 - **Hover:** background `surface/800` (#11181D)
 
 ### Danger Button
 
-- **Background:** `semantic/danger` (#E65656)
-- **Text:** White, Raleway 600, 14px
+- **Height:** 44px minimum
 - **Padding:** 12px vertical, 20px horizontal
+- **Background:** `semantic/danger` (#E65656)
+- **Text:** White, Raleway 600, 14px, line-height 20px
 - **Radius:** 8px
 
 ## Cards

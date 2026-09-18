@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="600" height="48" viewBox="0 0 600 48">
+  <rect width="600" height="48" fill="#182228"/>
+  <rect x="0" y="47" width="600" height="1" fill="rgba(110,150,145,0.22)"/>
+  <text x="16" y="30" font-family="Myriad Pro, Arial, sans-serif" font-size="14" font-weight="400" fill="#E9F1EE">Row value 1</text>
+  <text x="216" y="30" font-family="Myriad Pro, Arial, sans-serif" font-size="14" font-weight="400" fill="#E9F1EE">Row value 2</text>
+  <text x="416" y="30" font-family="Myriad Pro, Arial, sans-serif" font-size="14" font-weight="400" fill="#E9F1EE">Row value 3</text>
+</svg>
