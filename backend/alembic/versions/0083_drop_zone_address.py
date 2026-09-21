@@ -10,8 +10,8 @@ import sqlalchemy as sa
 
 
 # revision identifiers
-revision = "0082"
-down_revision = "0081"
+revision = "0083"
+down_revision = "0082"
 branch_labels = None
 depends_on = None
 
