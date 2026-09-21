@@ -12,6 +12,8 @@ class VenueBase(BaseModel):
     contact_person: str | None = None
     country: str | None = None
     notes: str | None = None
+    latitude: float | None = None
+    longitude: float | None = None
 
 
 class VenueCreate(VenueBase):
@@ -27,6 +29,8 @@ class VenueUpdate(BaseModel):
     contact_person: str | None = None
     country: str | None = None
     notes: str | None = None
+    latitude: float | None = None
+    longitude: float | None = None
 
 
 class VenueRead(VenueBase):

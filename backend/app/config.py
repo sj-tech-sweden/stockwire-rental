@@ -97,6 +97,12 @@ class Settings(BaseSettings):
     llm_api_key: str = "ollama"
     llm_model: str = "qwen2.5-coder"
 
+    routing_enabled: bool = True
+    routing_provider: str = "osm"
+    routing_osrm_url: str = "https://router.project-osrm.org"
+    routing_nominatim_url: str = "https://nominatim.openstreetmap.org"
+    routing_timeout_seconds: float = 5.0
+
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", case_sensitive=False)
 
     @property

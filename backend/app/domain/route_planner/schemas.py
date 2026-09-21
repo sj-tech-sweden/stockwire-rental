@@ -120,8 +120,52 @@ class RouteStopRead(BaseModel):
     notes: str | None = None
     job: JobStopRead | None = None
     vehicle: VehicleStopRead | None = None
+    cargo_weight_kg: Decimal | None = None
+    cargo_volume_m3: Decimal | None = None
 
     model_config = {"from_attributes": True}
+
+
+class StopDriveTime(BaseModel):
+    stop_id: int
+    leg_duration_s: float | None = None
+    leg_distance_m: float | None = None
+
+
+class RoutePickupZone(BaseModel):
+    zone_id: int
+    name: str | None = None
+    latitude: float | None = None
+    longitude: float | None = None
+    address: str | None = None
+    effective_latitude: float | None = None
+    effective_longitude: float | None = None
+    effective_address: str | None = None
+    resolved: bool = False
+
+
+class DriveTimeResponse(BaseModel):
+    available: bool
+    note: str | None = None
+    stops: list[StopDriveTime] = []
+    pickup_zones: list[RoutePickupZone] = []
+    total_duration_s: float | None = None
+    total_distance_m: float | None = None
+
+
+class RouteLocation(BaseModel):
+    stop_id: int | None = None
+    address: str | None = None
+    latitude: float | None = None
+    longitude: float | None = None
+    resolved: bool = False
+
+
+class RouteLocationsResponse(BaseModel):
+    origin: RouteLocation | None = None
+    stops: list[RouteLocation] = []
+    pickup_zones: list[RoutePickupZone] = []
+    all_resolved: bool = False
 
 
 class RouteStopCreate(BaseModel):

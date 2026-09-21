@@ -23,6 +23,10 @@
               <q-input v-model="form.email" :label="t('venues.email')" type="email" outlined dense class="q-mb-sm" />
               <q-input v-model="form.contact_person" :label="t('venues.contactPerson')" outlined dense class="q-mb-sm" />
               <q-select v-model="form.country" :options="COUNTRIES" :label="t('venues.country')" outlined dense clearable emit-value map-options class="q-mb-sm" />
+              <div class="row q-gutter-sm q-mb-sm">
+                <q-input v-model.number="form.latitude" :label="t('venues.latitude')" type="number" outlined dense class="col" :decimals="6" :step="0.000001" />
+                <q-input v-model.number="form.longitude" :label="t('venues.longitude')" type="number" outlined dense class="col" :decimals="6" :step="0.000001" />
+              </div>
               <div v-if="venueFormMapEmbedUrl" class="q-mb-sm">
                 <q-responsive :ratio="16 / 9" class="rounded-borders" style="overflow: hidden; border: 1px solid #d6dbe2;">
                   <iframe
@@ -181,6 +185,8 @@ function emptyForm() {
     contact_person: '',
     country: '',
     notes: '',
+    latitude: null,
+    longitude: null,
   }
 }
 
@@ -218,18 +224,20 @@ async function loadVenueFieldRows(entityId) {
 
 watch(() => props.modelValue, async (open) => {
   if (!open) return
-  if (props.venue) {
-    form.value = {
-      name: props.venue.name ?? '',
-      address: props.venue.address ?? '',
-      city: props.venue.city ?? '',
-      phone: props.venue.phone ?? '',
-      email: props.venue.email ?? '',
-      contact_person: props.venue.contact_person ?? '',
-      country: props.venue.country ?? '',
-      notes: props.venue.notes ?? '',
-    }
-    await loadVenueFieldRows(props.venue.id)
+    if (props.venue) {
+      form.value = {
+        name: props.venue.name ?? '',
+        address: props.venue.address ?? '',
+        city: props.venue.city ?? '',
+        phone: props.venue.phone ?? '',
+        email: props.venue.email ?? '',
+        contact_person: props.venue.contact_person ?? '',
+        country: props.venue.country ?? '',
+        notes: props.venue.notes ?? '',
+        latitude: props.venue.latitude ?? null,
+        longitude: props.venue.longitude ?? null,
+      }
+      await loadVenueFieldRows(props.venue.id)
   } else {
     form.value = emptyForm()
     const settingsStore = useSettingsStore()
@@ -260,6 +268,8 @@ async function saveVenue() {
       contact_person: form.value.contact_person?.trim() || null,
       country: form.value.country?.trim() || null,
       notes: form.value.notes?.trim() || null,
+      latitude: form.value.latitude === '' || form.value.latitude == null ? null : Number(form.value.latitude),
+      longitude: form.value.longitude === '' || form.value.longitude == null ? null : Number(form.value.longitude),
     }
 
     let savedVenue
