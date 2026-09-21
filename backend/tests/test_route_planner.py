@@ -56,8 +56,8 @@ def _create_job(client, company_id, venue_id, job_code="JOB-001", products=None)
     if products:
         for product in products:
             client.post(
-                f"/api/v1/jobs/{job['id']}/requirements",
-                json={"product_id": product["id"], "quantity_required": 2},
+                "/api/v1/jobs/requirements",
+                json={"job_id": job["id"], "product_id": product["id"], "quantity_required": 2},
             )
     return job
 
@@ -746,7 +746,7 @@ def test_optimize_reorders_stops(client, monkeypatch):
     # Optimizer returns a reversed + rotated order; ensure stop_order is rewritten
     monkeypatch.setattr(
         "app.domain.route_planner.routing.optimize_stop_order",
-        lambda origin, stops: [stops[2].stop_id, stops[0].stop_id, stops[1].stop_id],
+        lambda origin, stops, pickup_points: [stops[2].stop_id, stops[0].stop_id, stops[1].stop_id],
     )
     resp = client.post(f"/api/v1/route-planner/routes/{route['id']}/optimize")
     _ok(resp)

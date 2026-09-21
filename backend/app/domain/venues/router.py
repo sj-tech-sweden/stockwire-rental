@@ -29,6 +29,7 @@ def _maybe_geocode(venue: Venue) -> None:
         if coords:
             venue.latitude, venue.longitude = coords
     except Exception:
+        # Best-effort geocoding; a failure must not abort the venue save.
         pass
 
 
