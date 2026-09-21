@@ -13,7 +13,8 @@ from app.domain.auth.models import User
 from app.domain.inventory.models import Device, Product, Zone
 from app.domain.jobs.models import Job, JobRequirement
 from app.domain.route_planner.models import DeliveryRoute, RouteStop, RouteVehicle, Vehicle
-from app.domain.route_planner.routing import StopAddress, compute_drive_times, geocode, optimize_stop_order
+from app.domain.route_planner import routing
+from app.domain.route_planner.routing import StopAddress, compute_drive_times, geocode
 from app.domain.route_planner.schemas import (
     GoogleMapsExportRequest,
     GoogleMapsExportResponse,
@@ -830,7 +831,7 @@ def optimize_route(
 
     pickup_zones = _route_pickup_zones(route, db)
     pickup_points = [(z.effective_latitude, z.effective_longitude) for z in pickup_zones if z.resolved]
-    optimized_ids = optimize_stop_order(origin_address, stops, pickup_points)
+    optimized_ids = routing.optimize_stop_order(origin_address, stops, pickup_points)
     if not optimized_ids:
         raise HTTPException(
             status_code=409,

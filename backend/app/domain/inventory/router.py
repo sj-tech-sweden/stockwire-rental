@@ -2867,6 +2867,7 @@ def _maybe_geocode_zone(zone: Zone) -> None:
         if coords:
             zone.latitude, zone.longitude = coords
     except Exception:
+        # Best-effort geocoding; a failure must not abort the zone save.
         pass
 
 
