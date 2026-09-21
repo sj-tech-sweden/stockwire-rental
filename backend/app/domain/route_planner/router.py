@@ -7,11 +7,14 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session, joinedload
 
 from app.db.session import get_db
+from app.config import settings
 from app.domain.auth.deps import get_current_user, require_editor
 from app.domain.auth.models import User
-from app.domain.inventory.models import Product
+from app.domain.inventory.models import Device, Product, Zone
 from app.domain.jobs.models import Job, JobRequirement
 from app.domain.route_planner.models import DeliveryRoute, RouteStop, RouteVehicle, Vehicle
+from app.domain.route_planner import routing
+from app.domain.route_planner.routing import StopAddress, compute_drive_times, geocode
 from app.domain.route_planner.schemas import (
     GoogleMapsExportRequest,
     GoogleMapsExportResponse,
@@ -19,12 +22,17 @@ from app.domain.route_planner.schemas import (
     PackingListProduct,
     PackingListResponse,
     PackingListStop,
+    DriveTimeResponse,
     RouteCreate,
     RouteRead,
     RouteStopCreate,
     RouteStopRead,
     RouteStopReorder,
     RouteUpdate,
+    RouteLocation,
+    RouteLocationsResponse,
+    RoutePickupZone,
+    StopDriveTime,
     RouteVehicleAssign,
     RouteVehicleRead,
     RouteVehicleReorder,
@@ -98,17 +106,31 @@ def _build_job_stop_read(job: Job) -> dict:
     }
 
 
-def _build_route_read(route: DeliveryRoute) -> RouteRead:
+def _build_full_address(venue) -> str | None:
+    """Build a single-line address string for geocoding/routing."""
+    if not venue:
+        return None
+    parts = [venue.address, venue.city, venue.country]
+    joined = ", ".join(p for p in parts if p)
+    return joined or None
+
+
+def _build_route_read(db: Session, route: DeliveryRoute) -> RouteRead:
     stops = []
     for s in route.stops:
         job_read = _build_job_stop_read(s.job) if s.job else None
         vehicle_read = VehicleStopRead(id=s.vehicle.id, name=s.vehicle.name, vehicle_type=s.vehicle.vehicle_type) if s.vehicle else None
+        cargo_w, cargo_v = (Decimal("0"), Decimal("0"))
+        if s.job_id:
+            cargo_w, cargo_v = _calc_cargo(db, [s.job_id])
         stops.append(RouteStopRead(
             id=s.id, route_id=s.route_id, job_id=s.job_id,
             vehicle_id=s.vehicle_id,
             stop_order=s.stop_order, notes=s.notes,
             job=JobStopRead(**job_read) if job_read else None,
             vehicle=vehicle_read,
+            cargo_weight_kg=cargo_w,
+            cargo_volume_m3=cargo_v,
         ))
     vehicles = []
     for va in route.vehicle_assignments:
@@ -212,7 +234,7 @@ def list_routes(
         q = q.where(DeliveryRoute.start_date <= date_to)
     q = q.order_by(DeliveryRoute.start_date.desc(), DeliveryRoute.id.desc())
     routes = db.execute(q).unique().scalars().all()
-    return [_build_route_read(r) for r in routes]
+    return [_build_route_read(db, r) for r in routes]
 
 
 @router.get("/routes/{route_id}", response_model=RouteRead)
@@ -220,7 +242,7 @@ def get_route(route_id: int, db: Session = Depends(get_db), _user: User = Depend
     route = _load_route_with_joins(route_id, db)
     if not route:
         raise HTTPException(status_code=404, detail="Route not found")
-    return _build_route_read(route)
+    return _build_route_read(db, route)
 
 
 @router.post("/routes", response_model=RouteRead, status_code=201)
@@ -244,7 +266,7 @@ def create_route(payload: RouteCreate, db: Session = Depends(get_db), user: User
     db.commit()
     db.refresh(route)
     loaded = _load_route_with_joins(route.id, db)
-    return _build_route_read(loaded)
+    return _build_route_read(db, loaded)
 
 
 @router.put("/routes/{route_id}", response_model=RouteRead)
@@ -255,7 +277,7 @@ def update_route(route_id: int, payload: RouteUpdate, db: Session = Depends(get_
         setattr(route, k, v)
     db.commit()
     loaded = _load_route_with_joins(route_id, db)
-    return _build_route_read(loaded)
+    return _build_route_read(db, loaded)
 
 
 @router.delete("/routes/{route_id}", status_code=204)
@@ -281,7 +303,7 @@ def assign_vehicle(route_id: int, payload: RouteVehicleAssign, db: Session = Dep
     db.add(RouteVehicle(route_id=route_id, vehicle_id=payload.vehicle_id, load_order=payload.load_order, notes=payload.notes))
     db.commit()
     loaded = _load_route_with_joins(route_id, db)
-    return _build_route_read(loaded)
+    return _build_route_read(db, loaded)
 
 
 @router.put("/routes/{route_id}/vehicles/reorder", response_model=RouteRead)
@@ -297,7 +319,7 @@ def reorder_vehicles(route_id: int, payload: RouteVehicleReorder, db: Session = 
         assign_map[vid].load_order = idx
     db.commit()
     loaded = _load_route_with_joins(route_id, db)
-    return _build_route_read(loaded)
+    return _build_route_read(db, loaded)
 
 
 @router.delete("/routes/{route_id}/vehicles/{vehicle_id}", status_code=204)
@@ -332,7 +354,7 @@ def add_stop(route_id: int, payload: RouteStopCreate, db: Session = Depends(get_
     db.add(RouteStop(route_id=route_id, job_id=payload.job_id, vehicle_id=payload.vehicle_id, stop_order=max_order + 1, notes=payload.notes))
     db.commit()
     loaded = _load_route_with_joins(route_id, db)
-    return _build_route_read(loaded)
+    return _build_route_read(db, loaded)
 
 
 @router.put("/routes/{route_id}/stops/reorder", response_model=RouteRead)
@@ -348,7 +370,7 @@ def reorder_stops(route_id: int, payload: RouteStopReorder, db: Session = Depend
         stop_map[stop_id].stop_order = idx
     db.commit()
     loaded = _load_route_with_joins(route_id, db)
-    return _build_route_read(loaded)
+    return _build_route_read(db, loaded)
 
 
 @router.delete("/routes/{route_id}/stops/{stop_id}", status_code=204)
@@ -378,7 +400,7 @@ def assign_stop_vehicle(route_id: int, stop_id: int, vehicle_id: int | None = No
     stop.vehicle_id = vehicle_id
     db.commit()
     loaded = _load_route_with_joins(route_id, db)
-    return _build_route_read(loaded)
+    return _build_route_read(db, loaded)
 
 
 # ---------------------------------------------------------------------------
@@ -592,3 +614,239 @@ def get_packing_list(route_id: int, db: Session = Depends(get_db), _user: User =
         total_weight_kg=total_weight, total_volume_m3=total_volume,
         stops=packing_stops,
     )
+
+
+# ---------------------------------------------------------------------------
+# Drive time & optimization
+# ---------------------------------------------------------------------------
+
+def _route_stop_addresses(route: DeliveryRoute) -> list[StopAddress] | None:
+    """Build stop addresses for routing; returns None if any stop lacks a venue.
+
+    Prefers stored venue coordinates (latitude/longitude) and only falls back to
+    live geocoding of the address when coordinates are absent.
+    """
+    sorted_stops = sorted(route.stops, key=lambda s: s.stop_order)
+    out: list[StopAddress] = []
+    for s in sorted_stops:
+        venue = s.job.venue if s.job and getattr(s.job, "venue", None) else None
+        address = _build_full_address(venue)
+        if not address and (venue is None or venue.latitude is None or venue.longitude is None):
+            return None
+        out.append(StopAddress(
+            stop_id=s.id,
+            address=address or "",
+            lat=venue.latitude if venue else None,
+            lon=venue.longitude if venue else None,
+        ))
+    return out
+
+
+def _route_stop_locations(route: DeliveryRoute) -> list[tuple[int, str | None, float | None, float | None, bool]]:
+    """Resolve coordinates for each stop (stored coords first, then geocoding).
+
+    Returns a list of (stop_id, address, latitude, longitude, resolved) so the
+    frontend can preview where each stop lands and flag unresolved addresses.
+    """
+    out: list[tuple[int, str | None, float | None, float | None, bool]] = []
+    for s in sorted(route.stops, key=lambda x: x.stop_order):
+        venue = s.job.venue if s.job and getattr(s.job, "venue", None) else None
+        address = _build_full_address(venue)
+        lat = venue.latitude if venue else None
+        lon = venue.longitude if venue else None
+        resolved = lat is not None and lon is not None
+        if not resolved and address:
+            coords = geocode(address)
+            if coords:
+                lat, lon = coords
+                resolved = True
+        out.append((s.id, address, lat, lon, resolved))
+    return out
+
+
+def _zone_address_line(zone: Zone) -> str | None:
+    return ", ".join(
+        p for p in (zone.address_line1, zone.address_line2, zone.postal_code, zone.city, zone.country) if p
+    ) or None
+
+
+def _resolve_zone_effective(zone: Zone) -> tuple[float | None, float | None, str | None]:
+    """Walk up the zone parent chain to find inherited coordinates."""
+    cur: Zone | None = zone
+    while cur is not None:
+        if cur.latitude is not None and cur.longitude is not None:
+            return cur.latitude, cur.longitude, _zone_address_line(cur)
+        cur = cur.parent
+    return None, None, None
+
+
+def _route_pickup_zones(route: DeliveryRoute, db: Session) -> list[RoutePickupZone]:
+    """Resolve the storage zones the route's equipment is picked up from.
+
+    For each stop's job, the required products are collected; the storage zones of
+    their devices (with a ``location_zone_id``) become pickup points. A zone with no
+    own coordinates inherits them from its parent. Returns the de-duplicated, named
+    pickup zones used as leading waypoints in drive-time / optimize calculations.
+    """
+    job_ids = {s.job_id for s in route.stops if s.job_id}
+    if not job_ids:
+        return []
+    product_ids: set[int] = set()
+    jobs = db.scalars(select(Job).where(Job.id.in_(job_ids))).all()
+    for job in jobs:
+        for req in job.requirements:
+            if req.product_id:
+                product_ids.add(req.product_id)
+    if not product_ids:
+        return []
+    zone_ids: set[int] = set()
+    devices = db.scalars(
+        select(Device).where(
+            Device.product_id.in_(product_ids),
+            Device.location_zone_id.isnot(None),
+        )
+    ).all()
+    for dev in devices:
+        zone_ids.add(dev.location_zone_id)
+    if not zone_ids:
+        return []
+    zones = db.scalars(select(Zone).where(Zone.id.in_(zone_ids))).all()
+    out: list[RoutePickupZone] = []
+    for z in zones:
+        eff_lat, eff_lon, eff_addr = _resolve_zone_effective(z)
+        out.append(RoutePickupZone(
+            zone_id=z.id,
+            name=z.name,
+            latitude=z.latitude,
+            longitude=z.longitude,
+            address=_zone_address_line(z),
+            effective_latitude=eff_lat,
+            effective_longitude=eff_lon,
+            effective_address=eff_addr,
+            resolved=eff_lat is not None and eff_lon is not None,
+        ))
+    out.sort(key=lambda z: (z.name or ""))
+    return out
+
+
+@router.get("/routes/{route_id}/drive-times", response_model=DriveTimeResponse)
+def get_drive_times(
+    route_id: int,
+    origin_address: str | None = None,
+    db: Session = Depends(get_db),
+    _user: User = Depends(get_current_user),
+):
+    route = _load_route_with_joins(route_id, db)
+    if not route:
+        raise HTTPException(status_code=404, detail="Route not found")
+    stops = _route_stop_addresses(route)
+    if not stops:
+        return DriveTimeResponse(
+            available=False,
+            note="Some stops are missing a venue address and cannot be routed.",
+            stops=[],
+        )
+    pickup_zones = _route_pickup_zones(route, db)
+    pickup_points = [(z.effective_latitude, z.effective_longitude) for z in pickup_zones if z.resolved]
+    result = compute_drive_times(origin_address, stops, pickup_points)
+    return DriveTimeResponse(
+        available=result.available,
+        note=result.note,
+        stops=[StopDriveTime(
+            stop_id=leg.stop_id,
+            leg_duration_s=leg.leg_duration_s,
+            leg_distance_m=leg.leg_distance_m,
+        ) for leg in result.legs],
+        pickup_zones=pickup_zones,
+        total_duration_s=result.total_duration_s,
+        total_distance_m=result.total_distance_m,
+    )
+
+
+@router.get("/routes/{route_id}/locations", response_model=RouteLocationsResponse)
+def get_route_locations(
+    route_id: int,
+    origin_address: str | None = None,
+    db: Session = Depends(get_db),
+    _user: User = Depends(get_current_user),
+):
+    """Resolve coordinates for the optional origin and each stop.
+
+    Used by the route preview to show where each point lands and to flag
+    addresses that could not be geocoded.
+    """
+    route = _load_route_with_joins(route_id, db)
+    if not route:
+        raise HTTPException(status_code=404, detail="Route not found")
+
+    pickup_zones = _route_pickup_zones(route, db)
+
+    origin = None
+    all_resolved = True
+    if origin_address:
+        coords = geocode(origin_address) if settings.routing_enabled else None
+        origin = RouteLocation(
+            address=origin_address,
+            latitude=coords[0] if coords else None,
+            longitude=coords[1] if coords else None,
+            resolved=coords is not None,
+        )
+        if coords is None:
+            all_resolved = False
+
+    stops = []
+    for stop_id, address, lat, lon, resolved in _route_stop_locations(route):
+        stops.append(RouteLocation(
+            stop_id=stop_id,
+            address=address,
+            latitude=lat,
+            longitude=lon,
+            resolved=resolved,
+        ))
+        if not resolved:
+            all_resolved = False
+
+    return RouteLocationsResponse(origin=origin, stops=stops, pickup_zones=pickup_zones, all_resolved=all_resolved)
+
+
+@router.post("/routes/{route_id}/optimize", response_model=RouteRead)
+def optimize_route(
+    route_id: int,
+    origin_address: str | None = None,
+    db: Session = Depends(get_db),
+    _user: User = Depends(require_editor),
+):
+    route = _load_route_with_joins(route_id, db)
+    if not route:
+        raise HTTPException(status_code=404, detail="Route not found")
+    if len(route.stops) < 2:
+        raise HTTPException(status_code=400, detail="A route needs at least 2 stops to optimize.")
+
+    stops = _route_stop_addresses(route)
+    if not stops:
+        raise HTTPException(
+            status_code=400,
+            detail="Some stops are missing a venue address and cannot be optimized.",
+        )
+
+    pickup_zones = _route_pickup_zones(route, db)
+    pickup_points = [(z.effective_latitude, z.effective_longitude) for z in pickup_zones if z.resolved]
+    optimized_ids = routing.optimize_stop_order(origin_address, stops, pickup_points)
+    if not optimized_ids:
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                "Route optimization unavailable. Each stop needs resolvable coordinates "
+                "(set venue latitude/longitude or a geocodable address) and a reachable "
+                "routing provider."
+            ),
+        )
+
+    stop_map = {s.id: s for s in route.stops}
+    for idx, sid in enumerate(optimized_ids):
+        if sid not in stop_map:
+            raise HTTPException(status_code=400, detail=f"Stop {sid} not part of this route.")
+        stop_map[sid].stop_order = idx
+    db.commit()
+    loaded = _load_route_with_joins(route_id, db)
+    return _build_route_read(db, loaded)

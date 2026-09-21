@@ -1,7 +1,7 @@
 from datetime import date, datetime
 from decimal import Decimal
 
-from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Integer, Numeric, String, Text, UniqueConstraint
+from sqlalchemy import Boolean, Date, DateTime, Float, ForeignKey, Integer, Numeric, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -378,6 +378,19 @@ class Zone(Base):
     map_height: Mapped[int | None] = mapped_column(Integer, nullable=True)
     color: Mapped[str | None] = mapped_column(String(20), nullable=True)
     rotation: Mapped[int] = mapped_column(Integer, default=0)
+
+    # Geolocation for routing: where equipment in this zone is picked up from.
+    # When empty, the effective coordinates are inherited from the parent zone
+    # (see ``effective_latitude``/``effective_longitude`` resolution).
+    latitude: Mapped[float | None] = mapped_column(Float, nullable=True)
+    longitude: Mapped[float | None] = mapped_column(Float, nullable=True)
+
+    # Structured address, consistent with venues / company profile.
+    address_line1: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    address_line2: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    postal_code: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    city: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    country: Mapped[str | None] = mapped_column(String(100), nullable=True)
 
     parent: Mapped["Zone | None"] = relationship("Zone", remote_side="Zone.id", back_populates="children")
     children: Mapped[list["Zone"]] = relationship("Zone", back_populates="parent")

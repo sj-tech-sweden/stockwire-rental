@@ -56,8 +56,8 @@ def _create_job(client, company_id, venue_id, job_code="JOB-001", products=None)
     if products:
         for product in products:
             client.post(
-                f"/api/v1/jobs/{job['id']}/requirements",
-                json={"product_id": product["id"], "quantity_required": 2},
+                "/api/v1/jobs/requirements",
+                json={"job_id": job["id"], "product_id": product["id"], "quantity_required": 2},
             )
     return job
 
@@ -634,3 +634,123 @@ def test_export_google_maps_missing_route_404(client):
         json={"route_id": 99999},
     )
     assert resp.status_code == 404
+
+
+# ---------------------------------------------------------------------------
+# Cargo weight/volume on route stops
+# ---------------------------------------------------------------------------
+
+def test_route_stop_cargo_weight_and_volume(client):
+    company = _create_company(client)
+    venue = _create_venue(client, name="Cargo Venue", customer_id=company["id"])
+    product = _create_product(client, "CARGO-01", "Cargo Item")
+    job = _create_job(client, company["id"], venue["id"], "JOB-CARGO", [product])
+
+    resp = client.post(
+        "/api/v1/route-planner/routes",
+        json={"name": "Cargo Route", "start_date": "2026-08-01"},
+    )
+    _ok(resp)
+    route = resp.json()
+
+    resp = client.post(
+        f"/api/v1/route-planner/routes/{route['id']}/stops",
+        json={"job_id": job["id"]},
+    )
+    _ok(resp)
+
+    route_data = client.get(f"/api/v1/route-planner/routes/{route['id']}").json()
+    stop = route_data["stops"][0]
+    # product weight 5kg * qty 2 = 10kg
+    assert float(stop["cargo_weight_kg"]) == 10.0
+    # volume 30*20*10 cm = 6000 cm³ = 0.006 m³ * qty 2 = 0.012 m³
+    assert float(stop["cargo_volume_m3"]) == 0.012
+
+
+# ---------------------------------------------------------------------------
+# Drive time + optimization endpoints
+# ---------------------------------------------------------------------------
+
+def test_drive_times_missing_venue_address(client):
+    company = _create_company(client)
+    resp = client.post(
+        "/api/v1/jobs",
+        json={"job_code": "JOB-NA", "company_id": company["id"], "status": "confirmed", "start_date": "2026-08-01"},
+    )
+    _ok(resp)
+    job = resp.json()
+
+    resp = client.post(
+        "/api/v1/route-planner/routes",
+        json={"name": "NA Route", "start_date": "2026-08-01"},
+    )
+    _ok(resp)
+    route = resp.json()
+
+    resp = client.post(
+        f"/api/v1/route-planner/routes/{route['id']}/stops",
+        json={"job_id": job["id"]},
+    )
+    _ok(resp)
+
+    resp = client.get(f"/api/v1/route-planner/routes/{route['id']}/drive-times")
+    _ok(resp)
+    data = resp.json()
+    assert data["available"] is False
+    assert data["note"]
+    assert data["stops"] == []
+
+
+def test_optimize_requires_routing_provider(client, monkeypatch):
+    company = _create_company(client)
+    venue = _create_venue(client, customer_id=company["id"])
+    job1 = _create_job(client, company["id"], venue["id"], "JOB-O1")
+    job2 = _create_job(client, company["id"], venue["id"], "JOB-O2")
+
+    resp = client.post(
+        "/api/v1/route-planner/routes",
+        json={"name": "Opt Route", "start_date": "2026-08-01"},
+    )
+    _ok(resp)
+    route = resp.json()
+
+    client.post(f"/api/v1/route-planner/routes/{route['id']}/stops", json={"job_id": job1["id"]})
+    client.post(f"/api/v1/route-planner/routes/{route['id']}/stops", json={"job_id": job2["id"]})
+
+    # Simulate an unreachable routing provider
+    monkeypatch.setattr(
+        "app.domain.route_planner.routing.optimize_stop_order", lambda *a, **k: None
+    )
+    resp = client.post(f"/api/v1/route-planner/routes/{route['id']}/optimize")
+    assert resp.status_code == 409
+
+
+def test_optimize_reorders_stops(client, monkeypatch):
+    company = _create_company(client)
+    venue = _create_venue(client, customer_id=company["id"])
+    job1 = _create_job(client, company["id"], venue["id"], "JOB-R1")
+    job2 = _create_job(client, company["id"], venue["id"], "JOB-R2")
+    job3 = _create_job(client, company["id"], venue["id"], "JOB-R3")
+
+    resp = client.post(
+        "/api/v1/route-planner/routes",
+        json={"name": "Reorder Route", "start_date": "2026-08-01"},
+    )
+    _ok(resp)
+    route = resp.json()
+
+    client.post(f"/api/v1/route-planner/routes/{route['id']}/stops", json={"job_id": job1["id"]})
+    client.post(f"/api/v1/route-planner/routes/{route['id']}/stops", json={"job_id": job2["id"]})
+    client.post(f"/api/v1/route-planner/routes/{route['id']}/stops", json={"job_id": job3["id"]})
+
+    # Optimizer returns a reversed + rotated order; ensure stop_order is rewritten
+    monkeypatch.setattr(
+        "app.domain.route_planner.routing.optimize_stop_order",
+        lambda origin, stops, pickup_points: [stops[2].stop_id, stops[0].stop_id, stops[1].stop_id],
+    )
+    resp = client.post(f"/api/v1/route-planner/routes/{route['id']}/optimize")
+    _ok(resp)
+    reordered = resp.json()["stops"]
+    assert [s["stop_order"] for s in reordered] == [0, 1, 2]
+    # The stop that the optimizer put first should now have stop_order 0
+    assert reordered[0]["job_id"] == job3["id"]

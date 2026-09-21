@@ -11,9 +11,26 @@ from app.domain.jobs.models import Job
 from app.domain.realtime.events import emit_realtime_event
 from app.domain.venues.models import Venue
 from app.domain.venues.schemas import VenueCreate, VenueRead, VenueUpdate
+from app.domain.route_planner.routing import geocode
 from app.services.metrics import created_total, deleted_total, entities_count
 
 router = APIRouter(prefix="/venues", tags=["venues"], dependencies=[Depends(get_current_user)])
+
+
+def _maybe_geocode(venue: Venue) -> None:
+    """Best-effort: fill missing coordinates by geocoding the venue address."""
+    if venue.latitude is not None or venue.longitude is not None:
+        return
+    address = ", ".join(p for p in (venue.address, venue.city, venue.country) if p)
+    if not address:
+        return
+    try:
+        coords = geocode(address)
+        if coords:
+            venue.latitude, venue.longitude = coords
+    except Exception:
+        # Best-effort geocoding; a failure must not abort the venue save.
+        pass
 
 
 @router.get("/bootstrap")
@@ -40,6 +57,7 @@ def list_venues(
 @router.post("", response_model=VenueRead)
 def create_venue(payload: VenueCreate, db: Session = Depends(get_db), current_user: User = Depends(require_editor)) -> Venue:
     venue = Venue(**payload.model_dump())
+    _maybe_geocode(venue)
     db.add(venue)
     db.commit()
     db.refresh(venue)

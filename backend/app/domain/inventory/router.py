@@ -38,6 +38,7 @@ from app.domain.jobs.models import Job, JobRequirement
 from app.domain.customers.models import Customer
 from app.domain.settings.models import AppSetting
 from app.domain.settings.schemas import DEFAULT_CATEGORY_PREFILL_PATHS
+from app.domain.route_planner.routing import geocode
 from app.domain.settings.router import (
     _eventory_scan_in_pack_list,
     _eventory_scan_out_pack_list,
@@ -2812,9 +2813,69 @@ def list_inventory_audit_logs(
     return [_to_inventory_audit_read(db, row) for row in rows]
 
 
+def _apply_effective_zone_coords(zone: Zone) -> None:
+    """Resolve effective geocoordinates for a zone by walking up the parent chain.
+
+    A zone without its own coordinates inherits them from the nearest ancestor
+    that defines them. The resolved values are stored on the (non-column)
+    ``effective_*`` attributes so they serialize through ``ZoneRead``/``ZoneTreeRead``.
+    """
+    cur: Zone | None = zone
+    lat = lon = None
+    al1 = al2 = pc = city = country = None
+    while cur is not None:
+        if cur.latitude is not None and cur.longitude is not None:
+            lat, lon = cur.latitude, cur.longitude
+            al1 = cur.address_line1
+            al2 = cur.address_line2
+            pc = cur.postal_code
+            city = cur.city
+            country = cur.country
+            break
+        cur = cur.parent
+    zone.effective_latitude = lat
+    zone.effective_longitude = lon
+    zone.effective_address = ", ".join(p for p in (al1, al2, pc, city, country) if p) or None
+    zone.effective_address_line1 = al1
+    zone.effective_address_line2 = al2
+    zone.effective_postal_code = pc
+    zone.effective_city = city
+    zone.effective_country = country
+
+
+def _apply_effective_zones(zones: list[Zone]) -> None:
+    for z in zones:
+        _apply_effective_zone_coords(z)
+
+
+def _maybe_geocode_zone(zone: Zone) -> None:
+    """Best-effort: fill missing coordinates by geocoding the zone address.
+
+    Mirrors the venue behaviour: coordinates are only derived from the address
+    when the zone has none, so a user-supplied latitude/longitude is never
+    overwritten (the user can still edit them manually).
+    """
+    if zone.latitude is not None or zone.longitude is not None:
+        return
+    address = ", ".join(
+        p for p in (zone.address_line1, zone.address_line2, zone.postal_code, zone.city, zone.country) if p
+    )
+    if not address:
+        return
+    try:
+        coords = geocode(address)
+        if coords:
+            zone.latitude, zone.longitude = coords
+    except Exception:
+        # Best-effort geocoding; a failure must not abort the zone save.
+        pass
+
+
 @router.get("/zones", response_model=list[ZoneRead])
 def list_zones(db: Session = Depends(get_db)) -> list[Zone]:
-    return list(db.scalars(select(Zone).order_by(Zone.parent_id, Zone.sort_order, Zone.name)).all())
+    zones = list(db.scalars(select(Zone).order_by(Zone.parent_id, Zone.sort_order, Zone.name)).all())
+    _apply_effective_zones(zones)
+    return zones
 
 
 @router.get("/zones/tree", response_model=list[ZoneTreeRead])
@@ -2828,6 +2889,7 @@ def list_zones_tree(db: Session = Depends(get_db)) -> list[ZoneTreeRead]:
             )
         ).all()
     )
+    _apply_effective_zones(zones)
     return _build_zone_tree(zones)
 
 
@@ -2839,10 +2901,12 @@ def create_zone(payload: ZoneCreate, db: Session = Depends(get_db)) -> Zone:
             raise HTTPException(status_code=404, detail="Parent location not found")
 
     zone = Zone(**payload.model_dump())
+    _maybe_geocode_zone(zone)
     db.add(zone)
     db.commit()
     db.refresh(zone)
     emit_realtime_event("inventory.updated", {"entity": "zone", "action": "create", "id": zone.id})
+    _apply_effective_zone_coords(zone)
     return zone
 
 
@@ -2859,11 +2923,13 @@ def bulk_update_zones(
     for zone in rows:
         for key, value in patch.items():
             setattr(zone, key, value)
+        _maybe_geocode_zone(zone)
     db.commit()
     for zone in rows:
         db.refresh(zone)
     if rows:
         emit_realtime_event("inventory.updated", {"entity": "zone", "action": "bulk_update", "count": len(rows)})
+    _apply_effective_zones(rows)
     return rows
 
 
@@ -2879,9 +2945,11 @@ def update_zone(zone_id: int, payload: ZoneUpdate, db: Session = Depends(get_db)
 
     for key, value in updates.items():
         setattr(zone, key, value)
+    _maybe_geocode_zone(zone)
     db.commit()
     db.refresh(zone)
     emit_realtime_event("inventory.updated", {"entity": "zone", "action": "update", "id": zone.id})
+    _apply_effective_zone_coords(zone)
     return zone
 
 
@@ -2934,6 +3002,7 @@ def move_zone(
 
     db.commit()
     db.refresh(zone)
+    _apply_effective_zone_coords(zone)
     return zone
 
 
@@ -2954,6 +3023,7 @@ def update_zone_layout(
     db.commit()
     db.refresh(zone)
     emit_realtime_event("inventory.updated", {"entity": "zone", "action": "layout_update", "id": zone.id})
+    _apply_effective_zone_coords(zone)
     return zone
 
 
@@ -3116,6 +3186,7 @@ def generate_shelves(
         db.refresh(child)
     if created:
         emit_realtime_event("inventory.updated", {"entity": "zone", "action": "children_generated", "child_type": child_type, "count": len(created)})
+    _apply_effective_zones(created)
     return created
 
 

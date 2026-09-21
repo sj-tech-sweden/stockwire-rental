@@ -622,6 +622,13 @@ class ZoneBase(BaseModel):
     map_height: int | None = None
     color: str | None = None
     rotation: int = 0
+    latitude: float | None = None
+    longitude: float | None = None
+    address_line1: str | None = None
+    address_line2: str | None = None
+    postal_code: str | None = None
+    city: str | None = None
+    country: str | None = None
 
 
 class ZoneCreate(ZoneBase):
@@ -646,6 +653,13 @@ class ZoneUpdate(BaseModel):
     map_height: int | None = None
     color: str | None = None
     rotation: int | None = None
+    latitude: float | None = None
+    longitude: float | None = None
+    address_line1: str | None = None
+    address_line2: str | None = None
+    postal_code: str | None = None
+    city: str | None = None
+    country: str | None = None
 
 
 class ZoneMove(BaseModel):
@@ -655,6 +669,14 @@ class ZoneMove(BaseModel):
 
 class ZoneRead(ZoneBase):
     id: int
+    effective_latitude: float | None = None
+    effective_longitude: float | None = None
+    effective_address: str | None = None
+    effective_address_line1: str | None = None
+    effective_address_line2: str | None = None
+    effective_postal_code: str | None = None
+    effective_city: str | None = None
+    effective_country: str | None = None
 
     model_config = {"from_attributes": True}
 
@@ -678,6 +700,21 @@ class ZoneTreeRead(BaseModel):
     map_height: int | None = None
     color: str | None = None
     rotation: int = 0
+    latitude: float | None = None
+    longitude: float | None = None
+    address_line1: str | None = None
+    address_line2: str | None = None
+    postal_code: str | None = None
+    city: str | None = None
+    country: str | None = None
+    effective_latitude: float | None = None
+    effective_longitude: float | None = None
+    effective_address: str | None = None
+    effective_address_line1: str | None = None
+    effective_address_line2: str | None = None
+    effective_postal_code: str | None = None
+    effective_city: str | None = None
+    effective_country: str | None = None
     children: list["ZoneTreeRead"] = Field(default_factory=list)
 
     model_config = {"from_attributes": True}
