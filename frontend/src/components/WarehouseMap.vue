@@ -287,7 +287,7 @@
         <q-icon name="search" size="16px" class="q-mr-sm" />{{ t('inventory.searchDevicesInZone') }}
       </div>
       <div class="zone-context-menu-item" @click="onContextMenuEditProperties">
-        <q-icon name="edit" size="16px" class="q-mr-sm" />{{ t('inventory.editZone') }}
+        <q-icon name="edit" size="16px" class="q-mr-sm" />{{ t('inventory.editLocation') }}
       </div>
       <div v-if="getChildren(contextMenu.zone?.id).length" class="zone-context-menu-item" @click="onContextMenuDrillDown">
         <q-icon name="open_in_new" size="16px" class="q-mr-sm" />{{ t('inventory.openZone') }}

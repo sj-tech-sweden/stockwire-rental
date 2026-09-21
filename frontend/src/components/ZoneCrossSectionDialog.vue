@@ -64,7 +64,7 @@
                   <q-tooltip>{{ t('inventory.viewZone') }}</q-tooltip>
                 </q-btn>
                 <q-btn flat dense round icon="edit" size="sm" color="secondary" @click.stop="$emit('edit-zone', child)">
-                  <q-tooltip>{{ t('inventory.editZone') }}</q-tooltip>
+                  <q-tooltip>{{ t('inventory.editLocation') }}</q-tooltip>
                 </q-btn>
               </div>
             </div>

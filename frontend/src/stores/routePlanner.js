@@ -166,6 +166,27 @@ export const useRoutePlannerStore = defineStore('routePlanner', () => {
     return data
   }
 
+  async function getRouteDriveTimes(routeId, originAddress = null) {
+    const params = {}
+    if (originAddress) params.origin_address = originAddress
+    const { data } = await api.get(`/api/v1/route-planner/routes/${routeId}/drive-times`, { params })
+    return data
+  }
+
+  async function getRouteLocations(routeId, originAddress = null) {
+    const params = {}
+    if (originAddress) params.origin_address = originAddress
+    const { data } = await api.get(`/api/v1/route-planner/routes/${routeId}/locations`, { params })
+    return data
+  }
+
+  async function optimizeRoute(routeId, originAddress = null) {
+    const params = {}
+    if (originAddress) params.origin_address = originAddress
+    const { data } = await api.post(`/api/v1/route-planner/routes/${routeId}/optimize`, null, { params })
+    return data
+  }
+
   return {
     vehicles,
     routes,
@@ -190,5 +211,8 @@ export const useRoutePlannerStore = defineStore('routePlanner', () => {
     suggestVehicles,
     exportGoogleMaps,
     getPackingList,
+    getRouteDriveTimes,
+    getRouteLocations,
+    optimizeRoute,
   }
 })

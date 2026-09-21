@@ -743,7 +743,7 @@
 
     <CategoryDialog v-model="categoryDialogOpen" :category="categoryEditing" @saved="categoryDialogOpen = false" />
 
-    <LocationDialog v-model="locationDialogOpen" :zone="locationEditing" @saved="locationDialogOpen = false" />
+    <ZoneDialog v-model="zoneDialogOpen" :zone="zoneDialogTarget" @saved="zoneDialogOpen = false" />
 
     <BulkCreateDialog v-model="bulkCreateDialogOpen" :parent-zone="bulkCreateParent" @saved="bulkCreateDialogOpen = false" />
 
@@ -799,12 +799,6 @@
       v-model="defectDialogOpen"
       :device-id="selectedDeviceId"
     />
-    <ZonePropertiesDialog
-      v-model="zonePropertiesOpen"
-      :zone="zonePropertiesTarget"
-      @saved="onZonePropertiesSaved"
-    />
-
     <BulkZoneDialog
       v-model="bulkZoneDialogOpen"
       :selected-zones="bulkEditTargetZones"
@@ -869,13 +863,13 @@ import BulkProductDialog from '../components/BulkProductDialog.vue'
 import BulkDeviceDialog from '../components/BulkDeviceDialog.vue'
 import CategoryDialog from '../components/CategoryDialog.vue'
 import DeleteCategoryDialog from '../components/DeleteCategoryDialog.vue'
-import LocationDialog from '../components/LocationDialog.vue'
+import ZoneDialog from '../components/ZoneDialog.vue'
 import BulkCreateDialog from '../components/BulkCreateDialog.vue'
 import QuickCreateDialog from '../components/QuickCreateDialog.vue'
 import ImportDialog from '../components/ImportDialog.vue'
 import BulkDeleteDialog from '../components/BulkDeleteDialog.vue'
 import WarehouseMap from '../components/WarehouseMap.vue'
-import ZonePropertiesDialog from '../components/ZonePropertiesDialog.vue'
+
 import BulkZoneDialog from '../components/BulkZoneDialog.vue'
 import GenerateShelvesDialog from '../components/GenerateShelvesDialog.vue'
 
@@ -941,8 +935,8 @@ const mapSelectedZoneIds = ref([])
 const mapSearchQuery = ref('')
 const mapFocusZoneId = ref(null)
 const mapBreadcrumb = ref([])
-const zonePropertiesOpen = ref(false)
-const zonePropertiesTarget = ref(null)
+const zoneDialogOpen = ref(false)
+const zoneDialogTarget = ref(null)
 const bulkZoneDialogOpen = ref(false)
 const generateShelvesDialogOpen = ref(false)
 const bulkEditTargetZones = ref([])
@@ -2019,17 +2013,14 @@ function openEditCategory(category) {
   categoryDialogOpen.value = true
 }
 
-const locationDialogOpen = ref(false)
-const locationEditing = ref(null)
-
 function openCreateLocation() {
-  locationEditing.value = null
-  locationDialogOpen.value = true
+  zoneDialogTarget.value = null
+  zoneDialogOpen.value = true
 }
 
 function openEditLocation(zone) {
-  locationEditing.value = zone
-  locationDialogOpen.value = true
+  zoneDialogTarget.value = zone
+  zoneDialogOpen.value = true
 }
 
 const filteredMapZones = computed(() => {
@@ -2119,8 +2110,8 @@ const selectedLocationZones = computed(() => {
 })
 
 function openZoneProperties(zone) {
-  zonePropertiesTarget.value = zone._tree || zone
-  zonePropertiesOpen.value = true
+  zoneDialogTarget.value = zone._tree || zone
+  zoneDialogOpen.value = true
 }
 
 function onAlignZones(alignment) {
