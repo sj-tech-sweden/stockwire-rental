@@ -35,7 +35,7 @@
           <q-input v-model="form.address_line2" :label="t('inventory.addressLine2')" outlined dense class="q-mb-sm" />
           <div class="row q-col-gutter-sm q-mb-sm">
             <div class="col-6">
-              <q-input v-model="form.postal_code" :label="t('inventory.postalCode')" outlined dense />
+              <q-input v-model="form.postal_code" :label="t('inventory.zonePostalCode')" outlined dense />
             </div>
             <div class="col-6">
               <q-input v-model="form.city" :label="t('venues.city')" outlined dense />
@@ -84,16 +84,16 @@
             />
           </div>
 
-          <div class="text-subtitle2 q-mb-xs">{{ t('inventory.dimensions') }}</div>
+          <div class="text-subtitle2 q-mb-xs">{{ t('inventory.zoneDimensions') }}</div>
           <div class="row q-col-gutter-sm q-mb-sm">
             <div class="col-4">
-              <q-input v-model.number="form.map_width" type="number" :label="t('inventory.width')" outlined dense :min="1" />
+              <q-input v-model.number="form.map_width" type="number" :label="t('inventory.zoneWidth')" outlined dense :min="1" />
             </div>
             <div class="col-4">
-              <q-input v-model.number="form.map_depth" type="number" :label="t('inventory.depth')" outlined dense :min="1" />
+              <q-input v-model.number="form.map_depth" type="number" :label="t('inventory.zoneDepth')" outlined dense :min="1" />
             </div>
             <div class="col-4">
-              <q-input v-model.number="form.map_height" type="number" :label="t('inventory.height')" outlined dense :min="1" />
+              <q-input v-model.number="form.map_height" type="number" :label="t('inventory.zoneHeight')" outlined dense :min="1" />
             </div>
           </div>
 
@@ -131,10 +131,10 @@
             </div>
           </div>
 
-          <div class="text-subtitle2 q-mb-xs">{{ t('inventory.color') }}</div>
+          <div class="text-subtitle2 q-mb-xs">{{ t('inventory.zoneColor') }}</div>
           <div class="row q-col-gutter-sm q-mb-sm">
             <div class="col-6">
-              <q-input v-model="form.color" :label="t('inventory.color')" outlined dense>
+              <q-input v-model="form.color" :label="t('inventory.zoneColor')" outlined dense>
                 <template #append>
                   <q-btn flat dense round color="primary" icon="colorize" @click="showColorPicker = !showColorPicker" />
                 </template>
@@ -164,9 +164,9 @@
               </q-input>
             </div>
             <div class="col-12 col-md-4">
-              <q-input ref="rfidInputRef" v-model="form.rfid" :label="t('inventory.rfid')" outlined dense>
+              <q-input ref="rfidInputRef" v-model="form.rfid" :label="t('inventory.zoneRfid')" outlined dense>
                 <template #append>
-                  <q-btn flat dense round color="positive" icon="nfc" @click="openScanDialog('rfid', t('inventory.rfid'))">
+                  <q-btn flat dense round color="positive" icon="nfc" @click="openScanDialog('rfid', t('inventory.zoneRfid'))">
                     <q-tooltip>{{ t('inventory.scanRfid') }}</q-tooltip>
                   </q-btn>
                 </template>
@@ -198,7 +198,7 @@
               <q-toggle v-model="form.is_active" :label="t('settings.auth.active')" color="primary" />
             </div>
           </div>
-          <q-expansion-item :label="t('inventory.quickPresets')" class="q-mb-sm" dense v-if="zone">
+          <q-expansion-item :label="t('inventory.zoneQuickPresets')" class="q-mb-sm" dense v-if="zone">
             <div class="row q-col-gutter-xs q-pa-sm">
               <q-btn
                 v-for="p in filteredPresets" :key="p.label"
@@ -212,7 +212,7 @@
       </q-card-section>
       <q-card-actions align="right">
         <q-btn flat :label="t('app.actions.cancel')" @click="$emit('update:modelValue', false)" />
-        <q-btn color="primary" unelevated :label="zone ? t('inventory.save') : t('inventory.create')" :loading="saving" @click="save" />
+        <q-btn color="primary" unelevated :label="zone ? t('inventory.zoneSave') : t('inventory.zoneCreate')" :loading="saving" @click="save" />
       </q-card-actions>
     </q-card>
   </q-dialog>
@@ -335,7 +335,7 @@ const locationTypeOptions = computed(() => {
     ? store.locationTypes
     : ['rack', 'shelf', 'bin', 'pallet', 'stage', 'truck', 'warehouse', 'workshop']
   return values.map(value => ({
-    label: t(`inventory.zoneType.${value}`) || value,
+    label: t(`inventory.zoneTypes.${value}`) || value,
     value,
   }))
 })
