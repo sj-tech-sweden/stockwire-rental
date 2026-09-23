@@ -1,5 +1,4 @@
-import pytest
-from sqlalchemy import select
+
 
 from app.domain.inventory.models import (
     CategoryTranslation,
