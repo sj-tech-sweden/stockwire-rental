@@ -1,9 +1,12 @@
 import json
+import re
 from decimal import Decimal, InvalidOperation
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
+
+from app.domain.inventory.category_segment_translations import CATEGORY_SEGMENT_SV
 
 from app.api.pagination import PaginatedResponse, PaginationParams, paginate_query
 from app.db.session import get_db
@@ -67,10 +70,22 @@ def _resolve_locale(db: Session, requested: str | None) -> str:
     return "en"
 
 
-def _translate_category(product: Product, locale: str) -> str:
-    node = product.category_node
-    if node is None:
-        return product.category
+def _canonicalize_segment(value: str) -> str:
+    return re.sub(r"\s+", " ", str(value or "").strip().lower().replace("_", " ").replace("-", " ")).strip()
+
+
+def _static_category_label(segment: str, locale: str) -> str | None:
+    """Static fallback matching the frontend's prefill dictionary.
+
+    Only Swedish is bundled in the backend; for other locales we rely on the
+    database translations or the category's base name.
+    """
+    if locale and locale.startswith("sv"):
+        return CATEGORY_SEGMENT_SV.get(_canonicalize_segment(segment))
+    return None
+
+
+def _translate_single_category(node: InventoryCategory, locale: str) -> str:
     exact: str | None = None
     fallback_en: str | None = None
     for tr in node.translations:
@@ -79,7 +94,44 @@ def _translate_category(product: Product, locale: str) -> str:
             break
         if tr.locale == "en":
             fallback_en = tr.name
-    return exact or fallback_en or node.name
+    return exact or fallback_en or _static_category_label(node.name, locale) or node.name
+
+
+def _translate_free_text_category(value: str | None, locale: str) -> str:
+    """Translate a legacy free-text category path (e.g. 'Cable > Power > 32A').
+
+    Each segment is localized via the static dictionary when available; unknown
+    segments are left as-is, mirroring the web UI's translatePrefillCategoryLine.
+    """
+    if not value:
+        return ""
+    segments = [seg.strip() for seg in str(value).split(">")]
+    translated: list[str] = []
+    for seg in segments:
+        if not seg:
+            continue
+        label = _static_category_label(seg, locale)
+        translated.append(label if label else seg)
+    return " > ".join(translated)
+
+
+def _translate_category_path(
+    product: Product, locale: str, categories_by_id: dict[int, InventoryCategory]
+) -> str:
+    """Return the product's full category breadcrumb (root -> leaf), each segment
+    translated for the requested locale."""
+    if product.category_id is None or product.category_id not in categories_by_id:
+        return _translate_free_text_category(product.category, locale)
+
+    segments: list[str] = []
+    seen: set[int] = set()
+    node = categories_by_id.get(product.category_id)
+    while node is not None and node.id not in seen:
+        seen.add(node.id)
+        segments.append(_translate_single_category(node, locale))
+        node = categories_by_id.get(node.parent_id) if node.parent_id is not None else None
+    segments.reverse()
+    return " / ".join(segments)
 
 
 def _load_product_type_translations(
@@ -128,6 +180,13 @@ def _load_product_images(db: Session, product_ids: list[int]) -> dict[int, list[
     return grouped
 
 
+def _load_categories(db: Session) -> dict[int, InventoryCategory]:
+    rows = db.execute(
+        select(InventoryCategory).options(selectinload(InventoryCategory.translations))
+    ).scalars().all()
+    return {row.id: row for row in rows}
+
+
 def _to_image(item: AssetFile) -> PublicProductImage:
     return PublicProductImage(
         id=item.id,
@@ -142,12 +201,13 @@ def _product_to_public(
     locale: str,
     images: list[AssetFile],
     type_translations: dict[tuple[str, str], str],
+    categories_by_id: dict[int, InventoryCategory],
 ) -> PublicProductRead:
     return PublicProductRead(
         id=product.id,
         sku=product.sku,
         name=product.name,
-        category=_translate_category(product, locale),
+        category=_translate_category_path(product, locale, categories_by_id),
         brand=product.brand,
         product_type=_translate_product_type(product.product_type, locale, type_translations),
         daily_rate=product.daily_rate,
@@ -172,11 +232,7 @@ def list_public_products(
     min_rental_price: str | None = Query(None, description="Minimum rental price"),
     max_rental_price: str | None = Query(None, description="Maximum rental price"),
 ) -> PaginatedResponse[PublicProductRead]:
-    stmt = (
-        select(Product)
-        .where(Product.is_public.is_(True))
-        .options(selectinload(Product.category_node).selectinload(InventoryCategory.translations))
-    )
+    stmt = select(Product).where(Product.is_public.is_(True))
 
     if q:
         pattern = f"%{q.strip()}%"
@@ -210,9 +266,12 @@ def list_public_products(
     type_translations = _load_product_type_translations(
         db, [p.product_type for p in products], resolved_locale
     )
+    categories_by_id = _load_categories(db)
     images_by_id = _load_product_images(db, [p.id for p in products])
     items = [
-        _product_to_public(p, resolved_locale, images_by_id.get(p.id, []), type_translations)
+        _product_to_public(
+            p, resolved_locale, images_by_id.get(p.id, []), type_translations, categories_by_id
+        )
         for p in products
     ]
 
@@ -238,5 +297,8 @@ def get_public_product(
     type_translations = _load_product_type_translations(
         db, [product.product_type], resolved_locale
     )
+    categories_by_id = _load_categories(db)
     images = _load_product_images(db, [product.id]).get(product.id, [])
-    return _product_to_public(product, resolved_locale, images, type_translations)
+    return _product_to_public(
+        product, resolved_locale, images, type_translations, categories_by_id
+    )

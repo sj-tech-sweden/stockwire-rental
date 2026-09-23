@@ -167,7 +167,7 @@
           </template>
           <template #body-cell-category="props">
             <q-td :props="props">
-              <div class="inventory-cell-ellipsis" :title="translateCategory(props.row.category, t)">{{ translateCategory(props.row.category, t) || '—' }}</div>
+              <div class="inventory-cell-ellipsis" :title="translatePrefillCategoryLine(props.row.category, t)">{{ translatePrefillCategoryLine(props.row.category, t) || '—' }}</div>
             </q-td>
           </template>
           <template #body-cell-product_type="props">
@@ -354,6 +354,9 @@
             <template #body-cell-daily_rate="props">
               <q-td :props="props" class="text-right">{{ formatMoney(props.value) }}</q-td>
             </template>
+            <template #body-cell-category="props">
+              <q-td :props="props">{{ translatePrefillCategoryLine(props.value, t) || '—' }}</q-td>
+            </template>
             <template #body-cell-actions="props">
               <q-td :props="props" auto-width>
                 <q-btn flat dense round icon="info" :color="infoActionColor" class="q-mr-xs inventory-action-contrast" @click="openRentalProductInfo(props.row)" />
@@ -366,7 +369,7 @@
                   <q-card-section class="q-pb-sm">
                     <div class="text-subtitle2">{{ props.row.sku }} · {{ props.row.name }}</div>
                     <div class="text-caption text-grey-7">
-                      {{ translateCategory(props.row.category, t) || '—' }}
+                      {{ translatePrefillCategoryLine(props.row.category, t) || '—' }}
                       <span v-if="props.row.supplier_name"> · {{ props.row.supplier_name }}</span>
                     </div>
                   </q-card-section>
@@ -852,7 +855,7 @@ import {
   findMostUsedProductByUsageDays,
   isRentalProduct
 } from '../utils/inventory-overview'
-import { translateProductType, translateCategory } from '../utils/translate-helpers'
+import { translateProductType, translateCategory, translatePrefillCategoryLine } from '../utils/translate-helpers'
 import { api } from '../boot/axios'
 import DefectReportDialog from '../components/DefectReportDialog.vue'
 import ReportExportDialog from '../components/ReportExportDialog.vue'
@@ -1089,9 +1092,9 @@ const rentalSupplierOptions = computed(() => {
   return values.sort((a, b) => a.localeCompare(b)).map(value => ({ label: value, value }))
 })
 
-const rentalCategoryOptions = computed(() => {
+ const rentalCategoryOptions = computed(() => {
   const values = [...new Set(rentalProducts.value.map(item => String(item.category || '').trim()).filter(Boolean))]
-  return values.sort((a, b) => a.localeCompare(b)).map(value => ({ label: value, value }))
+  return values.sort((a, b) => a.localeCompare(b)).map(value => ({ label: translatePrefillCategoryLine(value, t), value }))
 })
 
 const filteredRentalProducts = computed(() => {
@@ -1157,11 +1160,12 @@ function openEditRentalProduct(product) {
   rentalProductDialogOpen.value = true
 }
 
-const productCategoryOptions = computed(() => {
+ const productCategoryOptions = computed(() => {
   const flat = []
   const walk = (nodes, prefix = '') => {
     for (const node of nodes || []) {
-      const label = prefix ? `${prefix} / ${node.name}` : node.name
+      const translatedName = translateCategory(node.name, t)
+      const label = prefix ? `${prefix} / ${translatedName}` : translatedName
       flat.push({ label, value: node.id })
       walk(node.children || [], label)
     }

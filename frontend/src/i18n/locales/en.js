@@ -50,6 +50,7 @@ export default {
       zoomIn: 'Zoom in',
       zoomOut: 'Zoom out',
       fitToScreen: 'Fit to screen',
+      info: 'Info',
     },
     language: {
       label: 'Language',
@@ -1710,6 +1711,10 @@ export default {
     maintenanceInterval: 'Maintenance interval ({unit})',
     power: 'Power ({unit})',
     isPublic: 'Publish to public catalog',
+    isPrivate: 'Private',
+    public: 'Public',
+    leaveUnchanged: 'Leave unchanged',
+    publicBulkHint: 'Only products you choose to make public are shown in the public catalog.',
     weight: 'Weight ({unit})',
     height: 'Height ({unit})',
     width: 'Width ({unit})',

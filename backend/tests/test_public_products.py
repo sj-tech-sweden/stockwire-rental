@@ -10,8 +10,8 @@ from app.domain.inventory.models import (
 from app.domain.storage.models import AssetFile
 
 
-def _make_category(db, name="Lighting", en="Lighting", sv="Belysning"):
-    cat = InventoryCategory(name=name)
+def _make_category(db, name="Lighting", en="Lighting", sv="Belysning", parent_id=None):
+    cat = InventoryCategory(name=name, parent_id=parent_id)
     db.add(cat)
     db.flush()
     db.add(CategoryTranslation(category_id=cat.id, locale="en", name=en))
@@ -109,6 +109,24 @@ def test_public_product_type_db_translation_any_language(client, db_session):
     assert resp_fallback.json()["product_type"] == "Equipment"  # fr not seeded -> en fallback
 
 
+def test_public_product_category_returns_full_translated_path(client, db_session):
+    parent = _make_category(db_session, name="Lighting", en="Lighting", sv="Belysning")
+    child = _make_category(
+        db_session, name="Stage Lighting", en="Stage Lighting", sv="Scenbelysning", parent_id=parent.id
+    )
+    product = _make_product(db_session, child)
+
+    # Default locale (en) -> full path, translated.
+    resp_en = client.get(f"/api/v1/public/products/{product.id}")
+    assert resp_en.status_code == 200
+    assert resp_en.json()["category"] == "Lighting / Stage Lighting"
+
+    # Swedish locale -> full path, each segment translated.
+    resp_sv = client.get(f"/api/v1/public/products/{product.id}?locale=sv")
+    assert resp_sv.status_code == 200
+    assert resp_sv.json()["category"] == "Belysning / Scenbelysning"
+
+
 def test_public_product_image_download_guards(client, db_session):
     category = _make_category(db_session)
     product = _make_product(db_session, category)
@@ -133,3 +151,53 @@ def test_public_product_hidden_when_not_public(client, db_session):
 
     assert client.get(f"/api/v1/public/products/{product.id}").status_code == 404
     assert client.get("/api/v1/public/products").json()["total"] == 0
+
+
+def _make_category_raw(db, name, parent_id=None):
+    cat = InventoryCategory(name=name, parent_id=parent_id)
+    db.add(cat)
+    db.commit()
+    db.refresh(cat)
+    return cat
+
+
+def test_public_product_category_static_translation_fallback(client, db_session):
+    # Categories with NO database translations: the backend should still localize
+    # via the bundled static dictionary (mirrors the web UI's prefill fallback).
+    parent = _make_category_raw(db_session, "Audio")
+    child = _make_category_raw(db_session, "Speakers", parent_id=parent.id)
+    product = _make_product(db_session, child)
+
+    resp_sv = client.get(f"/api/v1/public/products/{product.id}?locale=sv")
+    assert resp_sv.status_code == 200
+    assert resp_sv.json()["category"] == "Ljud / Högtalare"
+
+    # English (no en translation, no static en map) -> base name.
+    resp_en = client.get(f"/api/v1/public/products/{product.id}?locale=en")
+    assert resp_en.status_code == 200
+    assert resp_en.json()["category"] == "Audio / Speakers"
+
+
+def test_public_product_free_text_category_translated(client, db_session):
+    # Legacy products store the category as a free-text path with no category_id.
+    product = Product(
+        sku="SKU-FREETEXT",
+        name="Speaker Kit",
+        category="Speakers > Microphones",
+        category_id=None,
+        product_type="equipment",
+        is_public=True,
+        daily_rate=5,
+        rental_price=10,
+    )
+    db_session.add(product)
+    db_session.commit()
+    db_session.refresh(product)
+
+    resp_sv = client.get(f"/api/v1/public/products/{product.id}?locale=sv")
+    assert resp_sv.status_code == 200
+    assert resp_sv.json()["category"] == "Högtalare > Mikrofoner"
+
+    resp_en = client.get(f"/api/v1/public/products/{product.id}?locale=en")
+    assert resp_en.status_code == 200
+    assert resp_en.json()["category"] == "Speakers > Microphones"
