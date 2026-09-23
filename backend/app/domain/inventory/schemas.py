@@ -770,6 +770,15 @@ class GenerateShelvesRequest(BaseModel):
     naming_format: str = Field(default="numeric", pattern="^(numeric|alphabetic)$")
 
 
+class PublicProductImage(BaseModel):
+    id: int
+    url: str
+    content_type: str | None = None
+    original_filename: str | None = None
+
+    model_config = {"from_attributes": True}
+
+
 class PublicProductRead(BaseModel):
     id: int
     sku: str
@@ -783,6 +792,7 @@ class PublicProductRead(BaseModel):
     height_cm: Decimal | None = None
     width_cm: Decimal | None = None
     depth_cm: Decimal | None = None
+    images: list[PublicProductImage] = Field(default_factory=list)
 
     model_config = {"from_attributes": True}
 

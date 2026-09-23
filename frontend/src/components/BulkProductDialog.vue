@@ -62,6 +62,21 @@
               clearable
             />
           </div>
+          <div class="col-12">
+            <q-btn-toggle
+              v-model="form.is_public"
+              spread
+              no-caps
+              unelevated
+              toggle-color="primary"
+              :options="[
+                { label: t('inventory.leaveUnchanged'), value: null },
+                { label: t('inventory.public'), value: true },
+                { label: t('inventory.isPrivate'), value: false },
+              ]"
+            />
+            <div class="text-caption text-grey-7">{{ t('inventory.publicBulkHint') }}</div>
+          </div>
         </div>
         <q-banner v-if="error" class="bg-negative text-white q-mt-sm rounded-borders" dense>{{ error }}</q-banner>
       </q-card-section>
@@ -80,6 +95,7 @@ import { useQuasar } from 'quasar'
 import { useInventoryStore } from '../stores/inventory'
 import { useSettingsStore } from '../stores/settings'
 import { normalizeCurrencyCode } from '../constants/currencies'
+import { translateCategory } from '../utils/translate-helpers'
 
 const { t } = useI18n()
 const $q = useQuasar()
@@ -105,6 +121,7 @@ const emptyForm = () => ({
   manufacturer: '',
   maintenance_interval_days: null,
   daily_rate: null,
+  is_public: null,
 })
 
 const form = ref(emptyForm())
@@ -136,7 +153,8 @@ const allCategorySelectOptions = computed(() => {
   const flat = []
   const walk = (nodes, prefix) => {
     for (const node of nodes || []) {
-      const label = prefix ? `${prefix} / ${node.name}` : node.name
+      const translatedName = translateCategory(node.name, t)
+      const label = prefix ? `${prefix} / ${translatedName}` : translatedName
       flat.push({ label, value: node.id })
       walk(node.children || [], label)
     }
@@ -168,6 +186,7 @@ async function save() {
   if (String(form.value.manufacturer || '').trim()) patch.manufacturer = String(form.value.manufacturer).trim()
   if (form.value.maintenance_interval_days != null) patch.maintenance_interval_days = form.value.maintenance_interval_days
   if (form.value.daily_rate != null) patch.daily_rate = form.value.daily_rate
+  if (form.value.is_public !== null) patch.is_public = form.value.is_public
   if (!Object.keys(patch).length) {
     error.value = 'Choose at least one field to update'
     return

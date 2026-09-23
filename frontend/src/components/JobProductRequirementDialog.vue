@@ -283,6 +283,7 @@ import { useI18n } from 'vue-i18n'
 import { useJobsStore } from '../stores/jobs'
 import { useInventoryStore } from '../stores/inventory'
 import { filterRequirementSourceProducts, isRentalProduct } from '../utils/job-requirements'
+import { translateCategory, translatePrefillCategoryLine } from '../utils/translate-helpers'
 import ProductLocationMapDialog from './ProductLocationMapDialog.vue'
 
 const props = defineProps({
@@ -399,13 +400,13 @@ function productCategoryPath(product) {
     let current = categoryById.value.get(categoryId)
     let guard = 0
     while (current && guard < 20) {
-      names.unshift(current.name)
+      names.unshift(translateCategory(current.name, t))
       current = current.parent_id ? categoryById.value.get(current.parent_id) : null
       guard += 1
     }
     if (names.length) return names.join(' / ')
   }
-  return product.category || t('jobs.uncategorized')
+  return translatePrefillCategoryLine(product.category, t) || t('jobs.uncategorized')
 }
 
 function productLocationPath(product) {

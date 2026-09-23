@@ -971,6 +971,7 @@ def list_products(
             "brand": product.brand,
             "manufacturer": product.manufacturer,
             "product_type": product.product_type,
+            "is_public": product.is_public,
             "is_rental_product": product.is_rental_product,
             "supplier_name": product.supplier_name,
             "rental_price": product.rental_price,

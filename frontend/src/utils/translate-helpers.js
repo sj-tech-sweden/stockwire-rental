@@ -62,3 +62,11 @@ export function translateCategory(category, t, dbTranslations = null) {
   // 3. Return original
   return category
 }
+
+// Re-export the prefill path/line translators (defined in prefillContent.js) so
+// callers can import all category helpers from this single module.
+export {
+  translatePrefillCategorySegment,
+  translatePrefillCategoryPath,
+  translatePrefillCategoryLine,
+} from '../i18n/prefillContent'

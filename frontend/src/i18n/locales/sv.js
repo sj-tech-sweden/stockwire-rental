@@ -50,6 +50,7 @@ export default {
       zoomIn: 'Zooma in',
       zoomOut: 'Zooma ut',
       fitToScreen: 'Anpassa till skärmen',
+      info: 'Info',
     },
     language: {
       label: 'Språk',
@@ -1707,6 +1708,10 @@ export default {
     maintenanceInterval: 'Underhållsintervall ({unit})',
     power: 'Effekt ({unit})',
     isPublic: 'Publicera i offentlig katalog',
+    isPrivate: 'Privat',
+    public: 'Offentlig',
+    leaveUnchanged: 'Lämna oförändrat',
+    publicBulkHint: 'Endast produkter du väljer att göra publika visas i den publika katalogen.',
     weight: 'Vikt ({unit})',
     height: 'Höjd ({unit})',
     width: 'Bredd ({unit})',
