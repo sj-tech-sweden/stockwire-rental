@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from app.db.session import get_db
 from app.domain.auth.deps import get_current_user, require_editor
 from app.domain.auth.models import User
+from app.domain.inventory.models import Product
 from app.domain.settings.models import AppSetting
 from app.domain.storage.models import AssetFile
 from app.domain.storage.schemas import AssetFileRead
@@ -161,6 +162,27 @@ def download_public_company_logo_variant(variant: str, db: Session = Depends(get
     row = _resolve_company_logo_file_for_variant(db, variant)
     if not row:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Logo not found")
+
+    storage = StorageService()
+    return storage.build_download_response(
+        storage_key=row.storage_key,
+        content_type=row.content_type,
+        download_filename=row.original_filename,
+    )
+
+
+@router.get("/public/product-image/{file_id}")
+def download_public_product_image(file_id: int, db: Session = Depends(get_db)):
+    row = db.get(AssetFile, file_id)
+    if not row or row.is_deleted:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Image not found")
+    if str(row.entity_type or "").strip().lower() != "product":
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Image not found")
+    if not str(row.content_type or "").lower().startswith("image/"):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Image not found")
+    product = db.get(Product, row.entity_id)
+    if product is None or not product.is_public:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Image not found")
 
     storage = StorageService()
     return storage.build_download_response(

@@ -42,6 +42,17 @@ class CategoryTranslation(Base):
     category: Mapped["InventoryCategory"] = relationship(back_populates="translations")
 
 
+class ProductTypeTranslation(Base):
+    __tablename__ = "product_type_translations"
+    __table_args__ = (UniqueConstraint("product_type", "locale", name="uq_product_type_locale"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    product_type: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
+    locale: Mapped[str] = mapped_column(String(5), nullable=False)
+    label: Mapped[str] = mapped_column(String(120), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
+
+
 class Product(Base):
     __tablename__ = "products"
 
