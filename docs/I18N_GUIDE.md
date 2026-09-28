@@ -78,7 +78,30 @@ settings.*               - Settings module
 
 ---
 
+## Reuse existing keys first
+
+Before adding a new translation key, **search for an existing one that already
+conveys the meaning**. The locale files already contain thousands of keys, and
+adding a near-duplicate fragments translations and risks silent bugs.
+
+- Grep all locale sources for the concept you need:
+  `frontend/src/i18n/locales/en.js`, `sv.js`, and `prefillContent.js`.
+- Reuse a semantically equivalent key even if the exact wording differs.
+- A new key is only justified when nothing existing fits.
+- **Never define the same key twice in one object literal** — duplicate keys do
+  not error; the last definition silently overwrites the first. This previously
+  caused a `noLetterhead` key to be overwritten and tripped the code-quality bot.
+- Keep `en.js` and `sv.js` structurally identical: any new key goes in both files
+  at the same path, with a real Swedish translation (never leave `sv` as English).
+
+The automated guard for this lives in `.opencode/skills/i18n-reuse/SKILL.md`.
+
 ## Adding Translations
+
+### Step 0: Search before you add
+
+See [Reuse existing keys first](#reuse-existing-keys-first). Skip to Step 1 only
+if no existing key fits.
 
 ### Step 1: Add to English
 
