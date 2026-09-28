@@ -3049,7 +3049,7 @@ export default {
     saveBeforePreview: 'Spara mallen innan förhandsvisning.',
     selectEntityToPreview: 'Välj en entitet att förhandsvisa.',
     previewFailed: 'Kunde inte generera förhandsvisning.',
-    noLetterhead: '(Inget brevhuvud)',
+    noLetterheadPreview: '(Inget brevhuvud)',
     headingLevel: 'Rubriknivå',
     h1: 'H1',
     h2: 'H2',

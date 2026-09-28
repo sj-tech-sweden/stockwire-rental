@@ -3061,7 +3061,7 @@ export default {
     saveBeforePreview: 'Save the template before previewing.',
     selectEntityToPreview: 'Select an entity to preview.',
     previewFailed: 'Preview generation failed.',
-    noLetterhead: '(No letterhead)',
+    noLetterheadPreview: '(No letterhead)',
     headingLevel: 'Heading level',
     h1: 'H1',
     h2: 'H2',
