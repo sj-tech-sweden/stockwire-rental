@@ -592,3 +592,47 @@ def test_seeded_case_manifest_renders_contents(client, db_session):
     assert "MIC-01" in text
     assert "Microphone" in text
     assert "MICSERIAL001" in text
+
+
+def test_update_builtin_template_guard(client, db_session):
+    """Built-in templates may change letterhead/enabled but not body/translations."""
+    import json
+
+    from app.domain.reports.models import ReportTemplate
+
+    tmpl = ReportTemplate(
+        name="Builtin Guard Test",
+        category="custom",
+        body_json=json.dumps({"page_size": "A4", "flowables": []}),
+        data_source_type="job",
+        is_builtin=True,
+        is_enabled=True,
+    )
+    db_session.add(tmpl)
+    db_session.commit()
+    db_session.refresh(tmpl)
+    tid = tmpl.id
+
+    # Changing only letterhead_id is allowed on a built-in template.
+    resp = client.put(f"/api/v1/reports/templates/{tid}", json={"letterhead_id": 7})
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["letterhead_id"] == 7
+
+    # Explicit null clears the letterhead (allowed).
+    resp = client.put(f"/api/v1/reports/templates/{tid}", json={"letterhead_id": None})
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["letterhead_id"] is None
+
+    # Changing body_json is forbidden on a built-in template.
+    resp = client.put(
+        f"/api/v1/reports/templates/{tid}",
+        json={"body_json": json.dumps({"page_size": "A4", "flowables": [{"type": "heading", "text": "x"}]})},
+    )
+    assert resp.status_code == 403, resp.text
+
+    # Changing translations_json is forbidden on a built-in template.
+    resp = client.put(
+        f"/api/v1/reports/templates/{tid}",
+        json={"translations_json": json.dumps({"sv": {"flowables": []}})},
+    )
+    assert resp.status_code == 403, resp.text

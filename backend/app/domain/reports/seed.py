@@ -22,17 +22,24 @@ _DEFAULT_TEMPLATES = [
         "body_json": json.dumps({
             "page_size": "A4",
             "flowables": [
-                {"type": "heading", "text": "CASE MANIFEST", "level": 1},
-                {"type": "spacer", "height_mm": 3},
-                {"type": "key_value", "source": "device", "fields": [
-                    {"key": "asset_tag", "label": "Case ID"},
-                    {"key": "serial_number", "label": "Serial Number"},
-                    {"key": "status", "label": "Status"},
-                ]},
-                {"type": "key_value", "source": "product", "fields": [
-                    {"key": "name", "label": "Product"},
-                    {"key": "sku", "label": "SKU"},
-                    {"key": "category", "label": "Category"},
+                {"type": "columns", "widths": ["68%", "32%"], "columns": [
+                    [
+                        {"type": "heading", "text": "CASE MANIFEST", "level": 1},
+                        {"type": "spacer", "height_mm": 3},
+                        {"type": "key_value", "source": "device", "fields": [
+                            {"key": "asset_tag", "label": "Case ID"},
+                            {"key": "serial_number", "label": "Serial Number"},
+                            {"key": "status", "label": "Status"},
+                        ]},
+                        {"type": "key_value", "source": "product", "fields": [
+                            {"key": "name", "label": "Product"},
+                            {"key": "sku", "label": "SKU"},
+                            {"key": "category", "label": "Category"},
+                        ]},
+                    ],
+                    [
+                        {"type": "barcode", "barcode_type": "qr", "value": "{{ device.barcode }}", "align": "right"},
+                    ],
                 ]},
                 {"type": "spacer", "height_mm": 3},
                 {"type": "line"},
@@ -56,11 +63,18 @@ _DEFAULT_TEMPLATES = [
         "body_json": json.dumps({
             "page_size": "A4",
             "flowables": [
-                {"type": "heading", "text": "CASE CONTENTS", "level": 1},
-                {"type": "spacer", "height_mm": 3},
-                {"type": "key_value", "source": "device", "fields": [
-                    {"key": "asset_tag", "label": "Case ID"},
-                    {"key": "status", "label": "Status"},
+                {"type": "columns", "widths": ["68%", "32%"], "columns": [
+                    [
+                        {"type": "heading", "text": "CASE CONTENTS", "level": 1},
+                        {"type": "spacer", "height_mm": 3},
+                        {"type": "key_value", "source": "device", "fields": [
+                            {"key": "asset_tag", "label": "Case ID"},
+                            {"key": "status", "label": "Status"},
+                        ]},
+                    ],
+                    [
+                        {"type": "barcode", "barcode_type": "qr", "value": "{{ device.barcode }}", "align": "right"},
+                    ],
                 ]},
                 {"type": "spacer", "height_mm": 3},
                 {"type": "line"},
@@ -83,12 +97,19 @@ _DEFAULT_TEMPLATES = [
         "body_json": json.dumps({
             "page_size": "A4",
             "flowables": [
-                {"type": "heading", "text": "KIT COMPONENT BREAKDOWN", "level": 1},
-                {"type": "key_value", "source": "product", "fields": [
-                    {"key": "name", "label": "Kit Name"},
-                    {"key": "sku", "label": "SKU"},
-                    {"key": "category", "label": "Category"},
-                    {"key": "brand", "label": "Brand"},
+                {"type": "columns", "widths": ["68%", "32%"], "columns": [
+                    [
+                        {"type": "heading", "text": "KIT COMPONENT BREAKDOWN", "level": 1},
+                        {"type": "key_value", "source": "product", "fields": [
+                            {"key": "name", "label": "Kit Name"},
+                            {"key": "sku", "label": "SKU"},
+                            {"key": "category", "label": "Category"},
+                            {"key": "brand", "label": "Brand"},
+                        ]},
+                    ],
+                    [
+                        {"type": "barcode", "barcode_type": "qr", "value": "{{ product.sku }}", "align": "right"},
+                    ],
                 ]},
                 {"type": "spacer", "height_mm": 3},
                 {"type": "line"},
@@ -141,12 +162,19 @@ _DEFAULT_TEMPLATES = [
         "body_json": json.dumps({
             "page_size": "A4",
             "flowables": [
-                {"type": "heading", "text": "RETURN CHECK-IN AUDIT", "level": 1},
-                {"type": "key_value", "source": "job", "fields": [
-                    {"key": "job_code", "label": "Job Code"},
-                    {"key": "customer_name", "label": "Customer"},
-                    {"key": "start_date", "label": "Rental Start"},
-                    {"key": "end_date", "label": "Rental End"},
+                {"type": "columns", "widths": ["68%", "32%"], "columns": [
+                    [
+                        {"type": "heading", "text": "RETURN CHECK-IN AUDIT", "level": 1},
+                        {"type": "key_value", "source": "job", "fields": [
+                            {"key": "job_code", "label": "Job Code"},
+                            {"key": "customer_name", "label": "Customer"},
+                            {"key": "start_date", "label": "Rental Start"},
+                            {"key": "end_date", "label": "Rental End"},
+                        ]},
+                    ],
+                    [
+                        {"type": "barcode", "barcode_type": "qr", "value": "{{ job.job_code }}", "align": "right"},
+                    ],
                 ]},
                 {"type": "spacer", "height_mm": 3},
                 {"type": "line"},
@@ -171,11 +199,18 @@ _DEFAULT_TEMPLATES = [
         "body_json": json.dumps({
             "page_size": "A4",
             "flowables": [
-                {"type": "heading", "text": "VEHICLE LOAD SUMMARY", "level": 1},
-                {"type": "key_value", "source": "job", "fields": [
-                    {"key": "job_code", "label": "Job Code"},
-                    {"key": "customer_name", "label": "Customer"},
-                    {"key": "venue_name", "label": "Venue"},
+                {"type": "columns", "widths": ["68%", "32%"], "columns": [
+                    [
+                        {"type": "heading", "text": "VEHICLE LOAD SUMMARY", "level": 1},
+                        {"type": "key_value", "source": "job", "fields": [
+                            {"key": "job_code", "label": "Job Code"},
+                            {"key": "customer_name", "label": "Customer"},
+                            {"key": "venue_name", "label": "Venue"},
+                        ]},
+                    ],
+                    [
+                        {"type": "barcode", "barcode_type": "qr", "value": "{{ job.job_code }}", "align": "right"},
+                    ],
                 ]},
                 {"type": "spacer", "height_mm": 3},
                 {"type": "line"},
@@ -244,16 +279,23 @@ _DEFAULT_TEMPLATES = [
         "body_json": json.dumps({
             "page_size": "A4",
             "flowables": [
-                {"type": "heading", "text": "DAMAGE & MAINTENANCE LOG", "level": 1},
-                {"type": "key_value", "source": "device", "fields": [
-                    {"key": "asset_tag", "label": "Asset Tag"},
-                    {"key": "serial_number", "label": "Serial Number"},
-                    {"key": "status", "label": "Status"},
-                    {"key": "condition", "label": "Condition"},
-                ]},
-                {"type": "key_value", "source": "product", "fields": [
-                    {"key": "name", "label": "Product"},
-                    {"key": "sku", "label": "SKU"},
+                {"type": "columns", "widths": ["68%", "32%"], "columns": [
+                    [
+                        {"type": "heading", "text": "DAMAGE & MAINTENANCE LOG", "level": 1},
+                        {"type": "key_value", "source": "device", "fields": [
+                            {"key": "asset_tag", "label": "Asset Tag"},
+                            {"key": "serial_number", "label": "Serial Number"},
+                            {"key": "status", "label": "Status"},
+                            {"key": "condition", "label": "Condition"},
+                        ]},
+                        {"type": "key_value", "source": "product", "fields": [
+                            {"key": "name", "label": "Product"},
+                            {"key": "sku", "label": "SKU"},
+                        ]},
+                    ],
+                    [
+                        {"type": "barcode", "barcode_type": "qr", "value": "{{ device.barcode }}", "align": "right"},
+                    ],
                 ]},
                 {"type": "spacer", "height_mm": 3},
                 {"type": "line"},
@@ -287,12 +329,19 @@ _DEFAULT_TEMPLATES = [
         "body_json": json.dumps({
             "page_size": "A4",
             "flowables": [
-                {"type": "heading", "text": "DELIVERY HANDOVER", "level": 1},
-                {"type": "key_value", "source": "job", "fields": [
-                    {"key": "job_code", "label": "Job Code"},
-                    {"key": "customer_name", "label": "Customer"},
-                    {"key": "venue_name", "label": "Venue"},
-                    {"key": "start_date", "label": "Delivery Date"},
+                {"type": "columns", "widths": ["68%", "32%"], "columns": [
+                    [
+                        {"type": "heading", "text": "DELIVERY HANDOVER", "level": 1},
+                        {"type": "key_value", "source": "job", "fields": [
+                            {"key": "job_code", "label": "Job Code"},
+                            {"key": "customer_name", "label": "Customer"},
+                            {"key": "venue_name", "label": "Venue"},
+                            {"key": "start_date", "label": "Delivery Date"},
+                        ]},
+                    ],
+                    [
+                        {"type": "barcode", "barcode_type": "qr", "value": "{{ job.job_code }}", "align": "right"},
+                    ],
                 ]},
                 {"type": "spacer", "height_mm": 3},
                 {"type": "line"},
@@ -318,21 +367,32 @@ _DEFAULT_TEMPLATES = [
         "body_json": json.dumps({
             "page_size": "A4",
             "flowables": [
-                {"type": "heading", "text": "JOB SUMMARY", "level": 1, "align": "center"},
-                {"type": "spacer", "height_mm": 2},
                 {
                     "type": "columns",
-                    "widths": ["50%", "50%"],
+                    "widths": ["70%", "30%"],
                     "columns": [
                         [
-                            {"type": "heading", "text": "Customer", "level": 2},
-                            {"type": "paragraph", "text": "{{ job.customer_name }}", "style": "body"},
-                            {"type": "paragraph", "text": "{{ job.venue_name }}", "style": "small"},
+                            {"type": "heading", "text": "JOB SUMMARY", "level": 1},
+                            {"type": "spacer", "height_mm": 2},
+                            {
+                                "type": "columns",
+                                "widths": ["50%", "50%"],
+                                "columns": [
+                                    [
+                                        {"type": "heading", "text": "Customer", "level": 2},
+                                        {"type": "paragraph", "text": "{{ job.customer_name }}", "style": "body"},
+                                        {"type": "paragraph", "text": "{{ job.venue_name }}", "style": "small"},
+                                    ],
+                                    [
+                                        {"type": "heading", "text": "Dates", "level": 2, "align": "right"},
+                                        {"type": "paragraph", "text": "Start: {{ job.start_date }}", "style": "body", "align": "right"},
+                                        {"type": "paragraph", "text": "End: {{ job.end_date }}", "style": "body", "align": "right"},
+                                    ],
+                                ],
+                            },
                         ],
                         [
-                            {"type": "heading", "text": "Dates", "level": 2, "align": "right"},
-                            {"type": "paragraph", "text": "Start: {{ job.start_date }}", "style": "body", "align": "right"},
-                            {"type": "paragraph", "text": "End: {{ job.end_date }}", "style": "body", "align": "right"},
+                            {"type": "barcode", "barcode_type": "qr", "value": "{{ job.job_code }}", "align": "right", "height_mm": 25},
                         ],
                     ],
                 },
@@ -351,12 +411,19 @@ _DEFAULT_TEMPLATES = [
         "body_json": json.dumps({
             "page_size": "A4",
             "flowables": [
-                {"type": "heading", "text": "VENUE COMPLIANCE & SAFETY PACKET", "level": 1},
-                {"type": "key_value", "source": "job", "fields": [
-                    {"key": "job_code", "label": "Job Code"},
-                    {"key": "customer_name", "label": "Customer"},
-                    {"key": "venue_name", "label": "Venue"},
-                    {"key": "start_date", "label": "Event Date"},
+                {"type": "columns", "widths": ["68%", "32%"], "columns": [
+                    [
+                        {"type": "heading", "text": "VENUE COMPLIANCE & SAFETY PACKET", "level": 1},
+                        {"type": "key_value", "source": "job", "fields": [
+                            {"key": "job_code", "label": "Job Code"},
+                            {"key": "customer_name", "label": "Customer"},
+                            {"key": "venue_name", "label": "Venue"},
+                            {"key": "start_date", "label": "Event Date"},
+                        ]},
+                    ],
+                    [
+                        {"type": "barcode", "barcode_type": "qr", "value": "{{ job.job_code }}", "align": "right"},
+                    ],
                 ]},
                 {"type": "spacer", "height_mm": 3},
                 {"type": "line"},

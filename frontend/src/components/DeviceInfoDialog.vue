@@ -58,6 +58,12 @@
               :label="t('inventory.infoDialogs.reportDefect')"
               @click="emit('report-defect', device?.id)"
             />
+            <q-btn
+              color="secondary"
+              icon="picture_as_pdf"
+              :label="t('reports.generate')"
+              @click="openReportExport('device', device?.id)"
+            />
           </div>
           <div class="col-12 col-md-6 text-caption">
             {{ t('inventory.infoDialogs.serialNumber') }}: {{ device?.serial_number || '-' }}
@@ -499,6 +505,13 @@
         <q-space />
         <q-btn flat :class="effectiveIsPhone ? 'full-width' : ''" :label="t('app.actions.close')" @click="emit('update:modelValue', false)" />
       </q-card-actions>
+
+      <ReportExportDialog
+        v-if="reportExportId !== null"
+        v-model="reportExportOpen"
+        :entity-type="reportExportType"
+        :entity-id="reportExportId"
+      />
     </q-card>
   </q-dialog>
 
@@ -524,6 +537,7 @@ import { translateProductType, translateCategory } from '../utils/translate-help
 import { useProductImage } from '../composables/useProductImage'
 import EntityAttachmentsPanel from './EntityAttachmentsPanel.vue'
 import LocateDeviceMapDialog from './LocateDeviceMapDialog.vue'
+import ReportExportDialog from './ReportExportDialog.vue'
 
 const props = defineProps({
   modelValue: { type: Boolean, default: false },
@@ -551,6 +565,16 @@ const productActionColor = computed(() => ($q.dark.isActive ? 'green-3' : 'secon
 const infoActionColor = computed(() => ($q.dark.isActive ? 'teal-3' : 'secondary'))
 
 const locateDeviceMapOpen = ref(false)
+
+const reportExportOpen = ref(false)
+const reportExportId = ref(null)
+const reportExportType = ref(null)
+
+function openReportExport(entityType, entityId) {
+  reportExportType.value = entityType
+  reportExportId.value = entityId
+  reportExportOpen.value = true
+}
 
 async function locateDeviceWithLed() {
   if (!props.device?.id) return

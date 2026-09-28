@@ -5,6 +5,28 @@
       <q-btn color="primary" icon="add" :label="t('reports.newTemplate')" unelevated @click="openDesigner()" />
     </div>
 
+    <div class="row items-center no-wrap q-mb-sm q-pa-sm rounded-borders" :class="$q.dark.isActive ? 'bg-grey-9' : 'bg-grey-2'">
+      <div class="text-body2 q-mr-sm">{{ t('reports.setLetterheadForAll') }}</div>
+      <q-select
+        v-model="bulkLetterheadId"
+        :options="letterheadOptions"
+        emit-value
+        map-options
+        clearable
+        dense
+        outlined
+        :label="t('reports.letterhead')"
+        style="min-width: 180px"
+      />
+      <q-btn
+        color="primary"
+        class="q-ml-sm"
+        :label="t('reports.applyToAll')"
+        :loading="applyingBulk"
+        @click="applyLetterheadToAll"
+      />
+    </div>
+
     <q-table
       :rows="templates"
       :columns="columns"
@@ -51,6 +73,30 @@
           {{ translateDataSource(props.row.data_source_type) }}
         </q-td>
       </template>
+      <template #body-cell-letterhead="props">
+        <q-td :props="props">
+          <q-select
+            :model-value="props.row.letterhead_id"
+            :options="letterheadOptions"
+            emit-value
+            map-options
+            clearable
+            dense
+            outlined
+            style="min-width: 160px; max-width: 200px"
+            @update:model-value="(val) => updateTemplateLetterhead(props.row, val ?? null)"
+          >
+            <template #option="{ opt, itemProps }">
+              <q-item v-bind="itemProps">
+                <q-item-section>
+                  <q-item-label>{{ opt.label }}</q-item-label>
+                  <q-item-label v-if="opt.default" caption>{{ t('reports.default') }}</q-item-label>
+                </q-item-section>
+              </q-item>
+            </template>
+          </q-select>
+        </q-td>
+      </template>
       <template #body-cell-is_builtin="props">
         <q-td :props="props">
           <q-icon v-if="props.row.is_builtin" name="lock" color="grey" size="xs" />
@@ -82,7 +128,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useQuasar } from 'quasar'
 import { useI18n } from 'vue-i18n'
 import { useReportsStore } from '../stores/reports'
@@ -98,12 +144,35 @@ const templates = ref([])
 const filter = ref('')
 const showDesigner = ref(false)
 const editingTemplate = ref(null)
+const bulkLetterheadId = ref(null)
+const applyingBulk = ref(false)
+
+const letterheadOptions = computed(() => {
+  const opts = [{ label: t('reports.noLetterhead'), value: null, default: false }]
+  for (const lh of (reportsStore.letterheads || [])) {
+    opts.push({ label: lh.name, value: lh.id, default: !!lh.is_default })
+  }
+  return opts
+})
+
+async function updateTemplateLetterhead(row, value) {
+  try {
+    const updated = await reportsStore.updateTemplate(row.id, { letterhead_id: value })
+    // Reflect the new value locally so the select stays in sync.
+    row.letterhead_id = updated.letterhead_id ?? null
+    $q.notify({ type: 'positive', message: t('reports.letterheadUpdated') })
+  } catch (err) {
+    $q.notify({ type: 'negative', message: err?.response?.data?.detail || t('reports.letterheadUpdateFailed') })
+    await loadTemplates()
+  }
+}
 
 const columns = [
   { name: 'name', label: t('reports.templateName'), field: 'name', align: 'left', sortable: true },
   { name: 'languages', label: t('reports.languages'), field: 'languages', align: 'left' },
   { name: 'category', label: t('reports.category'), field: 'category', align: 'left', sortable: true },
   { name: 'data_source_type', label: t('reports.dataSource'), field: 'data_source_type', align: 'left' },
+  { name: 'letterhead', label: t('reports.letterhead'), field: 'letterhead_id', align: 'left' },
   { name: 'is_builtin', label: '', field: 'is_builtin', align: 'center' },
   { name: 'actions', label: '', field: 'actions', align: 'center' },
 ]
@@ -212,5 +281,41 @@ function confirmDelete(template) {
   })
 }
 
-onMounted(loadTemplates)
+async function applyLetterheadToAll() {
+  const value = bulkLetterheadId.value
+  const label = letterheadOptions.value.find(o => o.value === value)?.label || t('reports.noLetterhead')
+  $q.dialog({
+    title: t('reports.applyToAll'),
+    message: t('reports.letterheadApplyConfirm', { name: label, count: templates.value.length }),
+    cancel: t('app.actions.cancel'),
+    ok: t('app.actions.apply'),
+    persistent: true,
+  }).onOk(async () => {
+    applyingBulk.value = true
+    let okCount = 0
+    let failCount = 0
+    try {
+      await Promise.all(templates.value.map(t =>
+        reportsStore.updateTemplate(t.id, { letterhead_id: value })
+          .then(() => { okCount += 1 })
+          .catch(() => { failCount += 1 }),
+      ))
+      if (failCount === 0) {
+        $q.notify({ type: 'positive', message: t('reports.letterheadAppliedToAll', { count: okCount }) })
+      } else {
+        $q.notify({ type: 'warning', message: t('reports.letterheadAppliedPartial', { ok: okCount, fail: failCount }) })
+      }
+      await loadTemplates()
+    } catch {
+      $q.notify({ type: 'negative', message: t('reports.letterheadUpdateFailed') })
+    } finally {
+      applyingBulk.value = false
+    }
+  })
+}
+
+onMounted(() => {
+  loadTemplates()
+  reportsStore.fetchLetterheads().catch(() => {})
+})
 </script>

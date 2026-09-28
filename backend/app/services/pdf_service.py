@@ -311,6 +311,7 @@ class PDFService:
         entity_type: str,
         entity_id: int,
         language: str | None = None,
+        letterhead_id: int | None = None,
     ) -> bytes:
         """Generate a PDF report."""
         from app.domain.reports.models import ReportTemplate, Letterhead
@@ -338,14 +339,16 @@ class PDFService:
         if not flowables:
             logger.warning("Template %s produced no flowables for %s/%s", template_id, entity_type, entity_id)
 
-        # Determine the effective letterhead first so its margins can be used as defaults.
-        letterhead_id = template.letterhead_id
-        if not letterhead_id:
-            letterhead = self.db.query(Letterhead).filter(Letterhead.is_default.is_(True)).first()
-            if letterhead:
-                letterhead_id = letterhead.id
+        # Determine the effective letterhead: explicit override > template > system default.
+        effective_letterhead_id = letterhead_id
+        if effective_letterhead_id is None:
+            effective_letterhead_id = template.letterhead_id
+        if effective_letterhead_id is None:
+            default_lh = self.db.query(Letterhead).filter(Letterhead.is_default.is_(True)).first()
+            if default_lh:
+                effective_letterhead_id = default_lh.id
 
-        letterhead = self.db.get(Letterhead, letterhead_id) if letterhead_id else None
+        letterhead = self.db.get(Letterhead, effective_letterhead_id) if effective_letterhead_id else None
         default_margins = {
             "top": float(letterhead.margin_top_mm) if letterhead else settings.pdf_default_margin_top_mm,
             "bottom": float(letterhead.margin_bottom_mm) if letterhead else settings.pdf_default_margin_bottom_mm,
@@ -362,9 +365,9 @@ class PDFService:
 
         content_pdf = self._build_pdf(flowables, body_json.get("page_size", "A4"), margins_mm)
 
-        if letterhead_id:
+        if effective_letterhead_id:
             try:
-                content_pdf = self._overlay_letterhead(content_pdf, letterhead_id)
+                content_pdf = self._overlay_letterhead(content_pdf, effective_letterhead_id)
             except Exception as exc:
                 logger.error("Letterhead overlay failed, returning content PDF: %s", exc)
 
@@ -687,8 +690,71 @@ class PDFService:
                 from reportlab.platypus import PageBreak
                 elements.append(PageBreak())
 
+            elif ftype == "summary":
+                elements.extend(self._build_summary(fdef, context, styles, language))
+
         logger.info("_render_flowables: produced %d elements from %d definitions", len(elements), len(flowable_defs))
         return elements
+
+    def _build_summary(self, fdef: dict, context: dict, styles: dict, language: str | None = None) -> list:
+        """Render a list source as a grid of bordered 'label' summary boxes."""
+        from reportlab.platypus import Table, TableStyle
+
+        source_path = fdef.get("source", "")
+        data = _resolve_value(context, source_path)
+        _ = get_translator(language)
+        if not isinstance(data, list) or not data:
+            return [Paragraph(f"<i>{_('no_data')}</i>", styles["small"])]
+
+        fields = fdef.get("fields", [])
+        columns = max(1, int(fdef.get("columns", 2)))
+        label_tables = []
+        for item in data:
+            rows = []
+            for f in fields:
+                label = f.get("label", f.get("key", ""))
+                val = _resolve_value(item, f.get("key", ""))
+                if isinstance(val, (list, tuple)):
+                    val = ", ".join(str(v) for v in val)
+                rows.append([
+                    Paragraph(f"<b>{label}</b>", styles["small"]),
+                    Paragraph(str(val if val is not None else "—"), styles["small"]),
+                ])
+            t = Table(rows, colWidths=[30 * mm, None])
+            t.setStyle(TableStyle([
+                ("BOX", (0, 0), (-1, -1), 0.75, colors.HexColor("#333333")),
+                ("INNERGRID", (0, 0), (-1, -1), 0.25, colors.HexColor("#dddddd")),
+                ("BACKGROUND", (0, 0), (0, -1), colors.HexColor("#f5f5f5")),
+                ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                ("TOPPADDING", (0, 0), (-1, -1), 2),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
+                ("LEFTPADDING", (0, 0), (-1, -1), 3),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 3),
+            ]))
+            label_tables.append(t)
+
+        page_width = A4[0]
+        available = page_width - 40 * mm
+        col_w = available / columns
+        grid = []
+        row = []
+        for i, t in enumerate(label_tables):
+            row.append(t)
+            if (i + 1) % columns == 0:
+                grid.append(row)
+                row = []
+        if row:
+            grid.append(row)
+
+        outer = Table(grid, colWidths=[col_w] * columns)
+        outer.setStyle(TableStyle([
+            ("VALIGN", (0, 0), (-1, -1), "TOP"),
+            ("LEFTPADDING", (0, 0), (-1, -1), 2),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 2),
+            ("TOPPADDING", (0, 0), (-1, -1), 2),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
+        ]))
+        return [outer]
 
     def _apply_alignment(self, flowable, align: str | None):
         """Wrap a flowable so it respects center/right alignment.
@@ -699,7 +765,18 @@ class PDFService:
         """
         if not align or str(align).lower().strip() == "left":
             return flowable
-        table = Table([[flowable]], colWidths=[A4[0] - 40 * mm], hAlign=_halign(align))
+        # An HRFlowable already honours hAlign and sizes itself to its frame
+        # (the column cell), so return it directly instead of wrapping it in a
+        # full-page-width table that would overflow a narrow column.
+        if isinstance(flowable, HRFlowable):
+            flowable.hAlign = _halign(align)
+            return flowable
+        # Use the flowable's natural width when known (e.g. a barcode Drawing)
+        # so that right/center alignment inside a narrow column does not force a
+        # full-page-width wrapper that overflows the column.
+        flowable_width = getattr(flowable, "width", None)
+        col_width = flowable_width if flowable_width else (A4[0] - 40 * mm)
+        table = Table([[flowable]], colWidths=[col_width], hAlign=_halign(align))
         table.setStyle(TableStyle([
             ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
             ("ALIGN", (0, 0), (-1, -1), str(align).upper()),
@@ -847,14 +924,15 @@ class PDFService:
 
             writer = PdfWriter()
 
+            bg_pages = bg_reader.pages
             for i, content_page in enumerate(content_reader.pages):
-                if i < len(bg_reader.pages):
-                    # Put background BEHIND content (background first, content on top)
-                    bg_page = bg_reader.pages[i]
-                    bg_page.merge_page(content_page)
-                    writer.add_page(bg_page)
-                else:
-                    writer.add_page(content_page)
+                # Repeat the letterhead background on every page (cycle through
+                # the letterhead's own pages if it has more than one). add_page
+                # clones the source page, so merging content on top does not
+                # mutate the shared background object.
+                bg_index = i % len(bg_pages)
+                bg_page = writer.add_page(bg_pages[bg_index])
+                bg_page.merge_page(content_page)
 
             out_buf = io.BytesIO()
             writer.write(out_buf)
@@ -923,6 +1001,7 @@ class PDFService:
         entity_type: str,
         entity_id: int,
         language: str | None = None,
+        letterhead_id: int | None = None,
     ) -> tuple[bytes, str, str]:
         """Generate an HTML report. Returns (content_bytes, content_type, file_extension)."""
         from app.domain.reports.models import ReportTemplate
@@ -1009,9 +1088,27 @@ class PDFService:
                         out.extend(render_flowables(col_def if isinstance(col_def, list) else []))
                         out.append('</div>')
                     out.append('</div>')
+                elif ftype == "summary":
+                    source_path = fdef.get("source", "")
+                    data = _resolve_value(context, source_path)
+                    fields = fdef.get("fields", [])
+                    cols = int(fdef.get("columns", 2))
+                    if isinstance(data, list) and fields:
+                        out.append(f'<div style="display:grid;grid-template-columns:repeat({cols},1fr);gap:8px">')
+                        for item in data:
+                            out.append('<div style="border:1px solid #333;padding:6px;font-size:11px;border-radius:4px">')
+                            for f in fields:
+                                label = f.get("label", f.get("key", ""))
+                                val = _resolve_value(item, f.get("key", ""))
+                                if isinstance(val, (list, tuple)):
+                                    val = ", ".join(map(str, val))
+                                out.append(f"<div><b>{label}:</b> {val if val is not None else '—'}</div>")
+                            out.append('</div>')
+                        out.append('</div>')
             return out
 
         parts.extend(render_flowables(flowable_defs))
+
         parts.append("</body></html>")
         html_str = "".join(parts)
         return html_str.encode("utf-8"), "text/html", "html"

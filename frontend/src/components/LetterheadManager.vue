@@ -28,6 +28,7 @@
         <q-item-section side>
           <div class="row q-gutter-xs items-center">
             <q-badge v-if="lh.is_default" color="positive" :label="t('reports.default')" />
+            <q-btn v-if="!lh.is_default" flat dense icon="star" color="amber" :aria-label="t('reports.setAsDefault')" @click="setDefault(lh)" />
             <q-btn flat dense icon="tune" color="secondary" @click="openCalibrator(lh)" />
             <q-btn flat dense icon="delete" color="negative" @click="confirmDelete(lh)" />
           </div>
@@ -152,6 +153,16 @@ function cancelUpload() {
 function openCalibrator(lh) {
   calibratorLetterhead.value = { ...lh }
   showCalibrator.value = true
+}
+
+async function setDefault(lh) {
+  try {
+    await reportsStore.updateLetterhead(lh.id, { is_default: true })
+    $q.notify({ type: 'positive', message: t('reports.defaultSet') })
+    await loadLetterheads()
+  } catch (err) {
+    $q.notify({ type: 'negative', message: err?.response?.data?.detail || t('reports.failedSave') })
+  }
 }
 
 async function saveMargins(margins) {

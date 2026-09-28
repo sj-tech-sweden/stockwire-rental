@@ -153,6 +153,24 @@
               <q-input v-if="editedBlock.type === 'barcode'" v-model="editedBlock.value" :label="t('reports.barcodeValue')" outlined dense class="q-mb-sm" hint="e.g. {{ device.barcode }}" />
               <q-select v-if="editedBlock.type === 'barcode'" v-model="editedBlock.barcode_type" :options="barcodeTypeOptions" :label="t('reports.barcodeType')" emit-value map-options outlined dense class="q-mb-sm" />
 
+              <q-input v-if="editedBlock.type === 'summary'" v-model="editedBlock.source" :label="t('reports.dataSourcePath')" outlined dense class="q-mb-sm" hint="e.g. device.case_contents_grouped" />
+              <template v-if="editedBlock.type === 'summary'">
+                <q-input v-model.number="editedBlock.columns" type="number" :label="t('reports.columnCount')" outlined dense class="q-mb-sm" />
+                <div class="text-caption text-grey-7 q-mb-xs">{{ t('reports.fields') }}</div>
+                <div v-for="(field, idx) in editedBlock.fields" :key="idx" class="row q-col-gutter-sm q-mb-sm items-center">
+                  <div class="col-5">
+                    <q-input v-model="field.label" :label="t('reports.label')" outlined dense />
+                  </div>
+                  <div class="col-5">
+                    <q-input v-model="field.key" :label="t('reports.key')" outlined dense />
+                  </div>
+                  <div class="col-2">
+                    <q-btn flat dense icon="close" color="negative" size="sm" @click="editedBlock.fields.splice(idx, 1)" />
+                  </div>
+                </div>
+                <q-btn flat dense icon="add" color="primary" :label="t('reports.addField')" @click="editedBlock.fields.push({ key: '', label: '' })" />
+              </template>
+
               <!-- Columns editor -->
               <template v-if="selectedBlock?.type === 'columns' && !selectedNestedBlock">
                 <div class="text-caption text-grey-7 q-mb-xs">{{ t('reports.columnWidths') }}</div>
@@ -368,6 +386,8 @@ const blockTypes = computed(() => [
   { type: 'spacer', label: t('reports.blockSpacer'), icon: 'space_bar' },
   { type: 'line', label: t('reports.blockLine'), icon: 'horizontal_rule' },
   { type: 'barcode', label: t('reports.blockBarcode'), icon: 'qr_code' },
+  { type: 'qr', label: t('reports.blockQr'), icon: 'qr_code_2' },
+  { type: 'summary', label: t('reports.blockSummary'), icon: 'label' },
   { type: 'page_break', label: t('reports.blockPageBreak'), icon: 'insert_page_break' },
 ])
 
@@ -406,6 +426,8 @@ const columnChildOptions = computed(() => [
   { label: t('reports.blockHeading'), value: 'heading' },
   { label: t('reports.blockParagraph'), value: 'paragraph' },
   { label: t('reports.blockBarcode'), value: 'barcode' },
+  { label: t('reports.blockQr'), value: 'qr' },
+  { label: t('reports.blockSummary'), value: 'summary' },
   { label: t('reports.blockSpacer'), value: 'spacer' },
   { label: t('reports.blockLine'), value: 'line' },
 ])
@@ -422,7 +444,8 @@ function blockPreviewText(block) {
   if (block.type === 'columns') return `${t('reports.columns')}: ${(block.widths || []).join(' / ')}`
   if (block.type === 'spacer') return `${t('reports.spacer')}: ${block.height_mm || 5}mm`
   if (block.type === 'line') return `--- ${t('reports.divider')} ---`
-  if (block.type === 'barcode') return `${t('reports.barcode')}: ${block.value || '...'}`
+  if (block.type === 'barcode') return `${block.barcode_type === 'qr' ? t('reports.qr') : t('reports.barcode')}: ${block.value || '...'}`
+  if (block.type === 'summary') return `${t('reports.summaryFrom')}: ${block.source || '...'}`
   if (block.type === 'page_break') return `--- ${t('reports.pageBreak')} ---`
   return block.type
 }
@@ -437,6 +460,7 @@ function blockTypeLabel(type) {
     spacer: t('reports.blockSpacer'),
     line: t('reports.blockLine'),
     barcode: t('reports.blockBarcode'),
+    summary: t('reports.blockSummary'),
     page_break: t('reports.blockPageBreak'),
   }
   return map[type] || type
@@ -452,6 +476,7 @@ function blockIcon(type) {
     spacer: 'space_bar',
     line: 'horizontal_rule',
     barcode: 'qr_code',
+    summary: 'label',
     page_break: 'insert_page_break',
   }
   return map[type] || 'block'
@@ -467,6 +492,8 @@ function addBlock(type) {
     spacer: { type: 'spacer', height_mm: 5 },
     line: { type: 'line', width_percent: 100, align: 'left' },
     barcode: { type: 'barcode', value: '', barcode_type: 'code128', align: 'left' },
+    qr: { type: 'barcode', value: '', barcode_type: 'qr', align: 'left' },
+    summary: { type: 'summary', source: '', columns: 2, fields: [{ key: 'name', label: t('reports.name') }] },
     page_break: { type: 'page_break' },
   }
   flowables.value.push({ ...defaults[type] })
@@ -556,6 +583,8 @@ function addColumnBlock(colIdx, type) {
     heading: { type: 'heading', text: '', level: 1, align: 'left' },
     paragraph: { type: 'paragraph', text: '', style: 'body', align: 'left' },
     barcode: { type: 'barcode', value: '', barcode_type: 'code128', align: 'left' },
+    qr: { type: 'barcode', value: '', barcode_type: 'qr', align: 'left' },
+    summary: { type: 'summary', source: '', columns: 2, fields: [{ key: 'name', label: t('reports.name') }] },
     spacer: { type: 'spacer', height_mm: 5 },
     line: { type: 'line', width_percent: 100, align: 'left' },
   }
