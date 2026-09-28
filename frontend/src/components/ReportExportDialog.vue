@@ -34,6 +34,32 @@
           outlined dense emit-value map-options
           class="q-mb-sm"
         />
+        <q-select
+          v-model="selectedLetterheadId"
+          :options="letterheadOptions"
+          :label="t('reports.letterhead')"
+          outlined dense emit-value map-options clearable
+          :disable="outputFormat === 'html'"
+          :hint="outputFormat === 'html' ? t('reports.letterheadPdfOnly') : undefined"
+          class="q-mb-xs"
+        >
+          <template #option="{ opt, itemProps }">
+            <q-item v-bind="itemProps">
+              <q-item-section>
+                <q-item-label>{{ opt.label }}</q-item-label>
+                <q-item-label v-if="opt.default" caption>{{ t('reports.default') }}</q-item-label>
+              </q-item-section>
+            </q-item>
+          </template>
+        </q-select>
+        <div class="text-caption text-grey-7 q-mb-sm">
+          <template v-if="effectiveLetterhead">
+            <q-icon name="description" size="xs" class="q-mr-xs" />{{ t('reports.usingLetterhead', { name: effectiveLetterhead.name }) }}
+          </template>
+          <template v-else>
+            {{ t('reports.noLetterheadUsed') }}
+          </template>
+        </div>
 
         <!-- Preview Section -->
         <div v-if="previewData" class="preview-section q-pa-sm q-mb-sm">
@@ -102,6 +128,7 @@ const outputFormat = ref('pdf')
 const generating = ref(false)
 const generated = ref(null)
 const previewData = ref(null)
+const selectedLetterheadId = ref(null)
 
 const templateOptions = computed(() => {
   if (!templates.value.length) return []
@@ -125,6 +152,30 @@ const formatOptions = computed(() => [
   { label: t('reports.pdf'), value: 'pdf' },
   { label: t('reports.html'), value: 'html' },
 ])
+
+const letterheadOptions = computed(() => {
+  const defaultLh = (reportsStore.letterheads || []).find(lh => lh.is_default)
+  const defaultLabel = defaultLh
+    ? `${t('reports.useSystemOrDefault')} — ${defaultLh.name}`
+    : t('reports.useSystemOrDefault')
+  const opts = [{ label: defaultLabel, value: null, default: false }]
+  for (const lh of (reportsStore.letterheads || [])) {
+    opts.push({ label: lh.name, value: lh.id, default: !!lh.is_default })
+  }
+  return opts
+})
+
+// The letterhead that will actually be used, so it's clear even when left on default.
+const effectiveLetterhead = computed(() => {
+  if (selectedLetterheadId.value) {
+    return (reportsStore.letterheads || []).find(lh => lh.id === selectedLetterheadId.value) || null
+  }
+  const tpl = selectedTemplate.value
+  if (tpl?.letterhead_id) {
+    return (reportsStore.letterheads || []).find(lh => lh.id === tpl.letterhead_id) || null
+  }
+  return (reportsStore.letterheads || []).find(lh => lh.is_default) || null
+})
 
 const selectedTemplate = computed(() => {
   return templates.value.find(tmpl => tmpl.id === selectedTemplateId.value) || null
@@ -179,8 +230,14 @@ function resolveText(text) {
 
 async function loadTemplates() {
   try {
+    // Fetch all templates; templateOptions below keeps this entity's own
+    // type plus the generic 'inventory' templates available for any entity.
     const all = await reportsStore.fetchTemplates()
     templates.value = all || []
+    // Reset selection if the previously chosen template is no longer applicable.
+    if (!templates.value.find(t => t.id === selectedTemplateId.value)) {
+      selectedTemplateId.value = templates.value[0]?.id ?? null
+    }
     if (!templates.value.length) {
       $q.notify({ type: 'warning', message: t('reports.noTemplatesFound') })
     }
@@ -214,6 +271,7 @@ async function doGenerate() {
       entity_id: Number(props.entityId),
       format: outputFormat.value,
       language: selectedLanguage.value,
+      letterhead_id: selectedLetterheadId.value ?? null,
     })
     generated.value = result
     emit('generated', result)
@@ -268,8 +326,10 @@ watch(() => props.modelValue, (open) => {
     generated.value = null
     previewData.value = null
     selectedTemplateId.value = null
+    selectedLetterheadId.value = null
     selectedLanguage.value = defaultLanguage()
     loadTemplates()
+    reportsStore.fetchLetterheads().catch(() => {})
   }
 }, { immediate: true })
 

@@ -177,6 +177,16 @@
                   :aria-label="isPhone ? 'Edit device' : void 0"
                   @click="emit('edit-device', row.id)"
                 />
+                <q-btn
+                  flat
+                  dense
+                  :round="isPhone"
+                  color="secondary"
+                  icon="picture_as_pdf"
+                  :label="isPhone ? void 0 : t('reports.generate')"
+                  :aria-label="isPhone ? t('reports.generate') : void 0"
+                  @click="openReportExport('device', row.id)"
+                />
               </div>
             </q-item-section>
           </q-item>
@@ -252,9 +262,23 @@
       </q-card-section>
 
       <q-card-actions :align="isPhone ? 'stretch' : 'right'" :class="isPhone ? 'q-pa-md bg-grey-2' : ''">
+        <q-btn
+          color="primary"
+          icon="picture_as_pdf"
+          :label="t('reports.generate')"
+          :class="isPhone ? 'full-width' : ''"
+          @click="openReportExport('product', product?.id)"
+        />
         <q-space />
         <q-btn flat :class="isPhone ? 'full-width' : ''" :label="t('app.actions.close')" @click="emit('update:modelValue', false)" />
       </q-card-actions>
+
+      <ReportExportDialog
+        v-if="reportExportId !== null"
+        v-model="reportExportOpen"
+        :entity-type="reportExportType"
+        :entity-id="reportExportId"
+      />
     </q-card>
   </q-dialog>
 
@@ -281,6 +305,7 @@ import { useProductImage } from '../composables/useProductImage'
 import EntityAttachmentsPanel from './EntityAttachmentsPanel.vue'
 import LocateDeviceMapDialog from './LocateDeviceMapDialog.vue'
 import WarehouseMap from './WarehouseMap.vue'
+import ReportExportDialog from './ReportExportDialog.vue'
 
 const props = defineProps({
   modelValue: Boolean,
@@ -344,6 +369,16 @@ function openDeviceLocate(row) {
   const zoneId = getEffectiveDeviceZoneId(row)
   deviceLocateTarget.value = { location_zone_id: zoneId, asset_tag: row.asset_tag, serial_number: row.serial_number, id: row.id }
   deviceLocateOpen.value = true
+}
+
+const reportExportOpen = ref(false)
+const reportExportId = ref(null)
+const reportExportType = ref(null)
+
+function openReportExport(entityType, entityId) {
+  reportExportType.value = entityType
+  reportExportId.value = entityId
+  reportExportOpen.value = true
 }
 
 async function locateDeviceLed(deviceId) {

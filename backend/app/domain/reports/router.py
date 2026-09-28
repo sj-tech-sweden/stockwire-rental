@@ -33,6 +33,25 @@ from app.services.pdf_service import PDFService
 
 logger = logging.getLogger(__name__)
 
+
+def _json_differs(new_value: str | None, old_value: str | None) -> bool:
+    """Compare two JSON strings by parsed content, ignoring key order/whitespace.
+
+    Returns True when the serialized structures differ (i.e. a real content
+    change), so callers can detect genuine edits regardless of how the payload
+    was re-serialized by the client.
+    """
+    if new_value is None and old_value is None:
+        return False
+    if new_value is None or old_value is None:
+        return True
+    try:
+        return json.loads(new_value) != json.loads(old_value)
+    except (ValueError, TypeError):
+        # Fall back to raw comparison if either side is not valid JSON.
+        return new_value != old_value
+
+
 router = APIRouter(prefix="/reports", tags=["reports"], dependencies=[Depends(get_current_user)])
 
 
@@ -253,14 +272,26 @@ def update_template(
     if not template:
         raise HTTPException(status_code=404, detail="Template not found")
     if template.is_builtin:
-        raise HTTPException(status_code=403, detail="Cannot modify built-in templates")
+        # Built-in templates are protected from content changes, but a few
+        # presentation settings (letterhead, enabled, names) are editable so
+        # even default templates can opt into a letterhead.
+        # Compare parsed JSON rather than raw strings so cosmetic differences
+        # (e.g. key ordering produced by the editor) don't trigger a false 403
+        # when the user only changed letterhead/enabled/name.
+        if payload.body_json is not None and _json_differs(payload.body_json, template.body_json):
+            raise HTTPException(status_code=403, detail="Cannot modify built-in template body")
+        if payload.translations_json is not None and _json_differs(payload.translations_json, template.translations_json):
+            raise HTTPException(status_code=403, detail="Cannot modify built-in template translations")
+        if payload.data_source_type is not None and payload.data_source_type != template.data_source_type:
+            raise HTTPException(status_code=403, detail="Cannot modify built-in template data source type")
     if payload.name is not None:
         template.name = payload.name.strip()
     if payload.category is not None:
         template.category = payload.category
     if payload.description is not None:
         template.description = payload.description
-    if payload.letterhead_id is not None:
+    # letterhead_id honours an explicit null (clearing) as well as a new value.
+    if "letterhead_id" in payload.model_dump(exclude_unset=True):
         template.letterhead_id = payload.letterhead_id
     if payload.body_json is not None:
         template.body_json = payload.body_json
@@ -373,6 +404,7 @@ def generate_report(
                 entity_type=payload.entity_type,
                 entity_id=payload.entity_id,
                 language=payload.language,
+                letterhead_id=payload.letterhead_id,
             )
         else:
             content_bytes = pdf_service.generate_pdf(
@@ -380,6 +412,7 @@ def generate_report(
                 entity_type=payload.entity_type,
                 entity_id=payload.entity_id,
                 language=payload.language,
+                letterhead_id=payload.letterhead_id,
             )
             content_type = "application/pdf"
             ext = "pdf"
@@ -457,6 +490,7 @@ def preview_report(
                 entity_type=payload.entity_type,
                 entity_id=payload.entity_id,
                 language=payload.language,
+                letterhead_id=payload.letterhead_id,
             )
         else:
             content_bytes = pdf_service.generate_pdf(
@@ -464,6 +498,7 @@ def preview_report(
                 entity_type=payload.entity_type,
                 entity_id=payload.entity_id,
                 language=payload.language,
+                letterhead_id=payload.letterhead_id,
             )
             content_type = "application/pdf"
             ext = "pdf"

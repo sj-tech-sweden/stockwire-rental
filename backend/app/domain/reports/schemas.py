@@ -89,6 +89,7 @@ class ReportTemplateListRead(BaseModel):
     data_source_type: str
     is_builtin: bool = False
     is_enabled: bool = True
+    letterhead_id: int | None = None
     translations_json: str | None = None
     created_at: datetime
 
@@ -104,6 +105,7 @@ class ReportGenerateRequest(BaseModel):
     entity_id: int
     format: str = "pdf"
     language: str = "en"
+    letterhead_id: int | None = None
 
     @field_validator("format")
     @classmethod
