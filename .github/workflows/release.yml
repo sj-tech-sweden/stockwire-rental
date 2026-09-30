@@ -96,7 +96,7 @@ jobs:
           fi
 
           # Categorize commits (accumulate REAL newlines via $'\n', not literal \n)
-          FEATURES=""; FIXES=""; BREAKING=""; OTHER=""
+          FEATURES=""; FIXES=""; BREAKING=""; OTHER=""; DEPS=""
           while IFS= read -r line; do
             [ -z "$line" ] && continue
             MSG="${line%%|||*}"
@@ -108,6 +108,8 @@ jobs:
               FIXES+="${entry}"$'\n'
             elif echo "$MSG" | grep -qiE '^breaking|^BREAKING'; then
               BREAKING+="${entry}"$'\n'
+            elif echo "$MSG" | grep -qiE '^Update |^Bump |^Pin |^(chore|build|fix)\(deps'; then
+              DEPS+="${entry}"$'\n'
             else
               OTHER+="${entry}"$'\n'
             fi
@@ -123,8 +125,9 @@ jobs:
             [ -n "$BREAKING" ] && printf '%s\n' "$BREAKING"
             if [ -n "$FEATURES" ]; then echo "## ✨ Features"; echo ""; printf '%s\n' "$FEATURES"; fi
             if [ -n "$FIXES" ]; then echo "## 🐛 Bug Fixes"; echo ""; printf '%s\n' "$FIXES"; fi
+            if [ -n "$DEPS" ]; then echo "## ⬆️ Dependencies"; echo ""; printf '%s\n' "$DEPS"; fi
             if [ -n "$OTHER" ]; then echo "## 📦 Other Changes"; echo ""; printf '%s\n' "$OTHER"; fi
-            if [ -z "$BREAKING$FEATURES$FIXES$OTHER" ]; then echo "No notable changes"; fi
+            if [ -z "$BREAKING$FEATURES$FIXES$DEPS$OTHER" ]; then echo "No notable changes"; fi
           } > "$NOTES_FILE"
 
           if gh release view "$TAG" >/dev/null 2>&1; then
@@ -153,7 +156,7 @@ jobs:
           COMMITS=$(gh api "repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}/commits?per_page=100" \
             --jq '.[] | "\(.commit.message | split("\n")[0])|\(.sha[0:7])"')
 
-          FEATURES=""; FIXES=""; OTHER=""
+          FEATURES=""; FIXES=""; OTHER=""; DEPS=""
           while IFS='|' read -r msg sha; do
             [ -z "$msg" ] && continue
             entry="- ${msg} (\`${sha}\`)"
@@ -161,6 +164,8 @@ jobs:
               FEATURES+="${entry}"$'\n'
             elif [[ "$msg" =~ ^fix ]]; then
               FIXES+="${entry}"$'\n'
+            elif echo "$msg" | grep -qiE '^Update |^Bump |^Pin |^(chore|build|fix)\(deps'; then
+              DEPS+="${entry}"$'\n'
             else
               OTHER+="${entry}"$'\n'
             fi
@@ -169,8 +174,9 @@ jobs:
           BODY="## Release Notes for v${{ github.event.pull_request.number }}"$'\n'
           [ -n "$FEATURES" ] && BODY+=$'\n'"### ✨ Features"$'\n'"${FEATURES}"
           [ -n "$FIXES" ] && BODY+=$'\n'"### 🐛 Bug Fixes"$'\n'"${FIXES}"
+          [ -n "$DEPS" ] && BODY+=$'\n'"### ⬆️ Dependencies"$'\n'"${DEPS}"
           [ -n "$OTHER" ] && BODY+=$'\n'"### 📦 Other Changes"$'\n'"${OTHER}"
-          if [ -z "$FEATURES$FIXES$OTHER" ]; then BODY+=$'\n'"No conventional commits found."; fi
+          if [ -z "$FEATURES$FIXES$DEPS$OTHER" ]; then BODY+=$'\n'"No conventional commits found."; fi
           BODY+=$'\n'$'\n'"**Merged:** ${{ github.event.pull_request.merged_at }}"$'\n'"**Commits:** $(echo "$COMMITS" | grep -c .)"
 
           EXISTING=$(gh api "repos/${GITHUB_REPOSITORY}/issues/${PR_NUMBER}/comments" \
