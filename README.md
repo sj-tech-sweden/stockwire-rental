@@ -31,12 +31,6 @@ Already delivered in baseline:
 - **Metrics** - Prometheus metrics, Grafana dashboards
 - **Realtime** - WebSocket hub for live updates
 
-## Why This Repo Exists
-
-This repository consolidates the current RentalCore and WarehouseCore capabilities into one product and one API surface while preserving modular domain boundaries.
-
-Execution is prioritized from WarehouseCore open issues while keeping a consistent branded UI system (green cable motif, dark canvas, high-contrast utility UI).
-
 ## Repository Goals
 
 - Single source of truth for jobs, inventory, scans, finance, and analytics
