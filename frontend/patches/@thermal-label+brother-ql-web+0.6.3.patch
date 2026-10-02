@@ -1,0 +1,13 @@
+diff --git a/node_modules/@thermal-label/brother-ql-web/dist/printer.js b/node_modules/@thermal-label/brother-ql-web/dist/printer.js
+index d29bb30..f7291b6 100644
+--- a/node_modules/@thermal-label/brother-ql-web/dist/printer.js
++++ b/node_modules/@thermal-label/brother-ql-web/dist/printer.js
+@@ -86,7 +86,7 @@ export class WebBrotherQLPrinter {
+         // each row small enough to ride the firmware's buffer comfortably
+         // and matches the encoding the Brother driver itself emits.
+         const pageOptions = {
+-            compress: true,
++            compress: options?.compress ?? true,
+             ...(options?.highRes === true ? { highResolution: true } : {}),
+         };
+         let page;

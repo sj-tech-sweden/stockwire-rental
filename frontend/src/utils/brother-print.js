@@ -7,7 +7,11 @@
  */
 
 import { requestPrinter } from '@thermal-label/brother-ql-web'
-import { findMedia } from '@thermal-label/brother-ql-core'
+import {
+  DEFAULT_MEDIA,
+  findMediaByDimensions,
+  findMediaByWidth,
+} from '@thermal-label/brother-ql-core'
 
 /** Known Brother USB vendor ID */
 const BROTHER_VENDOR_ID = 0x04f9
@@ -50,9 +54,23 @@ export async function connectPrinter() {
     filters: [{ vendorId: BROTHER_VENDOR_ID }],
   })
 
+  // Debug hook: log the first bytes of every USB write so we can verify the
+  // exact command stream the printer receives (e.g. confirm the raster/compression
+  // commands carry the `1B 69` ESC prefix). Remove once printing is confirmed working.
+  if (connectedPrinter?.transport?.write) {
+    const origWrite = connectedPrinter.transport.write.bind(connectedPrinter.transport)
+    connectedPrinter.transport.write = (bytes) => {
+      const head = Array.from(bytes instanceof Uint8Array ? bytes.slice(0, 48) : bytes).map(
+        (b) => (b & 0xff).toString(16).padStart(2, '0'),
+      ).join(' ')
+      console.log(`[brother-print] → ${bytes.length} bytes | ${head}`)
+      return origWrite(bytes)
+    }
+  }
+
   try {
     const status = await connectedPrinter.getStatus()
-    currentMedia = status.media
+    currentMedia = status.detectedMedia || null
   } catch {
     // Status read may fail on some models — continue without media info
   }
@@ -89,15 +107,31 @@ export function getPrinter() {
 
 /**
  * Get the detected media (label roll/tape) info.
- * @returns {{ width: number, type: string, name: string, length: number }|null}
+ * @returns {{ widthMm: number, heightMm: number, type: string, name: string }|null}
  */
 export function getDetectedMedia() {
   if (!currentMedia) return null
   return {
-    width: currentMedia.width || 0,
+    widthMm: currentMedia.widthMm || 0,
+    heightMm: currentMedia.heightMm ?? currentMedia.length ?? 0,
     type: currentMedia.type || 'unknown',
     name: currentMedia.name || '',
-    length: currentMedia.length || 0,
+  }
+}
+
+/**
+ * Re-read the printer status and refresh the detected media info.
+ * Useful when the user has loaded a new roll since connecting.
+ * @returns {Promise<{ widthMm: number, heightMm: number, type: string, name: string }|null>}
+ */
+export async function readDetectedMedia() {
+  if (!connectedPrinter) return null
+  try {
+    const status = await connectedPrinter.getStatus()
+    currentMedia = status.detectedMedia || null
+    return getDetectedMedia()
+  } catch {
+    return null
   }
 }
 
@@ -131,15 +165,7 @@ export async function getPrinterStatus() {
 
 /**
  * Find the best matching media descriptor for a given width in mm.
- * @param {number} widthMm - Label width in millimeters
- * @returns {object|null}
- */
-export function findMediaByWidth(widthMm) {
-  return findMedia(widthMm) || null
-}
-
-/**
- * Common Brother label media presets.
+  * Common Brother label media presets.
  */
 export const LABEL_PRESETS = [
   { id: 'dk-62x100', name: 'DK-22205 (62×100mm)', widthMm: 62, heightMm: 100, family: 'ql' },
@@ -154,32 +180,71 @@ export const LABEL_PRESETS = [
 
 /**
  * Render a canvas element to raw image data for the printer.
- * Converts to 1-bit black and white using a grayscale threshold.
+ *
+ * Returns the canvas RGBA pixels as `data` — the underlying renderer
+ * (`@mbtech-nl/bitmap`) dithers to 1-bit internally, so we must pass the
+ * raw RGBA buffer, not a pre-thresholded array.
  *
  * @param {HTMLCanvasElement} canvas - The label canvas
- * @returns {RawImageData}
+ * @returns {{ data: Uint8Array, width: number, height: number }}
  */
 export function canvasToRawImage(canvas) {
   const ctx = canvas.getContext('2d')
   if (!ctx) throw new Error('Could not get canvas 2d context')
   const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
-  const { data, width, height } = imageData
+  return { data: imageData.data, width: canvas.width, height: canvas.height }
+}
 
-  const pixels = new Uint8Array(width * height)
-  for (let i = 0; i < width * height; i++) {
-    const r = data[i * 4]
-    const g = data[i * 4 + 1]
-    const b = data[i * 4 + 2]
-    const a = data[i * 4 + 3]
-    if (a === 0) {
-      pixels[i] = 255
+/**
+ * Resolve a valid BrotherQLMedia descriptor for a print job.
+ *
+ * Prefers an explicitly supplied media, then matches the requested label
+ * dimensions against the media registry, then falls back to the media
+ * detected from the printer, and finally to the library default (62 mm
+ * continuous). This guarantees the printer always receives a well-formed
+ * media descriptor — passing `undefined` here makes the encoder throw.
+ *
+ * @param {object} [options]
+ * @param {object} [options.media] - Explicit BrotherQLMedia descriptor
+ * @param {number} [options.widthMm] - Label width in mm
+ * @param {number} [options.heightMm] - Label height in mm (0 = continuous)
+ * @returns {object} BrotherQLMedia descriptor
+ */
+export function resolvePrintMedia(options = {}) {
+  let media
+  if (options.media) media = options.media
+  else if (options.widthMm) {
+    if (options.heightMm) {
+      media = findMediaByDimensions(options.widthMm, options.heightMm)
     } else {
-      const gray = 0.299 * r + 0.587 * g + 0.114 * b
-      pixels[i] = gray < 128 ? 0 : 255
+      const candidates = findMediaByWidth(options.widthMm)
+      media = candidates.find((m) => m.type === 'continuous') || candidates[0]
     }
   }
+  if (!media) media = currentMedia || DEFAULT_MEDIA
 
-  return { pixels, width, height }
+  // The Brother raster protocol requires every raster line to span the full
+  // print head (`headDots`). Some die-cut descriptors (e.g. DK-11218) report
+  // margins that do not sum to the head width, so the encoder emits rows
+  // narrower than the head and the printer rejects them (a "System error" /
+  // transmission error). Re-align the printable window within the head,
+  // centred, so the transmitted row width always matches the physical head
+  // (e.g. 413 printable dots centred in a 720-dot QL-560 head).
+  const engine = connectedPrinter?.device?.engines?.[0]
+  const headDots = engine?.headDots || engine?.config?.headDots
+  if (media && headDots && media.type === 'die-cut') {
+    const total = (media.leftMarginPins || 0) + media.printableDots + (media.rightMarginPins || 0)
+    if (total !== headDots && media.printableDots <= headDots) {
+      const leftMargin = Math.floor((headDots - media.printableDots) / 2)
+      const rightMargin = headDots - media.printableDots - leftMargin
+      media = {
+        ...media,
+        leftMarginPins: leftMargin,
+        rightMarginPins: rightMargin,
+      }
+    }
+  }
+  return media
 }
 
 /**
@@ -189,18 +254,24 @@ export function canvasToRawImage(canvas) {
  * @param {object} options
  * @param {boolean} options.cut - Cut after each label (default: true)
  * @param {number} options.copies - Number of copies (default: 1)
+ * @param {number} [options.widthMm] - Label width in mm (for media match)
+ * @param {number} [options.heightMm] - Label height in mm (0 = continuous)
+ * @param {object} [options.media] - Explicit media descriptor
  * @returns {Promise<void>}
  */
 export async function printCanvas(canvas, options = {}) {
   if (!connectedPrinter) throw new Error('No printer connected')
   if (!connectedPrinter.connected) throw new Error('Printer is not connected')
 
-  const { cut = true, copies = 1 } = options
+  const { cut = true, copies = 1, widthMm, heightMm, media } = options
   const rawImage = canvasToRawImage(canvas)
+  const resolvedMedia = resolvePrintMedia({ media, widthMm, heightMm })
 
   for (let i = 0; i < copies; i++) {
-    await connectedPrinter.print(rawImage, currentMedia, {
-      cut,
+    await connectedPrinter.print(rawImage, resolvedMedia, {
+      autoCut: cut,
+      cutAtEnd: cut,
+      compress: connectedPrinter?.device?.engines?.[0]?.capabilities?.compression === true,
     })
   }
 }
@@ -211,18 +282,25 @@ export async function printCanvas(canvas, options = {}) {
  * @param {HTMLCanvasElement[]} canvases - Array of label canvases
  * @param {object} options
  * @param {boolean} options.cut - Cut between labels (default: true)
+ * @param {number} [options.widthMm] - Label width in mm (for media match)
+ * @param {number} [options.heightMm] - Label height in mm (0 = continuous)
+ * @param {object} [options.media] - Explicit media descriptor
  * @returns {Promise<void>}
  */
 export async function printMultipleLabels(canvases, options = {}) {
   if (!connectedPrinter) throw new Error('No printer connected')
   if (!connectedPrinter.connected) throw new Error('Printer is not connected')
 
-  const { cut = true } = options
+  const { cut = true, widthMm, heightMm, media, rotate } = options
+  const resolvedMedia = resolvePrintMedia({ media, widthMm, heightMm })
 
   for (let i = 0; i < canvases.length; i++) {
     const rawImage = canvasToRawImage(canvases[i])
-    await connectedPrinter.print(rawImage, currentMedia, {
-      cut: cut && i < canvases.length - 1,
+    await connectedPrinter.print(rawImage, resolvedMedia, {
+      autoCut: cut,
+      cutAtEnd: cut,
+      rotate,
+      compress: connectedPrinter?.device?.engines?.[0]?.capabilities?.compression === true,
     })
   }
 }

@@ -1,0 +1,93 @@
+diff --git a/node_modules/@thermal-label/brother-ql-core/dist/protocol.js b/node_modules/@thermal-label/brother-ql-core/dist/protocol.js
+index ea6121c..3d9f96f 100644
+--- a/node_modules/@thermal-label/brother-ql-core/dist/protocol.js
++++ b/node_modules/@thermal-label/brother-ql-core/dist/protocol.js
+@@ -17,12 +17,14 @@ export function buildStatusNotification(enabled) {
+     return new Uint8Array([0x1b, 0x69, 0x21, enabled ? 0x01 : 0x00]);
+ }
+ export function buildPrintInfo(media, rowCount, pageIndex) {
+-    const mediaType = media.type === 'continuous' ? 0x0a : 0x0b;
+-    // 0xCE is what Python brother_ql uses for QL-820NWB (two-color capable model) regardless of
+-    // whether the job uses two colors. Single-color models (QL-700 etc.) use 0x8E instead.
+-    // We always use 0xCE here; callers can override per-device if needed.
+-    const validFlags = 0xce;
+-    const buf = new Uint8Array(13);
++  const mediaType = media.type === 'continuous' ? 0x0a : 0x0b;
++  // 0xCE is what Python brother_ql uses for two-color capable models (QL-820NWB),
++  // but single-color models (QL-560/700 etc.) require 0x8E. Sending 0xCE to a
++  // single-color printer sets the two-color flag it cannot honour and the printer
++  // aborts the job with a generic "System error". Select the flag by the media:
++  // two-color media (palette defined) uses 0xCE, everything else uses 0x8E.
++  const validFlags = media.palette ? 0xce : 0x8e;
++  const buf = new Uint8Array(13);
+     buf[0] = 0x1b;
+     buf[1] = 0x69;
+     buf[2] = 0x7a;
+@@ -39,8 +41,10 @@ export function buildPrintInfo(media, rowCount, pageIndex) {
+     buf[12] = 0x00;
+     return buf;
+ }
+-export function buildVariousMode(autoCut) {
+-    return new Uint8Array([0x1b, 0x69, 0x4d, autoCut ? 0x40 : 0x00]);
++export function buildVariousMode(autoCut, compress = false) {
++  let flags = autoCut ? 0x40 : 0x00
++  if (compress) flags |= 0x02
++  return new Uint8Array([0x1b, 0x69, 0x4d, flags]);
+ }
+ export function buildExpandedMode(cutAtEnd, highRes, twoColor = false, highResFlagBit = 0x10) {
+     let flags = 0x00;
+@@ -59,24 +63,24 @@ export function buildMargin(dots) {
+     return new Uint8Array([0x1b, 0x69, 0x64, dots & 0xff, (dots >> 8) & 0xff]);
+ }
+ export function buildCompression(enabled) {
+-    return new Uint8Array([0x4d, enabled ? 0x02 : 0x00]);
++  return new Uint8Array([0x1b, 0x69, 0x4d, enabled ? 0x02 : 0x00]);
+ }
+-// Single-color: [0x67][0x00][len][data]
+-// Two-color black: [0x77][0x01][len][data]  — interleaved per-row with red
+-// Two-color red:   [0x77][0x02][len][data]
++// Brother raster graphics transmission requires the `ESC i` prefix and a
++// 2-byte little-endian line length. Single-color: [1B 69 67][00][lenLo lenHi][data]
++// Two-color black: [1B 69 77][01][len][data] — interleaved per-row with red
++// Two-color red:   [1B 69 77][02][len][data]
+ export function buildRasterRow(rowBytes, color, twoColor = false) {
+-    const buf = new Uint8Array(3 + rowBytes.length);
+-    if (twoColor) {
+-        buf[0] = 0x77;
+-        buf[1] = color === 'black' ? 0x01 : 0x02;
+-    }
+-    else {
+-        buf[0] = 0x67;
+-        buf[1] = 0x00;
+-    }
+-    buf[2] = rowBytes.length;
+-    buf.set(rowBytes, 3);
+-    return buf;
++  const cmd = twoColor ? 0x77 : 0x67
++  const sub = twoColor ? (color === 'red' ? 0x02 : 0x01) : 0x00
++  const buf = new Uint8Array(6 + rowBytes.length);
++  buf[0] = 0x1b
++  buf[1] = 0x69
++  buf[2] = cmd
++  buf[3] = sub
++  buf[4] = rowBytes.length & 0xff
++  buf[5] = (rowBytes.length >> 8) & 0xff
++  buf.set(rowBytes, 6)
++  return buf
+ }
+ export function buildZeroRow() {
+     return new Uint8Array([0x5a]);
+@@ -235,12 +239,10 @@ function encodeRasterJob(pages, options, ctx) {
+         chunks.push(buildRasterMode());
+         chunks.push(buildStatusRequest());
+         chunks.push(buildPrintInfo(media, rowCount, i));
+-        chunks.push(buildVariousMode(autoCut));
++        chunks.push(buildVariousMode(autoCut, compress));
+         chunks.push(buildCutEach(1));
+         chunks.push(buildExpandedMode(cutAtEnd, highRes, twoColor, config.highResFlagBit));
+         chunks.push(buildMargin(marginDots));
+-        if (compress)
+-            chunks.push(buildCompression(true));
+         // Each raster row must cover the full print head width (derived from media geometry).
+         // leftMarginPins + printableDots + rightMarginPins = head pin count (720 / 1296 / 128 / 560).
+         const geometry = resolveEncoderGeometry(media, engine);
