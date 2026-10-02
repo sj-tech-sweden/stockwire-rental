@@ -23,11 +23,66 @@
       <div class="col-auto">
         <q-btn :color="newTemplateButtonColor" :text-color="newTemplateButtonTextColor" icon="add" :label="t('labels.new')" unelevated @click="resetTemplate" />
       </div>
+      <div class="col-auto">
+        <q-btn color="secondary" icon="auto_awesome" :label="t('labels.loadPreset')" unelevated @click="presetDialogOpen = true" />
+      </div>
       <div class="col-auto" v-if="selectedTemplateId && canEditSelectedTemplate">
         <q-btn color="negative" icon="delete" :label="t('labels.delete')" flat @click="deleteTemplate" />
       </div>
       <div class="col-auto">
         <q-btn color="positive" icon="print" :label="t('labels.print')" unelevated :disable="!selectedRows.length" @click="printLabels" />
+      </div>
+      <div class="col-auto">
+        <q-btn
+          v-if="webUSBSupported"
+          :color="printerConnected ? 'positive' : 'secondary'"
+          :icon="printerConnected ? 'usb' : 'link'"
+          :label="printerConnected ? t('labels.brotherConnected') : t('labels.brotherConnect')"
+          unelevated
+          :loading="connectingPrinter"
+          @click="togglePrinterConnection"
+        />
+      </div>
+      <div class="col-auto" v-if="printerConnected">
+        <q-btn
+          color="positive"
+          icon="printer"
+          :label="t('labels.directPrint')"
+          unelevated
+          :disable="!selectedRows.length"
+          :loading="directPrinting"
+          @click="directPrintLabels"
+        />
+      </div>
+      <div class="col-auto" v-if="printerConnected">
+        <q-toggle
+          v-model="cutLabels"
+          :label="t('labels.cutLabels')"
+          dense
+        >
+          <q-tooltip>{{ t('labels.cutInfo') }}</q-tooltip>
+        </q-toggle>
+      </div>
+      <div class="col-auto" v-if="printerConnected">
+        <q-btn
+          flat
+          icon="straighten"
+          :label="t('labels.loadPrinterMedia')"
+          @click="loadPrinterMedia"
+        />
+      </div>
+      <div class="col-auto" v-if="printerConnected">
+        <q-btn
+          flat
+          icon="build"
+          :label="t('labels.diagnosePrinter')"
+          @click="diagnosePrinter"
+        />
+      </div>
+      <div class="col-auto self-center" v-if="printerConnected && detectedMedia && detectedMedia.widthMm">
+        <span class="text-caption text-grey-7">
+          {{ t('labels.detectedMedia', { width: detectedMedia.widthMm, length: detectedMedia.heightMm, name: detectedMedia.name }) }}
+        </span>
       </div>
     </div>
 
@@ -115,6 +170,7 @@
             <div class="col-auto"><q-input v-model.number="customCanvasMm.width" type="number" min="10" step="0.1" label="W mm" dense outlined style="width: 86px" /></div>
             <div class="col-auto"><q-input v-model.number="customCanvasMm.height" type="number" min="10" step="0.1" label="H mm" dense outlined style="width: 86px" /></div>
             <div class="col-auto"><q-btn flat dense icon="crop_free" :label="t('labels.applyMm')" @click="applyCanvasFromCustomMm" /></div>
+            <div class="col-auto"><q-toggle v-model="wideLabel" :label="t('labels.wideLabel')" dense /></div>
             <div class="col-auto text-caption text-grey-7">{{ t('labels.editorHintArrows') }}</div>
             <div class="col-auto text-caption text-grey-7">{{ t('labels.editorPixels') }}</div>
           </q-card-section>
@@ -217,6 +273,29 @@
         </q-card>
       </div>
     </div>
+
+    <q-dialog v-model="presetDialogOpen" persistent>
+      <q-card style="min-width: 400px" class="ec-card">
+        <q-card-section>
+          <div class="text-h6">{{ t('labels.loadPreset') }}</div>
+        </q-card-section>
+        <q-card-section class="q-pt-none">
+          <q-select
+            v-model="selectedPresetKey"
+            :options="presetOptions"
+            :label="t('labels.selectPreset')"
+            outlined
+            dense
+            emit-value
+            map-options
+          />
+        </q-card-section>
+        <q-card-actions align="right">
+          <q-btn flat :label="t('app.actions.cancel')" @click="presetDialogOpen = false" />
+          <q-btn color="primary" unelevated :label="t('app.actions.load')" :disable="!selectedPresetKey" @click="loadPresetTemplate(selectedPresetKey)" />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
   </q-page>
 </template>
 
@@ -232,6 +311,17 @@ import { useInventoryStore } from '../stores/inventory'
 import { useSettingsStore } from '../stores/settings'
 import { useAuthStore } from '../stores/auth'
 import { getApiBaseUrl } from '../utils/runtime-config'
+import {
+  isWebUSBSupported,
+  connectPrinter,
+  disconnectPrinter,
+  getPrinter,
+  getDetectedMedia,
+  readDetectedMedia,
+  resolvePrintMedia,
+  getPrinterStatus,
+  printMultipleLabels,
+} from '../utils/brother-print'
 
 const inventoryStore = useInventoryStore()
 const settingsStore = useSettingsStore()
@@ -247,6 +337,7 @@ const BROTHER_QL560_HINT = computed(() => t('labels.brotherHint'))
 
 const PRINT_PRESETS = {
   '62x29': { key: '62x29', mode: 'single', labelW: 62, labelH: 29 },
+  '62x100': { key: '62x100', mode: 'single', labelW: 62, labelH: 100 },
   '50x25': { key: '50x25', mode: 'single', labelW: 50, labelH: 25 },
   'a4-3x8': {
     key: 'a4-3x8',
@@ -265,10 +356,20 @@ const PRINT_PRESETS = {
   },
 }
 
-const PRINTER_PROFILES = {
-  auto: { key: 'auto' },
-  brother_ql560: { key: 'brother_ql560' },
-}
+ const PRINTER_PROFILES = {
+   auto: { key: 'auto' },
+   brother_ql560: { key: 'brother_ql560' },
+ }
+
+ /**
+  * Resolve a print preset by key, including the size detected from the
+  * printer (which is only known at runtime and added dynamically).
+  * Falls back to the 62×29 default if the key is unknown.
+  */
+ function getPreset(key) {
+   if (printerPreset.value && printerPreset.value.key === key) return printerPreset.value
+   return PRINT_PRESETS[key] || PRINT_PRESETS['62x29']
+ }
 
 const canvasRef = ref(null)
 const entityType = ref('device')
@@ -295,11 +396,33 @@ const customCanvasMm = ref({ width: 62, height: 29 })
 const qrcodePreviewById = ref({})
 const barcodePreviewById = ref({})
 
-const printPresetOptions = computed(() => [
-  { label: t('labels.preset62x29'), value: '62x29' },
-  { label: t('labels.preset50x25'), value: '50x25' },
-  { label: t('labels.presetA43x8'), value: 'a4-3x8' },
-])
+const webUSBSupported = isWebUSBSupported()
+const printerConnected = ref(false)
+const connectingPrinter = ref(false)
+const directPrinting = ref(false)
+const cutLabels = ref(true)
+const detectedMedia = ref(null)
+const printerPreset = ref(null)
+const wideLabel = ref(false)
+
+const printPresetOptions = computed(() => {
+  const options = [
+    { label: t('labels.preset62x29'), value: '62x29' },
+    { label: t('labels.preset62x100'), value: '62x100' },
+    { label: t('labels.preset50x25'), value: '50x25' },
+    { label: t('labels.presetA43x8'), value: 'a4-3x8' },
+  ]
+  if (printerPreset.value) {
+    options.push({
+      label: t('labels.printerPreset', {
+        width: printerPreset.value.labelW,
+        length: printerPreset.value.labelH,
+      }),
+      value: printerPreset.value.key,
+    })
+  }
+  return options
+})
 const printerProfileOptions = computed(() => [
   { label: t('labels.printerAuto'), value: 'auto' },
   { label: t('labels.printerBrotherQl560'), value: 'brother_ql560' },
@@ -422,6 +545,103 @@ function resetTemplate() {
   canvas.value = { width: 420, height: 280 }
 }
 
+const PRESET_TEMPLATES = {
+  device_simple: {
+    name: 'Device — Simple',
+    entity_type: 'device',
+    print_preset: '62x29',
+    canvas: { width: 732, height: 343 },
+    elements: [
+      { kind: 'field', source: 'asset_tag', x: 5, y: 5, w: 90, h: 12, fontSize: 14 },
+      { kind: 'barcode', source: 'asset_tag', x: 5, y: 22, w: 90, h: 20 },
+      { kind: 'field', source: 'product_name', x: 5, y: 48, w: 90, h: 8, fontSize: 8 },
+    ],
+  },
+  device_detailed: {
+    name: 'Device — Detailed',
+    entity_type: 'device',
+    print_preset: '62x100',
+    canvas: { width: 732, height: 1181 },
+    elements: [
+      { kind: 'field', source: 'asset_tag', x: 5, y: 5, w: 90, h: 12, fontSize: 16 },
+      { kind: 'barcode', source: 'asset_tag', x: 5, y: 22, w: 90, h: 25 },
+      { kind: 'field', source: 'product_name', x: 5, y: 52, w: 90, h: 10, fontSize: 10 },
+      { kind: 'field', source: 'serial_number', x: 5, y: 65, w: 90, h: 8, fontSize: 8 },
+      { kind: 'field', source: 'location_name', x: 5, y: 78, w: 90, h: 8, fontSize: 8 },
+      { kind: 'logo', source: 'logo_default', x: 5, y: 92, w: 25, h: 8 },
+    ],
+  },
+  product_simple: {
+    name: 'Product — Simple',
+    entity_type: 'product',
+    print_preset: '62x29',
+    canvas: { width: 732, height: 343 },
+    elements: [
+      { kind: 'field', source: 'name', x: 5, y: 5, w: 90, h: 12, fontSize: 12 },
+      { kind: 'barcode', source: 'sku', x: 5, y: 22, w: 90, h: 20 },
+      { kind: 'field', source: 'sku', x: 5, y: 48, w: 90, h: 8, fontSize: 8 },
+    ],
+  },
+  product_pricing: {
+    name: 'Product — With Pricing',
+    entity_type: 'product',
+    print_preset: '62x100',
+    canvas: { width: 732, height: 1181 },
+    elements: [
+      { kind: 'field', source: 'name', x: 5, y: 5, w: 90, h: 14, fontSize: 14 },
+      { kind: 'barcode', source: 'sku', x: 5, y: 24, w: 90, h: 25 },
+      { kind: 'field', source: 'sku', x: 5, y: 54, w: 90, h: 8, fontSize: 8 },
+      { kind: 'field', source: 'category', x: 5, y: 68, w: 90, h: 8, fontSize: 8 },
+      { kind: 'field', source: 'daily_rate', x: 5, y: 82, w: 45, h: 10, fontSize: 12 },
+      { kind: 'field', source: 'replace_cost', x: 50, y: 82, w: 45, h: 10, fontSize: 10 },
+    ],
+  },
+  location_simple: {
+    name: 'Location — Simple',
+    entity_type: 'location',
+    print_preset: '62x29',
+    canvas: { width: 732, height: 343 },
+    elements: [
+      { kind: 'field', source: 'name', x: 5, y: 5, w: 90, h: 14, fontSize: 16 },
+      { kind: 'barcode', source: 'code', x: 5, y: 24, w: 90, h: 20 },
+    ],
+  },
+  location_detailed: {
+    name: 'Location — With Zone',
+    entity_type: 'location',
+    print_preset: '62x100',
+    canvas: { width: 732, height: 1181 },
+    elements: [
+      { kind: 'field', source: 'name', x: 5, y: 5, w: 90, h: 14, fontSize: 16 },
+      { kind: 'barcode', source: 'code', x: 5, y: 24, w: 90, h: 25 },
+      { kind: 'field', source: 'code', x: 5, y: 54, w: 90, h: 10, fontSize: 10 },
+      { kind: 'field', source: 'zone_name', x: 5, y: 70, w: 90, h: 10, fontSize: 10 },
+    ],
+  },
+}
+
+const presetDialogOpen = ref(false)
+const selectedPresetKey = ref(null)
+const presetOptions = computed(() =>
+  Object.entries(PRESET_TEMPLATES).map(([key, tpl]) => ({
+    label: tpl.name,
+    value: key,
+  }))
+)
+
+function loadPresetTemplate(presetKey) {
+  const preset = PRESET_TEMPLATES[presetKey]
+  if (!preset) return
+  selectedTemplateId.value = null
+  templateName.value = preset.name
+  entityType.value = preset.entity_type
+  printPreset.value = preset.print_preset
+  canvas.value = { ...preset.canvas }
+  templateElements.value = preset.elements.map(el => normalizeElement({ ...el }))
+  selectedElementId.value = templateElements.value[0]?.id || null
+  presetDialogOpen.value = false
+}
+
 function loadTemplate(templateId) {
   const selected = (settingsStore.labelTemplates || []).find(item => item.id === templateId)
   if (!selected) return
@@ -508,10 +728,22 @@ function applyCanvasSizeMm(widthMm, heightMm) {
   }
 }
 
-function applyCanvasFromPreset() {
-  const preset = PRINT_PRESETS[printPreset.value] || PRINT_PRESETS['62x29']
-  applyCanvasSizeMm(preset.labelW, preset.labelH)
-}
+ /**
+  * Return the label dimensions for the current orientation. When `wideLabel`
+  * is on, the width/height are swapped so the design area (and the printed
+  * label) is landscape instead of portrait.
+  */
+ function orientedDims(labelW, labelH) {
+   return wideLabel.value
+     ? { w: Number(labelH || 0), h: Number(labelW || 0) }
+     : { w: Number(labelW || 0), h: Number(labelH || 0) }
+ }
+
+ function applyCanvasFromPreset() {
+   const preset = getPreset(printPreset.value)
+   const { w, h } = orientedDims(preset.labelW, preset.labelH)
+   applyCanvasSizeMm(w, h)
+ }
 
 function applyCanvasFromCustomMm() {
   applyCanvasSizeMm(customCanvasMm.value.width, customCanvasMm.value.height)
@@ -1083,7 +1315,7 @@ function chunk(items, size) {
 
 async function printLabels() {
   if (!selectedRows.value.length || !templateElements.value.length) return
-  const preset = PRINT_PRESETS[printPreset.value] || PRINT_PRESETS['62x29']
+  const preset = getPreset(printPreset.value)
   const profile = PRINTER_PROFILES[printerProfile.value] || PRINTER_PROFILES.auto
   const popup = window.open('', '_blank', 'width=1200,height=900')
   if (!popup) {
@@ -1153,6 +1385,252 @@ async function printLabels() {
   popup.print()
 }
 
+async function togglePrinterConnection() {
+  if (printerConnected.value) {
+    await disconnectPrinter()
+    printerConnected.value = false
+    $q.notify({ type: 'info', message: t('labels.brotherDisconnected') })
+    return
+  }
+  connectingPrinter.value = true
+  try {
+    await connectPrinter()
+    printerConnected.value = true
+    detectedMedia.value = getDetectedMedia()
+    $q.notify({ type: 'positive', message: t('labels.brotherConnected') })
+  } catch (err) {
+    if (err?.name !== 'NotFoundError') {
+      $q.notify({ type: 'negative', message: t('labels.brotherConnectFailed') })
+    }
+  } finally {
+    connectingPrinter.value = false
+  }
+}
+
+async function loadPrinterMedia() {
+  try {
+    const media = await readDetectedMedia()
+    if (media && media.widthMm) {
+      detectedMedia.value = media
+      // Prefer an existing preset that already matches the detected size;
+      // otherwise register the detected size as a dynamic preset option so
+      // the label can be resized to match the printer media.
+      const match = Object.values(PRINT_PRESETS).find(
+        (p) => p.labelW === media.widthMm && (media.heightMm === 0 || p.labelH === media.heightMm),
+      )
+      if (match) {
+        printerPreset.value = null
+        printPreset.value = match.key
+      } else {
+        const labelH = media.heightMm || customCanvasMm.value.height || 29
+        printerPreset.value = {
+          key: `printer-${media.widthMm}x${media.heightMm || 'cont'}`,
+          mode: 'single',
+          labelW: media.widthMm,
+          labelH,
+        }
+        printPreset.value = printerPreset.value.key
+        // Resize the design canvas so the label matches the printer media,
+        // honouring the current portrait/wide orientation.
+        const { w, h } = orientedDims(printerPreset.value.labelW, printerPreset.value.labelH)
+        applyCanvasSizeMm(w, h)
+      }
+      $q.notify({
+        type: 'positive',
+        message: t('labels.mediaLoadedFromPrinter', { width: media.widthMm, length: media.heightMm }),
+      })
+    } else {
+      $q.notify({ type: 'warning', message: t('labels.noMediaDetected') })
+    }
+  } catch (err) {
+    $q.notify({ type: 'negative', message: t('labels.directPrintFailed') + ': ' + (err?.message || err) })
+  }
+}
+
+async function diagnosePrinter() {
+  const printer = getPrinter()
+  if (!printer?.connected) {
+    $q.notify({ type: 'warning', message: t('labels.brotherNotConnected') })
+    return
+  }
+  try {
+    const status = await getPrinterStatus()
+    const printer = getPrinter()
+    const lines = []
+    if (printer?.model) lines.push(`Model: ${printer.model}`)
+    lines.push(status?.ready ? t('labels.printerReady') : t('labels.printerNotReady'))
+    lines.push(status?.mediaLoaded ? t('labels.printerMediaLoaded') : t('labels.printerMediaNotLoaded'))
+    const errs = status?.errors || []
+    if (errs.length) {
+      lines.push(
+        `${t('labels.printerStatusErrors')}: ${errs.map((e) => `${e.message} [${e.code}]`).join(', ')}`,
+      )
+    } else {
+      lines.push(t('labels.printerNoErrors'))
+    }
+    $q.notify({
+      type: status?.ready && !errs.length ? 'positive' : 'warning',
+      message: lines.join(' — '),
+      timeout: 8000,
+    })
+  } catch (err) {
+    $q.notify({ type: 'negative', message: t('labels.directPrintFailed') + ': ' + (err?.message || err) })
+  }
+}
+
+async function directPrintLabels() {
+  if (!selectedRows.value.length || !templateElements.value.length) return
+  const printer = getPrinter()
+  if (!printer?.connected) {
+    $q.notify({ type: 'warning', message: t('labels.brotherNotConnected') })
+    return
+  }
+
+  directPrinting.value = true
+  try {
+    const preset = getPreset(printPreset.value)
+    const { w: labelW, h: labelH } = orientedDims(preset.labelW, preset.labelH)
+    const pxPerMm = 300 / 25.4
+    const detected = detectedMedia.value
+
+    // Resolve the physical media so we can size the bitmap to its exact
+    // printable dot area. Die-cut media prints a fixed number of rows
+    // (`dieCutMaskedAreaDots`) and a fixed width (`printableDots`); the
+    // encoder rejects bitmaps taller than that, so the canvas must match.
+    const resolved = resolvePrintMedia({
+      widthMm: detected?.widthMm || labelW,
+      heightMm: detected?.heightMm || labelH,
+    })
+    const dotW = resolved.printableDots
+    const dotH = resolved.type === 'die-cut'
+      ? resolved.dieCutMaskedAreaDots
+      : Math.max(1, Math.round((detected?.heightMm || labelH) * pxPerMm))
+
+    // Rotate the image so it fits the physical media when the chosen
+    // orientation differs from the media's orientation. The library
+    // honours the `rotate` option (unlike cut).
+    const labelWide = labelW > labelH
+    const mediaWide = (resolved.widthMm || 0) > (resolved.heightMm || 0)
+    const rotate = mediaWide !== labelWide ? 90 : 0
+
+    // Build the bitmap at the media's dot dimensions (pre-rotation).
+    const canvasW = rotate ? dotH : dotW
+    const canvasH = rotate ? dotW : dotH
+
+    const canvases = []
+    for (const row of selectedRows.value) {
+      const offscreen = document.createElement('canvas')
+      offscreen.width = canvasW
+      offscreen.height = canvasH
+      const ctx = offscreen.getContext('2d')
+      if (!ctx) throw new Error('Could not get 2d context for offscreen canvas')
+      ctx.fillStyle = '#fff'
+      ctx.fillRect(0, 0, canvasW, canvasH)
+      await renderLabelToCanvas(ctx, row, canvasW, canvasH, labelW, labelH)
+      canvases.push(offscreen)
+    }
+
+    await printMultipleLabels(canvases, {
+      cut: cutLabels.value,
+      widthMm: resolved.widthMm || labelW,
+      heightMm: resolved.heightMm || labelH,
+      rotate,
+    })
+
+    $q.notify({ type: 'positive', message: t('labels.directPrintSuccess', { count: canvases.length }) })
+
+    // The library logs printer-reported errors (e.g. media end / cover open)
+    // as warnings but does not throw, so surface them explicitly here.
+    try {
+      const postStatus = await getPrinterStatus()
+      const postErrs = postStatus?.errors || []
+      if (postErrs.length) {
+        $q.notify({
+          type: 'warning',
+          message: `${t('labels.printerStatusErrors')}: ${postErrs.map((e) => e.message).join(', ')}`,
+          timeout: 8000,
+        })
+      }
+    } catch {
+      // Ignore failures reading status after a successful print.
+    }
+  } catch (err) {
+    $q.notify({ type: 'negative', message: t('labels.directPrintFailed') + ': ' + (err?.message || err) })
+  } finally {
+    directPrinting.value = false
+  }
+}
+
+async function renderLabelToCanvas(ctx, row, canvasW, canvasH, labelWmm, labelHmm) {
+  const pxPerMmX = canvasW / labelWmm
+  const pxPerMmY = canvasH / labelHmm
+
+  for (const el of templateElements.value) {
+    const x = el.x * pxPerMmX
+    const y = el.y * pxPerMmY
+    const w = (el.w || 40) * pxPerMmX
+    const h = (el.h || 10) * pxPerMmY
+    const fontSize = (el.fontSize || 12) * pxPerMmX
+
+    if (el.kind === 'text' || el.kind === 'field') {
+      const text = el.kind === 'text' ? el.text : (resolveFieldValue(row, el.source) || '')
+      ctx.fillStyle = '#000'
+      ctx.font = `${Math.round(fontSize)}px Arial`
+      ctx.textBaseline = 'top'
+      ctx.fillText(text, x, y, w)
+    } else if (el.kind === 'barcode') {
+      const value = resolveFieldValue(row, el.source) || row.asset_tag || row.sku || row.code || ''
+      if (value) {
+        const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
+        JsBarcode(svg, value, { format: 'CODE128', width: 1, height: h, displayValue: false })
+        const img = new Image()
+        const svgBlob = new Blob([svg.outerHTML], { type: 'image/svg+xml' })
+        const url = URL.createObjectURL(svgBlob)
+        await new Promise((resolve, reject) => {
+          img.onload = resolve
+          img.onerror = () => {
+            URL.revokeObjectURL(url)
+            reject(new Error('Failed to load barcode SVG'))
+          }
+          img.src = url
+        })
+        ctx.drawImage(img, x, y, w, h)
+        URL.revokeObjectURL(url)
+      }
+    } else if (el.kind === 'qrcode') {
+      const value = resolveFieldValue(row, el.source) || row.asset_tag || row.sku || ''
+      if (value) {
+        const dataUrl = await QRCode.toDataURL(value, { width: Math.round(w), margin: 0 })
+        const img = new Image()
+        await new Promise((resolve, reject) => {
+          img.onload = resolve
+          img.onerror = () => reject(new Error('Failed to load QR code image'))
+          img.src = dataUrl
+        })
+        ctx.drawImage(img, x, y, w, h)
+      }
+    } else if (el.kind === 'logo') {
+      const logoUrl = resolveLogoUrlBySource(el.source)
+      if (logoUrl) {
+        const img = new Image()
+        img.crossOrigin = 'anonymous'
+        await new Promise((resolve) => {
+          img.onload = resolve
+          img.onerror = resolve
+          img.src = logoUrl
+        })
+        if (img.naturalWidth > 0) {
+          ctx.drawImage(img, x, y, w, h)
+        }
+      }
+    }
+  }
+}
+
+function resolveFieldValue(row, source) {
+  return resolveValue(row, source)
+}
+
 async function maybeAutoPrintFromQuery() {
   if (!queryFlagEnabled(route.query.autoPrint)) return
   if (!selectedRows.value.length || !templateElements.value.length) return
@@ -1172,12 +1650,16 @@ watch(entityType, () => {
 })
 
 watch(printPreset, () => {
-  const preset = PRINT_PRESETS[printPreset.value] || PRINT_PRESETS['62x29']
-  customCanvasMm.value = {
-    width: Number(preset.labelW || 62),
-    height: Number(preset.labelH || 29),
-  }
+  const preset = getPreset(printPreset.value)
+  const { w, h } = orientedDims(preset.labelW, preset.labelH)
+  applyCanvasSizeMm(w, h)
 }, { immediate: true })
+
+watch(wideLabel, () => {
+  const preset = getPreset(printPreset.value)
+  const { w, h } = orientedDims(preset.labelW, preset.labelH)
+  applyCanvasSizeMm(w, h)
+})
 
 onMounted(async () => {
   await Promise.all([
