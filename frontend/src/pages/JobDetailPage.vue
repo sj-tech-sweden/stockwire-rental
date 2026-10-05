@@ -587,6 +587,8 @@
           <div class="text-caption text-grey-7">{{ t('crew.noRequirements') }}</div>
         </q-card-section>
       </q-card>
+
+      <QuoteBuilder :job-id="currentJob?.id || 0" :job-code="currentJob?.job_code || ''" />
     </div>
 
     <!-- Floating save button on mobile -->
@@ -655,6 +657,7 @@ import CompanyCreateDialog from '../components/CompanyCreateDialog.vue'
 import PersonCreateDialog from '../components/PersonCreateDialog.vue'
 import VenuePickerDialog from '../components/VenuePickerDialog.vue'
 import JobCustomFieldsDialog from '../components/JobCustomFieldsDialog.vue'
+import QuoteBuilder from '../components/QuoteBuilder.vue'
 import ReportExportDialog from '../components/ReportExportDialog.vue'
 
 const $q = useQuasar()
@@ -1037,6 +1040,13 @@ watch(venueOptions, (options) => {
 }, { immediate: true })
 
 watch(() => form.value, () => { isDirty.value = true }, { deep: true })
+
+// Crew requirement changes made elsewhere (e.g. in the quote builder on this
+// same page) should refresh the crew requirements (Personalbehov) panel live.
+// Note: Pinia unwraps store refs, so read `crewStore.crewRevision` (not `.value`).
+watch(() => crewStore.crewRevision, () => {
+  if (currentJob.value?.id) loadCrewData()
+})
 
 watch(() => form.value.invoice_paid, (paid) => {
   if (paid && !form.value.invoice_paid_at) {
@@ -1421,6 +1431,36 @@ async function saveChanges() {
   const valid = await formRef.value?.validate()
   if (!valid) return
 
+  function normalizeId(v) {
+    return v === undefined || v === null || v === '' ? null : Number(v)
+  }
+  function normalizePrice(v) {
+    return v === undefined || v === null || v === '' || Number.isNaN(Number(v)) ? null : Number(v)
+  }
+  function requirementKey(item) {
+    return normalizeId(item.product_id) ?? `vp:${normalizeId(item.vendor_product_id)}` ?? `req:${item.id}`
+  }
+  function toRequirementPayload(item) {
+    return {
+      product_id: normalizeId(item.product_id),
+      vendor_product_id: normalizeId(item.vendor_product_id),
+      unit_price: normalizePrice(item.unit_price),
+      quantity_required: Number(item.quantity_required || 0),
+      quantity_picked: Number(item.quantity_picked || 0),
+      notes: item.notes || null,
+    }
+  }
+  function formatApiError(error) {
+    const detail = error?.response?.data?.detail
+    if (Array.isArray(detail)) {
+      return detail.map(e => `${e.loc?.filter(l => typeof l === 'string').join('.') || ''}: ${e.msg}`).filter(Boolean).join('; ')
+    }
+    if (detail && typeof detail === 'object') {
+      return JSON.stringify(detail)
+    }
+    return detail || error?.message || t('common.errorOccurred')
+  }
+
   saving.value = true
   try {
     const selectedCustomer = customersStore.customers.find(customer => customer.id === form.value.customer_id)
@@ -1440,23 +1480,18 @@ async function saveChanges() {
     }
 
     const savedJob = await jobsStore.updateJob(currentJob.value.id, payload)
+
     const allRequirements = new Map()
     for (const item of requirementRows.value) {
-      allRequirements.set(item.product_id, {
-        product_id: item.product_id,
-        quantity_required: Number(item.quantity_required || 0),
-        quantity_picked: Number(item.quantity_picked || 0),
-        notes: item.notes || null,
-      })
+      const payload = toRequirementPayload(item)
+      if (payload.product_id == null && payload.vendor_product_id == null) continue
+      allRequirements.set(requirementKey(item), payload)
     }
     for (const item of rentalRequirementRows.value) {
-      if (!allRequirements.has(item.product_id)) {
-        allRequirements.set(item.product_id, {
-          product_id: item.product_id,
-          quantity_required: Number(item.quantity_required || 0),
-          quantity_picked: Number(item.quantity_picked || 0),
-          notes: item.notes || null,
-        })
+      const payload = toRequirementPayload(item)
+      if (payload.product_id == null && payload.vendor_product_id == null) continue
+      if (!allRequirements.has(requirementKey(item))) {
+        allRequirements.set(requirementKey(item), payload)
       }
     }
     await jobsStore.bulkUpsertRequirements(savedJob.id, [...allRequirements.values()])
@@ -1464,7 +1499,7 @@ async function saveChanges() {
     syncFromJob(savedJob)
     $q.notify({ type: 'positive', message: t('jobs.jobUpdated') })
   } catch (error) {
-    $q.notify({ type: 'negative', message: error?.response?.data?.detail || t('common.errorOccurred') })
+    $q.notify({ type: 'negative', message: formatApiError(error) })
   } finally {
     saving.value = false
   }

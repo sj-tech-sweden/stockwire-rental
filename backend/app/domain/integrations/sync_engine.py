@@ -1,5 +1,7 @@
 import logging
-from datetime import datetime
+import os
+import secrets
+from datetime import datetime, timezone
 
 import httpx
 from sqlalchemy.orm import Session
@@ -865,3 +867,117 @@ async def sync_person_inbound(db: Session, client: TwentyClient, twenty_person: 
     _log_sync(db, "inbound", "person", new_person.id, person_id, "create", "success")
     db.commit()
     return True
+
+
+async def sync_quote_to_twenty(
+    db: Session, client: TwentyClient, job: Job, *, public_base_url: str | None = None
+) -> dict:
+    """Generate the job's quote PDF, store it as a Stockwire asset, and post a
+    Twenty activity note on the opportunity the job is linked to.
+
+    Returns a small status dict. The job is only considered synced when the note
+    is successfully posted, at which point ``job.quote_synced_at`` is updated.
+    """
+    if job.external_source != "twenty" or not job.external_reference:
+        return {"synced": False, "reason": "job not linked to a Twenty opportunity"}
+
+    from app.domain.quotes.templates import ensure_default_quote_template
+    from app.domain.storage.models import AssetFile
+    from app.domain.storage.service import StorageService
+    from app.services.pdf_service import PDFService
+
+    public_base_url = public_base_url or os.environ.get("PUBLIC_APP_URL")
+
+    try:
+        pdf_service = PDFService(db)
+        ctx = pdf_service.resolve_context("job", job.id)
+        quote = ctx.get("quote", {}) or {}
+        template = ensure_default_quote_template(db)
+
+        # Use the linked customer's preferred language, defaulting to English.
+        language = "en"
+        if job.customer_id:
+            from app.domain.customers.models import Customer
+
+            customer = db.get(Customer, job.customer_id)
+            if customer and customer.preferred_language:
+                language = customer.preferred_language
+
+        pdf_bytes = pdf_service.generate_pdf(
+            template_id=template.id, entity_type="job", entity_id=job.id, language=language
+        )
+        content_type = "application/pdf"
+        filename = f"quote_{job.job_code or job.id}.pdf"
+    except Exception as exc:
+        logger.exception("Failed to generate quote for job %s", job.id)
+        _log_sync(db, "outbound", "quote", job.id, job.external_reference, "update", "failed", str(exc))
+        db.commit()
+        return {"synced": False, "reason": f"generation failed: {exc}"}
+
+    try:
+        storage = StorageService()
+        storage_key, stored_filename = storage.make_storage_key(
+            entity_type="job", category="quote", original_filename=filename
+        )
+        storage.save_bytes(storage_key=storage_key, payload=pdf_bytes, content_type=content_type)
+        public_token = secrets.token_urlsafe(24)
+        asset = AssetFile(
+            entity_type="job",
+            entity_id=job.id,
+            category="quote",
+            original_filename=filename,
+            stored_filename=stored_filename,
+            content_type=content_type,
+            size_bytes=len(pdf_bytes),
+            storage_key=storage_key,
+            public_token=public_token,
+        )
+        db.add(asset)
+        db.flush()
+
+        quote_no = quote.get("quote_no") or job.job_code or str(job.id)
+        lines = [
+            f"Quote {quote_no}",
+            f"Subtotal: {float(quote.get('subtotal', 0)):.2f}",
+            f"VAT ({float(quote.get('vat_rate', 0)) * 100:.0f}%): {float(quote.get('vat_amount', 0)):.2f}",
+            f"Total: {float(quote.get('total', 0)):.2f}",
+        ]
+        if public_base_url:
+            pdf_link = (
+                f"{public_base_url.rstrip('/')}/api/v1/storage/public/files/{asset.id}?token={public_token}"
+            )
+            lines.append(f"Download quote (PDF): {pdf_link}")
+        else:
+            lines.append(f"View quote: {public_base_url or ''}/jobs/{job.id}")
+        note_text = "\n".join(lines)
+
+        await client.post_activity_note(job.external_reference, "opportunities", note_text)
+        job.quote_synced_at = datetime.now(timezone.utc)
+        db.commit()
+        _log_sync(db, "outbound", "quote", job.id, job.external_reference, "update", "success")
+        return {"synced": True, "quote_no": quote_no, "asset_id": asset.id}
+    except Exception as exc:
+        logger.exception("Failed to push quote note for job %s", job.id)
+        db.rollback()
+        _log_sync(db, "outbound", "quote", job.id, job.external_reference, "update", "failed", str(exc))
+        db.commit()
+        return {"synced": False, "reason": f"twenty push failed: {exc}"}
+
+
+async def sync_quotes_to_twenty(db: Session, client: TwentyClient, *, public_base_url: str | None = None) -> list[dict]:
+    """Sync all quotation-status jobs that are linked to Twenty opportunities."""
+    jobs = (
+        db.query(Job)
+        .filter(
+            Job.status == "quotation",
+            Job.external_source == "twenty",
+            Job.external_reference.isnot(None),
+        )
+        .all()
+    )
+    results: list[dict] = []
+    for job in jobs:
+        if job.quote_synced_at and (job.updated_at is None or job.quote_synced_at >= job.updated_at):
+            continue
+        results.append(await sync_quote_to_twenty(db, client, job, public_base_url=public_base_url))
+    return results

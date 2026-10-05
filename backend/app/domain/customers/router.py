@@ -33,6 +33,7 @@ from app.domain.customers.schemas import (
     PersonSummary,
     PersonUpdate,
 )
+from app.domain.settings.accessors import get_company_profile_default_language
 from app.domain.inventory.models import Device, ProductSupplier
 from app.services.metrics import created_total, deleted_total, entities_count
 from app.domain.jobs.models import Job
@@ -179,6 +180,8 @@ def get_customer_info(customer_id: int, db: Session = Depends(get_db)) -> Custom
 @customers_router.post("", response_model=CustomerRead)
 def create_customer(payload: CustomerCreate, db: Session = Depends(get_db), current_user: User = Depends(require_editor)) -> Customer:
     customer = Customer(**payload.model_dump())
+    if not customer.preferred_language:
+        customer.preferred_language = get_company_profile_default_language(db)
     db.add(customer)
     db.flush()
     db.refresh(customer)
@@ -443,6 +446,8 @@ def get_company_info(company_id: int, db: Session = Depends(get_db)) -> CompanyI
 @companies_router.post("", response_model=CompanyRead)
 def create_company(payload: CompanyCreate, background_tasks: BackgroundTasks, db: Session = Depends(get_db), current_user: User = Depends(require_editor)) -> Company:
     company = Company(**payload.model_dump())
+    if not company.preferred_language:
+        company.preferred_language = get_company_profile_default_language(db)
     db.add(company)
     db.flush()
     db.refresh(company)
@@ -663,6 +668,8 @@ def get_person_info(person_id: int, db: Session = Depends(get_db)) -> PersonInfo
 @persons_router.post("", response_model=PersonRead)
 def create_person(payload: PersonCreate, background_tasks: BackgroundTasks, db: Session = Depends(get_db), current_user: User = Depends(require_editor)) -> Person:
     person = Person(**payload.model_dump())
+    if not person.preferred_language:
+        person.preferred_language = get_company_profile_default_language(db)
     db.add(person)
     db.flush()
     db.refresh(person)

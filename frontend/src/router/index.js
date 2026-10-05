@@ -44,6 +44,7 @@ const routes = [
       { path: '', component: () => import('../pages/HomePage.vue') },
       { path: 'auth', redirect: '/settings?tab=auth' },
       { path: 'inventory', component: () => import('../pages/InventoryPage.vue') },
+      { path: 'vendor-catalog', component: () => import('../pages/VendorCatalogPage.vue') },
       { path: 'labels', component: () => import('../pages/LabelsPage.vue') },
       { path: 'scan', component: () => import('../pages/ScanPage.vue') },
       { path: 'maintenance', component: () => import('../pages/MaintenancePage.vue') },

@@ -1,6 +1,7 @@
 from datetime import date, datetime
+from decimal import Decimal
 
-from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Numeric, String, Text
+from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Integer, Numeric, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -36,6 +37,8 @@ class Job(Base):
     twenty_rental_job_id: Mapped[str | None] = mapped_column(String(100), nullable=True, index=True)
     eventory_job_ids: Mapped[str | None] = mapped_column(Text, nullable=True)
 
+    quote_synced_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
     # New Company/Person FKs (Phase 1 of entity split)
     company_id: Mapped[int | None] = mapped_column(ForeignKey("companies.id", ondelete="SET NULL"), nullable=True, index=True)
     contact_person_id: Mapped[int | None] = mapped_column(ForeignKey("persons.id", ondelete="SET NULL"), nullable=True, index=True)
@@ -58,7 +61,9 @@ class JobRequirement(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     job_id: Mapped[int] = mapped_column(ForeignKey("jobs.id", ondelete="CASCADE"), index=True)
-    product_id: Mapped[int] = mapped_column(ForeignKey("products.id", ondelete="CASCADE"), index=True)
+    product_id: Mapped[int | None] = mapped_column(ForeignKey("products.id", ondelete="CASCADE"), nullable=True, index=True)
+    vendor_product_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("vendor_products.id", ondelete="SET NULL"), nullable=True, index=True)
+    unit_price: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
     quantity_required: Mapped[int] = mapped_column(default=1)
     quantity_picked: Mapped[int] = mapped_column(default=0)
     is_scannable: Mapped[bool] = mapped_column(default=True)
@@ -66,3 +71,4 @@ class JobRequirement(Base):
 
     job: Mapped[Job] = relationship(back_populates="requirements")
     product: Mapped["Product"] = relationship(back_populates="requirements", overlaps="requirements")
+    vendor_product: Mapped["VendorProduct | None"] = relationship("VendorProduct", back_populates="job_requirements")

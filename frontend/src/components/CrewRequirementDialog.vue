@@ -20,8 +20,29 @@
             <q-input v-model.number="form.quantity" type="number" min="1" :label="t('crew.quantity')" outlined dense />
           </div>
           <div class="col-6 col-md-3">
-            <q-input v-model.number="form.hourly_rate" type="number" min="0" step="0.01" :label="t('crew.hourlyRate')" outlined dense />
+            <q-select
+              v-model="form.rate_basis"
+              :options="basisOptions"
+              :label="t('crew.rateBasis')"
+              outlined dense emit-value map-options
+            />
           </div>
+          <template v-if="form.rate_basis === 'daily'">
+            <div class="col-6 col-md-3">
+              <q-input v-model.number="form.daily_rate" type="number" min="0" step="0.01" :label="t('crew.dailyRate')" outlined dense />
+            </div>
+            <div class="col-6 col-md-3">
+              <q-input v-model.number="form.days" type="number" min="0" step="0.5" :label="t('crew.days')" outlined dense />
+            </div>
+          </template>
+          <template v-else>
+            <div class="col-6 col-md-3">
+              <q-input v-model.number="form.hourly_rate" type="number" min="0" step="0.01" :label="t('crew.hourlyRate')" outlined dense />
+            </div>
+            <div class="col-6 col-md-3">
+              <q-input v-model.number="form.hours" type="number" min="0" step="0.5" :label="t('quotes.hours')" outlined dense />
+            </div>
+          </template>
           <div class="col-12">
             <div class="text-subtitle2 q-mb-sm">{{ t('crew.requiredSkills') }}</div>
             <SkillAutocomplete v-model="form.skill_ids" :label="t('crew.selectSkills')" />
@@ -67,13 +88,21 @@ function emptyForm() {
     crew_role_id: null,
     custom_role_name: '',
     quantity: 1,
+    rate_basis: 'hourly',
     skill_ids: [],
     hourly_rate: null,
+    hours: null,
+    daily_rate: null,
+    days: null,
     notes: '',
   }
 }
 
 const roleOptions = ref([])
+const basisOptions = [
+  { label: t('crew.hourly'), value: 'hourly' },
+  { label: t('crew.daily'), value: 'daily' },
+]
 
 async function loadRoles() {
   await crewStore.fetchRoles()
@@ -83,7 +112,19 @@ async function loadRoles() {
 function onRoleChange(roleId) {
   if (roleId) {
     const role = crewStore.roles.find(r => r.id === roleId)
-    if (role) form.value.custom_role_name = ''
+    if (role) {
+      form.value.custom_role_name = ''
+      // Seed a starting rate from the role's default when the field is empty.
+      if (form.value.rate_basis === 'daily') {
+        if ((form.value.daily_rate === null || form.value.daily_rate === '') && role.default_daily_rate != null) {
+          form.value.daily_rate = role.default_daily_rate
+        }
+      } else {
+        if ((form.value.hourly_rate === null || form.value.hourly_rate === '') && role.default_hourly_rate != null) {
+          form.value.hourly_rate = role.default_hourly_rate
+        }
+      }
+    }
   }
 }
 
@@ -96,7 +137,11 @@ async function save() {
       custom_role_name: form.value.custom_role_name || null,
       quantity: form.value.quantity || 1,
       skill_ids: form.value.skill_ids.map(s => s.id || s.value),
+      rate_basis: form.value.rate_basis || 'hourly',
       hourly_rate: form.value.hourly_rate || null,
+      hours: form.value.hours != null && form.value.hours !== '' ? Number(form.value.hours) : null,
+      daily_rate: form.value.daily_rate || null,
+      days: form.value.days != null && form.value.days !== '' ? Number(form.value.days) : null,
       notes: form.value.notes || null,
     }
 
@@ -124,7 +169,11 @@ watch(() => props.modelValue, async (open) => {
         custom_role_name: props.requirement.custom_role_name || '',
         quantity: props.requirement.quantity || 1,
         skill_ids: (props.requirement.skills || []).map(s => ({ id: s.id, name: s.name, label: s.name, value: s.id })),
+        rate_basis: props.requirement.rate_basis || 'hourly',
         hourly_rate: props.requirement.hourly_rate ?? null,
+        hours: props.requirement.hours ?? null,
+        daily_rate: props.requirement.daily_rate ?? null,
+        days: props.requirement.days ?? null,
         notes: props.requirement.notes || '',
       }
     } else {

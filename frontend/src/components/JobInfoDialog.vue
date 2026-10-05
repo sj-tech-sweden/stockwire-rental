@@ -335,6 +335,23 @@ async function saveJob() {
   const valid = await formRef.value?.validate()
   if (!valid) return
 
+  function normalizeId(v) {
+    return v === undefined || v === null || v === '' ? null : Number(v)
+  }
+  function normalizePrice(v) {
+    return v === undefined || v === null || v === '' || Number.isNaN(Number(v)) ? null : Number(v)
+  }
+  function formatApiError(error) {
+    const detail = error?.response?.data?.detail
+    if (Array.isArray(detail)) {
+      return detail.map(e => `${e.loc?.filter(l => typeof l === 'string').join('.') || ''}: ${e.msg}`).filter(Boolean).join('; ')
+    }
+    if (detail && typeof detail === 'object') {
+      return JSON.stringify(detail)
+    }
+    return detail || error?.message || t('common.errorOccurred')
+  }
+
   saving.value = true
   try {
     const payload = {
@@ -350,26 +367,24 @@ async function saveJob() {
 
     const savedJob = await jobsStore.updateJob(props.job.id, payload)
 
+    const toPayload = item => ({
+      product_id: normalizeId(item.product_id),
+      vendor_product_id: normalizeId(item.vendor_product_id),
+      unit_price: normalizePrice(item.unit_price),
+      quantity_required: Number(item.quantity_required || 0),
+      quantity_picked: Number(item.quantity_picked || 0),
+      notes: item.notes || null,
+    })
     await jobsStore.bulkUpsertRequirements(savedJob.id, [
-      ...productRequirementRows.value.map(item => ({
-        product_id: item.product_id,
-        quantity_required: Number(item.quantity_required || 0),
-        quantity_picked: Number(item.quantity_picked || 0),
-        notes: item.notes || null,
-      })),
-      ...rentalRequirementRows.value.map(item => ({
-        product_id: item.product_id,
-        quantity_required: Number(item.quantity_required || 0),
-        quantity_picked: Number(item.quantity_picked || 0),
-        notes: item.notes || null,
-      })),
+      ...productRequirementRows.value.map(toPayload).filter(p => p.product_id != null || p.vendor_product_id != null),
+      ...rentalRequirementRows.value.map(toPayload).filter(p => p.product_id != null || p.vendor_product_id != null),
     ])
 
     $q.notify({ type: 'positive', message: t('jobs.jobUpdated') })
     emit('saved')
     emit('update:modelValue', false)
   } catch (error) {
-    $q.notify({ type: 'negative', message: error?.response?.data?.detail || t('common.errorOccurred') })
+    $q.notify({ type: 'negative', message: formatApiError(error) })
   } finally {
     saving.value = false
   }

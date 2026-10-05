@@ -16,9 +16,13 @@ from app.assistant.router import router as assistant_router
 from app.domain.warehouse_leds.router import router as warehouse_leds_router
 from app.domain.inventory.router import router as inventory_router
 from app.domain.inventory.public_router import router as public_products_router
+from app.domain.inventory.vendor_router import plugin_router as vendor_catalog_router
+from app.domain.inventory.vendor_router import router as vendor_products_router
+from app.domain.inventory.vendor_router import sources_router as vendor_sources_router
 from app.domain.jobs.router import router as jobs_router
 from app.domain.notifications.router import router as notifications_router
 from app.domain.projects.router import router as projects_router
+from app.domain.quotes.router import router as quotes_router
 from app.domain.realtime.router import router as realtime_router
 from app.domain.settings.router import router as settings_router
 from app.domain.storage.router import router as storage_router
@@ -31,6 +35,9 @@ api_router.include_router(auth_router)
 api_router.include_router(audit_router)
 api_router.include_router(inventory_router)
 api_router.include_router(public_products_router)
+api_router.include_router(vendor_products_router)
+api_router.include_router(vendor_catalog_router)
+api_router.include_router(vendor_sources_router)
 api_router.include_router(custom_fields_router)
 api_router.include_router(customers_router)
 api_router.include_router(companies_router)
@@ -50,3 +57,4 @@ api_router.include_router(route_planner_router)
 api_router.include_router(warehouse_leds_router)
 api_router.include_router(calendar_feeds_router)
 api_router.include_router(assistant_router)
+api_router.include_router(quotes_router)

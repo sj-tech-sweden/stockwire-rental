@@ -51,6 +51,7 @@ class ReportTemplateBase(BaseModel):
     category: str
     description: str | None = None
     letterhead_id: int | None = None
+    use_letterhead: bool = True
     body_json: str = "{}"
     translations_json: str | None = None
     data_source_type: str = "job"
@@ -66,6 +67,7 @@ class ReportTemplateUpdate(BaseModel):
     category: str | None = None
     description: str | None = None
     letterhead_id: int | None = None
+    use_letterhead: bool | None = None
     body_json: str | None = None
     translations_json: str | None = None
     data_source_type: str | None = None
@@ -90,6 +92,7 @@ class ReportTemplateListRead(BaseModel):
     is_builtin: bool = False
     is_enabled: bool = True
     letterhead_id: int | None = None
+    use_letterhead: bool = True
     translations_json: str | None = None
     created_at: datetime
 

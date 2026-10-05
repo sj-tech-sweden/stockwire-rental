@@ -797,4 +797,65 @@ class PublicProductRead(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class VendorProductBase(BaseModel):
+    sku: str | None = None
+    name: str
+    brand: str | None = None
+    category: str | None = None
+    description: str | None = None
+    dimensions: str | None = None
+    image_url: str | None = None
+    unit_cost: Decimal | None = None
+    currency: str | None = None
+    stock_quantity: int | None = None
+    availability: str | None = None
+    vendor_id: int | None = None
+    external_reference: str | None = None
+    vendor_item_number: str | None = None
+    supplier_item_number: str | None = None
+    product_url: str | None = None
+    weight: Decimal | None = None
+    country_of_origin: str | None = None
+    intrastat_code: str | None = None
+    pieces_per_carton: int | None = None
+    expected_delivery_date: date | None = None
+    incoming_quantity: int | None = None
+    incoming_deliveries: list | None = None
+    source_plugin: str | None = None
+    is_active: bool = True
+
+
+class VendorProductCreate(VendorProductBase):
+    pass
+
+
+class VendorProductUpdate(BaseModel):
+    sku: str | None = None
+    name: str | None = None
+    brand: str | None = None
+    category: str | None = None
+    description: str | None = None
+    dimensions: str | None = None
+    image_url: str | None = None
+    unit_cost: Decimal | None = None
+    currency: str | None = None
+    stock_quantity: int | None = None
+    availability: str | None = None
+    vendor_id: int | None = None
+    external_reference: str | None = None
+    vendor_item_number: str | None = None
+    supplier_item_number: str | None = None
+    source_plugin: str | None = None
+    is_active: bool | None = None
+
+
+class VendorProductRead(VendorProductBase):
+    id: int
+    raw_payload: dict | None = None
+    last_synced_at: datetime | None = None
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
 ProductRead.model_rebuild()

@@ -192,6 +192,25 @@ def download_public_product_image(file_id: int, db: Session = Depends(get_db)):
     )
 
 
+@router.get("/public/files/{file_id}")
+def download_public_file(file_id: int, token: str | None = None, db: Session = Depends(get_db)):
+    """Anonymous download for assets that have been explicitly shared via a
+    ``public_token`` (e.g. quote PDFs pushed to external CRMs). The token is
+    required and secret; without a matching token the asset is not reachable."""
+    row = db.get(AssetFile, file_id)
+    if not row or row.is_deleted:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="File not found")
+    if not row.public_token or row.public_token != token:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="File not found")
+
+    storage = StorageService()
+    return storage.build_download_response(
+        storage_key=row.storage_key,
+        content_type=row.content_type,
+        download_filename=row.original_filename,
+    )
+
+
 @router.post("/files", response_model=AssetFileRead, status_code=status.HTTP_201_CREATED)
 async def upload_file(
     file: UploadFile = File(...),

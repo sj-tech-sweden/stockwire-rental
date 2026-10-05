@@ -39,6 +39,7 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
     allow_headers=["Authorization", "Content-Type", "X-API-Key", "X-Refresh-Token"],
+    expose_headers=["X-Total-Count"],
 )
 
 # ---------------------------------------------------------------------------
@@ -155,6 +156,10 @@ def run_startup_checks() -> None:
             count = seed_report_templates(db)
             if count:
                 print(f"Seeded {count} default report templates")
+            # Ensure the default Quote template exists/is up to date (letterhead
+            # opt-out, daily-rate labour layout, Swedish translation).
+            from app.domain.quotes.templates import ensure_default_quote_template
+            ensure_default_quote_template(db)
     except Exception as exc:
         print(f"Report template seeding skipped: {exc}")
 

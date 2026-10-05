@@ -24,4 +24,5 @@ class AssetFile(Base):
 
     created_by_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
     is_deleted: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
+    public_token: Mapped[str | None] = mapped_column(String(64), nullable=True, unique=True, index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)

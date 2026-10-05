@@ -41,6 +41,7 @@ _REPORT_STRINGS = {
         "category": "Category",
         "qty": "Qty",
         "quantity": "Qty",
+        "total": "Total",
         "required": "Required",
         "kit_name": "Kit Name",
         "brand": "Brand",
@@ -67,6 +68,23 @@ _REPORT_STRINGS = {
         "page": "Page",
         "of": "of",
         "no_data": "No data",
+        "quote": "Quote",
+        "equipment_&_items": "Equipment & Items",
+        "labour": "Labour",
+        "item": "Item",
+        "unit_price": "Unit Price",
+        "role": "Role",
+        "hours": "Hours",
+        "days": "Days",
+        "rate": "Rate",
+        "subtotal": "Subtotal",
+        "vat_rate": "VAT Rate",
+        "vat": "VAT",
+        "type": "Type",
+        "rental": "Rental",
+        "purchase": "Purchase",
+        "period": "Period",
+        "rate_per_day": "Rate/day",
     },
     "sv": {
         "generated": "Genererad",
@@ -99,6 +117,7 @@ _REPORT_STRINGS = {
         "category": "Kategori",
         "qty": "Antal",
         "quantity": "Antal",
+        "total": "Totalt",
         "required": "Obligatorisk",
         "kit_name": "Kit-namn",
         "brand": "Märke",
@@ -125,6 +144,23 @@ _REPORT_STRINGS = {
         "page": "Sida",
         "of": "av",
         "no_data": "Ingen data",
+        "quote": "Offert",
+        "equipment_&_items": "Utrustning & Artiklar",
+        "labour": "Arbetskraft",
+        "item": "Artikel",
+        "unit_price": "Enhetspris",
+        "role": "Roll",
+        "hours": "Timmar",
+        "days": "Dagar",
+        "rate": "Pris",
+        "subtotal": "Delsumma",
+        "vat_rate": "Moms %",
+        "vat": "Moms",
+        "type": "Typ",
+        "rental": "Hyra",
+        "purchase": "Köp",
+        "period": "Period",
+        "rate_per_day": "Pris/dag",
     },
 }
 
@@ -185,12 +221,29 @@ _ENGLISH_PHRASE_TO_KEY = {
     "Completed": "completed_date",
     "Severity": "severity",
     "Title": "title",
-    "Date": "date",
     "Yes": "yes",
     "No": "no",
     "Page": "page",
     "of": "of",
     "Generated": "generated",
+    "Equipment & Items": "equipment_&_items",
+    "Labour": "labour",
+    "Quote": "quote",
+    "Item": "item",
+    "Unit Price": "unit_price",
+    "Role": "role",
+    "Hours": "hours",
+    "Days": "days",
+    "Rate": "rate",
+    "Subtotal": "subtotal",
+    "Total": "total",
+    "VAT Rate": "vat_rate",
+    "VAT": "vat",
+    "Date": "date",
+    "Rental": "rental",
+    "Purchase": "purchase",
+    "Period": "period",
+    "Rate/day": "rate_per_day",
 }
 
 
@@ -249,6 +302,15 @@ def translate_flowables(flowables: list[dict], language: str | None = None) -> l
         if stripped.startswith("Generated:"):
             rest = stripped[len("Generated:"):].strip()
             return f"{_('generated')}: {rest}"
+        # Translate a leading static phrase even when it is followed by a Jinja2
+        # placeholder (e.g. "Quote {{ quote.quote_no }}" or "Date: {{ ... }}").
+        if "{{" in stripped:
+            prefix = stripped.split("{{", 1)[0]
+            if prefix:
+                core = prefix.rstrip(": ").strip()
+                if core:
+                    translated = _(core, default=core)
+                    return translated + prefix[len(core):] + stripped[len(prefix):]
         return _(stripped, default=text)
 
     def translate_label(label: str) -> str:

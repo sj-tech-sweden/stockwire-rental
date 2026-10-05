@@ -52,6 +52,7 @@ async def _do_sync(db, client) -> None:
         sync_job_outbound,
         sync_person_inbound,
         sync_person_outbound,
+        sync_quotes_to_twenty,
     )
     from app.domain.jobs.models import Job
 
@@ -236,6 +237,15 @@ async def _do_sync(db, client) -> None:
         offset += SYNC_PAGE_SIZE
     db.commit()
     logger.info("Auto-sync stage complete: inbound jobs (%d processed)", processed)
+
+    # Outbound: quotes → Twenty opportunity notes
+    logger.info("Auto-sync stage: outbound quotes")
+    try:
+        quote_results = await sync_quotes_to_twenty(db, client)
+        synced = sum(1 for r in quote_results if r.get("synced"))
+        logger.info("Auto-sync stage complete: outbound quotes (%d synced of %d)", synced, len(quote_results))
+    except Exception:
+        logger.exception("Auto-sync: failed to sync quotes")
 
 
 def _scheduler_loop() -> None:

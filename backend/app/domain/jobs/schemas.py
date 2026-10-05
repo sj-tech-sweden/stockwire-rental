@@ -1,7 +1,7 @@
 from datetime import date, datetime
 from decimal import Decimal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 
 class JobBase(BaseModel):
@@ -66,11 +66,19 @@ class JobRead(JobBase):
 
 class JobRequirementBase(BaseModel):
     job_id: int
-    product_id: int
+    product_id: int | None = None
+    vendor_product_id: int | None = None
+    unit_price: Decimal | None = None
     quantity_required: int = 1
     quantity_picked: int = 0
     is_scannable: bool = True
     notes: str | None = None
+
+    @model_validator(mode="after")
+    def _require_source(self):
+        if self.product_id is None and self.vendor_product_id is None:
+            raise ValueError("Either product_id or vendor_product_id must be set")
+        return self
 
 
 class JobRequirementCreate(JobRequirementBase):
@@ -80,6 +88,8 @@ class JobRequirementCreate(JobRequirementBase):
 class JobRequirementUpdate(BaseModel):
     job_id: int | None = None
     product_id: int | None = None
+    vendor_product_id: int | None = None
+    unit_price: Decimal | None = None
     quantity_required: int | None = None
     quantity_picked: int | None = None
     notes: str | None = None
@@ -92,11 +102,19 @@ class JobRequirementRead(JobRequirementBase):
 
 
 class JobRequirementBulkItem(BaseModel):
-    product_id: int
+    product_id: int | None = None
+    vendor_product_id: int | None = None
+    unit_price: Decimal | None = None
     quantity_required: int = 1
     quantity_picked: int = 0
     is_scannable: bool = True
     notes: str | None = None
+
+    @model_validator(mode="after")
+    def _require_source(self):
+        if self.product_id is None and self.vendor_product_id is None:
+            raise ValueError("Either product_id or vendor_product_id must be set")
+        return self
 
 
 class JobRequirementBulkUpsert(BaseModel):

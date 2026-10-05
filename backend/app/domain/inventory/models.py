@@ -1,7 +1,7 @@
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from decimal import Decimal
 
-from sqlalchemy import Boolean, Date, DateTime, Float, ForeignKey, Integer, Numeric, String, Text, UniqueConstraint
+from sqlalchemy import Boolean, Date, DateTime, Float, ForeignKey, Integer, JSON, Numeric, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -424,3 +424,42 @@ class InventoryAuditLog(Base):
     zone_id: Mapped[int | None] = mapped_column(ForeignKey("zones.id", ondelete="SET NULL"), nullable=True, index=True)
     job_id: Mapped[int | None] = mapped_column(ForeignKey("jobs.id", ondelete="SET NULL"), nullable=True, index=True)
     details_json: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+
+class VendorProduct(Base):
+    __tablename__ = "vendor_products"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    sku: Mapped[str | None] = mapped_column(String(120), nullable=True, index=True)
+    name: Mapped[str] = mapped_column(String(255), index=True)
+    brand: Mapped[str | None] = mapped_column(String(120), nullable=True, index=True)
+    category: Mapped[str | None] = mapped_column(String(120), nullable=True, index=True)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    dimensions: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    image_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    unit_cost: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
+    currency: Mapped[str | None] = mapped_column(String(10), nullable=True, index=True)
+    stock_quantity: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    availability: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    vendor_id: Mapped[int | None] = mapped_column(ForeignKey("companies.id", ondelete="SET NULL"), nullable=True, index=True)
+    external_reference: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
+    vendor_item_number: Mapped[str | None] = mapped_column(String(120), nullable=True, index=True)
+    supplier_item_number: Mapped[str | None] = mapped_column(String(120), nullable=True, index=True)
+    product_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    weight: Mapped[Decimal | None] = mapped_column(Numeric(10, 3), nullable=True)
+    country_of_origin: Mapped[str | None] = mapped_column(String(8), nullable=True)
+    intrastat_code: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    pieces_per_carton: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    expected_delivery_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    incoming_quantity: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    incoming_deliveries: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    source_plugin: Mapped[str | None] = mapped_column(String(120), nullable=True, index=True)
+    last_synced_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    raw_payload: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+    vendor: Mapped["Company | None"] = relationship("Company")
+    job_requirements: Mapped[list["JobRequirement"]] = relationship(
+        "JobRequirement", back_populates="vendor_product"
+    )
