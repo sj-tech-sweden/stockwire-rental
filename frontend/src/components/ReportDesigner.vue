@@ -364,6 +364,7 @@ const dataSourceOptions = computed(() => [
   { label: t('reports.dataSources.device'), value: 'device' },
   { label: t('reports.dataSources.product'), value: 'product' },
   { label: t('reports.dataSources.inventory'), value: 'inventory' },
+  { label: t('reports.dataSources.purchase_order'), value: 'purchase_order' },
 ])
 
 const letterheadOptions = computed(() => [

@@ -4,17 +4,26 @@ from __future__ import annotations
 import json
 import logging
 import uuid
-from typing import Optional
+from datetime import UTC
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Response
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Response, status
 from pydantic import BaseModel
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
 from app.domain.auth.deps import get_current_user
+
+# Side-effect imports: register the web scraper plugins with the importer
+# registry so they appear in /vendor-catalog/plugins.
+from app.domain.inventory import (  # noqa: F401
+    scraper_thomann,
+    scraper_ui_com,
+)
 from app.domain.inventory.models import VendorProduct
 from app.domain.inventory.schemas import (
+    BulkDeleteVendorProductsRequest,
+    VendorProductClusterRead,
     VendorProductCreate,
     VendorProductRead,
     VendorProductUpdate,
@@ -22,6 +31,7 @@ from app.domain.inventory.schemas import (
 from app.domain.inventory.vendor_catalog import (
     IMPORTER_PLUGINS,
     VendorEquipmentRecord,
+    cluster_vendor_products,
     get_plugin,
     upsert_vendor_products,
 )
@@ -47,7 +57,7 @@ class ImportPreviewRequest(BaseModel):
 
 
 class ImportApplyRequest(BaseModel):
-    vendor_id: Optional[int] = None
+    vendor_id: int | None = None
     rows: list[dict] = []
 
 
@@ -62,12 +72,12 @@ _SORTABLE = {
 
 @router.get("", response_model=list[VendorProductRead])
 def list_vendor_products(
-    vendor_id: Optional[int] = Query(None),
-    search: Optional[str] = Query(None),
+    vendor_id: int | None = Query(None),
+    search: str | None = Query(None),
     active_only: bool = Query(False),
-    category: Optional[str] = Query(None),
-    brand: Optional[str] = Query(None),
-    ids: Optional[str] = Query(None, description="Comma-separated vendor_product ids"),
+    category: str | None = Query(None),
+    brand: str | None = Query(None),
+    ids: str | None = Query(None, description="Comma-separated vendor_product ids"),
     sort_by: str = Query("name"),
     sort_dir: str = Query("asc"),
     limit: int = Query(50, le=200, ge=1),
@@ -114,9 +124,34 @@ def list_vendor_products(
     return list(items)
 
 
+@router.get("/clusters", response_model=list[VendorProductClusterRead])
+def list_vendor_product_clusters(
+    vendor_id: int | None = Query(None),
+    search: str | None = Query(None),
+    category: str | None = Query(None),
+    brand: str | None = Query(None),
+    active_only: bool = Query(False),
+    db: Session = Depends(get_db),
+) -> list[dict]:
+    """Cluster vendor products that represent the same physical item.
+
+    Uses the same reference-key (and fuzzy-name fallback) matching as the
+    purchasing comparison engine so cross-supplier duplicates collapse into a
+    single card showing every supplier's price/stock/ETA.
+    """
+    return cluster_vendor_products(
+        db,
+        vendor_id=vendor_id,
+        search=search,
+        active_only=active_only,
+        category=category,
+        brand=brand,
+    )
+
+
 @router.get("/facets")
 def vendor_product_facets(
-    q: Optional[str] = Query(None, description="Optional substring filter for brand/category"),
+    q: str | None = Query(None, description="Optional substring filter for brand/category"),
     db: Session = Depends(get_db),
 ) -> dict:
     """Distinct, non-empty categories and brands for filter dropdowns.
@@ -187,6 +222,37 @@ def delete_vendor_product(product_id: int, db: Session = Depends(get_db)) -> Non
     db.commit()
 
 
+@router.post("/bulk-delete", status_code=200)
+def bulk_delete_vendor_products(
+    req: BulkDeleteVendorProductsRequest,
+    db: Session = Depends(get_db),
+) -> dict:
+    """Delete many vendor products (e.g. everything a removed integration imported)."""
+    stmt = select(VendorProduct)
+    if req.ids:
+        stmt = stmt.where(VendorProduct.id.in_(req.ids))
+    else:
+        clauses = []
+        if req.vendor_id is not None:
+            clauses.append(VendorProduct.vendor_id == req.vendor_id)
+        if req.source_plugin is not None:
+            clauses.append(VendorProduct.source_plugin == req.source_plugin)
+        if req.name_contains:
+            clauses.append(VendorProduct.name.ilike(f"%{req.name_contains}%"))
+        if not clauses:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Provide at least one filter (ids, vendor_id, source_plugin or name_contains)",
+            )
+        stmt = stmt.where(*clauses)
+    products = db.scalars(stmt).all()
+    count = len(products)
+    for vp in products:
+        db.delete(vp)
+    db.commit()
+    return {"deleted": count}
+
+
 # ── Import plugin endpoints ───────────────────────────────────────────────────
 
 plugin_router = APIRouter(
@@ -221,6 +287,25 @@ def preview_import(payload: ImportPreviewRequest, db: Session = Depends(get_db))
     return {"count": len(records), "records": [r.to_dict() for r in records]}
 
 
+class DiscoverCategoriesRequest(BaseModel):
+    plugin_id: str
+    url: str = ""
+    config: dict = {}
+
+
+@plugin_router.post("/discover")
+def discover_categories(payload: DiscoverCategoriesRequest) -> dict:
+    cls = IMPORTER_PLUGINS.get(payload.plugin_id)
+    if cls is None:
+        raise HTTPException(status_code=400, detail="Unknown importer plugin")
+    try:
+        categories = cls.discover_categories(payload.url or "", config=payload.config)
+    except Exception as exc:  # discovery is best-effort
+        logger.exception("Category discovery failed")
+        raise HTTPException(status_code=400, detail=f"Discovery failed: {exc}")
+    return {"categories": categories}
+
+
 @plugin_router.post("/apply")
 def apply_import(payload: ImportApplyRequest, db: Session = Depends(get_db)) -> dict:
     records: list[VendorEquipmentRecord] = []
@@ -246,7 +331,7 @@ class VendorSourceBase(BaseModel):
     name: str
     plugin_id: str
     enabled: bool = True
-    vendor_id: Optional[int] = None
+    vendor_id: int | None = None
     config: dict = {}
     field_map: dict = {}
     auto_sync_interval: int = 0
@@ -257,18 +342,18 @@ class VendorSourceCreate(VendorSourceBase):
 
 
 class VendorSourceUpdate(BaseModel):
-    name: Optional[str] = None
-    plugin_id: Optional[str] = None
-    enabled: Optional[bool] = None
-    vendor_id: Optional[int] = None
-    config: Optional[dict] = None
-    field_map: Optional[dict] = None
-    auto_sync_interval: Optional[int] = None
+    name: str | None = None
+    plugin_id: str | None = None
+    enabled: bool | None = None
+    vendor_id: int | None = None
+    config: dict | None = None
+    field_map: dict | None = None
+    auto_sync_interval: int | None = None
 
 
 class VendorSourceRead(VendorSourceBase):
     id: str
-    last_synced_at: Optional[str] = None
+    last_synced_at: str | None = None
 
 
 def _read_sources(db: Session) -> list[dict]:
@@ -346,12 +431,26 @@ def update_vendor_source(
 
 
 @sources_router.delete("/sources/{source_id}", status_code=204)
-def delete_vendor_source(source_id: str, db: Session = Depends(get_db)) -> None:
+def delete_vendor_source(
+    source_id: str,
+    delete_products: bool = Query(False),
+    db: Session = Depends(get_db),
+) -> None:
     sources = _read_sources(db)
-    new_sources = [s for s in sources if s.get("id") != source_id]
-    if len(new_sources) == len(sources):
+    source = _find_source(sources, source_id)
+    if source is None:
         raise HTTPException(status_code=404, detail="Vendor source not found")
+    new_sources = [s for s in sources if s.get("id") != source_id]
     _write_sources(db, new_sources)
+    # Cascade: also remove the vendor products this source imported (matched by
+    # plugin + vendor). Without this, deleting an integration leaves orphan rows.
+    if delete_products:
+        clauses = [VendorProduct.source_plugin == source.get("plugin_id")]
+        if source.get("vendor_id") is not None:
+            clauses.append(VendorProduct.vendor_id == source["vendor_id"])
+        for vp in db.scalars(select(VendorProduct).where(*clauses)).all():
+            db.delete(vp)
+        db.commit()
 
 
 @sources_router.post("/sources/{source_id}/preview")
@@ -455,9 +554,11 @@ def _update_source_synced_at(db: Session, source_id: str, records: dict | None =
     source = _find_source(sources, source_id)
     if source is None:
         return
-    from datetime import datetime, timezone
+    from datetime import datetime
 
-    source["last_synced_at"] = datetime.now(timezone.utc).isoformat()
+    source["last_synced_at"] = datetime.now(UTC).isoformat()
+    source.pop("last_auto_sync_error", None)
+    source.pop("last_auto_sync_failed_at", None)
     if records:
         source.setdefault("last_result", {}).update(records)
     _write_sources(db, sources)

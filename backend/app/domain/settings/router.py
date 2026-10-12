@@ -633,6 +633,77 @@ def test_email_smtp(
     raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to send test email: {err}")
 
 
+class FxRatesRead(BaseModel):
+    base: str = "EUR"
+    rates: dict[str, float] = {}
+
+
+class FxRatesUpdate(BaseModel):
+    base: str
+    rates: dict[str, float]
+
+
+FX_RATES_KEY = "fx_rates"
+
+
+@router.get("/fx-rates", response_model=FxRatesRead)
+def get_fx_rates(
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_user),
+) -> FxRatesRead:
+    """Return FX rates used to convert vendor prices into a common report currency.
+
+    ``rates`` maps an ISO currency code to its value in the ``base`` currency
+    (e.g. base="EUR", rates={"SEK": 0.087} means 1 SEK == 0.087 EUR).
+    """
+    setting = db.scalar(select(AppSetting).where(AppSetting.key == FX_RATES_KEY))
+    data: dict[str, object] = {"base": "EUR", "rates": {}}
+    if setting and setting.value_json:
+        try:
+            parsed = json.loads(setting.value_json)
+            if isinstance(parsed, dict):
+                data = {
+                    "base": str(parsed.get("base", "EUR")),
+                    "rates": {str(k).upper(): float(v) for k, v in (parsed.get("rates") or {}).items()},
+                }
+        except Exception:
+            pass
+    return FxRatesRead(**data)
+
+
+@router.post("/fx-rates/refresh", response_model=FxRatesRead)
+def refresh_fx_rates_endpoint(
+    db: Session = Depends(get_db),
+    _: User = Depends(require_admin),
+) -> FxRatesRead:
+    """Fetch the latest rates from the provider and persist them."""
+    from app.domain.purchasing.fx_sync import refresh_fx_rates
+
+    data = refresh_fx_rates(db)
+    if data is None:
+        raise HTTPException(status_code=502, detail="Unable to fetch FX rates from provider")
+    return FxRatesRead(**data)
+
+
+@router.put("/fx-rates", response_model=FxRatesRead)
+def update_fx_rates(
+    payload: FxRatesUpdate,
+    db: Session = Depends(get_db),
+    _: User = Depends(require_admin),
+) -> FxRatesRead:
+    """Persist FX rates for cross-currency supplier comparison."""
+    base = (payload.base or "EUR").strip().upper() or "EUR"
+    rates = {str(k).upper(): float(v) for k, v in (payload.rates or {}).items() if v is not None}
+    data = {"base": base, "rates": rates}
+    setting = db.scalar(select(AppSetting).where(AppSetting.key == FX_RATES_KEY))
+    if setting is None:
+        setting = AppSetting(key=FX_RATES_KEY, value_json="{}")
+        db.add(setting)
+    setting.value_json = json.dumps(data)
+    db.commit()
+    return FxRatesRead(**data)
+
+
 @router.get("/company-profile", response_model=CompanyProfileRead)
 def get_company_profile(
     db: Session = Depends(get_db),

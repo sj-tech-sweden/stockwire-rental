@@ -86,6 +86,22 @@ DEFAULT_TEMPLATES = [
         "html_template": "<h2>Defekt rapporterad</h2><p>Defekt för <strong>{{ device_name }}</strong>.</p><p>Titel: {{ title }}</p><p>Allvarlighetsgrad: {{ severity | default('Medium') }}</p>",
         "text_template": "Defekt rapporterad: {{ device_name }}\nTitel: {{ title }}\nAllvarlighetsgrad: {{ severity | default('Medium') }}",
     },
+    {
+        "template_key": "vendor_catalog_sync_failed",
+        "locale": "en",
+        "recipient_type": "staff",
+        "subject_template": "Vendor catalog auto-sync failed: {{ source_name }}",
+        "html_template": "<h2>Vendor Catalog Auto-sync Failed</h2><p>The scheduled auto-sync for vendor source <strong>{{ source_name }}</strong> failed.</p><p>Error: {{ error }}</p>",
+        "text_template": "Vendor catalog auto-sync failed for {{ source_name }}.\nError: {{ error }}",
+    },
+    {
+        "template_key": "vendor_catalog_sync_failed",
+        "locale": "sv",
+        "recipient_type": "staff",
+        "subject_template": "Automatisk synkning av inköpskatalog misslyckades: {{ source_name }}",
+        "html_template": "<h2>Automatisk synkning av inköpskatalog misslyckades</h2><p>Den schemalagda synkningen för inköpskälla <strong>{{ source_name }}</strong> misslyckades.</p><p>Fel: {{ error }}</p>",
+        "text_template": "Automatisk synkning av inköpskatalog misslyckades för {{ source_name }}.\nFel: {{ error }}",
+    },
 ]
 
 DEFAULT_PREFERENCES = [
@@ -96,6 +112,7 @@ DEFAULT_PREFERENCES = [
     {"event_type": "defect.reported", "label": "Defect reported", "description": "When a defect is reported"},
     {"event_type": "crew.assigned", "label": "Crew assigned", "description": "When crew is assigned to a job"},
     {"event_type": "invoice.sent", "label": "Invoice sent", "description": "When an invoice is sent"},
+    {"event_type": "vendor_catalog_sync_failed", "label": "Vendor catalog sync failed", "description": "When a scheduled vendor-catalog auto-sync fails"},
 ]
 
 

@@ -14,6 +14,7 @@ from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
 from reportlab.lib.pagesizes import A4, A3, LETTER
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import mm
+from reportlab.pdfbase.pdfmetrics import stringWidth
 from reportlab.platypus import (
     Paragraph,
     SimpleDocTemplate,
@@ -248,7 +249,18 @@ def _build_key_value_table(flowable_def: dict, context: dict, styles: dict, alig
     if not rows:
         return []
 
-    table = Table(rows, colWidths=[50 * mm, None], hAlign=_halign(align))
+    # Size the label column to the longest label so short labels (e.g. "Name")
+    # don't leave an unreasonable gap before their value.
+    label_style = styles.get("body")
+    font_name = getattr(label_style, "fontName", "Helvetica-Bold")
+    font_size = getattr(label_style, "fontSize", 10)
+    max_label_w = 0
+    for field in fields:
+        lbl = str(field.get("label", field.get("key", "")))
+        max_label_w = max(max_label_w, stringWidth(lbl, font_name, font_size))
+    label_col = min(max(max_label_w + 10, 22 * mm), 65 * mm)
+
+    table = Table(rows, colWidths=[label_col, None], hAlign=_halign(align))
     table.setStyle(TableStyle([
         ("VALIGN", (0, 0), (-1, -1), "TOP"),
         ("TOPPADDING", (0, 0), (-1, -1), 2),
@@ -761,6 +773,66 @@ class PDFService:
                         }
                         for acc in product.accessories_as_parent
                     ]
+
+        elif entity_type == "purchase_order":
+            from app.domain.purchasing.models import PurchaseOrder
+            from app.domain.customers.models import Company
+
+            po = self.db.get(PurchaseOrder, entity_id)
+            if po is None:
+                # Fallback sample so the template designer can preview without a PO.
+                context["po"] = {
+                    "po_number": "PO-0001",
+                    "status": "draft",
+                    "order_date": str(date.today()),
+                    "expected_delivery_date": None,
+                    "report_currency": "SEK",
+                    "supplier": {"name": "Sample Supplier AB", "email": "sales@example.com", "phone": "+46 8 123 45", "address": "Storgatan 1, 12345 Stockholm"},
+                    "total_base": 1250.0,
+                    "freight_base": 150.0,
+                    "grand_total_base": 1400.0,
+                    "lines": [
+                        {"name": "Widget X", "sku": "WX-1", "qty": 2, "unit_cost": 500.0, "currency": "SEK", "converted_unit_cost": 500.0, "line_total": 1000.0, "is_restock": False, "is_manual": False},
+                        {"name": "Cable 5m", "sku": "CB-5", "qty": 1, "unit_cost": 250.0, "currency": "SEK", "converted_unit_cost": 250.0, "line_total": 250.0, "is_restock": True, "is_manual": False},
+                    ],
+                }
+                return context
+
+            supplier = None
+            if po.supplier_company_id:
+                comp = self.db.get(Company, po.supplier_company_id)
+                if comp:
+                    supplier = {
+                        "name": comp.name,
+                        "email": getattr(comp, "email", None),
+                        "phone": getattr(comp, "phone", None),
+                        "address": getattr(comp, "address", None),
+                    }
+            context["po"] = {
+                "po_number": po.po_number,
+                "status": po.status,
+                "order_date": str(po.order_date) if po.order_date else None,
+                "expected_delivery_date": str(po.expected_delivery_date) if po.expected_delivery_date else None,
+                "report_currency": po.report_currency,
+                "supplier": supplier or {"name": po.supplier_name or "—", "email": None, "phone": None, "address": None},
+                "total_base": float(po.total_base) if po.total_base is not None else None,
+                "freight_base": float(po.freight_base) if po.freight_base is not None else None,
+                "grand_total_base": float(po.grand_total_base) if po.grand_total_base is not None else None,
+                "lines": [
+                    {
+                        "name": line.name or (f"Product #{line.product_id}" if line.product_id else "—"),
+                        "sku": line.sku,
+                        "qty": line.qty,
+                        "unit_cost": float(line.unit_cost) if line.unit_cost is not None else None,
+                        "currency": line.currency,
+                        "converted_unit_cost": float(line.converted_unit_cost) if line.converted_unit_cost is not None else None,
+                        "line_total": float(line.line_total) if line.line_total is not None else None,
+                        "is_restock": bool(line.is_restock),
+                        "is_manual": bool(line.is_manual),
+                    }
+                    for line in po.lines
+                ],
+            }
 
         return context
 

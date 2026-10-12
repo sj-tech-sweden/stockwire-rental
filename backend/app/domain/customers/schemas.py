@@ -21,6 +21,8 @@ class CompanyBase(BaseModel):
     is_crew_supplier: bool = False
     email_notifications_enabled: bool = True
     preferred_language: str | None = None
+    freight_cost: float | None = None
+    freight_currency: str | None = None
 
 
 class CompanyCreate(CompanyBase):

@@ -69,6 +69,9 @@
             <div class="col-12 col-md-4">
               <q-select v-model="deviceForm.location_zone_id" :options="locationSelectOptions" :label="t('inventory.deviceDialog.location')" outlined dense emit-value map-options clearable>
                 <template #after>
+                  <q-btn flat dense round color="positive" icon="qr_code_scanner" @click="openDeviceFieldCapture('location_zone_id', t('inventory.deviceDialog.location'))">
+                    <q-tooltip>{{ t('inventory.deviceDialog.scanLocation') }}</q-tooltip>
+                  </q-btn>
                   <q-btn v-if="deviceEditing" flat dense round color="primary" icon="place" @click="locateDeviceMapOpen = true">
                     <q-tooltip>{{ t('inventory.deviceDialog.locateOnMap') }}</q-tooltip>
                   </q-btn>
@@ -233,6 +236,28 @@ const locationSelectOptions = computed(() => {
   walk(store.zoneTree)
   return flat
 })
+const flatZones = computed(() => {
+  const out = []
+  const walk = (nodes) => {
+    for (const node of nodes || []) {
+      out.push(node)
+      walk(node.children || [])
+    }
+  }
+  walk(store.zoneTree)
+  return out
+})
+function resolveZoneByCode(code) {
+  const c = String(code || '').trim().toLowerCase()
+  if (!c) return null
+  return flatZones.value.find(
+    (z) =>
+      String(z.code || '').toLowerCase() === c ||
+      String(z.barcode || '').toLowerCase() === c ||
+      String(z.qr_code || '').toLowerCase() === c ||
+      String(z.rfid || '').toLowerCase() === c
+  )?.id ?? null
+}
 const caseDeviceOptions = computed(() => {
   return store.devices
     .filter(device => {
@@ -328,7 +353,7 @@ function openCreateDevice() {
 }
 
 function openEditDevice(device) {
-  deviceEditing.value = device
+  deviceEditing.value = device?.id ? device : null
   deviceForm.value = {
     product_id: device.product_id ?? null,
     asset_tag: device.asset_tag ?? '',
@@ -454,7 +479,7 @@ async function saveDevice() {
       await api.put(`/api/v1/inventory/devices/${id}/component-devices`, componentDeviceIds.value)
     }
     emit('update:modelValue', false)
-    emit('saved')
+    emit('saved', savedDevice)
   } catch (error) {
     deviceDialogError.value = error?.response?.data?.detail || t('inventory.deviceDialog.failedSaveDevice')
   } finally {
@@ -502,9 +527,19 @@ function focusDeviceField(field) {
 
 function setCapturedDeviceFieldValue(field, value) {
   if (!field) return
-  if (!Object.prototype.hasOwnProperty.call(deviceForm.value, field)) return
   const normalized = String(value || '').trim()
   if (!normalized) return
+  if (field === 'location_zone_id') {
+    const zoneId = resolveZoneByCode(normalized)
+    if (zoneId == null) {
+      $q.notify({ type: 'warning', message: t('inventory.deviceDialog.zoneNotFound') })
+      return
+    }
+    deviceForm.value.location_zone_id = zoneId
+    $q.notify({ type: 'positive', message: t('inventory.deviceDialog.fieldCaptured', { field: deviceFieldCaptureLabel.value || '' }) })
+    return
+  }
+  if (!Object.prototype.hasOwnProperty.call(deviceForm.value, field)) return
   deviceForm.value[field] = normalized
   $q.notify({ type: 'positive', message: t('inventory.deviceDialog.fieldCaptured', { field: deviceFieldCaptureLabel.value || '' }) })
 }
@@ -533,11 +568,22 @@ watch(() => deviceForm.value.product_id, (nextProductId) => {
 watch(() => props.modelValue, (open) => {
   if (open) {
     loadPrefixMemory()
-    if (props.device) {
+    if (props.device && props.device.id) {
       openEditDevice(props.device)
       fetchProductImageForDevice(props.device.product_id)
     } else {
       openCreateDevice()
+      // A device-less `device` prop is a create-mode prefill (e.g. from
+      // receiving): preselect the product and suggest an asset tag so the
+      // label isn't empty like it is for a blank create.
+      if (props.device && props.device.product_id) {
+        deviceForm.value.product_id = props.device.product_id
+        if (props.device.purchase_price != null) {
+          deviceForm.value.purchase_price = props.device.purchase_price
+        }
+        applyAssetPrefixForType(getProductTypeForDeviceProductId(props.device.product_id))
+        generateDeviceAssetTag()
+      }
       cleanupProductImage()
     }
   } else {

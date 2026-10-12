@@ -11,6 +11,7 @@ from app.domain.integrations.twenty_webhook import router as twenty_webhook_rout
 from app.db.session import engine
 from app.domain.auth.security import validate_api_key_pepper, validate_password_pepper
 from app.domain.integrations.auto_sync import start_twenty_auto_sync, stop_twenty_auto_sync
+from app.domain.purchasing.fx_sync import start_fx_auto_sync, stop_fx_auto_sync
 from app.domain.warehouse_leds.mqtt_client import start_mqtt_client, stop_mqtt_client
 import os
 import logging
@@ -137,6 +138,9 @@ def run_startup_checks() -> None:
     # Start Twenty CRM periodic auto-sync scheduler (skip in test environment)
     if settings.app_env != "test":
         start_twenty_auto_sync()
+    # Start FX rate auto-sync (daily), unless disabled via FX_AUTO_SYNC=false
+    if settings.app_env != "test" and os.getenv("FX_AUTO_SYNC", "true").lower() != "false":
+        start_fx_auto_sync()
     # Optionally run alembic migrations on startup when MIGRATE_ON_STARTUP=true
     if os.getenv("MIGRATE_ON_STARTUP", "").lower() == "true":
         base_dir = Path(__file__).resolve().parents[1]
@@ -160,6 +164,9 @@ def run_startup_checks() -> None:
             # opt-out, daily-rate labour layout, Swedish translation).
             from app.domain.quotes.templates import ensure_default_quote_template
             ensure_default_quote_template(db)
+            # Seed default notification templates/preferences (idempotent)
+            from app.domain.notifications.seed import seed_notification_defaults
+            seed_notification_defaults(db)
     except Exception as exc:
         print(f"Report template seeding skipped: {exc}")
 
@@ -168,6 +175,7 @@ def run_startup_checks() -> None:
 def run_shutdown() -> None:
     stop_mqtt_client()
     stop_twenty_auto_sync()
+    stop_fx_auto_sync()
 
 
 @app.get("/")

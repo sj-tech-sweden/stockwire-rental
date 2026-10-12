@@ -73,6 +73,41 @@ def test_vendor_sources_crud(client):
     assert client.get("/api/v1/vendor-catalog/sources").json() == []
 
 
+def test_delete_source_cascades_products(client):
+    source = client.post(
+        "/api/v1/vendor-catalog/sources",
+        json={"name": "Thomann feed", "plugin_id": "thomann_scraper", "config": {"url": "x"}},
+    )
+    assert source.status_code == 201
+    source_id = source.json()["id"]
+
+    vp1 = client.post(
+        "/api/v1/vendor-products",
+        json={"name": "Thomann Köp A", "sku": "A", "source_plugin": "thomann_scraper"},
+    ).json()["id"]
+    vp2 = client.post(
+        "/api/v1/vendor-products",
+        json={"name": "Keep me", "sku": "K", "source_plugin": "generic_csv"},
+    ).json()["id"]
+
+    # Without delete_products, products survive.
+    assert client.delete(f"/api/v1/vendor-catalog/sources/{source_id}").status_code == 204
+    assert client.get(f"/api/v1/vendor-products/{vp1}").status_code == 200
+
+    # Recreate the source and cascade-delete this time.
+    source_id = client.post(
+        "/api/v1/vendor-catalog/sources",
+        json={"name": "Thomann feed", "plugin_id": "thomann_scraper", "config": {"url": "x"}},
+    ).json()["id"]
+    resp = client.delete(
+        f"/api/v1/vendor-catalog/sources/{source_id}", params={"delete_products": True}
+    )
+    assert resp.status_code == 204
+    assert client.get(f"/api/v1/vendor-products/{vp1}").status_code == 404
+    # Unrelated product is untouched.
+    assert client.get(f"/api/v1/vendor-products/{vp2}").status_code == 200
+
+
 def test_importer_normalize_and_upsert(db_session):
     plugin = get_plugin(
         "generic_csv",
@@ -335,6 +370,37 @@ def test_vendor_product_persists_incoming_deliveries_and_url(client):
     ]
 
 
+def test_bulk_delete_vendor_products(client):
+    created = []
+    for i in range(3):
+        r = client.post(
+            "/api/v1/vendor-products",
+            json={"name": f"Thomann Köp {i}", "sku": f"T-{i}", "source_plugin": "thomann_scraper"},
+        )
+        assert r.status_code == 201
+        created.append(r.json()["id"])
+    keep = client.post(
+        "/api/v1/vendor-products",
+        json={"name": "Real item", "sku": "R-1", "source_plugin": "thomann_scraper"},
+    ).json()["id"]
+
+    resp = client.post(
+        "/api/v1/vendor-products/bulk-delete",
+        json={"source_plugin": "thomann_scraper", "name_contains": "Thomann Köp"},
+    )
+    assert resp.status_code == 200
+    assert resp.json()["deleted"] == 3
+
+    # The filtered-out product survives.
+    assert client.get(f"/api/v1/vendor-products/{keep}").status_code == 200
+    for vp_id in created:
+        assert client.get(f"/api/v1/vendor-products/{vp_id}").status_code == 404
+
+    # At least one filter is required.
+    bad = client.post("/api/v1/vendor-products/bulk-delete", json={})
+    assert bad.status_code == 400
+
+
 def test_apply_import_upserts_normalized_rows(client):
     # The apply endpoint is the core write path used by the importer UI. It
     # should upsert the supplied normalized rows and return created/updated.
@@ -369,5 +435,180 @@ def test_apply_import_upserts_normalized_rows(client):
 
     listing = client.get("/api/v1/vendor-products", params={"sku": "APPLY-1"})
     assert float(listing.json()[0]["unit_cost"]) == 21.0
+
+
+def test_vendor_catalog_auto_sync_runs_due_enabled_sources(client):
+    # The scheduler stage should sync only sources that are enabled, have a
+    # positive auto_sync_interval, and are due (interval elapsed since the last
+    # successful sync).
+    from app.db.session import SessionLocal
+    from app.domain.integrations.auto_sync import _run_vendor_catalog_sync
+    from app.domain.inventory import vendor_catalog as vc_module
+    from app.domain.inventory.vendor_catalog import (
+        BaseImporterPlugin,
+        VendorEquipmentRecord,
+        register_importer_plugin,
+    )
+    from app.domain.inventory.vendor_router import (
+        _read_sources,
+        _write_sources,
+    )
+
+    def get_source(source_id):
+        listing = client.get("/api/v1/vendor-catalog/sources").json()
+        return next(s for s in listing if s["id"] == source_id)
+
+    class FakePlugin(BaseImporterPlugin):
+        id = "fake_autosync"
+        label = "Fake autosync"
+
+        def fetch(self):
+            return []
+
+        def run(self):
+            return [VendorEquipmentRecord(name="Auto Widget", sku="AWS-1", unit_cost=5.0)]
+
+    register_importer_plugin(FakePlugin)
+    try:
+        due = client.post(
+            "/api/v1/vendor-catalog/sources",
+            json={
+                "name": "Due",
+                "plugin_id": "fake_autosync",
+                "enabled": True,
+                "auto_sync_interval": 60,
+            },
+        ).json()
+        disabled = client.post(
+            "/api/v1/vendor-catalog/sources",
+            json={
+                "name": "Disabled",
+                "plugin_id": "fake_autosync",
+                "enabled": False,
+                "auto_sync_interval": 60,
+            },
+        ).json()
+        notdue = client.post(
+            "/api/v1/vendor-catalog/sources",
+            json={
+                "name": "NotDue",
+                "plugin_id": "fake_autosync",
+                "enabled": True,
+                "auto_sync_interval": 99999,
+            },
+        ).json()
+
+        # Force a recent sync time on the "not due" source.
+        db = SessionLocal()
+        try:
+            sources = _read_sources(db)
+            for s in sources:
+                if s["id"] == notdue["id"]:
+                    s["last_synced_at"] = "2099-01-01T00:00:00+00:00"
+            _write_sources(db, sources)
+        finally:
+            db.close()
+
+        _run_vendor_catalog_sync()
+
+        products = client.get("/api/v1/vendor-products").json()
+        assert any(p["sku"] == "AWS-1" for p in products)
+
+        due_after = get_source(due["id"])
+        assert due_after["last_synced_at"] is not None
+        # Disabled and not-due sources must not have synced.
+        disabled_after = get_source(disabled["id"])
+        assert disabled_after["last_synced_at"] is None
+        notdue_after = get_source(notdue["id"])
+        assert notdue_after["last_synced_at"] == "2099-01-01T00:00:00+00:00"
+    finally:
+        vc_module.IMPORTER_PLUGINS.pop("fake_autosync", None)
+
+
+def test_vendor_catalog_auto_sync_failure_records_error(client):
+    # A failing source sync must record the error on the source (for UI
+    # visibility) and throttle retries by touching last_synced_at.
+    from app.db.session import SessionLocal
+    from app.domain.integrations.auto_sync import _run_vendor_catalog_sync
+    from app.domain.inventory import vendor_catalog as vc_module
+    from app.domain.inventory.vendor_catalog import (
+        BaseImporterPlugin,
+        register_importer_plugin,
+    )
+    from app.domain.inventory.vendor_router import _read_sources
+
+    class BoomPlugin(BaseImporterPlugin):
+        id = "fake_boom"
+        label = "Fake boom"
+
+        def fetch(self):
+            return []
+
+        def run(self):
+            raise RuntimeError("catalog down")
+
+    register_importer_plugin(BoomPlugin)
+    try:
+        client.post(
+            "/api/v1/vendor-catalog/sources",
+            json={
+                "name": "Boom",
+                "plugin_id": "fake_boom",
+                "enabled": True,
+                "auto_sync_interval": 60,
+            },
+        ).json()
+
+        _run_vendor_catalog_sync()
+
+        db = SessionLocal()
+        try:
+            sources = _read_sources(db)
+            boom = next(s for s in sources if s.get("name") == "Boom")
+            assert boom.get("last_auto_sync_error")
+            assert boom.get("last_synced_at")  # throttled
+        finally:
+            db.close()
+    finally:
+        vc_module.IMPORTER_PLUGINS.pop("fake_boom", None)
+
+
+def test_cluster_vendor_products(client):
+    # Two suppliers list the same item under different reference fields.
+    a = client.post(
+        "/api/v1/vendor-products",
+        json={"name": "U7 Lite", "sku": "U7-Lite", "unit_cost": 10, "currency": "SEK"},
+    ).json()["id"]
+    b = client.post(
+        "/api/v1/vendor-products",
+        json={
+            "name": "U7 Lite (other)",
+            "external_reference": "u7-lite",
+            "unit_cost": 12,
+            "currency": "EUR",
+        },
+    ).json()["id"]
+    # An unrelated item stays in its own cluster.
+    c = client.post(
+        "/api/v1/vendor-products", json={"name": "Totally different", "sku": "XYZ"}
+    ).json()["id"]
+
+    resp = client.get("/api/v1/vendor-products/clusters")
+    assert resp.status_code == 200
+    clusters = resp.json()
+    # Two clusters: the U7 pair and the unrelated item.
+    assert len(clusters) == 2
+
+    merged = next(cl for cl in clusters if cl["member_count"] == 2)
+    assert {m["id"] for m in merged["members"]} == {a, b}
+    # Matching is case-insensitive and spans sku/external_reference.
+    assert "u7-lite" in merged["keys"]
+    # Representative keeps the name with the most reference keys (tie -> lowest id).
+    assert merged["name"] == "U7 Lite"
+
+    singles = [cl for cl in clusters if cl["member_count"] == 1]
+    assert any(cl["members"][0]["id"] == c for cl in singles)
+
+
 
 

@@ -21,12 +21,147 @@ from decimal import Decimal
 from typing import Any, Optional
 
 import httpx
+from difflib import SequenceMatcher
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.domain.customers.models import Company
 from app.domain.inventory.models import VendorProduct
+from app.domain.inventory.schemas import VendorProductRead
 
 logger = logging.getLogger(__name__)
+
+# Above this normalised-name similarity we treat two products as the same item
+# (mirrors app.domain.purchasing.service.NAME_MATCH_THRESHOLD).
+_CLUSTER_NAME_THRESHOLD = 0.85
+
+
+def _cluster_norm(text: str | None) -> str:
+    if not text:
+        return ""
+    return re.sub(r"\s+", " ", re.sub(r"[^a-z0-9 ]", " ", text.lower())).strip()
+
+
+def _cluster_name_ratio(a: str | None, b: str | None) -> float:
+    na, nb = _cluster_norm(a), _cluster_norm(b)
+    if not na or not nb:
+        return 0.0
+    if na == nb:
+        return 1.0
+    return SequenceMatcher(None, na, nb).ratio()
+
+
+def _cluster_reference_keys(vp: VendorProduct) -> set[str]:
+    """Identifiers tying a vendor product to a physical item (case-insensitive).
+
+    Mirrors the matching used by the purchasing comparison engine
+    (``external_reference``, ``sku``, ``supplier_item_number``,
+    ``vendor_item_number``) so the catalog clusters the same way the PO builder
+    already recognises cross-supplier duplicates.
+    """
+    keys: set[str] = set()
+    for val in (
+        vp.external_reference,
+        vp.sku,
+        vp.supplier_item_number,
+        vp.vendor_item_number,
+    ):
+        v = (val or "").strip().lower()
+        if v:
+            keys.add(v)
+    return keys
+
+
+def cluster_vendor_products(
+    db: Session,
+    vendor_id: int | None = None,
+    search: str | None = None,
+    active_only: bool = False,
+    category: str | None = None,
+    brand: str | None = None,
+) -> list[dict]:
+    """Group vendor products that represent the same physical item.
+
+    Two products join a cluster when they share a reference key, or (as a
+    fallback, mirroring the purchasing engine) when at least one of them has no
+    reference key and their names are a strong fuzzy match. Returns a list of
+    cluster dicts, each with the representative ``id``/``name`` and the member
+    vendor products (including ``vendor_name``).
+    """
+    stmt = select(VendorProduct)
+    if vendor_id is not None:
+        stmt = stmt.where(VendorProduct.vendor_id == vendor_id)
+    if active_only:
+        stmt = stmt.where(VendorProduct.is_active.is_(True))
+    if category:
+        stmt = stmt.where(VendorProduct.category == category)
+    if brand:
+        stmt = stmt.where(VendorProduct.brand == brand)
+    if search:
+        like = f"%{search}%"
+        stmt = stmt.where(
+            (VendorProduct.name.ilike(like))
+            | (VendorProduct.sku.ilike(like))
+            | (VendorProduct.brand.ilike(like))
+            | (VendorProduct.external_reference.ilike(like))
+            | (VendorProduct.vendor_item_number.ilike(like))
+            | (VendorProduct.supplier_item_number.ilike(like))
+        )
+    products = db.scalars(stmt).all()
+    n = len(products)
+
+    parent = list(range(n))
+
+    def find(x: int) -> int:
+        while parent[x] != x:
+            parent[x] = parent[parent[x]]
+            x = parent[x]
+        return x
+
+    def union(a: int, b: int) -> None:
+        ra, rb = find(a), find(b)
+        if ra != rb:
+            parent[ra] = rb
+
+    keysets = [_cluster_reference_keys(p) for p in products]
+    has_keys = [bool(k) for k in keysets]
+    for i in range(n):
+        for j in range(i + 1, n):
+            if keysets[i] & keysets[j]:
+                union(i, j)
+            elif (not has_keys[i] or not has_keys[j]) and _cluster_name_ratio(
+                products[i].name, products[j].name
+            ) >= _CLUSTER_NAME_THRESHOLD:
+                union(i, j)
+
+    groups: dict[int, list[int]] = {}
+    for i in range(n):
+        groups.setdefault(find(i), []).append(i)
+
+    clusters: list[dict] = []
+    for idxs in groups.values():
+        members = [products[i] for i in idxs]
+        rep = sorted(
+            members, key=lambda m: (-len(_cluster_reference_keys(m)), m.id)
+        )[0]
+        all_keys = sorted({k for m in members for k in _cluster_reference_keys(m)})
+        member_dtos = []
+        for m in members:
+            dto = VendorProductRead.model_validate(m).model_dump()
+            dto["vendor_name"] = m.vendor.name if isinstance(m.vendor, Company) else None
+            member_dtos.append(dto)
+        clusters.append(
+            {
+                "id": rep.id,
+                "name": rep.name,
+                "member_count": len(members),
+                "keys": all_keys,
+                "members": member_dtos,
+            }
+        )
+    clusters.sort(key=lambda c: (c["name"] or "").lower())
+    return clusters
+
 
 
 @dataclass
@@ -35,6 +170,7 @@ class VendorEquipmentRecord:
 
     name: str
     sku: Optional[str] = None
+    barcode: Optional[str] = None
     brand: Optional[str] = None
     category: Optional[str] = None
     description: Optional[str] = None
@@ -255,6 +391,17 @@ class BaseImporterPlugin(ABC):
         """
         return None
 
+    @classmethod
+    def discover_categories(cls, base_url: str) -> list[dict]:
+        """Return a list of ``{"name", "url"}`` category links discoverable from
+        ``base_url``.
+
+        The base implementation returns nothing; scrapers that expose a browsable
+        category tree override this so the UI can offer "pick categories" instead
+        of requiring the user to paste listing URLs by hand.
+        """
+        return []
+
     def run(self) -> list[VendorEquipmentRecord]:
         return self.normalize(self.fetch())
 
@@ -452,6 +599,7 @@ class AurdelPricesPlugin(BaseImporterPlugin):
     """
 
     id = "aurdel_prices"
+    label = "Aurdel Prices"
 
     def build_product_url(self, record: VendorEquipmentRecord) -> str | None:
         # Aurdel's webshop deeplink is https://aurdel.com/se/<article number>,
@@ -656,6 +804,11 @@ IMPORTER_PLUGINS: dict[str, type[BaseImporterPlugin]] = {
 }
 
 
+def register_importer_plugin(plugin_cls: type[BaseImporterPlugin]) -> None:
+    """Register an importer plugin class so ``get_plugin`` can resolve it."""
+    IMPORTER_PLUGINS[plugin_cls.id] = plugin_cls
+
+
 def get_plugin(plugin_id: str, field_map: dict | None, config: dict | None) -> BaseImporterPlugin:
     plugin_cls = IMPORTER_PLUGINS.get(plugin_id)
     if plugin_cls is None:
@@ -726,6 +879,7 @@ def upsert_vendor_products(
             if existing is not None:
                 existing.name = rec.name
                 existing.sku = rec.sku
+                existing.barcode = rec.barcode
                 existing.brand = rec.brand
                 existing.category = rec.category
                 existing.description = rec.description
@@ -755,6 +909,7 @@ def upsert_vendor_products(
                 vp = VendorProduct(
                     name=rec.name,
                     sku=rec.sku,
+                    barcode=rec.barcode,
                     brand=rec.brand,
                     category=rec.category,
                     description=rec.description,

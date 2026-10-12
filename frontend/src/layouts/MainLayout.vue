@@ -311,6 +311,8 @@ const navGroups = [
     children: [
       { icon: 'inventory_2', labelKey: 'app.nav.inventory', to: '/inventory' },
       { icon: 'storefront', labelKey: 'app.nav.vendorCatalog', to: '/vendor-catalog' },
+      { icon: 'receipt_long', labelKey: 'app.nav.purchaseOrders', to: '/purchase-orders' },
+      { icon: 'local_shipping', labelKey: 'app.nav.receive', to: '/receive' },
       { icon: 'print', labelKey: 'app.nav.labels', to: '/labels' },
       { icon: 'qr_code_scanner', labelKey: 'app.nav.scan', to: '/scan' },
     ],
@@ -382,6 +384,7 @@ const allNavItems = computed(() => {
   })
   items.push({ icon: 'history', labelKey: 'app.nav.activity', to: '/activity' })
   items.push({ icon: 'storefront', labelKey: 'app.nav.vendorCatalog', to: '/vendor-catalog' })
+  items.push({ icon: 'receipt_long', labelKey: 'app.nav.purchaseOrders', to: '/purchase-orders' })
   items.push({ icon: 'summarize', labelKey: 'app.nav.reports', to: '/reports' })
   if (authStore.canManageSettings) {
     items.push({ icon: 'tune', labelKey: 'app.nav.settings', to: '/settings' })

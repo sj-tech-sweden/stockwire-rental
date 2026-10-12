@@ -54,6 +54,7 @@
             <q-btn dense flat icon="visibility" @click="previewSource(props.row)" :aria-label="t('vendorCatalog.preview')" />
             <q-btn dense flat icon="cloud_download" color="primary" @click="runSource(props.row)" :aria-label="t('vendorCatalog.run')" />
             <q-btn dense flat icon="edit" @click="openEdit(props.row)" />
+            <q-btn dense flat icon="delete_sweep" color="amber-8" :aria-label="t('vendorCatalog.deleteProductsFromSource')" @click="deleteSourceProducts(props.row)" />
             <q-btn dense flat icon="delete" color="negative" @click="deleteSource(props.row)" />
           </q-td>
         </template>
@@ -126,6 +127,16 @@
               map-options
             />
             <q-input
+              v-else-if="field.type === 'textarea'"
+              v-model="configValues[field.key]"
+              :label="field.label"
+              :hint="field.help"
+              type="textarea"
+              autogrow
+              outlined
+              dense
+            />
+            <q-input
               v-else
               v-model="configValues[field.key]"
               :label="field.label"
@@ -151,11 +162,73 @@
             type="textarea"
             autogrow
           />
+
+          <div v-if="form.plugin_id === 'thomann_scraper'" class="q-mt-sm">
+            <q-btn
+              color="secondary"
+              icon="category"
+              :label="t('vendorCatalog.browseCategories')"
+              outline
+              @click="openCategoryBrowser"
+            />
+          </div>
         </q-card-section>
 
         <q-card-actions align="right">
           <q-btn flat :label="t('vendorCatalog.close')" @click="dialogOpen = false" />
           <q-btn color="primary" :label="t('app.actions.save')" @click="saveSource" :loading="saving" />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
+
+    <!-- Thomann category browser dialog -->
+    <q-dialog v-model="categoryBrowserOpen" persistent>
+      <q-card style="width: 700px; max-width: 95vw; max-height: 85vh">
+        <q-card-section class="row items-center">
+          <div class="text-h6">{{ t('vendorCatalog.browseCategories') }}</div>
+          <q-space />
+          <q-btn flat round dense icon="close" @click="categoryBrowserOpen = false" />
+        </q-card-section>
+        <q-card-section class="q-gutter-sm">
+          <div class="row items-end q-gutter-sm">
+            <q-input
+              v-model="categoryUrl"
+              :label="t('vendorCatalog.categoryUrl')"
+              outlined
+              dense
+              class="col"
+            />
+            <q-btn
+              color="primary"
+              :label="t('vendorCatalog.loadCategories')"
+              :loading="categoryLoading"
+              @click="loadCategories"
+            />
+          </div>
+          <q-table
+            v-if="categoryList.length"
+            :rows="categoryList"
+            :columns="categoryColumns"
+            row-key="url"
+            flat
+            bordered
+            dense
+            selection="multiple"
+            v-model:selected="categorySelected"
+            :rows-per-page-options="[0, 25, 50]"
+          />
+          <div v-else-if="categoryLoaded" class="text-grey q-pa-sm">
+            {{ t('vendorCatalog.noCategories') }}
+          </div>
+        </q-card-section>
+        <q-card-actions align="right">
+          <q-btn flat :label="t('vendorCatalog.close')" @click="categoryBrowserOpen = false" />
+          <q-btn
+            color="primary"
+            :label="t('vendorCatalog.addSelected')"
+            :disable="!categorySelected.length"
+            @click="addSelectedCategories"
+          />
         </q-card-actions>
       </q-card>
     </q-dialog>
@@ -320,6 +393,64 @@ function onPluginChange(pluginId) {
     seedConfigDefaults()
     form.fieldMapText = JSON.stringify(defaultFieldMapFor(pluginId), null, 2)
   }
+}
+
+// ── Thomann category browser ─────────────────────────────────────────────────
+const categoryBrowserOpen = ref(false)
+const categoryUrl = ref('https://www.thomann.se')
+const categoryLoading = ref(false)
+const categoryLoaded = ref(false)
+const categoryList = ref([])
+const categorySelected = ref([])
+
+const categoryColumns = [
+  { name: 'name', label: t('vendorCatalog.category'), field: 'name', align: 'left' },
+  { name: 'url', label: 'URL', field: 'url', align: 'left' },
+]
+
+function openCategoryBrowser() {
+  categoryLoaded.value = false
+  categoryList.value = []
+  categorySelected.value = []
+  // The store must be configured before browsing, so the discovered links and
+  // prices use the right regional store/currency.
+  categoryUrl.value = (configValues.store || 'https://www.thomann.se').replace(/\/?$/, '/')
+  categoryBrowserOpen.value = true
+}
+
+async function loadCategories() {
+  categoryLoading.value = true
+  categoryLoaded.value = false
+  categoryList.value = []
+  categorySelected.value = []
+  try {
+    const { data } = await api.post('/api/v1/vendor-catalog/discover', {
+      plugin_id: 'thomann_scraper',
+      url: categoryUrl.value,
+      config: { store: configValues.store || 'https://www.thomann.se' },
+    })
+    categoryList.value = data.categories || []
+    categoryLoaded.value = true
+  } catch (e) {
+    categoryLoaded.value = true
+    notifyError(e, 'vendorCatalog.failedToLoad')
+  } finally {
+    categoryLoading.value = false
+  }
+}
+
+function addSelectedCategories() {
+  const existing = new Set(
+    String(configValues.start_urls || '')
+      .split('\n')
+      .map((s) => s.trim())
+      .filter(Boolean)
+  )
+  for (const cat of categorySelected.value) {
+    if (cat.url) existing.add(cat.url.trim())
+  }
+  configValues.start_urls = Array.from(existing).join('\n')
+  categoryBrowserOpen.value = false
 }
 
 async function loadSources() {
@@ -496,12 +627,44 @@ function deleteSource(source) {
   Dialog.create({
     title: t('vendorCatalog.editSource'),
     message: t('vendorCatalog.confirmDelete'),
+    options: {
+      type: 'checkbox',
+      model: ['products'],
+      items: [{ label: t('vendorCatalog.deleteSourceProducts'), value: 'products' }],
+    },
+    cancel: true,
+    persistent: true,
+  })
+    .onOk(async (data) => {
+      const deleteProducts = Array.isArray(data) && data.includes('products')
+      try {
+        await api.delete(`/api/v1/vendor-catalog/sources/${source.id}`, {
+          params: { delete_products: deleteProducts },
+        })
+        await loadSources()
+        $q.notify({ type: 'positive', message: t('common.deleted') })
+      } catch (e) {
+        $q.notify({ type: 'negative', message: t('app.actions.deleteFailed') })
+      }
+    })
+}
+
+async function deleteSourceProducts(source) {
+  Dialog.create({
+    title: t('vendorCatalog.deleteProductsFromSource'),
+    message: `${t('vendorCatalog.confirmDelete')}\n(${source.plugin_id || ''})`,
     cancel: true,
     persistent: true,
   }).onOk(async () => {
     try {
-      await api.delete(`/api/v1/vendor-catalog/sources/${source.id}`)
-      await loadSources()
+      const { data } = await api.post('/api/v1/vendor-products/bulk-delete', {
+        source_plugin: source.plugin_id,
+        vendor_id: source.vendor_id || null,
+      })
+      $q.notify({
+        type: 'positive',
+        message: t('vendorCatalog.productsDeleted', { count: data.deleted }),
+      })
     } catch (e) {
       $q.notify({ type: 'negative', message: t('app.actions.deleteFailed') })
     }

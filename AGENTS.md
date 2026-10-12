@@ -81,3 +81,20 @@ files) and `docs/I18N_GUIDE.md`. The non-negotiables:
 - Don't hardcode user-facing strings — route them through i18n.
 - Run the project's lint/typecheck (ruff for backend, project linter for
   frontend) before considering a change done.
+
+## Scanning (QR / NFC / OCR)
+
+- When a feature needs to **capture a code** (product barcode, device serial,
+  asset tag, etc.), reuse the unified scanner component
+  `frontend/src/components/FieldScanDialog.vue` rather than a plain text input.
+  It supports QR/barcode OCR and NFC and emits `captured` with the decoded
+  value (`v-model` for open state, `field-label` for the heading).
+- Receiving goods is **purchase-order-centric**: start from a PO (the
+  `Receive` button on a PO in `PurchaseOrdersPage` navigates to
+  `/receive?po=<id>`), then pick which PO rows/quantities to receive. Barcode
+  scan lookup (`GET /purchasing/receiving/lookup`) remains as an alternative
+  entry point, but the PO flow is the primary path.
+- A product's `barcode` is sourced from the **vendor catalog item** (Thomann
+  `gtin13/14/8`/`ean`), not entered by hand; it auto-fills onto the linked
+  warehouse product. Receiving lookup matches `Product.barcode` OR
+  `Product.sku`.

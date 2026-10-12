@@ -21,6 +21,7 @@ from app.domain.inventory.vendor_router import router as vendor_products_router
 from app.domain.inventory.vendor_router import sources_router as vendor_sources_router
 from app.domain.jobs.router import router as jobs_router
 from app.domain.notifications.router import router as notifications_router
+from app.domain.purchasing.router import router as purchasing_router
 from app.domain.projects.router import router as projects_router
 from app.domain.quotes.router import router as quotes_router
 from app.domain.realtime.router import router as realtime_router
@@ -46,6 +47,7 @@ api_router.include_router(crew_router)
 api_router.include_router(reports_router)
 api_router.include_router(jobs_router)
 api_router.include_router(notifications_router)
+api_router.include_router(purchasing_router)
 api_router.include_router(projects_router)
 api_router.include_router(realtime_router)
 api_router.include_router(venues_router)

@@ -69,6 +69,7 @@ class Product(Base):
     rental_price: Mapped[float] = mapped_column(Numeric(10, 2), default=0)
     external_source: Mapped[str | None] = mapped_column(String(80), nullable=True, index=True)
     external_reference: Mapped[str | None] = mapped_column(String(120), nullable=True, index=True)
+    barcode: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
     eventory_available_qty: Mapped[int] = mapped_column(Integer, default=0)
     eventory_packlists_json: Mapped[str | None] = mapped_column(Text, nullable=True)
     weight_kg: Mapped[float | None] = mapped_column(Numeric(10, 3), nullable=True)
@@ -244,6 +245,9 @@ class ProductSupplier(Base):
     product_id: Mapped[int] = mapped_column(ForeignKey("products.id", ondelete="CASCADE"), index=True)
     supplier_id: Mapped[int] = mapped_column(ForeignKey("customers.id", ondelete="CASCADE"), index=True)
     supplier_company_id: Mapped[int | None] = mapped_column(ForeignKey("companies.id", ondelete="SET NULL"), nullable=True, index=True)
+    vendor_product_id: Mapped[int | None] = mapped_column(
+        ForeignKey("vendor_products.id", ondelete="SET NULL"), nullable=True, index=True
+    )
     is_primary: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     lead_time_days: Mapped[int | None] = mapped_column(Integer, nullable=True)
     unit_cost: Mapped[float | None] = mapped_column(Numeric(10, 2), nullable=True)
@@ -253,6 +257,7 @@ class ProductSupplier(Base):
     product: Mapped[Product] = relationship("Product", back_populates="supplier_links")
     supplier_legacy: Mapped["Customer"] = relationship("Customer", back_populates="supplied_products")
     supplier_company: Mapped["Company | None"] = relationship("Company", back_populates="supplied_products")
+    vendor_product: Mapped["VendorProduct | None"] = relationship("VendorProduct")
 
 
 class DeviceMaintenanceSchedule(Base):
@@ -432,6 +437,7 @@ class VendorProduct(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     sku: Mapped[str | None] = mapped_column(String(120), nullable=True, index=True)
     name: Mapped[str] = mapped_column(String(255), index=True)
+    barcode: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
     brand: Mapped[str | None] = mapped_column(String(120), nullable=True, index=True)
     category: Mapped[str | None] = mapped_column(String(120), nullable=True, index=True)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)

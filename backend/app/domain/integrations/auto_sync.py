@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import threading
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta, timezone
 
 logger = logging.getLogger(__name__)
 
@@ -255,8 +255,127 @@ def _scheduler_loop() -> None:
             _check_and_sync()
         except Exception:
             logger.exception("Twenty auto-sync scheduler encountered an error")
+        try:
+            _run_vendor_catalog_sync()
+        except Exception:
+            logger.exception("Vendor catalog auto-sync scheduler encountered an error")
         _stop_event.wait(timeout=_CHECK_INTERVAL_SECONDS)
     logger.info("Twenty CRM auto-sync scheduler stopped")
+
+
+def _run_vendor_catalog_sync() -> None:
+    """Sync each enabled vendor-catalog source whose auto-sync interval elapsed.
+
+    A source auto-syncs when ``enabled`` is true and ``auto_sync_interval`` (minutes)
+    is greater than zero. On success the source's ``last_synced_at`` is refreshed; on
+    failure the error is recorded on the source and staff are notified.
+    """
+    from app.db.session import SessionLocal
+    from app.domain.inventory.vendor_catalog import get_plugin, upsert_vendor_products
+    from app.domain.inventory.vendor_router import _read_sources, _update_source_synced_at
+
+    db = SessionLocal()
+    try:
+        sources = _read_sources(db)
+        now = datetime.now(UTC)
+        for source in sources:
+            if not source.get("enabled", True):
+                continue
+            interval = source.get("auto_sync_interval") or 0
+            if interval <= 0:
+                continue
+
+            last = source.get("last_synced_at")
+            last_dt = None
+            if last:
+                try:
+                    last_dt = datetime.fromisoformat(last)
+                    if last_dt.tzinfo is None:
+                        last_dt = last_dt.replace(tzinfo=UTC)
+                except (ValueError, TypeError):
+                    last_dt = None
+            if last_dt is not None and (now - last_dt) < timedelta(minutes=interval):
+                continue
+
+            try:
+                plugin = get_plugin(
+                    source["plugin_id"],
+                    source.get("field_map") or {},
+                    source.get("config") or {},
+                )
+                records = plugin.run()
+                result = upsert_vendor_products(
+                    db,
+                    records,
+                    source.get("vendor_id"),
+                    source_plugin=source.get("plugin_id"),
+                )
+                _update_source_synced_at(db, source["id"], records=result)
+                logger.info(
+                    "Vendor catalog auto-sync: source %s synced (%d created, %d updated)",
+                    source.get("name"),
+                    result.get("created", 0),
+                    result.get("updated", 0),
+                )
+            except Exception as exc:
+                logger.exception(
+                    "Vendor catalog auto-sync failed for source %s (%s)",
+                    source.get("id"),
+                    source.get("name"),
+                )
+                _notify_vendor_sync_failure(db, source, exc)
+    finally:
+        db.close()
+
+
+def _notify_vendor_sync_failure(db, source: dict, exc: Exception) -> None:
+    """Record the failure on the source and notify staff via the notification system."""
+    from app.domain.auth.models import User
+    from app.domain.inventory.vendor_router import _read_sources, _write_sources
+    from app.domain.notifications.service import send_notification
+
+    error_msg = str(exc)
+    now_iso = datetime.now(UTC).isoformat()
+
+    # Throttle retries by touching last_synced_at and surface the error on the source.
+    sources = _read_sources(db)
+    for s in sources:
+        if s.get("id") == source.get("id"):
+            s["last_synced_at"] = now_iso
+            s["last_auto_sync_error"] = error_msg
+            s["last_auto_sync_failed_at"] = now_iso
+            break
+    else:
+        sources.append(
+            {
+                "id": source.get("id"),
+                "last_synced_at": now_iso,
+                "last_auto_sync_error": error_msg,
+                "last_auto_sync_failed_at": now_iso,
+            }
+        )
+    _write_sources(db, sources)
+
+    admin = db.query(User).filter(User.is_admin.is_(True)).order_by(User.id).first()
+    if admin is None:
+        return
+    try:
+        send_notification(
+            db,
+            {
+                "template_key": "vendor_catalog_sync_failed",
+                "recipient_type": "staff",
+                "recipient_id": admin.id,
+                "channel": "both",
+                "event_type": "vendor_catalog_sync_failed",
+                "context": {
+                    "source_name": source.get("name", "Unknown source"),
+                    "error": error_msg,
+                },
+            },
+        )
+    except Exception:
+        logger.exception("Failed to send vendor sync failure notification")
 
 
 def _check_and_sync() -> None:

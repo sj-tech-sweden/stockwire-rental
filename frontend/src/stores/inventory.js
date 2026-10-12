@@ -799,6 +799,34 @@ export const useInventoryStore = defineStore('inventory', () => {
     return data
   }
 
+  async function reorderProductSupplier(productId, linkId, body) {
+    const { data } = await api.post(
+      `/api/v1/inventory/products/${productId}/suppliers/${linkId}/reorder`,
+      body || {}
+    )
+    return data
+  }
+
+  async function receivingLookup(code) {
+    const { data } = await api.get(`/api/v1/purchasing/receiving/lookup`, { params: { code } })
+    return data
+  }
+
+  async function receivePurchaseOrder(poId, lines) {
+    const { data } = await api.post(`/api/v1/purchasing/purchase-orders/${poId}/receive`, { lines })
+    return data
+  }
+
+  async function getPurchaseOrder(poId) {
+    const { data } = await api.get(`/api/v1/purchasing/purchase-orders/${poId}`)
+    return data
+  }
+
+  async function listPurchaseOrders() {
+    const { data } = await api.get(`/api/v1/purchasing/purchase-orders`)
+    return data
+  }
+
   return {
     products,
     devices,
@@ -876,5 +904,10 @@ export const useInventoryStore = defineStore('inventory', () => {
     fetchLowStock,
     fetchProductSuppliers,
     updateProductSuppliers,
+    reorderProductSupplier,
+    receivingLookup,
+    receivePurchaseOrder,
+    getPurchaseOrder,
+    listPurchaseOrders,
   }
 })

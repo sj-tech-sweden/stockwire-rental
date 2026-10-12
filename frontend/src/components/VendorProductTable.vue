@@ -55,9 +55,82 @@
         @update:model-value="onFilterChange"
       />
       <q-toggle v-model="filters.active_only" :label="t('vendorCatalog.active')" @update:model-value="onFilterChange" />
+      <q-toggle
+        v-if="!props.selectable"
+        v-model="mergeMode"
+        :label="t('vendorCatalog.mergeView')"
+        @update:model-value="onMergeToggle"
+      />
+    </div>
+
+    <!-- Merged view: each card is one physical item, listing every supplier's
+         price/stock/ETA that shares a reference key (or a fuzzy name match). -->
+    <div v-if="mergeMode" class="q-gutter-y-sm">
+      <q-card v-for="cluster in clusters" :key="cluster.id" flat bordered>
+        <q-card-section class="row items-center q-gutter-x-xs q-pb-xs">
+          <div class="text-subtitle2">{{ cluster.name }}</div>
+          <q-chip size="sm" color="primary" text-color="white" dense>
+            {{ cluster.member_count }}
+          </q-chip>
+          <q-chip
+            v-for="k in cluster.keys"
+            :key="k"
+            size="xs"
+            outline
+            dense
+            :title="t('vendorCatalog.matchedKeys')"
+          >
+            {{ k }}
+          </q-chip>
+        </q-card-section>
+        <q-card-section class="q-pt-none">
+          <q-table
+            :rows="cluster.members"
+            :columns="mergeColumns"
+            row-key="id"
+            flat
+            dense
+            hide-bottom
+            :rows-per-page-options="[0]"
+          >
+            <template #body-cell-vendor="props">
+              <q-td :props="props">{{ props.value || t('vendorCatalog.noVendor') }}</q-td>
+            </template>
+            <template #body-cell-reference="props">
+              <q-td :props="props">{{ memberReference(props.row) }}</q-td>
+            </template>
+            <template #body-cell-unit_cost="props">
+              <q-td :props="props" class="text-right">
+                {{ props.value != null ? formatMoney(props.value) : '' }}
+              </q-td>
+            </template>
+            <template #body-cell-expected_delivery_date="props">
+              <q-td :props="props">{{ formatDate(props.value) }}</q-td>
+            </template>
+            <template #body-cell-productUrl="props">
+              <q-td :props="props" class="text-center">
+                <a
+                  v-if="props.value"
+                  :href="props.value"
+                  target="_blank"
+                  rel="noopener"
+                  class="text-primary"
+                  :title="t('vendorCatalog.viewOnWebshop')"
+                >
+                  <q-icon name="open_in_new" size="sm" />
+                </a>
+              </q-td>
+            </template>
+          </q-table>
+        </q-card-section>
+      </q-card>
+      <div v-if="!clusters.length && !loading" class="q-pa-md text-grey">
+        {{ t('vendorCatalog.noProducts') }}
+      </div>
     </div>
 
     <q-table
+      v-else
       :rows="rows"
       :columns="columns"
       row-key="id"
@@ -292,6 +365,8 @@ const isSelectable = computed(() => props.selectable)
 
 const rows = ref([])
 const loading = ref(false)
+const mergeMode = ref(false)
+const clusters = ref([])
 
 const filters = reactive({
   search: '',
@@ -406,6 +481,28 @@ const columns = [
   { name: 'select', label: '', field: 'select', align: 'right' },
 ]
 
+// Columns for a merged cluster card: every supplier that sells the same item.
+const mergeColumns = [
+  { name: 'vendor', label: t('vendorCatalog.vendor'), field: 'vendor_name', align: 'left' },
+  { name: 'reference', label: t('vendorCatalog.reference'), field: 'reference', align: 'left' },
+  { name: 'unit_cost', label: t('vendorCatalog.unitCost'), field: 'unit_cost', align: 'right' },
+  { name: 'currency', label: t('vendorCatalog.currency'), field: 'currency', align: 'left' },
+  { name: 'stock_quantity', label: t('vendorCatalog.stock'), field: 'stock_quantity', align: 'right' },
+  { name: 'availability', label: t('vendorCatalog.availability'), field: 'availability', align: 'left' },
+  { name: 'expected_delivery_date', label: t('vendorCatalog.expectedDelivery'), field: 'expected_delivery_date', align: 'left' },
+  { name: 'productUrl', label: t('vendorCatalog.viewOnWebshop'), field: 'product_url', align: 'center' },
+]
+
+function memberReference(m) {
+  return m.sku || m.external_reference || m.supplier_item_number || m.vendor_item_number || ''
+}
+
+const formatMoney = (value) => {
+  const n = Number(value)
+  if (!Number.isFinite(n)) return ''
+  return n.toLocaleString(locale.value || 'en')
+}
+
 async function loadFacets(q) {
   try {
     const { data } = await api.get('/api/v1/vendor-products/facets', { params: q ? { q } : {} })
@@ -421,6 +518,10 @@ async function loadFacets(q) {
 }
 
 async function loadData() {
+  if (mergeMode.value) {
+    await loadClusters()
+    return
+  }
   loading.value = true
   try {
     const params = {
@@ -450,6 +551,29 @@ async function loadData() {
 function onFilterChange() {
   pagination.value.page = 1
   loadData()
+}
+
+function onMergeToggle() {
+  pagination.value.page = 1
+  loadData()
+}
+
+async function loadClusters() {
+  loading.value = true
+  try {
+    const params = { active_only: filters.active_only }
+    if (filters.search) params.search = filters.search
+    if (props.vendorId) params.vendor_id = props.vendorId
+    else if (filters.vendor_id) params.vendor_id = filters.vendor_id
+    if (filters.category) params.category = filters.category
+    if (filters.brand) params.brand = filters.brand
+    const { data } = await api.get('/api/v1/vendor-products/clusters', { params })
+    clusters.value = data || []
+  } catch {
+    clusters.value = []
+  } finally {
+    loading.value = false
+  }
 }
 
 function onRequest(req) {
