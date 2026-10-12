@@ -213,6 +213,18 @@
                         <span v-if="row.lead_time_days"> · {{ row.lead_time_days }} {{ t('inventory.unitDays') }}</span>
                         <span v-if="row.unit_cost"> · {{ row.unit_cost }} {{ activeCurrencyCode }}</span>
                       </q-item-label>
+                      <div v-if="row.vendor_product" class="q-mt-xs row items-center q-gutter-x-sm no-wrap overflow-auto">
+                        <q-icon name="inventory_2" size="xs" color="grey-7" />
+                        <span class="text-caption">
+                          {{ row.vendor_product.name }}
+                          <span v-if="row.vendor_product.unit_cost != null"> · {{ row.vendor_product.unit_cost }} {{ row.vendor_product.currency }}</span>
+                          <span v-if="row.vendor_product.stock_quantity != null"> · {{ t('vendorCatalog.stock') }}: {{ row.vendor_product.stock_quantity }}</span>
+                        </span>
+                        <a v-if="row.vendor_product.product_url" :href="row.vendor_product.product_url" target="_blank" rel="noopener" class="text-caption text-primary">{{ t('inventory.openVendorLink') }}</a>
+                        <q-btn flat dense size="sm" color="primary" icon="local_shipping" :label="t('inventory.reorder')" :disable="!productEditing || !row.id" @click="reorderSupplier(row)" />
+                        <q-btn flat dense size="sm" color="grey" icon="link_off" @click="unlinkVendorItem(row.supplier_id)" />
+                      </div>
+                      <q-btn v-else flat dense size="sm" color="primary" icon="link" :label="t('inventory.linkVendorItem')" @click="openVendorPicker(row.supplier_id)" />
                     </q-item-section>
                     <q-item-section v-else>
                       <div class="row q-col-gutter-xs items-center">
@@ -246,7 +258,7 @@
               </q-expansion-item>
             </div>
 
-            <div class="col-12 q-mt-sm" v-if="productForm.product_type === 'consumable'">
+            <div class="col-12 q-mt-sm">
               <q-separator class="q-my-md" />
               <div class="text-subtitle2 q-mb-sm">{{ t('inventory.reorderSettings') }}</div>
               <div class="row q-col-gutter-sm">
@@ -527,6 +539,48 @@
     </q-card>
   </q-dialog>
 
+  <VendorProductPicker v-model="vendorPickerOpen" @select="onVendorPicked" />
+
+  <q-dialog v-model="reorderDialogOpen" style="width: 500px; max-width: 95vw">
+    <q-card style="width: 500px; max-width: 95vw">
+      <q-card-section class="row items-center">
+        <div class="text-h6 q-mr-auto">{{ t('inventory.reorderTo') }}</div>
+        <q-btn flat round icon="close" @click="reorderDialogOpen = false" />
+      </q-card-section>
+      <q-card-section>
+        <q-option-group
+          v-model="reorderDest"
+          :options="reorderDestOptions"
+          type="radio"
+          class="q-mb-md"
+        />
+        <q-select
+          v-if="reorderDest === 'existing'"
+          v-model="reorderExistingPo"
+          :options="reorderPoOptions"
+          :label="t('inventory.reorderSelectPo')"
+          outlined
+          emit-value
+          map-options
+          :disable="!reorderPoOptions.length"
+        />
+        <div v-if="reorderDest === 'existing' && !reorderPoOptions.length" class="text-caption text-grey-7">
+          {{ t('inventory.reorderNoOpenPo') }}
+        </div>
+      </q-card-section>
+      <q-card-actions align="right">
+        <q-btn flat :label="t('app.actions.cancel')" @click="reorderDialogOpen = false" />
+        <q-btn
+          color="primary"
+          :label="t('app.actions.continue')"
+          :disable="reorderDest === 'existing' && !reorderExistingPo"
+          :loading="reordering"
+          @click="confirmReorder"
+        />
+      </q-card-actions>
+    </q-card>
+  </q-dialog>
+
 </template>
 
 <script setup>
@@ -545,6 +599,7 @@ import { useProductImage } from '../composables/useProductImage'
 import { api } from '../boot/axios'
 import EntityAttachmentsPanel from './EntityAttachmentsPanel.vue'
 import SupplierPickerInline from './SupplierPickerInline.vue'
+import VendorProductPicker from './VendorProductPicker.vue'
 
 const props = defineProps({
   modelValue: Boolean,
@@ -607,14 +662,24 @@ const newComponentScannable = ref(false)
 const associationMode = ref(null) // null | { purpose, savedForm, savedEditing, savedImageFile }
 
 const suppliersExpanded = ref(true)
+
+const reorderDialogOpen = ref(false)
+const reorderRow = ref(null)
+const reorderDest = ref('new')
+const reorderExistingPo = ref(null)
+const reorderPoOptions = ref([])
+const reordering = ref(false)
 const newSupplierId = ref(null)
 const newSupplierLeadTime = ref(null)
 const newSupplierUnitCost = ref(null)
 const newSupplierIsPrimary = ref(false)
 
-const editingSupplierId = ref(null)
-const editLeadTime = ref(null)
-const editUnitCost = ref(null)
+  const editingSupplierId = ref(null)
+  const editLeadTime = ref(null)
+  const editUnitCost = ref(null)
+
+  const vendorPickerOpen = ref(false)
+  const linkingSupplierId = ref(null)
 
 const customFieldsExpanded = ref(true)
 const productFieldRows = ref([])
@@ -954,6 +1019,8 @@ function addSupplierRow() {
         is_primary: newSupplierIsPrimary.value,
         lead_time_days: newSupplierLeadTime.value,
         unit_cost: newSupplierUnitCost.value,
+        vendor_product_id: null,
+        vendor_product: null,
       },
     ]
   }
@@ -1007,6 +1074,90 @@ function saveEditSupplier() {
 
 function cancelEditSupplier() {
   editingSupplierId.value = null
+}
+
+function openVendorPicker(supplierId) {
+  linkingSupplierId.value = supplierId
+  vendorPickerOpen.value = true
+}
+
+function onVendorPicked(vp) {
+  const row = (productForm.value.suppliers || []).find(s => s.supplier_id === linkingSupplierId.value)
+  if (row && vp) {
+    row.vendor_product_id = vp.id
+    row.vendor_product = {
+      id: vp.id,
+      sku: vp.sku ?? null,
+      name: vp.name,
+      brand: vp.brand ?? null,
+      unit_cost: vp.unit_cost ?? null,
+      currency: vp.currency ?? null,
+      stock_quantity: vp.stock_quantity ?? null,
+      availability: vp.availability ?? null,
+      product_url: vp.product_url ?? null,
+      image_url: vp.image_url ?? null,
+    }
+  }
+  linkingSupplierId.value = null
+}
+
+function unlinkVendorItem(supplierId) {
+  const row = (productForm.value.suppliers || []).find(s => s.supplier_id === supplierId)
+  if (row) {
+    row.vendor_product_id = null
+    row.vendor_product = null
+  }
+}
+
+async function reorderSupplier(row) {
+  if (!productEditing.value?.id || !row.id) return
+  reorderRow.value = row
+  reorderDest.value = 'new'
+  reorderExistingPo.value = null
+  reorderPoOptions.value = []
+  try {
+    const { data } = await api.get('/api/v1/purchasing/purchase-orders')
+    const pos = Array.isArray(data) ? data : (data.items || [])
+    const companyId = row.supplier_company_id
+    reorderPoOptions.value = pos
+      .filter(
+        (p) =>
+          ['draft', 'partial'].includes(p.status) &&
+          (companyId == null || p.supplier_company_id === companyId)
+      )
+      .map((p) => ({
+        label: `${p.po_number} — ${p.supplier_name || ''} (${p.status})`,
+        value: p.id,
+      }))
+  } catch {
+    reorderPoOptions.value = []
+  }
+  reorderDialogOpen.value = true
+}
+
+const reorderDestOptions = computed(() => [
+  { label: t('inventory.reorderDestNew'), value: 'new' },
+  { label: t('inventory.reorderDestExisting'), value: 'existing' },
+])
+
+async function confirmReorder() {
+  if (!reorderRow.value) return
+  if (reorderDest.value === 'existing' && !reorderExistingPo.value) return
+  reordering.value = true
+  try {
+    const poId = reorderDest.value === 'new' ? null : reorderExistingPo.value
+    const data = await store.reorderProductSupplier(productEditing.value.id, reorderRow.value.id, {
+      po_id: poId,
+      qty: null,
+    })
+    reorderDialogOpen.value = false
+    $q.notify({ type: 'positive', message: t('inventory.reorderCreatedPo', { po: data.po_number }) })
+  } catch (e) {
+    const detail = e?.response?.data?.detail
+    $q.notify({ type: 'negative', message: detail || t('inventory.reorderFailed') })
+  } finally {
+    reordering.value = false
+  }
 }
 
 function loadPrefixMemory() {
@@ -1131,10 +1282,13 @@ function openEditProduct(product) {
       : [],
     suppliers: Array.isArray(product.suppliers)
       ? product.suppliers.map(item => ({
+          id: item.id,
           supplier_id: item.supplier_id,
           is_primary: !!item.is_primary,
           lead_time_days: item.lead_time_days ?? null,
           unit_cost: item.unit_cost ?? null,
+          vendor_product_id: item.vendor_product_id ?? null,
+          vendor_product: item.vendor_product ?? null,
         }))
       : [],
     weight_kg: product.weight_kg ?? null,
@@ -1260,6 +1414,17 @@ async function saveProduct() {
   const valid = await productFormRef.value?.validate()
   if (!valid) return
 
+  // A supplier link to a vendor catalog item must carry a unit cost, either from
+  // the catalog item or entered manually, otherwise the resulting PO line would
+  // have no price.
+  const badLink = (productForm.value.suppliers || []).find(
+    (s) => s.vendor_product_id && s.unit_cost == null && (s.vendor_product?.unit_cost == null)
+  )
+  if (badLink) {
+    $q.notify({ type: 'negative', message: t('inventory.linkNeedsPrice') })
+    return
+  }
+
   saving.value = true
   productDialogError.value = ''
   try {
@@ -1281,8 +1446,8 @@ async function saveProduct() {
       power_consumption_watts: productForm.value.power_consumption_watts,
       daily_rate: Number(productForm.value.daily_rate || 0),
       replace_cost: Number(productForm.value.replace_cost || 0),
-      min_stock_level: productForm.value.product_type === 'consumable' ? productForm.value.min_stock_level : null,
-      min_order_qty: productForm.value.product_type === 'consumable' ? productForm.value.min_order_qty : null,
+      min_stock_level: productForm.value.min_stock_level != null ? Number(productForm.value.min_stock_level) : null,
+      min_order_qty: productForm.value.min_order_qty != null ? Number(productForm.value.min_order_qty) : null,
       is_public: !!productForm.value.is_public,
     }
 

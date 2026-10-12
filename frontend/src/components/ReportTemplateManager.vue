@@ -75,6 +75,14 @@
       </template>
       <template #body-cell-letterhead="props">
         <q-td :props="props">
+          <div class="row items-center q-mb-xs">
+            <q-toggle
+              :model-value="props.row.use_letterhead !== false"
+              dense
+              :label="t('reports.useLetterhead')"
+              @update:model-value="(v) => updateTemplateUseLetterhead(props.row, v)"
+            />
+          </div>
           <q-select
             :model-value="props.row.letterhead_id"
             :options="letterheadOptions"
@@ -83,6 +91,7 @@
             clearable
             dense
             outlined
+            :disable="props.row.use_letterhead === false"
             style="min-width: 160px; max-width: 200px"
             @update:model-value="(val) => updateTemplateLetterhead(props.row, val ?? null)"
           >
@@ -159,6 +168,21 @@ async function updateTemplateLetterhead(row, value) {
   try {
     const updated = await reportsStore.updateTemplate(row.id, { letterhead_id: value })
     // Reflect the new value locally so the select stays in sync.
+    row.letterhead_id = updated.letterhead_id ?? null
+    $q.notify({ type: 'positive', message: t('reports.letterheadUpdated') })
+  } catch (err) {
+    $q.notify({ type: 'negative', message: err?.response?.data?.detail || t('reports.letterheadUpdateFailed') })
+    await loadTemplates()
+  }
+}
+
+async function updateTemplateUseLetterhead(row, value) {
+  try {
+    const updated = await reportsStore.updateTemplate(row.id, {
+      use_letterhead: value,
+      letterhead_id: value ? row.letterhead_id : null,
+    })
+    row.use_letterhead = updated.use_letterhead
     row.letterhead_id = updated.letterhead_id ?? null
     $q.notify({ type: 'positive', message: t('reports.letterheadUpdated') })
   } catch (err) {
@@ -296,7 +320,7 @@ async function applyLetterheadToAll() {
     let failCount = 0
     try {
       await Promise.all(templates.value.map(t =>
-        reportsStore.updateTemplate(t.id, { letterhead_id: value })
+        reportsStore.updateTemplate(t.id, { letterhead_id: value, use_letterhead: value != null })
           .then(() => { okCount += 1 })
           .catch(() => { failCount += 1 }),
       ))

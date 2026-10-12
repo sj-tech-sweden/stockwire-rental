@@ -1,6 +1,7 @@
 from datetime import datetime
+from decimal import Decimal
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, String, Text
+from sqlalchemy import Boolean, DateTime, ForeignKey, Numeric, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -29,6 +30,10 @@ class Company(Base):
     is_product_supplier: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     is_rental_supplier: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     is_crew_supplier: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+
+    # Default shipping/freight cost charged when ordering from this supplier
+    freight_cost: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
+    freight_currency: Mapped[str | None] = mapped_column(String(10), nullable=True)
 
     # Notification preferences
     email_notifications_enabled: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)

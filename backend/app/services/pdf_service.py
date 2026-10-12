@@ -14,6 +14,7 @@ from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
 from reportlab.lib.pagesizes import A4, A3, LETTER
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import mm
+from reportlab.pdfbase.pdfmetrics import stringWidth
 from reportlab.platypus import (
     Paragraph,
     SimpleDocTemplate,
@@ -24,6 +25,7 @@ from reportlab.platypus import (
 )
 
 from app.config import settings
+from app.domain.settings.accessors import get_company_profile_currency
 from app.services.report_i18n import get_translator, translate_flowables
 
 logger = logging.getLogger(__name__)
@@ -172,6 +174,8 @@ def _build_table(flowable_def: dict, context: dict, styles: dict, align: str | N
             cell_text = _render_jinja(str(col.get("format", "{{ value }}")), {"value": val})
             if not cell_text or cell_text == "None":
                 cell_text = "—"
+            elif col.get("translate_value"):
+                cell_text = _(cell_text)
             row.append(cell_text)
         rows.append(row)
 
@@ -245,7 +249,18 @@ def _build_key_value_table(flowable_def: dict, context: dict, styles: dict, alig
     if not rows:
         return []
 
-    table = Table(rows, colWidths=[50 * mm, None], hAlign=_halign(align))
+    # Size the label column to the longest label so short labels (e.g. "Name")
+    # don't leave an unreasonable gap before their value.
+    label_style = styles.get("body")
+    font_name = getattr(label_style, "fontName", "Helvetica-Bold")
+    font_size = getattr(label_style, "fontSize", 10)
+    max_label_w = 0
+    for field in fields:
+        lbl = str(field.get("label", field.get("key", "")))
+        max_label_w = max(max_label_w, stringWidth(lbl, font_name, font_size))
+    label_col = min(max(max_label_w + 10, 22 * mm), 65 * mm)
+
+    table = Table(rows, colWidths=[label_col, None], hAlign=_halign(align))
     table.setStyle(TableStyle([
         ("VALIGN", (0, 0), (-1, -1), "TOP"),
         ("TOPPADDING", (0, 0), (-1, -1), 2),
@@ -339,29 +354,34 @@ class PDFService:
         if not flowables:
             logger.warning("Template %s produced no flowables for %s/%s", template_id, entity_type, entity_id)
 
-        # Determine the effective letterhead: explicit override > template > system default.
+        # Determine the effective letterhead: explicit override > template >
+        # system default. The system default only applies when the template is
+        # configured to use a letterhead (use_letterhead); an explicit "no
+        # letterhead" choice (use_letterhead=False) is always honoured.
         effective_letterhead_id = letterhead_id
         if effective_letterhead_id is None:
             effective_letterhead_id = template.letterhead_id
-        if effective_letterhead_id is None:
+        if effective_letterhead_id is None and getattr(template, "use_letterhead", True):
             default_lh = self.db.query(Letterhead).filter(Letterhead.is_default.is_(True)).first()
             if default_lh:
                 effective_letterhead_id = default_lh.id
 
         letterhead = self.db.get(Letterhead, effective_letterhead_id) if effective_letterhead_id else None
-        default_margins = {
-            "top": float(letterhead.margin_top_mm) if letterhead else settings.pdf_default_margin_top_mm,
-            "bottom": float(letterhead.margin_bottom_mm) if letterhead else settings.pdf_default_margin_bottom_mm,
-            "left": float(letterhead.margin_left_mm) if letterhead else settings.pdf_default_margin_left_mm,
-            "right": float(letterhead.margin_right_mm) if letterhead else settings.pdf_default_margin_right_mm,
-        }
 
-        margins_mm = {
-            "top": float(body_json.get("margin_top_mm", default_margins["top"])),
-            "bottom": float(body_json.get("margin_bottom_mm", default_margins["bottom"])),
-            "left": float(body_json.get("margin_left_mm", default_margins["left"])),
-            "right": float(body_json.get("margin_right_mm", default_margins["right"])),
+        # The template (or global setting) margins define the base printable area.
+        base_margins = {
+            "top": float(body_json.get("margin_top_mm", settings.pdf_default_margin_top_mm)),
+            "bottom": float(body_json.get("margin_bottom_mm", settings.pdf_default_margin_bottom_mm)),
+            "left": float(body_json.get("margin_left_mm", settings.pdf_default_margin_left_mm)),
+            "right": float(body_json.get("margin_right_mm", settings.pdf_default_margin_right_mm)),
         }
+        # When a letterhead is applied, its margins are a floor: content must stay
+        # clear of the letterhead's header/footer area even if the template asks
+        # for a smaller margin. This prevents text from overlapping the letterhead.
+        margins_mm = dict(base_margins)
+        if letterhead:
+            for side in ("top", "bottom", "left", "right"):
+                margins_mm[side] = max(margins_mm[side], float(getattr(letterhead, f"margin_{side}_mm")))
 
         content_pdf = self._build_pdf(flowables, body_json.get("page_size", "A4"), margins_mm)
 
@@ -410,6 +430,16 @@ class PDFService:
                             "name": venue.name,
                             "address": getattr(venue, "address", None),
                         }
+                # Rental period (number of days the equipment is rented for). Used
+                # both to price rental lines (per-day rate x days x qty) and to
+                # show the rental span on the quote so the calculation is clear.
+                rental_days = 1
+                if job.start_date and job.end_date:
+                    try:
+                        rental_days = max(1, (job.end_date - job.start_date).days + 1)
+                    except Exception:
+                        rental_days = 1
+                context["job"]["rental_days"] = rental_days
                 if job.requirements:
                     context["job"]["requirements"] = [
                         {
@@ -427,6 +457,136 @@ class PDFService:
                         }
                         for req in job.requirements
                     ]
+
+                # Unified, billable quote lines (rental + purchased items).
+                from app.domain.quotes.settings import get_quotes_settings
+
+                quotes_settings = get_quotes_settings(self.db)
+                markup = float(quotes_settings.get("default_markup_pct", 0) or 0) / 100.0
+                currency = get_company_profile_currency(self.db)
+
+                def _money(value):
+                    if value is None:
+                        return ""
+                    return f"{float(value):.2f} {currency}"
+
+                quote_lines = []
+                for req in job.requirements or []:
+                    if req.product:
+                        name = req.product.name
+                        sku = req.product.sku
+                        brand = req.product.brand
+                        category = req.product.category
+                        source_type = "rental"
+                        # Rental price is per day; the line total covers the whole
+                        # rental period (rate x days x quantity).
+                        if req.unit_price is not None:
+                            daily_rate = float(req.unit_price)
+                        elif req.product.rental_price:
+                            daily_rate = float(req.product.rental_price)
+                        elif req.product.daily_rate:
+                            daily_rate = float(req.product.daily_rate)
+                        else:
+                            daily_rate = 0.0
+                        unit_cost = None
+                        quantity = req.quantity_required or 0
+                        line_total = daily_rate * rental_days * quantity
+                        quote_lines.append({
+                            "source_type": source_type,
+                            "name": name,
+                            "sku": sku,
+                            "brand": brand,
+                            "category": category,
+                            "quantity": quantity,
+                            "days": rental_days,
+                            "unit_price": float(daily_rate),
+                            "unit_cost": None,
+                            "line_total": float(line_total),
+                            "notes": req.notes,
+                        })
+                    elif req.vendor_product:
+                        name = req.vendor_product.name
+                        sku = req.vendor_product.sku
+                        brand = req.vendor_product.brand
+                        category = req.vendor_product.category
+                        source_type = "purchase"
+                        cost = float(req.vendor_product.unit_cost) if req.vendor_product.unit_cost else 0.0
+                        unit_cost = cost
+                        unit_price = float(req.unit_price) if req.unit_price is not None else cost * (1 + markup)
+                        quantity = req.quantity_required or 0
+                        line_total = unit_price * quantity
+                        quote_lines.append({
+                            "source_type": source_type,
+                            "name": name,
+                            "sku": sku,
+                            "brand": brand,
+                            "category": category,
+                            "quantity": quantity,
+                            "days": None,
+                            "unit_price": float(unit_price),
+                            "unit_cost": float(unit_cost) if unit_cost is not None else None,
+                            "line_total": float(line_total),
+                            "notes": req.notes,
+                        })
+                    else:
+                        continue
+
+                # Labour lines from crew requirements.
+                crew_lines = []
+                job_days = 1
+                if job.start_date and job.end_date:
+                    try:
+                        job_days = max(1, (job.end_date - job.start_date).days + 1)
+                    except Exception:
+                        job_days = 1
+                for cr in job.crew_requirements or []:
+                    role_name = (cr.crew_role.name if cr.crew_role else None) or cr.custom_role_name or "Crew"
+                    quantity = cr.quantity or 0
+                    basis = cr.rate_basis or "hourly"
+                    if basis == "daily":
+                        days = float(cr.days) if cr.days is not None else float(job_days)
+                        rate = float(cr.daily_rate) if cr.daily_rate else 0.0
+                        hours = None
+                        line_total = rate * quantity * days
+                    else:
+                        hours = float(cr.hours) if cr.hours is not None else float(job_days * 8)
+                        rate = float(cr.hourly_rate) if cr.hourly_rate else 0.0
+                        days = None
+                        line_total = rate * quantity * hours
+                    crew_lines.append({
+                        "role_name": role_name,
+                        "quantity": quantity,
+                        "basis": basis,
+                        "hours": hours,
+                        "days": days,
+                        "rate": rate,
+                        "line_total": float(line_total),
+                    })
+
+                subtotal = sum(q["line_total"] for q in quote_lines) + sum(c["line_total"] for c in crew_lines)
+                vat_rate = float(quotes_settings.get("vat_rate", 0) or 0)
+                vat_amount = subtotal * vat_rate
+
+                # Format monetary values with the company currency once totals are known.
+                for row in quote_lines:
+                    row["unit_price"] = _money(row["unit_price"])
+                    row["line_total"] = _money(row["line_total"])
+                    if row["unit_cost"] is not None:
+                        row["unit_cost"] = _money(row["unit_cost"])
+                for row in crew_lines:
+                    row["rate"] = _money(row["rate"])
+                    row["line_total"] = _money(row["line_total"])
+
+                context["quote_lines"] = quote_lines
+                context["crew_lines"] = crew_lines
+                context["quote"] = {
+                    "quote_no": job.job_code,
+                    "quote_date": date.today().isoformat(),
+                    "subtotal": _money(subtotal),
+                    "vat_rate": f"{vat_rate * 100:.0f} %",
+                    "vat_amount": _money(vat_amount),
+                    "total": _money(subtotal + vat_amount),
+                }
 
         elif entity_type == "device":
             from app.domain.inventory.models import Device, Product
@@ -613,6 +773,66 @@ class PDFService:
                         }
                         for acc in product.accessories_as_parent
                     ]
+
+        elif entity_type == "purchase_order":
+            from app.domain.purchasing.models import PurchaseOrder
+            from app.domain.customers.models import Company
+
+            po = self.db.get(PurchaseOrder, entity_id)
+            if po is None:
+                # Fallback sample so the template designer can preview without a PO.
+                context["po"] = {
+                    "po_number": "PO-0001",
+                    "status": "draft",
+                    "order_date": str(date.today()),
+                    "expected_delivery_date": None,
+                    "report_currency": "SEK",
+                    "supplier": {"name": "Sample Supplier AB", "email": "sales@example.com", "phone": "+46 8 123 45", "address": "Storgatan 1, 12345 Stockholm"},
+                    "total_base": 1250.0,
+                    "freight_base": 150.0,
+                    "grand_total_base": 1400.0,
+                    "lines": [
+                        {"name": "Widget X", "sku": "WX-1", "qty": 2, "unit_cost": 500.0, "currency": "SEK", "converted_unit_cost": 500.0, "line_total": 1000.0, "is_restock": False, "is_manual": False},
+                        {"name": "Cable 5m", "sku": "CB-5", "qty": 1, "unit_cost": 250.0, "currency": "SEK", "converted_unit_cost": 250.0, "line_total": 250.0, "is_restock": True, "is_manual": False},
+                    ],
+                }
+                return context
+
+            supplier = None
+            if po.supplier_company_id:
+                comp = self.db.get(Company, po.supplier_company_id)
+                if comp:
+                    supplier = {
+                        "name": comp.name,
+                        "email": getattr(comp, "email", None),
+                        "phone": getattr(comp, "phone", None),
+                        "address": getattr(comp, "address", None),
+                    }
+            context["po"] = {
+                "po_number": po.po_number,
+                "status": po.status,
+                "order_date": str(po.order_date) if po.order_date else None,
+                "expected_delivery_date": str(po.expected_delivery_date) if po.expected_delivery_date else None,
+                "report_currency": po.report_currency,
+                "supplier": supplier or {"name": po.supplier_name or "—", "email": None, "phone": None, "address": None},
+                "total_base": float(po.total_base) if po.total_base is not None else None,
+                "freight_base": float(po.freight_base) if po.freight_base is not None else None,
+                "grand_total_base": float(po.grand_total_base) if po.grand_total_base is not None else None,
+                "lines": [
+                    {
+                        "name": line.name or (f"Product #{line.product_id}" if line.product_id else "—"),
+                        "sku": line.sku,
+                        "qty": line.qty,
+                        "unit_cost": float(line.unit_cost) if line.unit_cost is not None else None,
+                        "currency": line.currency,
+                        "converted_unit_cost": float(line.converted_unit_cost) if line.converted_unit_cost is not None else None,
+                        "line_total": float(line.line_total) if line.line_total is not None else None,
+                        "is_restock": bool(line.is_restock),
+                        "is_manual": bool(line.is_manual),
+                    }
+                    for line in po.lines
+                ],
+            }
 
         return context
 

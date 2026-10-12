@@ -293,6 +293,8 @@ def update_template(
     # letterhead_id honours an explicit null (clearing) as well as a new value.
     if "letterhead_id" in payload.model_dump(exclude_unset=True):
         template.letterhead_id = payload.letterhead_id
+    if payload.use_letterhead is not None:
+        template.use_letterhead = payload.use_letterhead
     if payload.body_json is not None:
         template.body_json = payload.body_json
         logger.info("Template %d body_json updated, length=%d", template_id, len(payload.body_json))

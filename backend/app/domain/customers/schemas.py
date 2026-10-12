@@ -20,7 +20,9 @@ class CompanyBase(BaseModel):
     is_rental_supplier: bool = False
     is_crew_supplier: bool = False
     email_notifications_enabled: bool = True
-    preferred_language: str | None = "en"
+    preferred_language: str | None = None
+    freight_cost: float | None = None
+    freight_currency: str | None = None
 
 
 class CompanyCreate(CompanyBase):
@@ -125,7 +127,7 @@ class PersonBase(BaseModel):
     notes: str | None = None
     company_id: int | None = None  # Nullable for B2C
     email_notifications_enabled: bool = True
-    preferred_language: str | None = "en"
+    preferred_language: str | None = None
 
 
 class PersonCreate(PersonBase):
@@ -192,7 +194,7 @@ class CustomerBase(BaseModel):
     is_rental_supplier: bool = False
     is_crew_supplier: bool = False
     email_notifications_enabled: bool = True
-    preferred_language: str | None = "en"
+    preferred_language: str | None = None
 
 
 class CustomerCreate(CustomerBase):

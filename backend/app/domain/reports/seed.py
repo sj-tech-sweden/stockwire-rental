@@ -440,6 +440,118 @@ _DEFAULT_TEMPLATES = [
             ],
         }),
     },
+    # ── Procurement / Purchase Orders ────────────────────────────────────────
+    {
+        "name": "Purchase Order",
+        "category": "purchasing",
+        "description": "Supplier purchase order with line items, costs and totals. Follows the default letterhead unless changed in report settings.",
+        "data_source_type": "purchase_order",
+        "is_builtin": False,
+        "body_json": json.dumps({
+            "page_size": "A4",
+            "flowables": [
+                {"type": "columns", "widths": ["50%", "50%"], "columns": [
+                    [
+                        {"type": "heading", "text": "PURCHASE ORDER", "level": 1},
+                        {"type": "spacer", "height_mm": 3},
+                        {"type": "key_value", "source": "po", "fields": [
+                            {"key": "po_number", "label": "PO Number"},
+                            {"key": "status", "label": "Status"},
+                            {"key": "order_date", "label": "Order Date"},
+                            {"key": "expected_delivery_date", "label": "Expected Delivery"},
+                        ]},
+                    ],
+                    [
+                        {"type": "heading", "text": "Supplier", "level": 2},
+                        {"type": "key_value", "source": "po.supplier", "fields": [
+                            {"key": "name", "label": "Name"},
+                            {"key": "email", "label": "Email"},
+                            {"key": "phone", "label": "Phone"},
+                            {"key": "address", "label": "Address"},
+                        ]},
+                    ],
+                ]},
+                {"type": "spacer", "height_mm": 4},
+                {"type": "line"},
+                {"type": "heading", "text": "Items", "level": 2},
+                {"type": "table", "source": "po.lines", "columns": [
+                    {"key": "name", "label": "Item"},
+                    {"key": "sku", "label": "SKU"},
+                    {"key": "qty", "label": "Qty"},
+                    {"key": "unit_cost", "label": "Unit Cost"},
+                    {"key": "currency", "label": "Currency"},
+                    {"key": "line_total", "label": "Line Total"},
+                ]},
+                {"type": "spacer", "height_mm": 4},
+                {"type": "line"},
+                {"type": "columns", "widths": ["60%", "40%"], "columns": [
+                    [{"type": "spacer", "height_mm": 2}],
+                    [
+                        {"type": "key_value", "source": "po", "fields": [
+                            {"key": "total_base", "label": "Subtotal"},
+                            {"key": "freight_base", "label": "Freight"},
+                            {"key": "grand_total_base", "label": "Grand Total"},
+                        ]},
+                    ],
+                ]},
+                {"type": "spacer", "height_mm": 5},
+                {"type": "paragraph", "text": "Generated: {{ now }}", "style": "small", "align": "center"},
+            ],
+        }),
+        "translations_json": json.dumps({
+            "sv": {
+                "name": "Inköpsorder",
+                "flowables": [
+                    {"type": "columns", "widths": ["50%", "50%"], "columns": [
+                        [
+                            {"type": "heading", "text": "INKÖPSORDER", "level": 1},
+                            {"type": "spacer", "height_mm": 3},
+                            {"type": "key_value", "source": "po", "fields": [
+                                {"key": "po_number", "label": "Ordernummer"},
+                                {"key": "status", "label": "Status"},
+                                {"key": "order_date", "label": "Orderdatum"},
+                                {"key": "expected_delivery_date", "label": "Förväntad leverans"},
+                            ]},
+                        ],
+                        [
+                            {"type": "heading", "text": "Leverantör", "level": 2},
+                            {"type": "key_value", "source": "po.supplier", "fields": [
+                                {"key": "name", "label": "Namn"},
+                                {"key": "email", "label": "E-post"},
+                                {"key": "phone", "label": "Telefon"},
+                                {"key": "address", "label": "Adress"},
+                            ]},
+                        ],
+                    ]},
+                    {"type": "spacer", "height_mm": 4},
+                    {"type": "line"},
+                    {"type": "heading", "text": "Artiklar", "level": 2},
+                    {"type": "table", "source": "po.lines", "columns": [
+                        {"key": "name", "label": "Artikel"},
+                        {"key": "sku", "label": "SKU"},
+                        {"key": "qty", "label": "Antal"},
+                        {"key": "unit_cost", "label": "Enhetspris"},
+                        {"key": "currency", "label": "Valuta"},
+                        {"key": "line_total", "label": "Radtotal"},
+                    ]},
+                    {"type": "spacer", "height_mm": 4},
+                    {"type": "line"},
+                    {"type": "columns", "widths": ["60%", "40%"], "columns": [
+                        [{"type": "spacer", "height_mm": 2}],
+                        [
+                            {"type": "key_value", "source": "po", "fields": [
+                                {"key": "total_base", "label": "Delsumma"},
+                                {"key": "freight_base", "label": "Frakt"},
+                                {"key": "grand_total_base", "label": "Totalsumma"},
+                            ]},
+                        ],
+                    ]},
+                    {"type": "spacer", "height_mm": 5},
+                    {"type": "paragraph", "text": "Generated: {{ now }}", "style": "small", "align": "center"},
+                ],
+            }
+        }, ensure_ascii=False),
+    },
 ]
 
 
@@ -470,6 +582,7 @@ def seed_report_templates(db: Session) -> int:
     for tmpl in _DEFAULT_TEMPLATES:
         existing_tmpl = existing.get(tmpl["name"])
         translations_json = tmpl.get("translations_json") or _build_translations(tmpl.get("body_json", "{}"))
+        is_builtin = tmpl.get("is_builtin", True)
         if existing_tmpl:
             # Update builtin templates so seeded improvements are rolled out
             if existing_tmpl.is_builtin:
@@ -487,7 +600,7 @@ def seed_report_templates(db: Session) -> int:
             body_json=tmpl["body_json"],
             translations_json=translations_json,
             data_source_type=tmpl["data_source_type"],
-            is_builtin=True,
+            is_builtin=is_builtin,
             is_enabled=True,
         ))
         changed += 1

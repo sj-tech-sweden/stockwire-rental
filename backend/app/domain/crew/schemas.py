@@ -11,6 +11,8 @@ class CrewRoleBase(BaseModel):
     description: str | None = None
     is_default: bool = False
     sort_order: int = 0
+    default_hourly_rate: Decimal | None = None
+    default_daily_rate: Decimal | None = None
 
 
 class CrewRoleCreate(CrewRoleBase):
@@ -22,6 +24,8 @@ class CrewRoleUpdate(BaseModel):
     description: str | None = None
     is_default: bool | None = None
     sort_order: int | None = None
+    default_hourly_rate: Decimal | None = None
+    default_daily_rate: Decimal | None = None
 
 
 class CrewRoleRead(CrewRoleBase):
@@ -164,6 +168,10 @@ class JobCrewRequirementBase(BaseModel):
     quantity: int = 1
     skill_ids: list[int] = Field(default_factory=list)
     hourly_rate: Decimal | None = None
+    daily_rate: Decimal | None = None
+    rate_basis: str = "hourly"
+    hours: Decimal | None = None
+    days: Decimal | None = None
     notes: str | None = None
 
 
@@ -177,6 +185,10 @@ class JobCrewRequirementUpdate(BaseModel):
     quantity: int | None = None
     skill_ids: list[int] | None = None
     hourly_rate: Decimal | None = None
+    daily_rate: Decimal | None = None
+    rate_basis: str | None = None
+    hours: Decimal | None = None
+    days: Decimal | None = None
     notes: str | None = None
 
 
@@ -186,6 +198,10 @@ class JobCrewRequirementBulkItem(BaseModel):
     quantity: int = 1
     skill_ids: list[int] = Field(default_factory=list)
     hourly_rate: Decimal | None = None
+    daily_rate: Decimal | None = None
+    rate_basis: str = "hourly"
+    hours: Decimal | None = None
+    days: Decimal | None = None
     notes: str | None = None
 
 
@@ -208,6 +224,10 @@ class JobCrewRequirementRead(BaseModel):
     quantity_assigned: int
     skills: list[CrewSkillRead] = Field(default_factory=list)
     hourly_rate: Decimal | None = None
+    daily_rate: Decimal | None = None
+    rate_basis: str = "hourly"
+    hours: Decimal | None = None
+    days: Decimal | None = None
     notes: str | None = None
     created_at: datetime
     crew_role_name: str | None = None

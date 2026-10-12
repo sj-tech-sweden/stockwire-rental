@@ -86,6 +86,7 @@ class ProductBase(BaseModel):
     replace_cost: Decimal | None = None
     min_stock_level: int | None = None
     min_order_qty: int | None = None
+    barcode: str | None = None
     crew_skills: str | None = None
     crew_certifications: str | None = None
     crew_rate_type: str | None = None
@@ -110,6 +111,7 @@ class ProductUpdate(BaseModel):
     rental_price: Decimal | None = None
     external_source: str | None = None
     external_reference: str | None = None
+    barcode: str | None = None
     eventory_available_qty: int | None = None
     weight_kg: Decimal | None = None
     height_cm: Decimal | None = None
@@ -139,11 +141,30 @@ class ProductBulkUpdateRequest(BaseModel):
         return self
 
 
+class VendorProductLinkRead(BaseModel):
+    """Compact summary of the linked vendor catalog item for UI display."""
+
+    id: int
+    sku: str | None = None
+    name: str
+    brand: str | None = None
+    unit_cost: Decimal | None = None
+    currency: str | None = None
+    stock_quantity: int | None = None
+    availability: str | None = None
+    product_url: str | None = None
+    image_url: str | None = None
+
+    model_config = {"from_attributes": True}
+
+
 class ProductSupplierRead(BaseModel):
     id: int
     product_id: int
     supplier_id: int
     supplier_name: str | None = None
+    vendor_product_id: int | None = None
+    vendor_product: VendorProductLinkRead | None = None
     is_primary: bool = False
     lead_time_days: int | None = None
     unit_cost: Decimal | None = None
@@ -153,10 +174,22 @@ class ProductSupplierRead(BaseModel):
 
 class ProductSupplierUpsert(BaseModel):
     supplier_id: int
+    vendor_product_id: int | None = None
     is_primary: bool = False
     lead_time_days: int | None = None
     unit_cost: Decimal | None = None
     notes: str | None = None
+
+
+class ProductReorderRequest(BaseModel):
+    """Reorder a warehouse product from its linked vendor catalog item.
+
+    Adds a restock line to an existing draft/partial purchase order for the same
+    vendor, or creates a new one when ``po_id`` is omitted.
+    """
+
+    po_id: int | None = None
+    qty: int | None = None
 
 
 class BulkDeleteRequest(BaseModel):
@@ -795,6 +828,98 @@ class PublicProductRead(BaseModel):
     images: list[PublicProductImage] = Field(default_factory=list)
 
     model_config = {"from_attributes": True}
+
+
+class VendorProductBase(BaseModel):
+    sku: str | None = None
+    name: str
+    barcode: str | None = None
+    brand: str | None = None
+    category: str | None = None
+    description: str | None = None
+    dimensions: str | None = None
+    image_url: str | None = None
+    unit_cost: Decimal | None = None
+    currency: str | None = None
+    stock_quantity: int | None = None
+    availability: str | None = None
+    vendor_id: int | None = None
+    external_reference: str | None = None
+    vendor_item_number: str | None = None
+    supplier_item_number: str | None = None
+    product_url: str | None = None
+    weight: Decimal | None = None
+    country_of_origin: str | None = None
+    intrastat_code: str | None = None
+    pieces_per_carton: int | None = None
+    expected_delivery_date: date | None = None
+    incoming_quantity: int | None = None
+    incoming_deliveries: list | None = None
+    source_plugin: str | None = None
+    is_active: bool = True
+
+
+class VendorProductCreate(VendorProductBase):
+    pass
+
+
+class VendorProductUpdate(BaseModel):
+    sku: str | None = None
+    name: str | None = None
+    barcode: str | None = None
+    brand: str | None = None
+    category: str | None = None
+    description: str | None = None
+    dimensions: str | None = None
+    image_url: str | None = None
+    unit_cost: Decimal | None = None
+    currency: str | None = None
+    stock_quantity: int | None = None
+    availability: str | None = None
+    vendor_id: int | None = None
+    external_reference: str | None = None
+    vendor_item_number: str | None = None
+    supplier_item_number: str | None = None
+    source_plugin: str | None = None
+    is_active: bool | None = None
+
+
+class VendorProductRead(VendorProductBase):
+    id: int
+    raw_payload: dict | None = None
+    last_synced_at: datetime | None = None
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class VendorProductClusterMember(VendorProductRead):
+    vendor_name: str | None = None
+
+
+class VendorProductClusterRead(BaseModel):
+    """A group of vendor products that represent the same physical item."""
+
+    id: int
+    name: str
+    member_count: int
+    keys: list[str] = []
+    members: list[VendorProductClusterMember] = []
+
+
+class BulkDeleteVendorProductsRequest(BaseModel):
+    """Delete many vendor products at once.
+
+    Filters are combined with AND; at least one must be provided. ``ids`` takes
+    precedence (an explicit list), otherwise rows matching any of the other
+    filters are removed. Useful for cleaning up everything a scraper/integration
+    imported after the source itself is removed.
+    """
+
+    ids: list[int] | None = None
+    vendor_id: int | None = None
+    source_plugin: str | None = None
+    name_contains: str | None = None
 
 
 ProductRead.model_rebuild()

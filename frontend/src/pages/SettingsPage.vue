@@ -15,6 +15,7 @@
       <q-tab name="warehouse-leds" icon="developer_board" :label="t('settings.tabs.warehouseLeds')" />
 
       <q-tab name="llm" icon="smart_toy" :label="t('settings.tabs.llm')" />
+      <q-tab name="fxRates" icon="currency_exchange" :label="t('settings.tabs.fxRates')" />
       <q-tab name="about" icon="info" :label="t('settings.tabs.about')" />
     </q-tabs>
 
@@ -1771,6 +1772,11 @@
           </template>
         </q-card>
       </q-tab-panel>
+
+      <q-tab-panel name="fxRates" class="q-pa-md">
+        <div class="text-h6 q-mb-md">{{ t('purchasing.fxTitle') }}</div>
+        <FxRatesManager />
+      </q-tab-panel>
     </q-tab-panels>
 
     <SettingsUserDialog
@@ -1853,6 +1859,7 @@ import SettingsUserDialog from '../components/SettingsUserDialog.vue'
 import SettingsDeleteUserDialog from '../components/SettingsDeleteUserDialog.vue'
 import ApiKeyDialog from '../components/ApiKeyDialog.vue'
 import FieldDialog from '../components/FieldDialog.vue'
+import FxRatesManager from '../components/FxRatesManager.vue'
 import WarehouseLedsSettings from '../components/WarehouseLedsSettings.vue'
 import CalendarFeedsSettings from '../components/CalendarFeedsSettings.vue'
 import NotificationsSettings from '../components/NotificationsSettings.vue'

@@ -636,3 +636,33 @@ def test_update_builtin_template_guard(client, db_session):
         json={"translations_json": json.dumps({"sv": {"flowables": []}})},
     )
     assert resp.status_code == 403, resp.text
+
+
+def test_update_template_use_letterhead_persists(client, db_session):
+    import json
+
+    from app.domain.reports.models import ReportTemplate
+
+    tmpl = ReportTemplate(
+        name="Letterhead Toggle Test",
+        category="custom",
+        body_json=json.dumps({"page_size": "A4", "flowables": []}),
+        data_source_type="job",
+        is_builtin=True,
+        is_enabled=True,
+        use_letterhead=True,
+    )
+    db_session.add(tmpl)
+    db_session.commit()
+    db_session.refresh(tmpl)
+    tid = tmpl.id
+
+    # Toggling use_letterhead is allowed on a built-in template (presentation).
+    resp = client.put(f"/api/v1/reports/templates/{tid}", json={"use_letterhead": False})
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["use_letterhead"] is False
+
+    # And it actually persists on the stored template.
+    resp = client.put(f"/api/v1/reports/templates/{tid}", json={"use_letterhead": True})
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["use_letterhead"] is True

@@ -17,6 +17,22 @@
           @click="showExportDialog = true"
         />
         <q-btn
+          color="primary"
+          outline
+          icon="receipt_long"
+          :label="isPhone ? undefined : t('purchasing.createPo')"
+          class="q-mr-sm"
+          @click="openJobPo"
+        />
+        <q-btn
+          color="secondary"
+          outline
+          icon="playlist_add"
+          :label="isPhone ? undefined : t('purchasing.addToPo')"
+          class="q-mr-sm"
+          @click="openAddToPo"
+        />
+        <q-btn
           ref="headerSaveBtn"
           color="primary"
           unelevated
@@ -587,6 +603,8 @@
           <div class="text-caption text-grey-7">{{ t('crew.noRequirements') }}</div>
         </q-card-section>
       </q-card>
+
+      <QuoteBuilder :job-id="currentJob?.id || 0" :job-code="currentJob?.job_code || ''" />
     </div>
 
     <!-- Floating save button on mobile -->
@@ -618,6 +636,43 @@
     <CrewRequirementDialog v-model="crewRequirementDialogOpen" :job-id="currentJob?.id || null" @saved="loadCrewData" />
     <CrewAssignmentDialog v-model="crewAssignmentDialogOpen" :job-id="currentJob?.id || null" :requirement-id="selectedCrewRequirementId" @saved="onCrewAssignmentSaved" />
     <ReportExportDialog v-if="currentJob" v-model="showExportDialog" entity-type="job" :entity-id="currentJob.id" />
+
+    <PurchaseOrderBuilderDialog
+      v-model="poBuilderOpen"
+      :job-ids="poBuilderJobIds"
+      :po-id="poBuilderPoId"
+      :allowed-supplier-id="poBuilderSupplier"
+      @done="onPoBuilderDone"
+    />
+
+    <q-dialog v-model="addToPoOpen" style="width: 800px; max-width: 95vw">
+      <q-card style="width: 800px; max-width: 95vw">
+        <q-card-section class="row items-center">
+          <div class="text-h6 q-mr-auto">{{ t('purchasing.addToPo') }}</div>
+          <q-btn flat round icon="close" @click="addToPoOpen = false" />
+        </q-card-section>
+        <q-card-section>
+          <q-table
+            :rows="poList"
+            :columns="poPickerColumns"
+            row-key="id"
+            :loading="poListLoading"
+            selection="single"
+            v-model:selected="pickedPo"
+            :rows-per-page-options="[25, 50, 100, 0]"
+          />
+        </q-card-section>
+        <q-card-actions align="right">
+          <q-btn flat :label="t('app.actions.cancel')" @click="addToPoOpen = false" />
+          <q-btn
+            color="primary"
+            :label="t('app.actions.continue')"
+            :disable="!pickedPo.length"
+            @click="startAddToPo"
+          />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
   </q-page>
 </template>
 
@@ -655,7 +710,9 @@ import CompanyCreateDialog from '../components/CompanyCreateDialog.vue'
 import PersonCreateDialog from '../components/PersonCreateDialog.vue'
 import VenuePickerDialog from '../components/VenuePickerDialog.vue'
 import JobCustomFieldsDialog from '../components/JobCustomFieldsDialog.vue'
+import QuoteBuilder from '../components/QuoteBuilder.vue'
 import ReportExportDialog from '../components/ReportExportDialog.vue'
+import PurchaseOrderBuilderDialog from '../components/PurchaseOrderBuilderDialog.vue'
 
 const $q = useQuasar()
 const route = useRoute()
@@ -1038,6 +1095,13 @@ watch(venueOptions, (options) => {
 
 watch(() => form.value, () => { isDirty.value = true }, { deep: true })
 
+// Crew requirement changes made elsewhere (e.g. in the quote builder on this
+// same page) should refresh the crew requirements (Personalbehov) panel live.
+// Note: Pinia unwraps store refs, so read `crewStore.crewRevision` (not `.value`).
+watch(() => crewStore.crewRevision, () => {
+  if (currentJob.value?.id) loadCrewData()
+})
+
 watch(() => form.value.invoice_paid, (paid) => {
   if (paid && !form.value.invoice_paid_at) {
     form.value.invoice_paid_at = normalizeDate(new Date())
@@ -1295,7 +1359,10 @@ function syncFromJob(job) {
       && (Number(req.quantity_required || 0) > 0 || Number(req.quantity_picked || 0) > 0)
     ))
     .map(req => ({
+      id: req.id,
       product_id: req.product_id,
+      vendor_product_id: req.vendor_product_id ?? null,
+      unit_price: req.unit_price ?? null,
       quantity_required: req.quantity_required,
       quantity_picked: req.quantity_picked,
       notes: req.notes || null,
@@ -1421,6 +1488,36 @@ async function saveChanges() {
   const valid = await formRef.value?.validate()
   if (!valid) return
 
+  function normalizeId(v) {
+    return v === undefined || v === null || v === '' ? null : Number(v)
+  }
+  function normalizePrice(v) {
+    return v === undefined || v === null || v === '' || Number.isNaN(Number(v)) ? null : Number(v)
+  }
+  function requirementKey(item) {
+    return normalizeId(item.product_id) ?? `vp:${normalizeId(item.vendor_product_id)}` ?? `req:${item.id}`
+  }
+  function toRequirementPayload(item) {
+    return {
+      product_id: normalizeId(item.product_id),
+      vendor_product_id: normalizeId(item.vendor_product_id),
+      unit_price: normalizePrice(item.unit_price),
+      quantity_required: Number(item.quantity_required || 0),
+      quantity_picked: Number(item.quantity_picked || 0),
+      notes: item.notes || null,
+    }
+  }
+  function formatApiError(error) {
+    const detail = error?.response?.data?.detail
+    if (Array.isArray(detail)) {
+      return detail.map(e => `${e.loc?.filter(l => typeof l === 'string').join('.') || ''}: ${e.msg}`).filter(Boolean).join('; ')
+    }
+    if (detail && typeof detail === 'object') {
+      return JSON.stringify(detail)
+    }
+    return detail || error?.message || t('common.errorOccurred')
+  }
+
   saving.value = true
   try {
     const selectedCustomer = customersStore.customers.find(customer => customer.id === form.value.customer_id)
@@ -1440,23 +1537,29 @@ async function saveChanges() {
     }
 
     const savedJob = await jobsStore.updateJob(currentJob.value.id, payload)
+
     const allRequirements = new Map()
     for (const item of requirementRows.value) {
-      allRequirements.set(item.product_id, {
-        product_id: item.product_id,
-        quantity_required: Number(item.quantity_required || 0),
-        quantity_picked: Number(item.quantity_picked || 0),
-        notes: item.notes || null,
-      })
+      const payload = toRequirementPayload(item)
+      if (payload.product_id == null && payload.vendor_product_id == null) continue
+      allRequirements.set(requirementKey(item), payload)
     }
     for (const item of rentalRequirementRows.value) {
-      if (!allRequirements.has(item.product_id)) {
-        allRequirements.set(item.product_id, {
-          product_id: item.product_id,
-          quantity_required: Number(item.quantity_required || 0),
-          quantity_picked: Number(item.quantity_picked || 0),
-          notes: item.notes || null,
-        })
+      const payload = toRequirementPayload(item)
+      if (payload.product_id == null && payload.vendor_product_id == null) continue
+      if (!allRequirements.has(requirementKey(item))) {
+        allRequirements.set(requirementKey(item), payload)
+      }
+    }
+    // Vendor-linked ("buy") requirements added via the QuoteBuilder live in the
+    // shared jobs store and are not represented in the local editable rows, so
+    // include them explicitly or the bulk upsert would delete them.
+    for (const req of jobsStore.requirements) {
+      if (req.job_id !== savedJob.id) continue
+      if (req.vendor_product_id == null) continue
+      const key = requirementKey(req)
+      if (!allRequirements.has(key)) {
+        allRequirements.set(key, toRequirementPayload(req))
       }
     }
     await jobsStore.bulkUpsertRequirements(savedJob.id, [...allRequirements.values()])
@@ -1464,7 +1567,7 @@ async function saveChanges() {
     syncFromJob(savedJob)
     $q.notify({ type: 'positive', message: t('jobs.jobUpdated') })
   } catch (error) {
-    $q.notify({ type: 'negative', message: error?.response?.data?.detail || t('common.errorOccurred') })
+    $q.notify({ type: 'negative', message: formatApiError(error) })
   } finally {
     saving.value = false
   }
@@ -1472,6 +1575,67 @@ async function saveChanges() {
 
 function goBack() {
   router.push('/jobs')
+}
+
+// ── Purchase orders ───────────────────────────────────────────────────────────
+const poBuilderOpen = ref(false)
+const poBuilderJobIds = ref([])
+const poBuilderPoId = ref(null)
+const poBuilderSupplier = ref(null)
+
+const addToPoOpen = ref(false)
+const poList = ref([])
+const poListLoading = ref(false)
+const pickedPo = ref([])
+
+const poPickerColumns = computed(() => [
+  { name: 'po_number', label: t('purchasing.poNumber'), field: 'po_number', align: 'left' },
+  { name: 'supplier_name', label: t('purchasing.supplier'), field: 'supplier_name', align: 'left' },
+  { name: 'status', label: t('purchasing.status'), field: 'status', align: 'left' },
+  {
+    name: 'total_base',
+    label: t('purchasing.total'),
+    field: (row) => (row.total_base != null ? `${row.total_base} ${row.report_currency}` : '—'),
+    align: 'right',
+  },
+])
+
+function openJobPo() {
+  poBuilderJobIds.value = [currentJobId.value]
+  poBuilderPoId.value = null
+  poBuilderSupplier.value = null
+  poBuilderOpen.value = true
+}
+
+function openAddToPo() {
+  pickedPo.value = []
+  poListLoading.value = true
+  api
+    .get('/api/v1/purchasing/purchase-orders')
+    .then(({ data }) => {
+      poList.value = Array.isArray(data) ? data : data.items || []
+    })
+    .catch(() => {
+      poList.value = []
+    })
+    .finally(() => {
+      poListLoading.value = false
+    })
+  addToPoOpen.value = true
+}
+
+function startAddToPo() {
+  if (!pickedPo.value.length) return
+  const po = pickedPo.value[0]
+  addToPoOpen.value = false
+  poBuilderJobIds.value = [currentJobId.value]
+  poBuilderPoId.value = po.id
+  poBuilderSupplier.value = po.supplier_company_id
+  poBuilderOpen.value = true
+}
+
+function onPoBuilderDone() {
+  $q.notify({ type: 'positive', message: t('purchasing.createPo') })
 }
 
 onMounted(async () => {

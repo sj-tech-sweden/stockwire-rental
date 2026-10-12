@@ -17,13 +17,14 @@ from app.domain.auth.models import User
 from app.domain.audit.service import record_activity
 from app.domain.customers.models import Customer
 from app.domain.jobs.models import Job, JobRequirement
-from app.domain.inventory.models import Product
+from app.domain.inventory.models import Product, VendorProduct
 from app.domain.realtime.events import emit_realtime_event
 from app.domain.integrations.outbound import push_job_to_twenty
 from app.services.metrics import created_total, deleted_total, entities_count
 from app.domain.jobs.schemas import (
     JobCreate,
     JobRead,
+    JobRequirementBulkItem,
     JobRequirementBulkUpsert,
     JobRequirementCreate,
     JobRequirementRead,
@@ -457,6 +458,15 @@ def update_requirement(
     return req
 
 
+@router.get("/{job_id}", response_model=JobRead)
+def get_job(job_id: int, db: Session = Depends(get_db)) -> Job:
+    """Return a single job by id (used by the job detail page and quote builder)."""
+    job = db.get(Job, job_id)
+    if job is None:
+        raise HTTPException(status_code=404, detail="Job not found")
+    return job
+
+
 @router.put("/{job_id}/requirements/bulk", response_model=list[JobRequirementRead])
 def bulk_upsert_requirements(job_id: int, payload: JobRequirementBulkUpsert, db: Session = Depends(get_db), _: User = Depends(require_editor)) -> list[JobRequirement]:
     job = db.get(Job, job_id)
@@ -464,25 +474,37 @@ def bulk_upsert_requirements(job_id: int, payload: JobRequirementBulkUpsert, db:
         raise HTTPException(status_code=404, detail="Job not found")
 
     incoming = payload.items or []
-    incoming_by_product: dict[int, JobRequirementCreate] = {}
+
+    def _item_key(item):
+        return (item.product_id, item.vendor_product_id)
+
+    incoming_by_key: dict[tuple[int | None, int | None], JobRequirementBulkItem] = {}
     for item in incoming:
         if item.quantity_required < 0 or item.quantity_picked < 0:
             raise HTTPException(status_code=400, detail="quantities cannot be negative")
-        product = db.get(Product, item.product_id)
-        if product is None:
-            raise HTTPException(status_code=404, detail=f"Product not found: {item.product_id}")
-        incoming_by_product[item.product_id] = item
+        if item.product_id is not None:
+            product = db.get(Product, item.product_id)
+            if product is None:
+                raise HTTPException(status_code=404, detail=f"Product not found: {item.product_id}")
+        if item.vendor_product_id is not None:
+            vendor_product = db.get(VendorProduct, item.vendor_product_id)
+            if vendor_product is None:
+                raise HTTPException(status_code=404, detail=f"Vendor product not found: {item.vendor_product_id}")
+        incoming_by_key[_item_key(item)] = item
 
     existing = list(db.scalars(select(JobRequirement).where(JobRequirement.job_id == job_id)).all())
-    existing_by_product = {req.product_id: req for req in existing}
+    existing_by_key = {_item_key(req): req for req in existing}
 
-    for product_id, item in incoming_by_product.items():
-        existing_req = existing_by_product.get(product_id)
+    for key, item in incoming_by_key.items():
+        existing_req = existing_by_key.get(key)
+        unit_price = item.unit_price if item.unit_price is not None else (existing_req.unit_price if existing_req else None)
         if existing_req is None:
             db.add(
                 JobRequirement(
                     job_id=job_id,
-                    product_id=product_id,
+                    product_id=item.product_id,
+                    vendor_product_id=item.vendor_product_id,
+                    unit_price=unit_price,
                     quantity_required=item.quantity_required,
                     quantity_picked=item.quantity_picked,
                     is_scannable=item.is_scannable,
@@ -491,13 +513,16 @@ def bulk_upsert_requirements(job_id: int, payload: JobRequirementBulkUpsert, db:
             )
             continue
 
+        existing_req.product_id = item.product_id
+        existing_req.vendor_product_id = item.vendor_product_id
+        existing_req.unit_price = unit_price
         existing_req.quantity_required = item.quantity_required
         existing_req.quantity_picked = item.quantity_picked
         existing_req.is_scannable = item.is_scannable
         existing_req.notes = item.notes
 
     for req in existing:
-        if req.product_id not in incoming_by_product:
+        if _item_key(req) not in incoming_by_key:
             db.delete(req)
 
     db.commit()

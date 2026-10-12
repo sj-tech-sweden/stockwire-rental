@@ -143,6 +143,10 @@ def _to_job_crew_requirement_read(db: Session, req: JobCrewRequirement) -> JobCr
         quantity_assigned=req.quantity_assigned,
         skills=skills,
         hourly_rate=req.hourly_rate,
+        daily_rate=req.daily_rate,
+        rate_basis=req.rate_basis,
+        hours=req.hours,
+        days=req.days,
         notes=req.notes,
         created_at=req.created_at,
         crew_role_name=role_name,
@@ -566,8 +570,23 @@ def create_job_crew_requirement(
         custom_role_name=payload.custom_role_name,
         quantity=payload.quantity,
         hourly_rate=payload.hourly_rate,
+        daily_rate=payload.daily_rate,
+        rate_basis=payload.rate_basis,
+        hours=payload.hours,
+        days=payload.days,
         notes=payload.notes,
     )
+    # Seed a starting rate from the role's defaults when none was supplied, so the
+    # quote has an editable baseline instead of a blank rate.
+    if payload.crew_role_id:
+        role = db.get(CrewRole, payload.crew_role_id)
+        if role:
+            if req.rate_basis == "daily":
+                if req.daily_rate is None and role.default_daily_rate is not None:
+                    req.daily_rate = role.default_daily_rate
+            else:
+                if req.hourly_rate is None and role.default_hourly_rate is not None:
+                    req.hourly_rate = role.default_hourly_rate
     db.add(req)
     db.flush()
 
@@ -602,6 +621,14 @@ def update_job_crew_requirement(
                 db.add(JobRequiredSkill(job_crew_requirement_id=req_id, skill_id=skill_id))
     if payload.hourly_rate is not None:
         req.hourly_rate = payload.hourly_rate
+    if payload.daily_rate is not None:
+        req.daily_rate = payload.daily_rate
+    if payload.rate_basis is not None:
+        req.rate_basis = payload.rate_basis
+    if payload.hours is not None:
+        req.hours = payload.hours
+    if payload.days is not None:
+        req.days = payload.days
     if payload.notes is not None:
         req.notes = payload.notes
     db.commit()
@@ -657,6 +684,10 @@ def bulk_upsert_job_crew_requirements(
             custom_role_name=item.custom_role_name,
             quantity=item.quantity,
             hourly_rate=item.hourly_rate,
+            daily_rate=item.daily_rate,
+            rate_basis=item.rate_basis,
+            hours=item.hours,
+            days=item.days,
             notes=item.notes,
         )
         db.add(req)
@@ -744,6 +775,14 @@ def create_crew_assignment(payload: JobCrewAssignmentCreate, db: Session = Depen
     db.add(assignment)
     db.flush()
     _recalc_quantity_assigned(db, req.id)
+    # Seed a starting rate from the assigned member when the requirement has no
+    # rate yet, giving the quote an editable baseline.
+    if req.rate_basis == "daily":
+        if req.daily_rate is None and member.daily_rate is not None:
+            req.daily_rate = member.daily_rate
+    else:
+        if req.hourly_rate is None and member.hourly_rate is not None:
+            req.hourly_rate = member.hourly_rate
     db.commit()
     db.refresh(assignment)
     return _to_job_crew_assignment_read(db, assignment)

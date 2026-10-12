@@ -37,6 +37,7 @@ class ReportTemplate(Base):
     letterhead_id: Mapped[int | None] = mapped_column(
         ForeignKey("letterheads.id", ondelete="SET NULL"), nullable=True, index=True
     )
+    use_letterhead: Mapped[bool] = mapped_column(Boolean, default=True, index=True)
     body_json: Mapped[str] = mapped_column(Text, default="{}")
     translations_json: Mapped[str | None] = mapped_column(Text, nullable=True)
     data_source_type: Mapped[str] = mapped_column(String(50), default="job")

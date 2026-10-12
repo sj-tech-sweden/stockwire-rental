@@ -43,6 +43,8 @@ class CrewRole(Base):
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     is_default: Mapped[bool] = mapped_column(Boolean, default=False)
     sort_order: Mapped[int] = mapped_column(Integer, default=0)
+    default_hourly_rate: Mapped[float | None] = mapped_column(Numeric(10, 2), nullable=True)
+    default_daily_rate: Mapped[float | None] = mapped_column(Numeric(10, 2), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
 
     crew_requirements: Mapped[list["JobCrewRequirement"]] = relationship(
@@ -167,6 +169,10 @@ class JobCrewRequirement(Base):
     quantity: Mapped[int] = mapped_column(Integer, default=1)
     quantity_assigned: Mapped[int] = mapped_column(Integer, default=0)
     hourly_rate: Mapped[float | None] = mapped_column(Numeric(10, 2), nullable=True)
+    daily_rate: Mapped[float | None] = mapped_column(Numeric(10, 2), nullable=True)
+    rate_basis: Mapped[str] = mapped_column(String(10), default="hourly")
+    hours: Mapped[float | None] = mapped_column(Numeric(10, 2), nullable=True)
+    days: Mapped[float | None] = mapped_column(Numeric(10, 2), nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
 

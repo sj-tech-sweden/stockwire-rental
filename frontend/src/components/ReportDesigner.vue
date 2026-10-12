@@ -37,7 +37,19 @@
         <q-select v-model="form.data_source_type" :options="dataSourceOptions" emit-value map-options outlined dense />
       </div>
       <div class="col-3">
-        <q-select v-model="form.letterhead_id" :options="letterheadOptions" emit-value map-options clearable outlined dense />
+        <q-select v-model="form.letterhead_id" :options="letterheadOptions" emit-value map-options clearable outlined dense :disable="!form.use_letterhead" />
+      </div>
+    </div>
+
+    <div class="row q-col-gutter-sm q-mb-md items-center">
+      <div class="col-auto">
+        <q-toggle v-model="form.use_letterhead" :label="t('reports.useLetterhead')" color="primary" />
+      </div>
+      <div class="col text-caption text-grey-7" v-if="!form.use_letterhead">
+        {{ t('reports.noLetterheadUsed') }}
+      </div>
+      <div class="col text-caption text-grey-7" v-else-if="!form.letterhead_id">
+        {{ t('reports.usingDefaultLetterhead') }}
       </div>
     </div>
 
@@ -319,6 +331,7 @@ const form = ref({
   description: '',
   data_source_type: 'job',
   letterhead_id: null,
+  use_letterhead: true,
   is_enabled: true,
 })
 
@@ -351,6 +364,7 @@ const dataSourceOptions = computed(() => [
   { label: t('reports.dataSources.device'), value: 'device' },
   { label: t('reports.dataSources.product'), value: 'product' },
   { label: t('reports.dataSources.inventory'), value: 'inventory' },
+  { label: t('reports.dataSources.purchase_order'), value: 'purchase_order' },
 ])
 
 const letterheadOptions = computed(() => [
@@ -723,7 +737,8 @@ async function saveTemplate() {
       category: form.value.category,
       description: form.value.description,
       data_source_type: form.value.data_source_type,
-      letterhead_id: form.value.letterhead_id,
+      letterhead_id: form.value.use_letterhead ? form.value.letterhead_id : null,
+      use_letterhead: form.value.use_letterhead,
       is_enabled: form.value.is_enabled,
       body_json: bodyJson,
       translations_json: Object.keys(currentTranslations).length ? JSON.stringify(currentTranslations) : null,
@@ -791,6 +806,7 @@ onMounted(async () => {
         description: props.template.description || '',
         data_source_type: props.template.data_source_type || 'job',
         letterhead_id: props.template.letterhead_id || null,
+        use_letterhead: props.template.use_letterhead ?? true,
         is_enabled: props.template.is_enabled ?? true,
       }
       const rawJson = props.template.body_json

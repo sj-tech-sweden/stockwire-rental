@@ -9,6 +9,10 @@ export const useCrewStore = defineStore('crew', () => {
   const loadingMembers = ref(false)
   const skills = ref([])
   const certifications = ref([])
+  // Bumped whenever job crew requirements change so views showing them
+  // (e.g. the quote builder and the job's "crew requirements" panel) can
+  // refresh without a full page reload.
+  const crewRevision = ref(0)
 
   async function fetchRoles() {
     loadingRoles.value = true
@@ -118,20 +122,24 @@ export const useCrewStore = defineStore('crew', () => {
 
   async function createJobCrewRequirement(jobId, payload) {
     const { data } = await api.post(`/api/v1/crew/jobs/${jobId}/crew-requirements`, payload)
+    crewRevision.value++
     return data
   }
 
   async function updateJobCrewRequirement(jobId, reqId, payload) {
     const { data } = await api.put(`/api/v1/crew/jobs/${jobId}/crew-requirements/${reqId}`, payload)
+    crewRevision.value++
     return data
   }
 
   async function deleteJobCrewRequirement(jobId, reqId) {
     await api.delete(`/api/v1/crew/jobs/${jobId}/crew-requirements/${reqId}`)
+    crewRevision.value++
   }
 
   async function bulkUpsertJobCrewRequirements(jobId, items) {
     const { data } = await api.put(`/api/v1/crew/jobs/${jobId}/crew-requirements/bulk`, { items })
+    crewRevision.value++
     return data
   }
 
@@ -253,6 +261,7 @@ export const useCrewStore = defineStore('crew', () => {
     updateJobCrewRequirement,
     deleteJobCrewRequirement,
     bulkUpsertJobCrewRequirements,
+    crewRevision,
     fetchJobCrewAssignments,
     createCrewAssignment,
     updateCrewAssignment,

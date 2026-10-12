@@ -8,7 +8,7 @@ from collections import defaultdict
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from fastapi import UploadFile, File, Query
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import DataError, IntegrityError, SQLAlchemyError
 
@@ -32,10 +32,19 @@ from app.domain.inventory.models import (
     ProductAccessory,
     ProductComponent,
     ProductSupplier,
+    VendorProduct,
     Zone,
 )
 from app.domain.jobs.models import Job, JobRequirement
 from app.domain.customers.models import Customer
+from app.domain.purchasing.models import PurchaseOrder
+from app.domain.purchasing.schemas import ManualPOItem
+from app.domain.purchasing.service import (
+    add_lines_to_po,
+    build_purchase_orders,
+    OPEN_PO_STATUSES,
+    _best_vendor_catalog_match,
+)
 from app.domain.settings.models import AppSetting
 from app.domain.settings.schemas import DEFAULT_CATEGORY_PREFILL_PATHS
 from app.domain.route_planner.routing import geocode
@@ -95,6 +104,8 @@ from app.domain.inventory.schemas import (
     ProductRead,
     ProductSupplierRead,
     ProductSupplierUpsert,
+    VendorProductLinkRead,
+    ProductReorderRequest,
     ProductUpdate,
     MAINTENANCE_STATUSES,
     DEFECT_SEVERITIES,
@@ -863,8 +874,25 @@ def _resolve_hirehop_category(db: Session, product_data: dict[str, Any]) -> Inve
 def list_products(
     db: Session = Depends(get_db),
     pagination: PaginationParams = Depends(),
+    search: str | None = Query(None, description="Filter by product name or SKU"),
+    exclude_rental: bool = Query(False, description="Exclude rental products from the result"),
+    brand: str | None = Query(None, description="Filter by brand (exact, case-insensitive)"),
+    manufacturer: str | None = Query(None, description="Filter by manufacturer (exact, case-insensitive)"),
+    category: str | None = Query(None, description="Filter by category (exact)"),
 ) -> PaginatedResponse[ProductRead]:
-    stmt = select(Product).order_by(Product.id)
+    stmt = select(Product)
+    if exclude_rental:
+        stmt = stmt.where(Product.is_rental_product.is_(False))
+    if search:
+        like = f"%{search.strip()}%"
+        stmt = stmt.where(or_(Product.name.ilike(like), Product.sku.ilike(like)))
+    if brand:
+        stmt = stmt.where(Product.brand.ilike(brand))
+    if manufacturer:
+        stmt = stmt.where(Product.manufacturer.ilike(manufacturer))
+    if category:
+        stmt = stmt.where(Product.category == category)
+    stmt = stmt.order_by(Product.id)
     products, total = paginate_query(db, stmt, pagination.skip, pagination.limit)
     if not products:
         return PaginatedResponse(items=[], total=total, skip=pagination.skip, limit=pagination.limit, has_more=False)
@@ -931,6 +959,13 @@ def list_products(
         customers = db.scalars(select(Customer).where(Customer.id.in_(supplier_ids))).all()
         customer_cache = {c.id: c for c in customers}
 
+    # Pre-fetch referenced vendor catalog items (for supplier links)
+    vendor_product_ids = {sr.vendor_product_id for sr in all_supplier_rows if sr.vendor_product_id}
+    vendor_product_cache: dict[int, VendorProduct] = {}
+    if vendor_product_ids:
+        vps = db.scalars(select(VendorProduct).where(VendorProduct.id.in_(vendor_product_ids))).all()
+        vendor_product_cache = {v.id: v for v in vps}
+
     results = []
     for product in products:
         counts = device_counts.get(product.id)
@@ -950,11 +985,14 @@ def list_products(
         suppliers_list = []
         for sr in supplier_rows:
             sup = customer_cache.get(sr.supplier_id)
+            vp = vendor_product_cache.get(sr.vendor_product_id) if sr.vendor_product_id else None
             suppliers_list.append(ProductSupplierRead(
                 id=sr.id,
                 product_id=sr.product_id,
                 supplier_id=sr.supplier_id,
                 supplier_name=sup.name if sup else None,
+                vendor_product_id=sr.vendor_product_id,
+                vendor_product=VendorProductLinkRead.model_validate(vp) if vp else None,
                 is_primary=sr.is_primary,
                 lead_time_days=sr.lead_time_days,
                 unit_cost=sr.unit_cost,
@@ -1014,6 +1052,59 @@ def generate_product_sku(db: Session = Depends(get_db), prefix: str = "PRD-") ->
     if len(cleaned_prefix) > 20:
         raise HTTPException(status_code=400, detail="Prefix is too long")
     return {"sku": _generate_next_product_sku(db, cleaned_prefix)}
+
+
+@router.get("/products/{product_id}/purchase-info")
+def product_purchase_info(
+    product_id: int,
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_user),
+) -> dict[str, Any]:
+    """Return the best purchasable source for a catalog product: its primary
+    supplier and the matching vendor catalog item (unit cost + currency).
+
+    Used by the purchase-order builder to prefill a manual line when a user picks
+    a product from the catalog.
+    """
+    product = db.get(Product, product_id)
+    if product is None:
+        raise HTTPException(status_code=404, detail="Product not found")
+
+    suppliers = db.scalars(
+        select(ProductSupplier).where(ProductSupplier.product_id == product_id)
+    ).all()
+    ps = next((s for s in suppliers if s.is_primary), None) or (suppliers[0] if suppliers else None)
+    # Prefer any supplier that explicitly links to a vendor catalog item, not
+    # just the primary one, so the real price is found even when the linked
+    # catalog item sits on a secondary supplier row.
+    linked_ps = next((s for s in suppliers if s.vendor_product_id), None)
+    if linked_ps is not None and (ps is None or ps.vendor_product_id is None):
+        ps = linked_ps
+
+    vps = db.scalars(select(VendorProduct).where(VendorProduct.is_active.is_(True))).all()
+    vp = None
+    # Prefer the vendor catalog item explicitly linked through ProductSupplier
+    # (how scraper-linked products are associated) before falling back to SKU /
+    # external reference / name matching.
+    if ps and ps.vendor_product_id:
+        linked = db.get(VendorProduct, ps.vendor_product_id)
+        if linked:
+            vp = linked
+    if vp is None:
+        # Without an explicit supplier link, only inherit a price from a confident
+        # SKU / external-reference match — never a coincidental name twin.
+        vp = _best_vendor_catalog_match(vps, product, name_match=ps is not None)
+
+    return {
+        "product_id": product_id,
+        "supplier_company_id": ps.supplier_company_id if ps else None,
+        "vendor_product_id": vp.id if vp else None,
+        "vendor_id": vp.vendor_id if vp else None,
+        "unit_cost": vp.unit_cost if vp and vp.unit_cost is not None else (ps.unit_cost if ps else None),
+        "currency": vp.currency if vp and vp.currency else None,
+        "min_stock_level": product.min_stock_level,
+        "min_order_qty": product.min_order_qty,
+    }
 
 
 @router.get("/products/{product_id}", response_model=ProductRead)
@@ -1429,14 +1520,6 @@ def list_devices(
     )
 
 
-@router.get("/devices/{device_id}", response_model=DeviceRead)
-def get_device(device_id: int, db: Session = Depends(get_db)) -> DeviceRead:
-    device = db.get(Device, device_id)
-    if device is None:
-        raise HTTPException(status_code=404, detail="Device not found")
-    return _to_device_read(db, device)
-
-
 @router.get("/devices/generate-asset-tag")
 def generate_device_asset_tag(
     db: Session = Depends(get_db),
@@ -1454,6 +1537,14 @@ def generate_device_asset_tag(
         raise HTTPException(status_code=400, detail="Prefix is too long")
 
     return {"asset_tag": _generate_asset_tag(db, product=product, preferred_prefix=cleaned_prefix)}
+
+
+@router.get("/devices/{device_id}", response_model=DeviceRead)
+def get_device(device_id: int, db: Session = Depends(get_db)) -> DeviceRead:
+    device = db.get(Device, device_id)
+    if device is None:
+        raise HTTPException(status_code=404, detail="Device not found")
+    return _to_device_read(db, device)
 
 
 @router.get("/checked-out-devices", response_model=list[InventoryCheckedOutDeviceRead])
@@ -4439,11 +4530,14 @@ def list_product_suppliers(product_id: int, db: Session = Depends(get_db)) -> li
     result = []
     for row in rows:
         supplier = db.get(Customer, row.supplier_id)
+        vp = db.get(VendorProduct, row.vendor_product_id) if row.vendor_product_id else None
         result.append(ProductSupplierRead(
             id=row.id,
             product_id=row.product_id,
             supplier_id=row.supplier_id,
             supplier_name=supplier.name if supplier else None,
+            vendor_product_id=row.vendor_product_id,
+            vendor_product=VendorProductLinkRead.model_validate(vp) if vp else None,
             is_primary=row.is_primary,
             lead_time_days=row.lead_time_days,
             unit_cost=row.unit_cost,
@@ -4485,19 +4579,50 @@ def upsert_product_suppliers(
         row = ProductSupplier(
             product_id=product_id,
             supplier_id=s.supplier_id,
+            vendor_product_id=s.vendor_product_id,
             is_primary=s.is_primary,
             lead_time_days=s.lead_time_days,
             unit_cost=s.unit_cost,
             notes=s.notes,
         )
+        # Keep the supplier company in sync with the linked vendor catalog item
+        # when it carries a vendor, so restock/reorder flows resolve the supplier.
+        if s.vendor_product_id:
+            vp = db.get(VendorProduct, s.vendor_product_id)
+            if vp is None:
+                raise HTTPException(
+                    status_code=404, detail=f"Vendor product {s.vendor_product_id} not found"
+                )
+            if vp.vendor_id is not None:
+                row.supplier_company_id = vp.vendor_id
+            # Inherit a scannable barcode from the vendor catalog (e.g. an EAN
+            # imported from Thomann) so the product can be scanned at receiving
+            # without manual entry.
+            if vp.barcode and not product.barcode:
+                product.barcode = vp.barcode
+            # A link must carry a price: either the catalog item's own cost or a
+            # manually entered one. Otherwise the resulting PO line would have no
+            # cost, which is almost always a mistake.
+            if s.unit_cost is None and vp.unit_cost is None:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Linked vendor item has no unit cost; enter a unit cost or choose a priced item.",
+                )
+            # Carry the catalog price onto the supplier link when the caller
+            # didn't supply one, so restock/PO building always has a unit cost.
+            if s.unit_cost is None:
+                row.unit_cost = vp.unit_cost
         db.add(row)
         db.flush()
         supplier = db.get(Customer, s.supplier_id)
+        vp = db.get(VendorProduct, row.vendor_product_id) if row.vendor_product_id else None
         result.append(ProductSupplierRead(
             id=row.id,
             product_id=row.product_id,
             supplier_id=row.supplier_id,
             supplier_name=supplier.name if supplier else None,
+            vendor_product_id=row.vendor_product_id,
+            vendor_product=VendorProductLinkRead.model_validate(vp) if vp else None,
             is_primary=row.is_primary,
             lead_time_days=row.lead_time_days,
             unit_cost=row.unit_cost,
@@ -4517,6 +4642,85 @@ def upsert_product_suppliers(
     return result
 
 
+@router.post("/products/{product_id}/suppliers/{link_id}/reorder")
+def reorder_product_supplier(
+    product_id: int,
+    link_id: int,
+    body: ProductReorderRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_editor),
+) -> dict:
+    """Create a restock line for the product from its linked vendor catalog item.
+
+    Adds the line to an existing draft/partial purchase order for the same vendor
+    (when ``po_id`` is given and matches), or opens a new draft PO for that
+    vendor when ``po_id`` is omitted.
+    """
+    product = db.get(Product, product_id)
+    if product is None:
+        raise HTTPException(status_code=404, detail="Product not found")
+    link = db.get(ProductSupplier, link_id)
+    if link is None or link.product_id != product_id:
+        raise HTTPException(status_code=404, detail="Supplier link not found")
+    if not link.vendor_product_id:
+        raise HTTPException(
+            status_code=400, detail="Supplier link has no linked vendor catalog item"
+        )
+    vp = db.get(VendorProduct, link.vendor_product_id)
+    if vp is None:
+        raise HTTPException(status_code=404, detail="Vendor catalog item not found")
+    vendor_id = vp.vendor_id
+    if vendor_id is None:
+        raise HTTPException(
+            status_code=400, detail="Vendor catalog item has no supplier company"
+        )
+
+    qty = body.qty or product.min_order_qty or 1
+    if qty <= 0:
+        qty = 1
+
+    extra = ManualPOItem(
+        name=product.name,
+        sku=vp.sku,
+        qty=qty,
+        unit_cost=float(vp.unit_cost) if vp.unit_cost is not None else None,
+        currency=vp.currency,
+        vendor_company_id=vendor_id,
+        vendor_product_id=vp.id,
+        product_id=product.id,
+        is_restock=True,
+    )
+
+    if body.po_id is not None:
+        po = db.get(PurchaseOrder, body.po_id)
+        if po is None:
+            raise HTTPException(status_code=404, detail="Purchase order not found")
+        if po.supplier_company_id != vendor_id:
+            raise HTTPException(
+                status_code=400,
+                detail="Purchase order supplier does not match the vendor item's supplier",
+            )
+        if po.status not in OPEN_PO_STATUSES:
+            raise HTTPException(
+                status_code=400, detail="Can only reorder onto a draft or partial PO"
+            )
+        po = add_lines_to_po(db, po.id, [], extra_items=[extra])
+    else:
+        pos = build_purchase_orders(db, [], extra_items=[extra], include_restock=False)
+        po = pos[0]
+
+    line = next(
+        (l for l in po.lines if l.product_id == product.id and l.is_restock), None
+    )
+    if line is None:
+        raise HTTPException(
+            status_code=400,
+            detail="Restock line was not created for this product",
+        )
+    db.refresh(po)
+    return {"po_id": po.id, "po_number": po.po_number, "line_id": line.id}
+
+
 # ---------------------------------------------------------------------------
 # Low Stock
 # ---------------------------------------------------------------------------
@@ -4524,10 +4728,7 @@ def upsert_product_suppliers(
 @router.get("/low-stock")
 def list_low_stock(db: Session = Depends(get_db)) -> list[dict]:
     products = list(db.scalars(
-        select(Product).where(
-            Product.min_stock_level.isnot(None),
-            Product.product_type.in_(["consumable", "crew"]),
-        )
+        select(Product).where(Product.min_stock_level.isnot(None))
     ).all())
 
     results = []

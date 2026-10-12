@@ -299,6 +299,14 @@
         <q-card-section class="q-pt-none">
           <q-input v-model="roleForm.name" :label="t('crew.roleName')" outlined dense class="q-mb-sm" :rules="[v => !!v || t('login.required')]" />
           <q-input v-model="roleForm.description" :label="t('crew.description')" outlined dense class="q-mb-sm" type="textarea" />
+          <div class="row q-col-gutter-sm">
+            <div class="col-6">
+              <q-input v-model.number="roleForm.default_hourly_rate" type="number" min="0" step="0.01" :label="t('crew.defaultHourlyRate')" outlined dense />
+            </div>
+            <div class="col-6">
+              <q-input v-model.number="roleForm.default_daily_rate" type="number" min="0" step="0.01" :label="t('crew.defaultDailyRate')" outlined dense />
+            </div>
+          </div>
           <q-toggle v-model="roleForm.is_default" :label="t('crew.default')" color="primary" />
         </q-card-section>
         <q-card-actions align="right">
@@ -371,7 +379,7 @@ const savingCert = ref(false)
 const loadingSkills = ref(false)
 const loadingCerts = ref(false)
 
-const roleForm = ref({ name: '', description: '', is_default: false })
+const roleForm = ref({ name: '', description: '', is_default: false, default_hourly_rate: null, default_daily_rate: null })
 const skillForm = ref({ name: '', category: '' })
 const certForm = ref({ name: '', category: '' })
 
@@ -455,7 +463,7 @@ function onMemberDblClick(evt, row) {
 function openCreate() {
   if (activeTab.value === 'roles') {
     editingRole.value = null
-    roleForm.value = { name: '', description: '', is_default: false }
+    roleForm.value = { name: '', description: '', is_default: false, default_hourly_rate: null, default_daily_rate: null }
     roleDialog.value = true
   } else if (activeTab.value === 'skills') {
     skillForm.value = { name: '', category: '' }
@@ -470,7 +478,13 @@ function openCreate() {
 
 function openEditRole(role) {
   editingRole.value = role
-  roleForm.value = { name: role.name, description: role.description || '', is_default: role.is_default }
+  roleForm.value = {
+    name: role.name,
+    description: role.description || '',
+    is_default: role.is_default,
+    default_hourly_rate: role.default_hourly_rate ?? null,
+    default_daily_rate: role.default_daily_rate ?? null,
+  }
   roleDialog.value = true
 }
 
