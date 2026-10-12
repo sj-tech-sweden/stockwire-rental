@@ -11,7 +11,6 @@ unit price/currency resolve. Idempotent: only rewrites the specific bad link.
 """
 
 from alembic import op
-import sqlalchemy as sa
 from sqlalchemy import text
 
 revision = '0103'

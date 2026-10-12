@@ -91,7 +91,8 @@ def test_delete_source_cascades_products(client):
     ).json()["id"]
 
     # Without delete_products, products survive.
-    assert client.delete(f"/api/v1/vendor-catalog/sources/{source_id}").status_code == 204
+    del_resp = client.delete(f"/api/v1/vendor-catalog/sources/{source_id}")
+    assert del_resp.status_code == 204
     assert client.get(f"/api/v1/vendor-products/{vp1}").status_code == 200
 
     # Recreate the source and cascade-delete this time.

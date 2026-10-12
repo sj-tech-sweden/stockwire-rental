@@ -1,6 +1,4 @@
 """Tests for crew default-rate seeding and quote letterhead opt-out."""
-from datetime import datetime, timezone
-
 from app.domain.jobs.models import Job
 from app.domain.crew.models import CrewRole, CrewMember
 from app.domain.customers.models import Person

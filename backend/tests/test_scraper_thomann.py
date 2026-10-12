@@ -241,7 +241,6 @@ def test_fetch_extracts_backorder_availability(monkeypatch):
     monkeypatch.setattr("app.domain.inventory.scraper_thomann.httpx.get", fake_get)
 
     records = plugin.normalize(plugin.fetch())
-    records = plugin.normalize(plugin.fetch())
     assert len(records) == 1
     rec = records[0]
     assert rec.category == "Mikrofoner"

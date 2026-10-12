@@ -86,6 +86,7 @@ def refresh_fx_rates(db: Any | None = None) -> dict[str, Any] | None:
         try:
             company_currency = (get_company_profile_currency(db) or "SEK").strip().upper() or "SEK"
         except Exception:
+            # Fall back to the default reporting currency if the profile lookup fails.
             pass
         base = company_currency
 
@@ -105,8 +106,10 @@ def refresh_fx_rates(db: Any | None = None) -> dict[str, Any] | None:
                             try:
                                 fetched["rates"][k] = float(v)
                             except (TypeError, ValueError):
+                                # Skip manual currency entries whose stored value is not numeric.
                                 pass
             except Exception:
+                # Ignore corrupt/unparseable persisted rates; refresh from scratch.
                 pass
 
         data = {"base": base, "rates": fetched["rates"]}

@@ -92,6 +92,10 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    op.drop_column("job_requirements", "unit_price")
+    op.drop_index("ix_job_requirements_vendor_product_id", table_name="job_requirements")
+    op.drop_column("job_requirements", "vendor_product_id")
+
     op.drop_index("ix_vendor_products_source_plugin", table_name="vendor_products")
     op.drop_index("ix_vendor_products_external_reference", table_name="vendor_products")
     op.drop_index("ix_vendor_products_vendor_id", table_name="vendor_products")
@@ -100,10 +104,6 @@ def downgrade() -> None:
     op.drop_index("ix_vendor_products_name", table_name="vendor_products")
     op.drop_index("ix_vendor_products_sku", table_name="vendor_products")
     op.drop_table("vendor_products")
-
-    op.drop_column("job_requirements", "unit_price")
-    op.drop_index("ix_job_requirements_vendor_product_id", table_name="job_requirements")
-    op.drop_column("job_requirements", "vendor_product_id")
 
     op.alter_column(
         "job_requirements",

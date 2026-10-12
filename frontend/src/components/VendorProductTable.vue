@@ -503,13 +503,11 @@ const formatMoney = (value) => {
   return n.toLocaleString(locale.value || 'en')
 }
 
-async function loadFacets(q) {
+async function loadFacets() {
   try {
-    const { data } = await api.get('/api/v1/vendor-products/facets', { params: q ? { q } : {} })
-    if (!q) {
-      allCategories.value = data.categories || []
-      allBrands.value = data.brands || []
-    }
+    const { data } = await api.get('/api/v1/vendor-products/facets')
+    allCategories.value = data.categories || []
+    allBrands.value = data.brands || []
     categoryOptions.value = data.categories || []
     brandOptions.value = data.brands || []
   } catch {

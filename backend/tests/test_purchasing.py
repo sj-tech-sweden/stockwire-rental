@@ -661,7 +661,7 @@ def test_preview_lists_alternative_suppliers(client):
 
 
 def test_build_po_from_selections_chooses_supplier(client):
-    job_id = _seed_two_vendors(client)
+    _seed_two_vendors(client)
     # Force both lines onto Vendor B by choosing its vendor products.
     resp = client.post(
         "/api/v1/purchasing/purchase-orders/build",
@@ -753,7 +753,7 @@ def test_delete_received_purchase_order_rejected(client):
 
 
 def test_build_po_includes_supplier_freight(client):
-    job_id = _seed_two_vendors(client)
+    _seed_two_vendors(client)
     db = _dbsession.SessionLocal()
     try:
         c1 = db.get(Company, 1)
@@ -787,7 +787,7 @@ def test_build_po_includes_supplier_freight(client):
 
 
 def test_freight_override_in_build_request(client):
-    job_id = _seed_two_vendors(client)
+    _seed_two_vendors(client)
     resp = client.post(
         "/api/v1/purchasing/purchase-orders/build",
         json={

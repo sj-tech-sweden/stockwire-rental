@@ -14,12 +14,12 @@ from sqlalchemy.orm import Session
 from app.db.session import get_db
 from app.domain.auth.deps import get_current_user
 
-# Side-effect imports: register the web scraper plugins with the importer
-# registry so they appear in /vendor-catalog/plugins.
-from app.domain.inventory import (  # noqa: F401
-    scraper_thomann,
-    scraper_ui_com,
-)
+# Register the web scraper importer plugins so they appear in
+# /vendor-catalog/plugins. Importing the plugin classes triggers their
+# module-level self-registration; the explicit calls make the dependency
+# visible to static analyzers.
+from app.domain.inventory.scraper_thomann import ThomannScraperPlugin
+from app.domain.inventory.scraper_ui_com import UiComScraperPlugin
 from app.domain.inventory.models import VendorProduct
 from app.domain.inventory.schemas import (
     BulkDeleteVendorProductsRequest,
@@ -33,8 +33,12 @@ from app.domain.inventory.vendor_catalog import (
     VendorEquipmentRecord,
     cluster_vendor_products,
     get_plugin,
+    register_importer_plugin,
     upsert_vendor_products,
 )
+
+register_importer_plugin(ThomannScraperPlugin)
+register_importer_plugin(UiComScraperPlugin)
 from app.domain.settings.models import AppSetting
 
 logger = logging.getLogger(__name__)
