@@ -667,6 +667,7 @@ def get_fx_rates(
                     "rates": {str(k).upper(): float(v) for k, v in (parsed.get("rates") or {}).items()},
                 }
         except Exception:
+            # Malformed persisted rates: fall back to the safe default above.
             pass
     return FxRatesRead(**data)
 
