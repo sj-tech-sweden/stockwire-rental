@@ -10,6 +10,8 @@ This document describes the release workflow and the secrets required to publish
 
 - `GITHUB_TOKEN` — provided by GitHub Actions automatically for workflows. For pushing to GHCR from workflows, you may need a Personal Access Token stored as `CR_PAT` or configure `GITHUB_TOKEN` with proper permissions in the workflow.
 
+- `RELEASE_PLEASE_TOKEN` — a Personal Access Token used by the release workflow (`.github/workflows/release.yml`) to open and update the release-please Release PR. This is required because the repository/organization policy disables `GITHUB_TOKEN` from creating or approving pull requests. Create a fine-grained PAT (or classic PAT with `repo`/`contents:write` and `pull-requests:write`) for a user who can push to the repo, store it as `RELEASE_PLEASE_TOKEN`, and keep it rotated.
+
 - `GHCR_USERNAME` / `GHCR_TOKEN` or `CR_PAT` — if not using `GITHUB_TOKEN` for package publishing, store a PAT with `packages:write` permission.
 
 Set these secrets in the repository settings under "Settings → Secrets and variables → Actions".
@@ -50,6 +52,7 @@ Notes:
 - **First-time setup / verify**: Confirm that `release-please-config.json`, `.release-please-manifest.json`, and `.github/workflows/release.yml` are present and that the workflow has `contents: write`, `pull-requests: write`, and `issues: write` permissions (already configured).
 
 - **Secrets & permissions**:
+	- The release job uses `RELEASE_PLEASE_TOKEN` (a PAT) to create the release PR, because `GITHUB_TOKEN` is not permitted to create or approve pull requests in this repository. Ensure that secret exists and is valid (rotate it if expired).
 	- Ensure `GITHUB_TOKEN` has `packages: write` when used for GHCR login, or provide `CR_PAT` (Personal Access Token) in repository secrets with `packages:write` permission.
 	- `API_KEY_PEPPER` and `JWT_SECRET` must be set for production deployments.
 
