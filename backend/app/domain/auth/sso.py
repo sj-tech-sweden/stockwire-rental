@@ -12,7 +12,7 @@ from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
 from fastapi import HTTPException, status
-from jose import jwt
+import jwt
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 

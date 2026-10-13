@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
-from jose import JWTError
+from jwt import PyJWTError as JWTError
 
 from app.domain.auth.security import decode_token
 from app.domain.realtime.hub import realtime_hub

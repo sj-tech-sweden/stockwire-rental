@@ -7,7 +7,7 @@ from urllib.parse import urlparse
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request, Response, status
 from fastapi.responses import RedirectResponse
-from jose import jwt
+import jwt
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 from sqlalchemy import func, select
