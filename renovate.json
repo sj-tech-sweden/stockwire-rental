@@ -3,18 +3,22 @@
   "extends": [
     "config:recommended"
   ],
+  "semanticCommits": "enabled",
   "packageRules": [
     {
-      "matchUpdateTypes": ["major"],
-      "addLabels": ["major"]
-    },
-    {
-      "matchUpdateTypes": ["minor"],
-      "addLabels": ["minor"]
-    },
-    {
+      "description": "Patch-level updates use fix() so release-please bumps a PATCH version",
       "matchUpdateTypes": ["patch", "pin", "pinDigest", "digest", "lockFileMaintenance", "rollback", "bump"],
-      "addLabels": ["patch"]
+      "semanticCommitType": "fix"
+    },
+    {
+      "description": "Minor updates use feat() so release-please bumps a MINOR version",
+      "matchUpdateTypes": ["minor"],
+      "semanticCommitType": "feat"
+    },
+    {
+      "description": "Major updates use feat()! (breaking) so release-please bumps a MAJOR version",
+      "matchUpdateTypes": ["major"],
+      "commitMessagePrefix": "feat(deps)!:"
     },
     {
       "matchManagers": ["dockerfile", "docker-compose"],
