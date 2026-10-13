@@ -4,7 +4,7 @@ import os
 import secrets
 
 import bcrypt
-from jose import jwt
+import jwt
 
 from app.config import settings
 
