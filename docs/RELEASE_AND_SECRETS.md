@@ -16,50 +16,58 @@ Set these secrets in the repository settings under "Settings → Secrets and var
 
 ## Release workflow
 
-Releases are triggered by labeling a pull request with one of the semantic labels: `major`, `minor`, or `patch` (or by manually dispatching the Release workflow).
+Releases are fully automated with [`googleapis/release-please-action`](https://github.com/googleapis/release-please-action), driven by [Conventional Commits](https://www.conventionalcommits.org/) on `main`.
 
-When a PR receives a label, the workflow will:
+How it works:
 
-- Determine the release type from the label (major/minor/patch)
-- Compute the next semantic version based on the latest git tag
-- Create an annotated GitHub Release with the new tag
-- (Placeholder) Build and push container images to GHCR — implement by calling the `docker-build-and-push` workflow or adding a composite action to build and push images.
+- Every merged commit to `main` is inspected by `.github/workflows/release.yml`.
+- When conventional commits since the last release imply a version bump, release-please opens (and keeps up to date) a **Release PR** titled `chore: release X.Y.Z`. The PR contains the updated `CHANGELOG.md`, `.release-please-manifest.json`, and `VERSION` file.
+- Merging that Release PR causes release-please to:
+  - create the GitHub Release with generated release notes (categorised from the commit messages),
+  - push the matching `X.Y.Z` git tag.
+- On release, `release.yml` calls `.github/workflows/docker-build-and-push.yml` via `workflow_call` to build and publish the `backend` and `frontend` images to GHCR, tagged with the new version and `latest`.
+
+The release type is derived from the commits automatically:
+
+- `fix:` → patch
+- `feat:` → minor
+- `feat!:` / `fix!:` / a `BREAKING CHANGE` footer → major
+
+Version configuration lives in `release-please-config.json` (release type and changelog sections) and `.release-please-manifest.json` (last released version, currently `0.9.2`). The `simple` release type tracks a root `VERSION` file, so no root `package.json`/`pyproject.toml` is required.
 
 Notes:
 
 - Ensure repository secrets for GHCR are configured before enabling automated pushes.
-- The release workflow currently creates the release and leaves a placeholder for image build/push. We recommend wiring it to the existing `docker-build-and-push.yml` via `workflow_run` or a composite action.
+- The docker build is skipped for the Release PR's own merge commit via the push guard in `docker-build-and-push.yml`, so images are only built once (from the `workflow_call` invoked by the release job).
+- To force a specific version, use `release-please`'s `release-as` support or bump the manifest manually; do not rely on PR labels.
 
 ## How to use the Release workflow (step-by-step)
 
-- **Label a PR**: Add one of `major`, `minor`, or `patch` to the pull request. The release workflow (`.github/workflows/release.yml`) listens for PR label events and will pick the highest-priority semantic label present.
+- **Normal flow**: Write commits using the Conventional Commits convention (`feat:`, `fix:`, etc.). When `main` accumulates releasable changes, review and merge the `chore: release X.Y.Z` PR that release-please maintains. Merging it publishes the release and the images.
 
-- **What the workflow does**:
+- **Breaking change**: Use a `!` after the type (`feat(api)!: ...`) or add a `BREAKING CHANGE:` footer. This triggers a major bump.
 
-	- Determines release type from PR labels or from manual `workflow_dispatch` input.
-	- Computes the next semantic version based on latest git tag (from the default branch).
-	- Creates an annotated GitHub Release with the new tag using `softprops/action-gh-release`.
-	- Dispatches the `docker-build-and-push.yml` workflow to build and publish images to GHCR.
-
-- **Manual dispatch**: You can run the same workflow manually from the Actions tab and provide `release_type` (major/minor/patch). Manual dispatch will compute the next version accordingly.
+- **First-time setup / verify**: Confirm that `release-please-config.json`, `.release-please-manifest.json`, and `.github/workflows/release.yml` are present and that the workflow has `contents: write`, `pull-requests: write`, and `issues: write` permissions (already configured).
 
 - **Secrets & permissions**:
 	- Ensure `GITHUB_TOKEN` has `packages: write` when used for GHCR login, or provide `CR_PAT` (Personal Access Token) in repository secrets with `packages:write` permission.
 	- `API_KEY_PEPPER` and `JWT_SECRET` must be set for production deployments.
 
 - **How to verify a release**:
-	- Check the Actions run for `.github/workflows/release.yml` to see computed tag and release creation.
+	- Check the Actions run for `.github/workflows/release.yml` to see the release-please output and the triggered image build.
 	- Confirm a Release is created in the repository `Releases` UI with the computed tag.
 	- Verify the `docker-build-and-push` workflow run was triggered and completed (it will push images to `ghcr.io/${{ github.repository_owner }}/...`).
 
 - **Troubleshooting**:
-	- If no tag is computed, ensure there is at least one previous git tag (the script treats no-tags as `0.0.0`).
+	- If no Release PR appears, check that commits on `main` follow the Conventional Commits convention and that the workflow has the required permissions.
 	- If the build job fails to push to GHCR, verify `GITHUB_TOKEN` or `CR_PAT` has `packages:write` and that `docker/login-action` is using the correct credentials in `.github/workflows/docker-build-and-push.yml`.
 	- Use the artifact logs and Playwright traces (if available) for test failures; CI uploads Playwright artifacts per-browser.
 
 ## Files
 
 - Release workflow: [.github/workflows/release.yml](.github/workflows/release.yml)
+- Release-please config: [release-please-config.json](release-please-config.json)
+- Release-please manifest: [.release-please-manifest.json](.release-please-manifest.json)
 - Build & push workflow: [.github/workflows/docker-build-and-push.yml](.github/workflows/docker-build-and-push.yml)
 
 

@@ -1,199 +1,40 @@
 name: Release
 
 on:
-  pull_request:
+  push:
     branches: [main]
-    types: [closed]
   workflow_dispatch:
-    inputs:
-      release_type:
-        description: 'release type (major, minor, patch)'
-        required: true
-        default: 'patch'
-        type: choice
-        options:
-          - patch
-          - minor
-          - major
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
 
 jobs:
-  create-release:
-    if: >
-      ${{
-        github.event_name == 'workflow_dispatch' ||
-        (
-          github.event.pull_request.merged == true &&
-          (
-            contains(github.event.pull_request.labels.*.name, 'major') ||
-            contains(github.event.pull_request.labels.*.name, 'minor') ||
-            contains(github.event.pull_request.labels.*.name, 'patch')
-          )
-        )
-      }}
+  release-please:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
     outputs:
-      tag: ${{ steps.semver.outputs.tag }}
-      release_sha: ${{ steps.set_release_sha.outputs.sha }}
+      release_created: ${{ steps.release.outputs.release_created }}
+      tag_name: ${{ steps.release.outputs.tag_name }}
+      version: ${{ steps.release.outputs.version }}
+      pr: ${{ steps.release.outputs.pr }}
     steps:
-      - uses: actions/checkout@v7
+      - uses: googleapis/release-please-action@v4
+        id: release
         with:
-          fetch-depth: 0
-          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.merge_commit_sha || github.sha }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
 
-      - name: Determine release type
-        id: rtype
-        run: |
-          if [ "${{ github.event_name }}" = "pull_request" ]; then
-            LABEL=${{ toJSON(github.event.pull_request.labels) }}
-            # Highest precedence wins: major > minor > patch
-            if echo "$LABEL" | grep -q '"name":"major"'; then
-              echo "type=major" >> "$GITHUB_OUTPUT"
-            elif echo "$LABEL" | grep -q '"name":"minor"'; then
-              echo "type=minor" >> "$GITHUB_OUTPUT"
-            elif echo "$LABEL" | grep -q '"name":"patch"'; then
-              echo "type=patch" >> "$GITHUB_OUTPUT"
-            fi
-          else
-            echo "type=${{ github.event.inputs.release_type }}" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Compute next semver tag
-        id: semver
-        run: |
-          git fetch --tags
-          LATEST=$(git describe --tags --abbrev=0 2>/dev/null || echo "0.0.0")
-          IFS='.' read -r MAJ MIN PAT <<<"$LATEST"
-          TYPE=${{ steps.rtype.outputs.type }}
-          if [ "$TYPE" = "major" ]; then MAJ=$((MAJ+1)); MIN=0; PAT=0; fi
-          if [ "$TYPE" = "minor" ]; then MIN=$((MIN+1)); PAT=0; fi
-          if [ "$TYPE" = "patch" ]; then PAT=$((PAT+1)); fi
-          echo "tag=${MAJ}.${MIN}.${PAT}" >> "$GITHUB_OUTPUT"
-
-      - name: Set release SHA output
-        id: set_release_sha
-        run: |
-          # Use the checked-out HEAD SHA to guarantee alignment with the commit actually built
-          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
-
-      - name: Create or update GitHub release
-        run: |
-          TAG="${{ steps.semver.outputs.tag }}"
-          RELEASE_SHA="${{ steps.set_release_sha.outputs.sha }}"
-          TYPE="${{ steps.rtype.outputs.type }}"
-
-          # Generate structured changelog
-          git fetch --tags
-          LATEST=$(git describe --tags --abbrev=0 "${RELEASE_SHA}^" 2>/dev/null || echo "0.0.0")
-
-          if [ "$LATEST" = "0.0.0" ]; then
-            RANGE="$RELEASE_SHA"
-            COMMITS=$(git log --pretty=format:'%s|||%h' -n 50 "$RELEASE_SHA")
-          else
-            RANGE="${LATEST}..${RELEASE_SHA}"
-            COMMITS=$(git log --pretty=format:'%s|||%h' "$RANGE")
-          fi
-
-          # Categorize commits (accumulate REAL newlines via $'\n', not literal \n)
-          FEATURES=""; FIXES=""; BREAKING=""; OTHER=""; DEPS=""
-          while IFS= read -r line; do
-            [ -z "$line" ] && continue
-            MSG="${line%%|||*}"
-            SHA="${line##*|||}"
-            entry="- ${MSG} (\`${SHA}\`)"
-            if echo "$MSG" | grep -qiE '^feat(\(|:)|^[a-z]+(\(|:).*\bfeat'; then
-              FEATURES+="${entry}"$'\n'
-            elif echo "$MSG" | grep -qiE '^fix(\(|:)|^[a-z]+(\(|:).*\bfix'; then
-              FIXES+="${entry}"$'\n'
-            elif echo "$MSG" | grep -qiE '^breaking|^BREAKING'; then
-              BREAKING+="${entry}"$'\n'
-            elif echo "$MSG" | grep -qiE '^Update |^Bump |^Pin |^(chore|build|fix)\(deps'; then
-              DEPS+="${entry}"$'\n'
-            else
-              OTHER+="${entry}"$'\n'
-            fi
-          done <<< "$COMMITS"
-
-          # Assemble release notes with real line breaks into a file
-          NOTES_FILE="$(mktemp)"
-          {
-            if [ "$TYPE" = "major" ]; then
-              echo "## ⚠️ Breaking Changes"
-              echo ""
-            fi
-            [ -n "$BREAKING" ] && printf '%s\n' "$BREAKING"
-            if [ -n "$FEATURES" ]; then echo "## ✨ Features"; echo ""; printf '%s\n' "$FEATURES"; fi
-            if [ -n "$FIXES" ]; then echo "## 🐛 Bug Fixes"; echo ""; printf '%s\n' "$FIXES"; fi
-            if [ -n "$DEPS" ]; then echo "## ⬆️ Dependencies"; echo ""; printf '%s\n' "$DEPS"; fi
-            if [ -n "$OTHER" ]; then echo "## 📦 Other Changes"; echo ""; printf '%s\n' "$OTHER"; fi
-            if [ -z "$BREAKING$FEATURES$FIXES$DEPS$OTHER" ]; then echo "No notable changes"; fi
-          } > "$NOTES_FILE"
-
-          if gh release view "$TAG" >/dev/null 2>&1; then
-            gh release edit "$TAG" --title "$TAG" --notes-file "$NOTES_FILE" --target "$RELEASE_SHA"
-          else
-            gh release create "$TAG" --title "$TAG" --notes-file "$NOTES_FILE" --target "$RELEASE_SHA"
-          fi
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-  generate-pr-release-notes:
-    runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request' && github.event.pull_request.merged == true
-    permissions:
-      pull-requests: write
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          fetch-depth: 0
-
-      - name: Generate PR summary
-        env:
-          GH_TOKEN: ${{ github.token }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
-        run: |
-          COMMITS=$(gh api "repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}/commits?per_page=100" \
-            --jq '.[] | "\(.commit.message | split("\n")[0])|\(.sha[0:7])"')
-
-          FEATURES=""; FIXES=""; OTHER=""; DEPS=""
-          while IFS='|' read -r msg sha; do
-            [ -z "$msg" ] && continue
-            entry="- ${msg} (\`${sha}\`)"
-            if [[ "$msg" =~ ^feat ]]; then
-              FEATURES+="${entry}"$'\n'
-            elif [[ "$msg" =~ ^fix ]]; then
-              FIXES+="${entry}"$'\n'
-            elif echo "$msg" | grep -qiE '^Update |^Bump |^Pin |^(chore|build|fix)\(deps'; then
-              DEPS+="${entry}"$'\n'
-            else
-              OTHER+="${entry}"$'\n'
-            fi
-          done <<< "$COMMITS"
-
-          BODY="## Release Notes for v${{ github.event.pull_request.number }}"$'\n'
-          [ -n "$FEATURES" ] && BODY+=$'\n'"### ✨ Features"$'\n'"${FEATURES}"
-          [ -n "$FIXES" ] && BODY+=$'\n'"### 🐛 Bug Fixes"$'\n'"${FIXES}"
-          [ -n "$DEPS" ] && BODY+=$'\n'"### ⬆️ Dependencies"$'\n'"${DEPS}"
-          [ -n "$OTHER" ] && BODY+=$'\n'"### 📦 Other Changes"$'\n'"${OTHER}"
-          if [ -z "$FEATURES$FIXES$DEPS$OTHER" ]; then BODY+=$'\n'"No conventional commits found."; fi
-          BODY+=$'\n'$'\n'"**Merged:** ${{ github.event.pull_request.merged_at }}"$'\n'"**Commits:** $(echo "$COMMITS" | grep -c .)"
-
-          EXISTING=$(gh api "repos/${GITHUB_REPOSITORY}/issues/${PR_NUMBER}/comments" \
-            --jq '.[] | select(.user.type=="Bot" and (.body | contains("## Release Notes for v"))) | .id' | head -n1)
-          if [ -n "$EXISTING" ]; then
-            gh api -X PATCH "repos/${GITHUB_REPOSITORY}/issues/comments/${EXISTING}" -f "body=${BODY}"
-          else
-            gh api -X POST "repos/${GITHUB_REPOSITORY}/issues/${PR_NUMBER}/comments" -f "body=${BODY}"
-          fi
   build-and-push:
-    needs: create-release
+    needs: release-please
+    if: ${{ needs.release-please.outputs.release_created == 'true' }}
     permissions:
       contents: read
       packages: write
       id-token: write
     uses: ./.github/workflows/docker-build-and-push.yml
     with:
-      git_ref: ${{ needs.create-release.outputs.release_sha }}
-      version_tag: ${{ needs.create-release.outputs.tag }}
+      git_ref: ${{ needs.release-please.outputs.tag_name }}
+      version_tag: ${{ needs.release-please.outputs.version }}
       push_latest: true

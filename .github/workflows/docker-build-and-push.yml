@@ -33,14 +33,20 @@ on:
 
 jobs:
   build-and-push:
-    # Skip push-triggered runs caused by the release version-sync commit to avoid
-    # building twice (the release workflow already calls this workflow via workflow_call).
+    # Skip push-triggered runs caused by release commits to avoid building twice.
+    # The release workflow (release-please) already calls this workflow via workflow_call
+    # with the version tag when a release is created.
+    # - release-please's merged release PR produces a commit titled "chore: release X.Y.Z"
+    # - the app version-sync commit is titled "chore: sync app versions"
     # Require both the bot actor and the specific commit-message prefix so that a human
     # commit starting with the same text is never accidentally suppressed.
     if: >
       github.event_name != 'push' ||
       github.actor != 'github-actions[bot]' ||
-      !startsWith(github.event.head_commit.message || '', 'chore: sync app versions')
+      (
+        !startsWith(github.event.head_commit.message || '', 'chore: release ') &&
+        !startsWith(github.event.head_commit.message || '', 'chore: sync app versions')
+      )
     runs-on: ubuntu-latest
     permissions:
       contents: read
