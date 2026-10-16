@@ -33,7 +33,7 @@ dependencies = [
   "openai>=3.31.0,<3.32.0",
   "slowapi>=0.1.9",
   "reportlab>=5,<5.1",
-  "pypdf>=6.20,<6.21",
+  "pypdf>=6.21,<6.22",
 ]
 
 [project.optional-dependencies]
