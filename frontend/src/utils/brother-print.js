@@ -16,6 +16,21 @@ import {
 /** Known Brother USB vendor ID */
 const BROTHER_VENDOR_ID = 0x04f9
 
+/**
+ * Brother QL models that predate the "mode setting" opcode (QL-500/550/560/570/
+ * 700). These printers are always in raster mode and reject `ESC i a`; the
+ * proven `brother_ql` reference omits that command for them. We flag the
+ * capability so the encoder skips `ESC i a` and emits the bare raster-line
+ * form the firmware expects.
+ */
+const NO_MODE_SETTING_MODELS = new Set([
+  'QL_500',
+  'QL_550',
+  'QL_560',
+  'QL_570',
+  'QL_700',
+])
+
 /** Printer connection state */
 let connectedPrinter = null
 let currentMedia = null
@@ -54,6 +69,17 @@ export async function connectPrinter() {
     filters: [{ vendorId: BROTHER_VENDOR_ID }],
   })
 
+  // Pre-700 QL models have no "mode setting" opcode — they are always in
+  // raster mode and reject `ESC i a`. Flag the capability so the encoder skips
+  // that command for them (see NO_MODE_SETTING_MODELS).
+  const devKey = connectedPrinter?.device?.key
+  if (devKey && NO_MODE_SETTING_MODELS.has(devKey)) {
+    const engine = connectedPrinter.device.engines?.[0]
+    if (engine) {
+      engine.capabilities = { ...engine.capabilities, modeSetting: false }
+    }
+  }
+
   // Debug hook: log the first bytes of every USB write so we can verify the
   // exact command stream the printer receives (e.g. confirm the raster/compression
   // commands carry the `1B 69` ESC prefix). Remove once printing is confirmed working.
@@ -71,6 +97,14 @@ export async function connectPrinter() {
   try {
     const status = await connectedPrinter.getStatus()
     currentMedia = status.detectedMedia || null
+    // Diagnostic: surface the full status (and any error bits) so a rejected
+    // job reports *why* the printer errored instead of a silent fast-blink.
+    // eslint-disable-next-line no-console
+    console.log('[brother-print] connected status:', status)
+    if (status?.errors?.length) {
+      // eslint-disable-next-line no-console
+      console.warn('[brother-print] printer reported errors:', status.errors)
+    }
   } catch {
     // Status read may fail on some models — continue without media info
   }
@@ -227,15 +261,16 @@ export function resolvePrintMedia(options = {}) {
   // print head (`headDots`). Some die-cut descriptors (e.g. DK-11218) report
   // margins that do not sum to the head width, so the encoder emits rows
   // narrower than the head and the printer rejects them (a "System error" /
-  // transmission error). Re-align the printable window within the head,
-  // centred, so the transmitted row width always matches the physical head
-  // (e.g. 413 printable dots centred in a 720-dot QL-560 head).
+  // transmission error). Keep the descriptor's left margin (the die-cut's
+  // physical position on the head) and pad the remainder on the right so the
+  // transmitted row width always matches the head. Centering here was wrong:
+  // it shifted the design ~13 mm off the die-cut on DK-11218.
   const engine = connectedPrinter?.device?.engines?.[0]
   const headDots = engine?.headDots || engine?.config?.headDots
   if (media && headDots && media.type === 'die-cut') {
     const total = (media.leftMarginPins || 0) + media.printableDots + (media.rightMarginPins || 0)
     if (total !== headDots && media.printableDots <= headDots) {
-      const leftMargin = Math.floor((headDots - media.printableDots) / 2)
+      const leftMargin = media.leftMarginPins || 0
       const rightMargin = headDots - media.printableDots - leftMargin
       media = {
         ...media,

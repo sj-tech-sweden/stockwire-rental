@@ -826,6 +826,83 @@
       entity-type="device"
       :entity-id="deviceExportTarget.id"
     />
+
+    <q-dialog v-model="printDialogOpen" persistent>
+      <q-card style="min-width: 360px" class="ec-card">
+        <q-card-section class="row items-center q-pb-none">
+          <div class="text-h6">{{ t('labels.printLabelsTitle') }}</div>
+        </q-card-section>
+        <q-card-section>
+          <div class="text-body2 q-mb-sm">
+            {{ t('labels.printLabelsCount', { count: printDialogCount, entity: printDialogEntity }) }}
+          </div>
+          <q-select
+            v-model="printDialogTemplateId"
+            :options="labelTemplatesForEntity"
+            :label="t('labels.chooseTemplate')"
+            outlined
+            dense
+            emit-value
+            map-options
+            :option-label="opt => opt.name"
+            :option-value="opt => opt.id"
+          >
+            <template v-slot:no-option>
+              <q-item>
+                <q-item-section class="text-grey-7">
+                  {{ t('labels.noTemplatesForEntity') }}
+                </q-item-section>
+              </q-item>
+            </template>
+          </q-select>
+          <div class="text-caption q-mt-sm q-mb-xs">{{ t('labels.printTarget') }}</div>
+          <q-btn-toggle
+            v-model="printDialogTarget"
+            spread
+            unelevated
+            toggle-color="primary"
+            :options="printTargetOptions"
+            :disable="printingLabels"
+          />
+          <div v-if="printDialogTarget === 'brother'" class="q-mt-sm">
+            <div v-if="printerConnected" class="text-positive text-caption">
+              <q-icon name="check_circle" /> {{ t('labels.brotherConnected') }}
+            </div>
+            <div v-else class="row items-center q-gutter-sm">
+              <div class="text-warning text-caption">
+                <q-icon name="warning" /> {{ t('labels.noBrotherPrinter') }}
+              </div>
+              <q-btn
+                dense
+                flat
+                color="primary"
+                :label="t('labels.connectPrinter')"
+                :loading="connectingPrinter"
+                @click="connectDialogPrinter"
+              />
+            </div>
+          </div>
+        </q-card-section>
+        <q-card-actions align="right">
+          <q-btn flat :label="t('labels.cancel')" color="primary" @click="closePrintDialog" />
+          <q-btn
+            flat
+            :label="t('labels.openEditor')"
+            color="secondary"
+            @click="customizePrintLabels"
+          />
+          <q-btn
+            unelevated
+            :label="printingLabels ? t('labels.printing') : t('labels.print')"
+            color="positive"
+            icon="print"
+            :disable="!canPrintFromDialog"
+            :loading="printingLabels"
+            @click="confirmPrintLabels"
+          />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
   </q-page>
 </template>
 
@@ -875,6 +952,13 @@ import WarehouseMap from '../components/WarehouseMap.vue'
 
 import BulkZoneDialog from '../components/BulkZoneDialog.vue'
 import GenerateShelvesDialog from '../components/GenerateShelvesDialog.vue'
+import { connectPrinter, getPrinter, isWebUSBSupported } from '../utils/brother-print'
+import {
+  buildRowsByEntityType,
+  normalizeElement,
+  printRowsBrowser,
+  printRowsDirect,
+} from '../utils/labelPrint'
 
 const $q = useQuasar()
 const { t } = useI18n()
@@ -1930,12 +2014,148 @@ async function openBulkPrintLabels(entity, rowsOrIds) {
     return
   }
 
-  await router.push({
+  try {
+    if (!settingsStore.labelTemplates || !settingsStore.labelTemplates.length) {
+      await settingsStore.fetchLabelTemplates()
+    }
+  } catch {
+    // Ignore — dialog will simply show "no templates" and the user can create one.
+  }
+
+  const uniqueIds = [...new Set(ids)]
+  printDialogEntity.value = normalizedEntity
+  printDialogIds.value = uniqueIds
+  printDialogCount.value = uniqueIds.length
+
+  // Default to the first saved template for this entity type, if any.
+  const templates = labelTemplatesForEntity.value
+  printDialogTemplateId.value = templates.length ? templates[0].id : null
+  printDialogTarget.value = isWebUSBSupported() ? 'brother' : 'system'
+  printerConnected.value = !!getPrinter()?.connected
+  printDialogOpen.value = true
+}
+
+const printDialogOpen = ref(false)
+const printDialogEntity = ref('device')
+const printDialogIds = ref([])
+const printDialogTemplateId = ref(null)
+const printDialogCount = ref(0)
+const printDialogTarget = ref('system')
+const connectingPrinter = ref(false)
+const printingLabels = ref(false)
+
+// `getPrinter()?.connected` lives on a plain module object, so a `computed`
+// reading it never re-evaluates after a connect. Track the state in a ref and
+// update it whenever we connect/disconnect.
+const printerConnected = ref(false)
+
+const printTargetOptions = computed(() => [
+  { label: t('labels.printerBrother'), value: 'brother', disable: !isWebUSBSupported() },
+  { label: t('labels.printerSystem'), value: 'system' },
+])
+
+const canPrintFromDialog = computed(() => {
+  if (!printDialogTemplateId.value) return false
+  if (printDialogTarget.value === 'brother' && !printerConnected.value) return false
+  return true
+})
+
+const labelTemplatesForEntity = computed(() => {
+  const entity = printDialogEntity.value
+  return (settingsStore.labelTemplates || []).filter(item => item.entity_type === entity)
+})
+
+function notify(msg) {
+  $q.notify(msg)
+}
+
+async function closePrintDialog() {
+  printDialogOpen.value = false
+}
+
+async function connectDialogPrinter() {
+  connectingPrinter.value = true
+  try {
+    await connectPrinter()
+    printerConnected.value = true
+  } catch {
+    printerConnected.value = false
+    $q.notify({ type: 'warning', message: t('labels.brotherConnectFailed') })
+  } finally {
+    connectingPrinter.value = false
+  }
+}
+
+async function confirmPrintLabels() {
+  const ids = printDialogIds.value
+  const entity = printDialogEntity.value
+  const templateId = printDialogTemplateId.value
+  if (!ids.length || !entity || !templateId) return
+
+  const template = (settingsStore.labelTemplates || []).find(item => item.id === templateId)
+  if (!template) return
+
+  const designW = Number(template.canvas?.width || 420)
+  const designH = Number(template.canvas?.height || 280)
+  const elements = Array.isArray(template.elements)
+    ? template.elements.map(normalizeElement)
+    : []
+
+  const allRows = buildRowsByEntityType()[entity] || []
+  const idSet = new Set(ids.map(Number))
+  const rows = allRows.filter(row => idSet.has(Number(row.id)))
+  if (!rows.length) {
+    $q.notify({ type: 'warning', message: 'No matching rows to print' })
+    return
+  }
+
+  printingLabels.value = true
+  try {
+    if (printDialogTarget.value === 'brother') {
+      if (!printerConnected.value) {
+        await connectDialogPrinter()
+        if (!printerConnected.value) return
+      }
+      await printRowsDirect({
+        rows,
+        elements,
+        canvasWpx: designW,
+        canvasHpx: designH,
+        cutLabels: true,
+        calibration: false,
+        notify,
+      })
+    } else {
+      await printRowsBrowser({
+        rows,
+        elements,
+        printPreset: template.print_preset || '62x29',
+        profileKey: 'system',
+        canvasWpx: designW,
+        canvasHpx: designH,
+        notify,
+      })
+    }
+  } catch (err) {
+    $q.notify({ type: 'negative', message: `${t('labels.directPrintFailed')}: ${err?.message || err}` })
+  } finally {
+    printingLabels.value = false
+    printDialogOpen.value = false
+  }
+}
+
+function customizePrintLabels() {
+  const ids = printDialogIds.value
+  const entity = printDialogEntity.value
+  const templateId = printDialogTemplateId.value
+  if (!ids.length || !entity) return
+  printDialogOpen.value = false
+  router.push({
     path: '/labels',
     query: {
-      entity: normalizedEntity,
-      ids: [...new Set(ids)].join(','),
-      autoPrint: '1',
+      entity,
+      ids: ids.join(','),
+      templateId: templateId || '',
     },
   })
 }

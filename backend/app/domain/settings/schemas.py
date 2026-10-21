@@ -588,7 +588,14 @@ class LabelTemplateElement(BaseModel):
 class LabelTemplateUpsert(BaseModel):
     name: str
     entity_type: Literal["device", "product", "location", "case"]
-    print_preset: Literal["62x29", "50x25", "a4-3x8"] = "62x29"
+    # The four built-in sizes plus any `WxH` size detected from the printer
+    # (e.g. `38x90` for a DK-11218 die-cut), which is registered as a preset at
+    # runtime so device labels can be designed/saved for that media.
+    print_preset: str = Field(default="62x29", pattern=r"^(\d+x\d+|a4-3x8)$")
+    # Whether the design canvas is in wide/portrait orientation (swaps the
+    # preset's width/height). Persisted so the orientation survives a reload
+    # instead of defaulting back to landscape and forcing a manual toggle.
+    wide_label: bool = False
     visibility: Literal["all", "admin", "owner"] = "all"
     edit_roles: list[Literal["admin", "manager", "viewer"]] = Field(default_factory=lambda: ["admin", "manager"])
     canvas: LabelTemplateCanvas = Field(default_factory=LabelTemplateCanvas)

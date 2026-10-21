@@ -1975,6 +1975,7 @@ def _normalize_label_template_payload(
         name=str(payload.name or "").strip(),
         entity_type=payload.entity_type,
         print_preset=payload.print_preset,
+        wide_label=payload.wide_label,
         visibility=payload.visibility,
         edit_roles=clean_roles,
         canvas=canvas,

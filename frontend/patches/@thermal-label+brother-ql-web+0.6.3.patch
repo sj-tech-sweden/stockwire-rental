@@ -1,8 +1,14 @@
 diff --git a/node_modules/@thermal-label/brother-ql-web/dist/printer.js b/node_modules/@thermal-label/brother-ql-web/dist/printer.js
-index d29bb30..f7291b6 100644
+index d29bb30..19bb4c6 100644
 --- a/node_modules/@thermal-label/brother-ql-web/dist/printer.js
 +++ b/node_modules/@thermal-label/brother-ql-web/dist/printer.js
-@@ -86,7 +86,7 @@ export class WebBrotherQLPrinter {
+@@ -1,4 +1,4 @@
+-import { DEFAULT_MEDIA, DEVICES, ROTATE_DIRECTION, STATUS_REQUEST, buildInitialize, buildInvalidate, createPreviewOffline, encodeJobForEngine, findDevice, flipHorizontal, parseStatus, pickRotation, renderImage, renderMultiPlaneImage, } from '@thermal-label/brother-ql-core';
++import { DEFAULT_MEDIA, DEVICES, ROTATE_DIRECTION, STATUS_REQUEST, buildInitialize, buildInvalidate, createPreviewOffline, encodeJobForEngine, findDevice, flipHorizontal, flipVertical, parseStatus, pickRotation, renderImage, renderMultiPlaneImage, } from '@thermal-label/brother-ql-core';
+ import { MediaNotSpecifiedError, pollingOnStatus, WriteSerializer } from '@thermal-label/contracts';
+ import { WebUsbTransport } from '@thermal-label/transport/web';
+ // Detect transport errors across module boundaries — under pnpm link /
+@@ -86,30 +86,56 @@ export class WebBrotherQLPrinter {
          // each row small enough to ride the firmware's buffer comfortably
          // and matches the encoding the Brother driver itself emits.
          const pageOptions = {
@@ -11,3 +17,56 @@ index d29bb30..f7291b6 100644
              ...(options?.highRes === true ? { highResolution: true } : {}),
          };
          let page;
++        // Pre-700 QL models (QL-500/550/560/570/700, flagged `modeSetting: false`)
++        // differ from the QL-820-family in two ways:
++        //  - they have no "mode setting" opcode (handled in protocol.js), and
++        //  - their print head feeds the label with the first raster line at the
++        //    bottom and already maps the x-axis correctly, so they need a VERTICAL
++        //    flip but NO horizontal mirror (the QL-820 needs the horizontal mirror).
++        // Detect the family via the device `key` so the flips fire reliably even if
++        // the capability flag wasn't plumbed through connect().
++        const NO_MODE_SETTING_MODELS = new Set(['QL_500', 'QL_550', 'QL_560', 'QL_570', 'QL_700']);
++        const devKey = this.device?.key;
++        const isPre700 = !!(devKey && NO_MODE_SETTING_MODELS.has(devKey))
++            || this.device?.engines?.[0]?.capabilities?.modeSetting === false;
++        // Pre-700 QL models (QL_500/550/560/570/700) feed the label with the
++        // first raster line at the bottom, so flip vertically to compensate.
++        // NOTE: when we hand the library a *landscape* template with an explicit
++        // `rotate: 90`, flipHorizontal is applied AFTER that rotation (in the
++        // final bitmap's X axis), which mirrors the rotated content. For that
++        // path we do NOT apply the horizontal flip; flipVertical alone yields the
++        // correct, non-mirrored orientation.
++        const flipVerticalNeeded = isPre700;
++        const applyHorizontal = false;
+         if (resolvedMedia.palette) {
+             const { black, red } = renderMultiPlaneImage(image, {
+                 palette: resolvedMedia.palette,
+                 rotate,
+             });
++            const bh = applyHorizontal ? flipHorizontal(black) : black;
++            const rh = applyHorizontal ? flipHorizontal(red) : red;
+             page = {
+-                bitmap: flipHorizontal(black),
+-                redBitmap: flipHorizontal(red),
++                bitmap: flipVerticalNeeded ? flipVertical(bh) : bh,
++                redBitmap: flipVerticalNeeded ? flipVertical(rh) : rh,
+                 media: resolvedMedia,
+                 options: pageOptions,
+             };
+         }
+         else {
+-            const bitmap = flipHorizontal(renderImage(image, { dither: true, rotate }));
+-            page = {
++            let bitmap = renderImage(image, { dither: true, rotate });
++            if (applyHorizontal) bitmap = flipHorizontal(bitmap);
++            if (flipVerticalNeeded) bitmap = flipVertical(bitmap);
++             page = {
+                 bitmap,
+                 media: resolvedMedia,
+                 options: pageOptions,
+             };
+         }
++
+         // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- every brother-ql device has at least one engine (data invariant)
+         const engine = this.device.engines[0];
+         const bytes = encodeJobForEngine([page], {}, engine, this.device.name);
