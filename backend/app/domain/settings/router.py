@@ -75,7 +75,6 @@ from app.domain.settings.schemas import (
     SmtpSettingsUpdate,
     ProductionPlannerConfig,
     StockwireInstanceConfig,
-    StagewireInstanceConfig,
     StockwireCustomerRead,
     StockwireCustomersRead,
     StagewireDeeplinkRead,
@@ -484,11 +483,6 @@ def update_integrations(
     persisted_stagewire = persisted.get("stagewire_instances") if isinstance(persisted, dict) else []
     if not isinstance(persisted_stagewire, list):
         persisted_stagewire = []
-    persisted_stagewire_by_id = {
-        str(item.get("id") or "").strip(): item
-        for item in persisted_stagewire
-        if isinstance(item, dict) and str(item.get("id") or "").strip()
-    }
     if "stagewire_instances" in payload.model_fields_set:
         normalized_stagewire = _normalize_stagewire_instances(
             payload.stagewire_instances or [], persisted_stagewire
@@ -3012,6 +3006,7 @@ def _test_stagewire_connection(
                         message="API URL resolves to a non-public IP address",
                     )
             except ValueError:
+                # address is a hostname rather than a literal IP; SSRF checks below handle it
                 pass
 
     # Reconstruct the health URL from parsed components to prevent SSRF via URL manipulation
@@ -3264,6 +3259,7 @@ def _response_peer_ip(response: object) -> ipaddress.IPv4Address | ipaddress.IPv
                 try:
                     return ipaddress.ip_address(peer[0])
                 except ValueError:
+                    # peer address was not a parseable IP literal; ignore
                     pass
 
         for attr in ("fp", "raw"):
