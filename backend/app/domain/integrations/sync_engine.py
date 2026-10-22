@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 import httpx
 from sqlalchemy.orm import Session
 
-from app.domain.customers.models import Company, Customer, Person
+from app.domain.customers.models import Company, Person
 from app.domain.integrations.models import TwentySyncLog
 from app.domain.integrations.twenty_client import TwentyClient
 from app.domain.jobs.models import Job
@@ -112,28 +112,6 @@ def _log_sync(
     db.add(log)
 
 
-def _customer_to_company_payload(customer: Customer) -> dict:
-    from app.config import settings
-
-    payload: dict = {"name": customer.name or ""}
-    if customer.address or customer.city or customer.postal_code or customer.country:
-        payload["address"] = {
-            "addressStreet1": customer.address or "",
-            "addressCity": customer.city or "",
-            "addressPostcode": customer.postal_code or "",
-            "addressCountry": customer.country or "",
-        }
-    if customer.notes:
-        payload["stockwireNotes"] = customer.notes
-    if customer.id:
-        payload["stockwireId"] = customer.id
-    frontend = settings.effective_frontend_base_url
-    if frontend and customer.id:
-        links = _links_field(f"{frontend}/companies/{customer.id}")
-        if links:
-            payload["stockwireUrl"] = links
-    return payload
-
 
 def _sanitize_phone(phone: str) -> str:
     """Return phone in E.164 format that Twenty CRM accepts.
@@ -168,34 +146,12 @@ def _sanitize_phone(phone: str) -> str:
     return ""
 
 
-def _customer_to_person_payload(customer: Customer) -> dict:
-    from app.config import settings
-
-    parts = (customer.name or "").strip().split(None, 1)
-    first_name = parts[0] if parts else ""
-    last_name = parts[1] if len(parts) > 1 else ""
-    payload: dict = {}
-    if first_name or last_name:
-        payload["name"] = {"firstName": first_name, "lastName": last_name}
-    if customer.email:
-        payload["emails"] = {"primaryEmail": customer.email}
-    if customer.phone:
-        payload["phones"] = {"primaryPhoneNumber": _sanitize_phone(customer.phone)}
-    if customer.id:
-        payload["stockwireId"] = customer.id
-    frontend = settings.effective_frontend_base_url
-    if frontend and customer.id:
-        links = _links_field(f"{frontend}/companies/{customer.id}")
-        if links:
-            payload["stockwireUrl"] = links
-    return payload
-
 
 def _job_to_opportunity_payload(job: Job) -> dict:
     from app.config import settings
 
     payload: dict = {
-        "name": f"{job.job_code} - {job.customer_name or ''}".strip(" -"),
+        "name": f"{job.job_code} - {job.company_name or ''}".strip(" -"),
         "stage": STAGE_MAP.get(job.status, "SCREENING"),
     }
     if job.sales_price:
@@ -280,70 +236,6 @@ async def _find_existing_person(
     return None
 
 
-async def sync_customer_outbound(
-    db: Session, client: TwentyClient, customer: Customer, *, force: bool = False
-) -> None:
-    """Push a Stockwire customer to Twenty CRM.
-
-    By default, records that originated in Twenty (external_origin == "twenty")
-    are not pushed back, to avoid overwriting data in Twenty. Use force=True to
-    override (e.g. for the one-time stockwire-field write-back after inbound sync).
-    """
-    if customer.external_origin == "twenty" and not force:
-        logger.debug("Skipping outbound sync for Twenty-originated customer %s", customer.id)
-        return
-
-    try:
-        company_data = _customer_to_company_payload(customer)
-        person_data = _customer_to_person_payload(customer)
-
-        twenty_company_id = None
-
-        if customer.external_source == "twenty" and customer.external_reference:
-            twenty_company_id = customer.external_reference
-            try:
-                await _safe_update(client, "companies", twenty_company_id, company_data)
-                _log_sync(db, "outbound", "customer", customer.id, twenty_company_id, "update", "success")
-            except TwentyRecordNotFoundError:
-                logger.warning(
-                    "Company %s no longer exists in Twenty; recreating customer %s",
-                    twenty_company_id, customer.id,
-                )
-                customer.external_source = None
-                customer.external_reference = None
-                twenty_company_id = None
-
-        if not twenty_company_id:
-            result = await client.create_object("companies", company_data)
-            twenty_company_id = _extract_twenty_id(result, "companies")
-            customer.external_source = "twenty"
-            customer.external_reference = twenty_company_id
-            customer.external_origin = customer.external_origin or "stockwire"
-            _log_sync(db, "outbound", "customer", customer.id, twenty_company_id, "create", "success")
-
-        if twenty_company_id and person_data.get("name"):
-            person_data["companyId"] = twenty_company_id
-            existing_person_id = await _find_existing_person(client, twenty_company_id, customer.email)
-            if existing_person_id:
-                await client.update_object("people", existing_person_id, person_data)
-            else:
-                try:
-                    result = await client.create_object("people", person_data)
-                    _extract_twenty_id(result, "people")
-                except Exception as create_err:
-                    err_str = str(create_err).lower()
-                    if "duplicate" in err_str or "400" in err_str or "invalid_phone" in err_str or "phone" in err_str:
-                        logger.debug("Person may already exist or has invalid data for customer %s, skipping create: %s", customer.id, create_err)
-                    else:
-                        raise
-
-        db.commit()
-    except Exception as e:
-        logger.exception("Failed to sync customer %s to Twenty", customer.id)
-        _log_sync(db, "outbound", "customer", customer.id, None, "update", "failed", str(e))
-        db.commit()
-        raise
-
 
 async def sync_job_outbound(
     db: Session, client: TwentyClient, job: Job, *, force: bool = False
@@ -360,10 +252,10 @@ async def sync_job_outbound(
     try:
         opp_data = _job_to_opportunity_payload(job)
 
-        if job.customer_id:
-            customer = db.query(Customer).filter(Customer.id == job.customer_id).first()
-            if customer and customer.external_source == "twenty" and customer.external_reference:
-                opp_data["companyId"] = customer.external_reference
+        if job.company_id:
+            company = db.query(Company).filter(Company.id == job.company_id).first()
+            if company and company.external_source == "twenty" and company.external_reference:
+                opp_data["companyId"] = company.external_reference
 
         twenty_opp_id = None
 
@@ -396,89 +288,6 @@ async def sync_job_outbound(
         db.commit()
         raise
 
-
-async def sync_customer_inbound(db: Session, client: TwentyClient, twenty_company: dict, twenty_person: dict | None = None) -> bool:
-    """Sync a Twenty company into Stockwire.
-
-    Returns True if a new customer was created, False if an existing one was updated.
-    """
-    company_id = twenty_company.get("id")
-    company_name = twenty_company.get("name", "")
-
-    existing = db.query(Customer).filter(
-        Customer.external_source == "twenty",
-        Customer.external_reference == company_id,
-    ).first()
-
-    person = twenty_person or {}
-    name_obj = person.get("name") or {}
-    email = None
-    phone = None
-    emails_data = person.get("emails") or {}
-    if isinstance(emails_data, dict):
-        email = emails_data.get("primaryEmail")
-    phones_data = person.get("phones") or {}
-    if isinstance(phones_data, dict):
-        phone = phones_data.get("primaryPhoneNumber")
-
-    address_data = twenty_company.get("address") or {}
-    if isinstance(address_data, dict):
-        address = address_data.get("addressStreet1") or ""
-        city = address_data.get("addressCity") or ""
-        postal_code = address_data.get("addressPostcode") or ""
-        country = address_data.get("addressCountry") or ""
-    else:
-        address = str(address_data) if address_data else ""
-        city = twenty_company.get("city") or ""
-        postal_code = twenty_company.get("postalCode") or ""
-        country = twenty_company.get("country") or ""
-
-    if existing:
-        logger.debug(
-            "Inbound company update: customer_id=%s twenty_id=%s name=%r -> %r",
-            existing.id, company_id, existing.name, company_name,
-        )
-        if company_name:
-            existing.name = company_name
-        if email:
-            existing.email = email
-        if phone:
-            existing.phone = phone
-        if address:
-            existing.address = address
-        if city:
-            existing.city = city
-        if postal_code:
-            existing.postal_code = postal_code
-        if country:
-            existing.country = country
-        sw_notes = twenty_company.get("stockwireNotes") or twenty_company.get("notes")
-        if sw_notes:
-            existing.notes = sw_notes
-        _log_sync(db, "inbound", "customer", existing.id, company_id, "update", "success")
-        db.commit()
-        return False
-
-    full_name = f"{name_obj.get('firstName', '')} {name_obj.get('lastName', '')}".strip()
-    sw_notes = twenty_company.get("stockwireNotes") or twenty_company.get("notes")
-    new_customer = Customer(
-        name=company_name or full_name or None,
-        email=email,
-        phone=phone,
-        address=address or None,
-        city=city or None,
-        postal_code=postal_code or None,
-        country=country or None,
-        notes=sw_notes,
-        external_source="twenty",
-        external_reference=company_id,
-        external_origin="twenty",
-    )
-    db.add(new_customer)
-    db.flush()
-    _log_sync(db, "inbound", "customer", new_customer.id, company_id, "create", "success")
-    db.commit()
-    return True
 
 
 async def sync_job_inbound(db: Session, client: TwentyClient, twenty_opp: dict) -> bool:
@@ -523,9 +332,9 @@ async def sync_job_inbound(db: Session, client: TwentyClient, twenty_opp: dict) 
         "Inbound job update: job_id=%s opp_id=%s name=%r status=%r amount=%s",
         existing.id, opp_id, opp_name, stockwire_status, amount,
     )
-    # Truncate customer_name to fit in VARCHAR(255)
+    # Truncate company_name to fit in VARCHAR(255)
     if opp_name:
-        existing.customer_name = opp_name[:255]
+        existing.company_name = opp_name[:255]
     existing.status = stockwire_status
     if amount:
         existing.sales_price = amount
@@ -896,12 +705,12 @@ async def sync_quote_to_twenty(
 
         # Use the linked customer's preferred language, defaulting to English.
         language = "en"
-        if job.customer_id:
-            from app.domain.customers.models import Customer
+        if job.company_id:
+            from app.domain.customers.models import Company
 
-            customer = db.get(Customer, job.customer_id)
-            if customer and customer.preferred_language:
-                language = customer.preferred_language
+            company = db.get(Company, job.company_id)
+            if company and company.preferred_language:
+                language = company.preferred_language
 
         pdf_bytes = pdf_service.generate_pdf(
             template_id=template.id, entity_type="job", entity_id=job.id, language=language

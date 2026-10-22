@@ -2,7 +2,7 @@ from app.domain.audit.models import ActivityLog
 from app.domain.auth.models import PushSubscription, User
 from app.domain.calendar_feeds.models import CalendarFeed
 from app.domain.custom_fields.models import CustomFieldDefinition, CustomFieldValue
-from app.domain.customers.models import Company, Customer, Person
+from app.domain.customers.models import Company, Person
 from app.domain.crew.models import (
     CrewCertification,
     CrewMember,
@@ -67,7 +67,6 @@ __all__ = [
     "Zone",
     "Company",
     "Person",
-    "Customer",
     "Venue",
     "CustomFieldDefinition",
     "CustomFieldValue",

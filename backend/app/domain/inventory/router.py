@@ -36,7 +36,7 @@ from app.domain.inventory.models import (
     Zone,
 )
 from app.domain.jobs.models import Job, JobRequirement
-from app.domain.customers.models import Customer
+from app.domain.customers.models import Company
 from app.domain.purchasing.models import PurchaseOrder
 from app.domain.purchasing.schemas import ManualPOItem
 from app.domain.purchasing.service import (
@@ -952,12 +952,12 @@ def list_products(
         ref_products = db.scalars(select(Product).where(Product.id.in_(ref_product_ids))).all()
         product_cache = {p.id: p for p in ref_products}
 
-    # Pre-fetch all referenced customers (for suppliers)
+    # Pre-fetch all referenced companies (for suppliers)
     supplier_ids = {sr.supplier_id for sr in all_supplier_rows if sr.supplier_id}
-    customer_cache: dict[int, Customer] = {}
+    company_cache: dict[int, Company] = {}
     if supplier_ids:
-        customers = db.scalars(select(Customer).where(Customer.id.in_(supplier_ids))).all()
-        customer_cache = {c.id: c for c in customers}
+        companies = db.scalars(select(Company).where(Company.id.in_(supplier_ids))).all()
+        company_cache = {c.id: c for c in companies}
 
     # Pre-fetch referenced vendor catalog items (for supplier links)
     vendor_product_ids = {sr.vendor_product_id for sr in all_supplier_rows if sr.vendor_product_id}
@@ -984,7 +984,7 @@ def list_products(
 
         suppliers_list = []
         for sr in supplier_rows:
-            sup = customer_cache.get(sr.supplier_id)
+            sup = company_cache.get(sr.supplier_id)
             vp = vendor_product_cache.get(sr.vendor_product_id) if sr.vendor_product_id else None
             suppliers_list.append(ProductSupplierRead(
                 id=sr.id,
@@ -1097,7 +1097,7 @@ def product_purchase_info(
 
     return {
         "product_id": product_id,
-        "supplier_company_id": ps.supplier_company_id if ps else None,
+        "supplier_id": ps.supplier_id if ps else None,
         "vendor_product_id": vp.id if vp else None,
         "vendor_id": vp.vendor_id if vp else None,
         "unit_cost": vp.unit_cost if vp and vp.unit_cost is not None else (ps.unit_cost if ps else None),
@@ -4420,7 +4420,7 @@ def _to_product_read(db: Session, product: Product) -> ProductRead:
     ).all())
     suppliers_list = []
     for sr in supplier_rows:
-        sup = db.get(Customer, sr.supplier_id)
+        sup = db.get(Company, sr.supplier_id)
         suppliers_list.append(ProductSupplierRead(
             id=sr.id,
             product_id=sr.product_id,
@@ -4529,7 +4529,7 @@ def list_product_suppliers(product_id: int, db: Session = Depends(get_db)) -> li
     ).all()
     result = []
     for row in rows:
-        supplier = db.get(Customer, row.supplier_id)
+        supplier = db.get(Company, row.supplier_id)
         vp = db.get(VendorProduct, row.vendor_product_id) if row.vendor_product_id else None
         result.append(ProductSupplierRead(
             id=row.id,
@@ -4559,9 +4559,9 @@ def upsert_product_suppliers(
         raise HTTPException(status_code=404, detail="Product not found")
 
     for s in suppliers:
-        customer = db.get(Customer, s.supplier_id)
-        if customer is None:
-            raise HTTPException(status_code=404, detail=f"Supplier (customer) {s.supplier_id} not found")
+        company = db.get(Company, s.supplier_id)
+        if company is None:
+            raise HTTPException(status_code=404, detail=f"Supplier {s.supplier_id} not found")
 
     primary_count = sum(1 for s in suppliers if s.is_primary)
     if primary_count > 1:
@@ -4594,7 +4594,7 @@ def upsert_product_suppliers(
                     status_code=404, detail=f"Vendor product {s.vendor_product_id} not found"
                 )
             if vp.vendor_id is not None:
-                row.supplier_company_id = vp.vendor_id
+                row.supplier_id = vp.vendor_id
             # Inherit a scannable barcode from the vendor catalog (e.g. an EAN
             # imported from Thomann) so the product can be scanned at receiving
             # without manual entry.
@@ -4614,7 +4614,7 @@ def upsert_product_suppliers(
                 row.unit_cost = vp.unit_cost
         db.add(row)
         db.flush()
-        supplier = db.get(Customer, s.supplier_id)
+        supplier = db.get(Company, s.supplier_id)
         vp = db.get(VendorProduct, row.vendor_product_id) if row.vendor_product_id else None
         result.append(ProductSupplierRead(
             id=row.id,
@@ -4633,7 +4633,7 @@ def upsert_product_suppliers(
     if suppliers:
         primary = next((s for s in suppliers if s.is_primary), None)
         if primary:
-            supplier = db.get(Customer, primary.supplier_id)
+            supplier = db.get(Company, primary.supplier_id)
             product.supplier_name = supplier.name if supplier else product.supplier_name
     else:
         product.supplier_name = None
@@ -4747,7 +4747,7 @@ def list_low_stock(db: Session = Depends(get_db)) -> list[dict]:
             )
             if ps:
                 primary_supplier_id = ps.supplier_id
-                supplier = db.get(Customer, ps.supplier_id)
+                supplier = db.get(Company, ps.supplier_id)
                 if supplier:
                     primary_supplier_name = supplier.name
             results.append({

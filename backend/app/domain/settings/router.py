@@ -27,7 +27,7 @@ from app.db.session import SessionLocal, get_db
 from app.domain.auth.deps import get_current_user, require_admin, require_editor
 from app.domain.auth.models import User
 from app.domain.inventory.models import Product, ProductSupplier, Zone
-from app.domain.customers.models import Customer
+from app.domain.customers.models import Company
 from app.domain.settings.models import AppSetting
 from app.domain.auth.sso import default_sso_settings_payload, normalize_sso_settings_payload
 from app.domain.realtime.events import emit_realtime_event
@@ -460,7 +460,7 @@ def update_integrations(
             "enabled": bool(sw_instance.enabled),
             "api_url": api_url or None,
             "api_key": api_key,
-            "supplier_customer_id": sw_instance.supplier_customer_id,
+            "supplier_company_id": sw_instance.supplier_company_id,
             "remote_customer_id": str(sw_instance.remote_customer_id or "").strip() or None,
         })
 
@@ -1519,19 +1519,15 @@ def _run_eventory_sync(db: Session, instance_id: str) -> EventorySyncRead:
     supplier_name = str(config.get("supplier_name") or "").strip() or "Eventory"
     margin = max(0.0, float(config.get("price_margin_percent") or 0.0))
 
-    supplier_customer = db.scalar(
-        select(Customer).where(
-            Customer.name == supplier_name,
-            Customer.is_rental_supplier == True,
-        )
+    supplier_company = db.scalar(
+        select(Company).where(Company.name == supplier_name)
     )
-    if supplier_customer is None:
-        supplier_customer = Customer(
+    if supplier_company is None:
+        supplier_company = Company(
             name=supplier_name,
-            is_customer=False,
             is_rental_supplier=True,
         )
-        db.add(supplier_customer)
+        db.add(supplier_company)
         db.flush()
 
     _set_eventory_sync_runtime_status(
@@ -1604,7 +1600,7 @@ def _run_eventory_sync(db: Session, instance_id: str) -> EventorySyncRead:
             db.flush()
             ps_link = ProductSupplier(
                 product_id=row.id,
-                supplier_id=supplier_customer.id,
+                supplier_id=supplier_company.id,
                 is_primary=True,
             )
             db.add(ps_link)
@@ -1625,13 +1621,13 @@ def _run_eventory_sync(db: Session, instance_id: str) -> EventorySyncRead:
             existing_link = db.scalar(
                 select(ProductSupplier).where(
                     ProductSupplier.product_id == existing.id,
-                    ProductSupplier.supplier_id == supplier_customer.id,
+                    ProductSupplier.supplier_id == supplier_company.id,
                 )
             )
             if existing_link is None:
                 ps_link = ProductSupplier(
                     product_id=existing.id,
-                    supplier_id=supplier_customer.id,
+                    supplier_id=supplier_company.id,
                     is_primary=True,
                 )
                 db.add(ps_link)
@@ -1902,7 +1898,7 @@ def _parse_integrations(raw: str | None) -> dict[str, object]:
             "enabled": bool(item.get("enabled")),
             "api_url": str(item.get("api_url") or "").strip() or None,
             "api_key": str(item.get("api_key") or "").strip() or None,
-            "supplier_customer_id": item.get("supplier_customer_id"),
+            "supplier_company_id": item.get("supplier_company_id"),
             "remote_customer_id": str(item.get("remote_customer_id") or "").strip() or None,
         })
 

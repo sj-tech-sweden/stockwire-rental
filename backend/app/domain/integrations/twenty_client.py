@@ -518,7 +518,7 @@ class TwentyClient:
         payload = {
             "jobStatus": job_data.get("status", "draft"),
             "jobCode": job_data.get("job_code", ""),
-            "customerName": job_data.get("customer_name", ""),
+            "customerName": job_data.get("company_name", ""),
             "startDate": job_data.get("start_date"),
             "endDate": job_data.get("end_date"),
             "totalAmount": job_data.get("sales_price", 0),

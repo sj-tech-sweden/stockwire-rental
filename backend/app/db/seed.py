@@ -4,7 +4,7 @@ from decimal import Decimal
 from sqlalchemy import select
 
 from app.db.models import (
-    Customer,
+    Company,
     Device,
     FinancialTransaction,
     InventoryCategory,
@@ -69,9 +69,9 @@ def seed_demo_data() -> None:
         )
         zone_main = Zone(code="A-01", name="Main Rack A-01", zone_type="rack")
         zone_stage = Zone(code="STAGE", name="Stage Prep", zone_type="stage")
-        customer = Customer(name="Tsunami Events Demo", email="demo@tsunami-events.test", phone="+46 70 000 00 00")
+        company = Company(name="Tsunami Events Demo", email="demo@tsunami-events.test", phone="+46 70 000 00 00")
         venue = Venue(name="Tsunami Hall", address="Main Street 1", city="Stockholm")
-        db.add_all([admin, speaker, light, zone_main, zone_stage, customer, venue])
+        db.add_all([admin, speaker, light, zone_main, zone_stage, company, venue])
         db.flush()
 
         db.add_all(
@@ -83,8 +83,8 @@ def seed_demo_data() -> None:
 
         job = Job(
             job_code="JOB-2026-001",
-            customer_id=customer.id,
-            customer_name=customer.name,
+            company_id=company.id,
+            company_name=company.name,
             venue_id=venue.id,
             venue_name=venue.name,
             description="Demo event production",

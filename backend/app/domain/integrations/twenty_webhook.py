@@ -15,8 +15,6 @@ from app.domain.integrations.sync_engine import (
     _log_sync,
     sync_company_inbound,
     sync_company_outbound,
-    sync_customer_inbound,
-    sync_customer_outbound,
     sync_job_inbound,
     sync_person_inbound,
     sync_person_outbound,

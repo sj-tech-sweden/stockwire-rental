@@ -27,7 +27,7 @@ from sqlalchemy.orm import Session
 # place so lookup, add-lines and any other "open PO" checks stay consistent.
 OPEN_PO_STATUSES = ("draft", "partial")
 
-from app.domain.customers.models import Company, Customer
+from app.domain.customers.models import Company
 from app.domain.inventory.models import (
     Device,
     Product,
@@ -596,19 +596,19 @@ def _collect_restock_lines(db: Session) -> list[dict[str, Any]]:
                 .where(ProductSupplier.product_id == p.id)
                 .order_by(ProductSupplier.id)
             ).first()
-        vendor_company_id = ps.supplier_company_id if ps else None
+        vendor_company_id = ps.supplier_id if ps else None
         # Products that only have a vendor-catalog match (e.g. imported from a
         # scraper) may lack a ProductSupplier row; fall back to the vendor
         # catalog item's vendor so they can still be restocked.
         vp = _resolve_vendor_product_for_product(db, p)
         if vendor_company_id is None and vp and vp.vendor_id:
             vendor_company_id = vp.vendor_id
-        # If no Company resolves we can still restock using the linked Customer
-        # as the named supplier, so the line is never silently dropped.
+        # If no Company resolves we can still restock using the linked supplier
+        # Company as the named supplier, so the line is never silently dropped.
         supplier_name = None
         if vendor_company_id is None and ps and ps.supplier_id:
-            cust = db.get(Customer, ps.supplier_id)
-            supplier_name = cust.name if cust else None
+            company = db.get(Company, ps.supplier_id)
+            supplier_name = company.name if company else None
         if vendor_company_id is None and not supplier_name:
             continue
         qty = int(p.min_order_qty) if p.min_order_qty else 1
@@ -742,7 +742,7 @@ def _make_po(
         comp = db.get(Company, supplier_company_id)
         supplier_name = comp.name if comp else None
     # Fall back to a carried supplier name for vendor-less restock/manual lines
-    # (e.g. a product only linked to a Customer, not a Company).
+    # (e.g. a product only linked to a supplier Company, not a vendor catalog item).
     if not supplier_name:
         supplier_name = next(
             (l.get("supplier_name") for l in lines if l.get("supplier_name")), None

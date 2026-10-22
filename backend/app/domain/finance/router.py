@@ -145,7 +145,7 @@ def get_job_finance_insights(db: Session = Depends(get_db)) -> FinanceJobInsight
             {
                 "job_id": job.id,
                 "job_code": job.job_code,
-                "customer_name": job.customer_name,
+                "customer_name": job.company_name,
                 "status": status_norm,
                 "start_date": job.start_date,
                 "end_date": job.end_date,
@@ -270,7 +270,7 @@ def list_transactions(
     )
 
     statement: Select = (
-        select(FinancialTransaction, Job.job_code, Job.customer_name)
+        select(FinancialTransaction, Job.job_code, Job.company_name)
         .outerjoin(Job, Job.id == FinancialTransaction.job_id)
         .order_by(FinancialTransaction.transaction_date.desc(), FinancialTransaction.id.desc())
     )
@@ -292,7 +292,7 @@ def list_transactions(
 
     if query.customer_name:
         like = f"%{query.customer_name.strip()}%"
-        statement = statement.where(Job.customer_name.ilike(like))
+        statement = statement.where(Job.company_name.ilike(like))
 
     if query.from_date:
         statement = statement.where(FinancialTransaction.transaction_date >= datetime.combine(query.from_date, datetime.min.time(), tzinfo=UTC))
@@ -335,7 +335,7 @@ def create_transaction(
     db.commit()
     db.refresh(tx)
     job = db.get(Job, tx.job_id) if tx.job_id else None
-    return _to_financial_transaction_read(tx, job.job_code if job else None, job.customer_name if job else None)
+    return _to_financial_transaction_read(tx, job.job_code if job else None, job.company_name if job else None)
 
 
 @router.put("/transactions/{transaction_id}", response_model=FinancialTransactionRead)
@@ -364,7 +364,7 @@ def update_transaction(
     db.commit()
     db.refresh(tx)
     job = db.get(Job, tx.job_id) if tx.job_id else None
-    return _to_financial_transaction_read(tx, job.job_code if job else None, job.customer_name if job else None)
+    return _to_financial_transaction_read(tx, job.job_code if job else None, job.company_name if job else None)
 
 
 @router.post("/transactions/{transaction_id}/settle", response_model=FinancialTransactionRead)
@@ -383,7 +383,7 @@ def settle_transaction(
     db.refresh(tx)
 
     job = db.get(Job, tx.job_id) if tx.job_id else None
-    return _to_financial_transaction_read(tx, job.job_code if job else None, job.customer_name if job else None)
+    return _to_financial_transaction_read(tx, job.job_code if job else None, job.company_name if job else None)
 
 
 @router.delete("/transactions/{transaction_id}", status_code=status.HTTP_204_NO_CONTENT)
