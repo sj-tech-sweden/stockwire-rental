@@ -465,7 +465,6 @@ export async function printRowsBrowser({ rows, elements, printPreset, profileKey
     }
   }
 
-  const usesBrotherProfile = profileKey === 'brother_ql560'
   const pageRule = preset.mode === 'single'
     ? `@page { size: ${pageW}mm ${pageH}mm; margin: 0; }`
     : '@page { size: A4; margin: 0; }'
