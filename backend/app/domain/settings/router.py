@@ -1,5 +1,6 @@
 import json
 import ipaddress
+from types import SimpleNamespace
 import re
 import socket
 import threading
@@ -15,7 +16,8 @@ import os
 from pathlib import Path
 
 import httpx
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Response, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Response, status
+from fastapi.responses import RedirectResponse
 from pydantic import BaseModel
 import redis
 from sqlalchemy import select, text
@@ -31,8 +33,14 @@ from app.domain.customers.models import Customer
 from app.domain.settings.models import AppSetting
 from app.domain.auth.sso import default_sso_settings_payload, normalize_sso_settings_payload
 from app.domain.realtime.events import emit_realtime_event
+from app.domain.integrations.deeplink import peek_deeplink_instance_id, sign_deeplink, verify_deeplink
+from app.domain.jobs.models import Job
 from app.domain.settings.schemas import (
     AuthSSOSettingsRead,
+    StagewireInstanceOut,
+    StagewireInstancesUpdate,
+    StagewireInstanceTestBody,
+    StagewireInboundRegisterBody,
     AuthSSOSettingsUpdate,
     DEFAULT_BRAND_OPTIONS,
     DEFAULT_BRAND_LINKS,
@@ -67,13 +75,18 @@ from app.domain.settings.schemas import (
     SmtpSettingsUpdate,
     ProductionPlannerConfig,
     StockwireInstanceConfig,
+    StagewireInstanceConfig,
     StockwireCustomerRead,
     StockwireCustomersRead,
+    StagewireDeeplinkRead,
 )
 from app.domain.storage.models import AssetFile
 from app.domain.storage.schemas import CompanyProfileRead, CompanyProfileUpdate
 
 router = APIRouter(prefix="/settings", tags=["settings"], dependencies=[Depends(get_current_user)])
+
+# Browser-facing routes that authenticate via a signed token instead of a session.
+public_router = APIRouter(prefix="/settings", tags=["settings"])
 
 # Restrict outbound integration tests to known, trusted API hosts.
 # Keep this list aligned with supported integration providers.
@@ -132,7 +145,7 @@ DEFAULT_INTEGRATIONS = {
     },
     "stockwire_instances": [],
 }
-ALLOWED_INTEGRATION_PLUGINS = {"eventory", "productionplanner", "stockwire"}
+ALLOWED_INTEGRATION_PLUGINS = {"eventory", "productionplanner", "stockwire", "stagewire"}
 ALLOWED_SYNC_INTERVALS = {0, 15, 30, 60, 120, 240, 480, 1440}
 EVENTORY_SYNC_LOCK = threading.Lock()
 EVENTORY_SYNC_RUNNING: set[str] = set()
@@ -371,6 +384,8 @@ def get_integrations(db: Session = Depends(get_db)) -> IntegrationsRead:
             eventory_instances=data.get("eventory_instances", []),
             productionplanner=data.get("productionplanner", {}),
             llm=data.get("llm", {}),
+            stockwire_instances=data.get("stockwire_instances", []),
+            stagewire_instances=data.get("stagewire_instances", []),
         )
 
 
@@ -464,6 +479,23 @@ def update_integrations(
             "remote_customer_id": str(sw_instance.remote_customer_id or "").strip() or None,
         })
 
+    # Process stagewire instances (Stagewire stage-plot integration — distinct
+    # from the stockwire supplier/customer sync feature above).
+    persisted_stagewire = persisted.get("stagewire_instances") if isinstance(persisted, dict) else []
+    if not isinstance(persisted_stagewire, list):
+        persisted_stagewire = []
+    persisted_stagewire_by_id = {
+        str(item.get("id") or "").strip(): item
+        for item in persisted_stagewire
+        if isinstance(item, dict) and str(item.get("id") or "").strip()
+    }
+    if "stagewire_instances" in payload.model_fields_set:
+        normalized_stagewire = _normalize_stagewire_instances(
+            payload.stagewire_instances or [], persisted_stagewire
+        )
+    else:
+        normalized_stagewire = persisted_stagewire
+
     data = {
         "eventory_instances": normalized_instances,
         "productionplanner": productionplanner,
@@ -473,6 +505,7 @@ def update_integrations(
             "model": str(payload.llm.model).strip() if payload.llm and payload.llm.model else persisted.get("llm", {}).get("model", "qwen2.5-coder"),
         } if payload.llm else persisted.get("llm", {"base_url": "http://localhost:11434/v1", "api_key": "ollama", "model": "qwen2.5-coder"}),
         "stockwire_instances": normalized_stockwire,
+        "stagewire_instances": normalized_stagewire,
     }
     setting.value_json = json.dumps(data)
     db.commit()
@@ -1030,6 +1063,8 @@ def test_integration_connection(
                 persisted_config = {**persisted_config, "api_url": persisted_config["base_url"]}
     elif plugin_key == "stockwire":
         return _test_stockwire_connection(payload, persisted)
+    elif plugin_key == "stagewire":
+        return _test_stagewire_connection(payload, persisted)
 
     incoming_config = payload.config or IntegrationPluginConfig(**persisted_config)
     normalized = _normalize_plugin_config(incoming_config)
@@ -1455,6 +1490,102 @@ def stockwire_customers_search(
             break
 
     return StockwireCustomersRead(customers=results, count=len(results))
+
+
+@router.get("/integrations/stagewire/{instance_id}/customers", response_model=StockwireCustomersRead)
+def stagewire_customers_search(
+    instance_id: str,
+    q: str | None = None,
+    db: Session = Depends(get_db),
+    _: User = Depends(require_admin),
+) -> StockwireCustomersRead:
+    """Return stockwire-rental customers available to a linked Stagewire workspace.
+
+    Unlike the stockwire supplier integration (which proxies a remote instance),
+    Stagewire queries stockwire-rental for *its* customers so a Stagewire job can
+    be tagged with the rental customer it belongs to.
+    """
+    _get_stagewire_instance_config(db, instance_id)  # validates the instance exists
+    search_lower = (q or "").strip().lower()
+    stmt = select(Customer)
+    if search_lower:
+        stmt = stmt.where(Customer.name.ilike(f"%{search_lower}%"))
+    stmt = stmt.order_by(Customer.name).limit(50)
+    customers = list(db.scalars(stmt).all())
+    results = [
+        StockwireCustomerRead(
+            id=customer.id,
+            name=customer.name,
+            email=customer.email,
+            phone=customer.phone,
+            city=customer.city,
+            country=customer.country,
+        )
+        for customer in customers
+    ]
+    return StockwireCustomersRead(customers=results, count=len(results))
+
+
+@router.get("/integrations/stagewire/job-link/{job_id}")
+def stagewire_job_link(job_id: int, db: Session = Depends(get_db)) -> dict[str, str]:
+    """Signed URL that opens (or creates) the Stagewire job for this stockwire-rental job."""
+    if db.get(Job, job_id) is None:
+        raise HTTPException(status_code=404, detail="Job not found")
+    setting = _get_or_create_setting(db, INTEGRATIONS_KEY, DEFAULT_INTEGRATIONS)
+    persisted = _parse_integrations(setting.value_json)
+    instances = [
+        i for i in (persisted.get("stagewire_instances") or [])
+        if isinstance(i, dict) and i.get("enabled") and i.get("api_url") and i.get("api_key")
+    ]
+    if not instances:
+        raise HTTPException(status_code=400, detail="No enabled Stagewire instance is configured")
+    instance = instances[0]
+    token = sign_deeplink(
+        str(instance["api_key"]),
+        src="stockwire",
+        job_id=job_id,
+        instance_id=str(instance["id"]),
+        ttl_seconds=60 * 60 * 24 * 7,
+    )
+    base = str(instance["api_url"]).rstrip("/")
+    return {"url": f"{base}/api/v1/stockwire/deeplink/job?token={token}"}
+
+
+@router.get("/integrations/stagewire/deeplink", response_model=StagewireDeeplinkRead)
+def resolve_stagewire_deeplink(
+    token: str = Query(..., description="HMAC-signed deeplink token"),
+    db: Session = Depends(get_db),
+    _: User = Depends(require_admin),
+) -> StagewireDeeplinkRead:
+    """Verify a Stagewire⇄stockwire-rental deeplink token and return the route.
+
+    The token carries ``instance_id`` in its (unverified) payload so we can load
+    the matching instance's API key and verify the HMAC. On success we return the
+    in-app route to open the linked job.
+    """
+    instance_id = peek_deeplink_instance_id(token)
+    if not instance_id:
+        raise HTTPException(status_code=400, detail="Malformed deeplink token")
+    instance = _get_stagewire_instance_config(db, instance_id)
+    secret = str(instance.get("api_key") or "").strip()
+    if not secret:
+        raise HTTPException(status_code=400, detail="Stagewire instance has no API key configured")
+
+    try:
+        payload = verify_deeplink(secret, token)
+    except ValueError as exc:
+        raise HTTPException(status_code=401, detail=str(exc))
+
+    job_id = int(payload.get("job_id") or 0)
+    src = str(payload.get("src") or "")
+    # Route to the local job detail page for jobs that live on stockwire-rental.
+    route = f"/jobs/{job_id}"
+    return StagewireDeeplinkRead(
+        src=src,
+        job_id=job_id,
+        instance_id=instance_id,
+        route=route,
+    )
 
 
 def _run_eventory_sync_in_background(instance_id: str) -> None:
@@ -1906,11 +2037,28 @@ def _parse_integrations(raw: str | None) -> dict[str, object]:
             "remote_customer_id": str(item.get("remote_customer_id") or "").strip() or None,
         })
 
+    stagewire_raw = data.get("stagewire_instances") if isinstance(data, dict) else None
+    normalized_stagewire_instances: list[dict[str, object]] = []
+    for index, item in enumerate(stagewire_raw if isinstance(stagewire_raw, list) else []):
+        if not isinstance(item, dict):
+            continue
+        sw_id = _normalize_instance_identifier(item.get("id")) or f"stagewire-{index + 1}"
+        raw_customer = item.get("default_customer_id")
+        normalized_stagewire_instances.append({
+            "id": sw_id,
+            "name": str(item.get("name") or "").strip() or sw_id,
+            "enabled": bool(item.get("enabled")),
+            "api_url": str(item.get("api_url") or "").strip() or None,
+            "api_key": str(item.get("api_key") or "").strip() or None,
+            "default_customer_id": raw_customer if isinstance(raw_customer, int) else None,
+        })
+
     return {
         "eventory_instances": normalized_instances,
         "productionplanner": productionplanner_merged,
         "llm": llm_raw,
         "stockwire_instances": normalized_stockwire,
+        "stagewire_instances": normalized_stagewire_instances,
     }
 
 
@@ -2556,6 +2704,341 @@ def _test_stockwire_connection(
             ok=False,
             plugin=plugin_key,
             message=f"Stockwire instance returned status {response.status_code}",
+            status_code=response.status_code,
+        )
+    except httpx.HTTPError as exc:
+        return IntegrationConnectionTestRead(
+            ok=False,
+            plugin=plugin_key,
+            message=f"Connection failed: {exc}",
+        )
+
+
+def _normalize_stagewire_instances(
+    incoming: list[Any], persisted_list: list[Any]
+) -> list[dict[str, object]]:
+    """Validate and normalize Stagewire instances; blank api_key keeps the stored one."""
+    persisted_by_id = {
+        str(item.get("id") or "").strip(): item
+        for item in persisted_list
+        if isinstance(item, dict) and str(item.get("id") or "").strip()
+    }
+    out: list[dict[str, object]] = []
+    for sw_instance in incoming:
+        api_url = str(sw_instance.api_url or "").strip()
+        if api_url:
+            _validate_url_port(api_url, "API URL")
+            parsed_sw = urlparse(api_url)
+            if parsed_sw.scheme not in {"http", "https"}:
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail="Stagewire API URL must use http or https",
+                )
+        instance_id = _normalize_instance_identifier(sw_instance.id) or "stagewire-main"
+        persisted_sw = persisted_by_id.get(instance_id) or {}
+        incoming_api_key = str(sw_instance.api_key or "").strip() or None
+        persisted_api_key = str(persisted_sw.get("api_key") or "").strip() or None
+        api_key = incoming_api_key if incoming_api_key is not None else persisted_api_key
+        out.append({
+            "id": instance_id,
+            "name": str(sw_instance.name or "").strip() or instance_id,
+            "enabled": bool(sw_instance.enabled),
+            "api_url": api_url or None,
+            "api_key": api_key,
+            "default_customer_id": sw_instance.default_customer_id,
+        })
+    return out
+
+
+def _stagewire_out(item: dict[str, object]) -> StagewireInstanceOut:
+    return StagewireInstanceOut(
+        id=str(item.get("id") or ""),
+        name=str(item.get("name") or ""),
+        enabled=bool(item.get("enabled")),
+        api_url=item.get("api_url") if isinstance(item.get("api_url"), str) else None,
+        has_api_key=bool(item.get("api_key")),
+        default_customer_id=item.get("default_customer_id") if isinstance(item.get("default_customer_id"), int) else None,
+    )
+
+
+@router.get("/integrations/stagewire-instances", response_model=list[StagewireInstanceOut])
+def list_stagewire_instances(
+    db: Session = Depends(get_db),
+    _: User = Depends(require_admin),
+) -> list[StagewireInstanceOut]:
+    setting = _get_or_create_setting(db, INTEGRATIONS_KEY, DEFAULT_INTEGRATIONS)
+    persisted = _parse_integrations(setting.value_json)
+    items = persisted.get("stagewire_instances") or []
+    return [_stagewire_out(i) for i in items if isinstance(i, dict)]
+
+
+@router.put("/integrations/stagewire-instances", response_model=list[StagewireInstanceOut])
+def save_stagewire_instances(
+    payload: StagewireInstancesUpdate,
+    db: Session = Depends(get_db),
+    _: User = Depends(require_admin),
+) -> list[StagewireInstanceOut]:
+    setting = _get_or_create_setting(db, INTEGRATIONS_KEY, DEFAULT_INTEGRATIONS)
+    persisted = _parse_integrations(setting.value_json)
+    persisted_list = persisted.get("stagewire_instances") or []
+    if not isinstance(persisted_list, list):
+        persisted_list = []
+    normalized = _normalize_stagewire_instances(payload.instances, persisted_list)
+    persisted["stagewire_instances"] = normalized
+    setting.value_json = json.dumps(persisted)
+    db.commit()
+    return [_stagewire_out(i) for i in normalized]
+
+
+@router.post(
+    "/integrations/stagewire-instances/{instance_id}/test",
+    response_model=IntegrationConnectionTestRead,
+)
+def test_stagewire_instance(
+    instance_id: str,
+    body: StagewireInstanceTestBody | None = None,
+    db: Session = Depends(get_db),
+    _: User = Depends(require_admin),
+) -> IntegrationConnectionTestRead:
+    setting = _get_or_create_setting(db, INTEGRATIONS_KEY, DEFAULT_INTEGRATIONS)
+    persisted = _parse_integrations(setting.value_json)
+    instances = persisted.get("stagewire_instances") or []
+    match = next(
+        (i for i in instances if isinstance(i, dict) and str(i.get("id")) == instance_id),
+        None,
+    )
+    if match is None:
+        raise HTTPException(status_code=404, detail="Stagewire instance not found")
+    # Prefer unsaved draft values so the Test button validates edits before Save.
+    api_url = (body.api_url if body and body.api_url is not None else match.get("api_url"))
+    api_key = (body.api_key if body and body.api_key is not None else match.get("api_key"))
+    request_like = SimpleNamespace(
+        config=SimpleNamespace(api_url=api_url, api_key=api_key)
+    )
+    return _test_stagewire_connection(request_like, persisted)
+
+
+@public_router.post(
+    "/integrations/stagewire/register",
+    response_model=StagewireInstanceOut,
+    summary="Stagewire registers itself with stockwire-rental",
+)
+def register_stagewire_instance(
+    body: StagewireInboundRegisterBody,
+    db: Session = Depends(get_db),
+) -> StagewireInstanceOut:
+    """Inbound registration from Stagewire: upsert its instance (base_url + shared key)
+    so stockwire-rental can call back and verify deeplinks. The shared key is the gate."""
+    api_key = (body.api_key or "").strip()
+    if len(api_key) < 8:
+        raise HTTPException(status_code=422, detail="api_key is too short")
+    api_url = (body.base_url or "").strip()
+    if not api_url:
+        raise HTTPException(status_code=422, detail="base_url is required")
+    _validate_url_port(api_url, "API URL")
+    parsed = urlparse(api_url)
+    if parsed.scheme not in {"http", "https"}:
+        raise HTTPException(status_code=422, detail="Stagewire API URL must use http or https")
+
+    instance_id = _normalize_instance_identifier(body.instance_id) or "stagewire-main"
+    setting = _get_or_create_setting(db, INTEGRATIONS_KEY, DEFAULT_INTEGRATIONS)
+    persisted = _parse_integrations(setting.value_json)
+    instances = persisted.get("stagewire_instances") or []
+    if not isinstance(instances, list):
+        instances = []
+    existing = next(
+        (i for i in instances if isinstance(i, dict) and str(i.get("id") or "").strip() == instance_id),
+        None,
+    )
+    stored_key = str(existing.get("api_key") or "").strip() if isinstance(existing, dict) else ""
+    # An instance that already has a key can only be re-registered by presenting that key.
+    if stored_key and api_key != stored_key:
+        if (body.current_api_key or "").strip() != stored_key:
+            raise HTTPException(
+                status_code=403,
+                detail=(
+                    "This Stagewire instance already has a different key. Send current_api_key "
+                    "with the stored key, or remove the instance in stockwire-rental first."
+                ),
+            )
+    normalized = {
+        "id": instance_id,
+        "name": (body.name or "").strip() or instance_id,
+        "enabled": True,
+        "api_url": api_url,
+        "api_key": api_key,
+        "default_customer_id": body.default_customer_id
+        if body.default_customer_id is not None
+        else (existing.get("default_customer_id") if isinstance(existing, dict) else None),
+    }
+    new_list = [i for i in instances if str(i.get("id") or "").strip() != instance_id]
+    new_list.append(normalized)
+    persisted["stagewire_instances"] = new_list
+    setting.value_json = json.dumps(persisted)
+    db.commit()
+    return _stagewire_out(normalized)
+
+
+@public_router.get("/integrations/stagewire/open")
+def open_stagewire_deeplink(token: str = Query(...), db: Session = Depends(get_db)):
+    """Browser entry point for a Stagewire deeplink: verify the token, redirect to the job."""
+    instance_id = peek_deeplink_instance_id(token)
+    if not instance_id:
+        raise HTTPException(status_code=400, detail="Malformed deeplink token")
+    instance = _get_stagewire_instance_config(db, instance_id)
+    secret = str(instance.get("api_key") or "").strip()
+    if not secret:
+        raise HTTPException(status_code=400, detail="Stagewire instance has no API key configured")
+    try:
+        payload = verify_deeplink(secret, token)
+    except ValueError as exc:
+        raise HTTPException(status_code=401, detail=str(exc)) from exc
+    if str(payload.get("src") or "") != "stagewire":
+        raise HTTPException(status_code=400, detail="Invalid deeplink source")
+    job_id = int(payload.get("job_id") or 0)
+    if not job_id:
+        raise HTTPException(status_code=400, detail="Deeplink has no job")
+    return RedirectResponse(
+        url=f"{settings.effective_frontend_base_url}/jobs/{job_id}", status_code=302
+    )
+
+
+def _get_stagewire_instance_config(db: Session, instance_id: str) -> dict[str, object]:
+    """Resolve a stored stagewire integration instance by id from the integrations blob."""
+    setting = _get_or_create_setting(db, INTEGRATIONS_KEY, DEFAULT_INTEGRATIONS)
+    persisted = _parse_integrations(setting.value_json)
+    instances = persisted.get("stagewire_instances") if isinstance(persisted, dict) else []
+    if not isinstance(instances, list):
+        instances = []
+    normalized_id = _normalize_instance_identifier(instance_id)
+    for item in instances:
+        if not isinstance(item, dict):
+            continue
+        if _normalize_instance_identifier(item.get("id")) == normalized_id:
+            return item
+    if instances:
+        return instances[0]
+    raise HTTPException(status_code=404, detail="Stagewire instance not found")
+
+
+def _test_stagewire_connection(
+    payload: IntegrationConnectionTestRequest,
+    persisted: dict[str, object],
+) -> IntegrationConnectionTestRead:
+    """Validate a Stagewire instance by probing its health endpoint.
+
+    Stagewire exposes HTTPBearer auth, so we send ``Authorization: Bearer <key>``
+    (unlike the stockwire supplier integration which uses ``X-API-Key``) and call
+    ``/api/v1/health/ready``.
+    """
+    plugin_key = "stagewire"
+    config = payload.config
+    api_url = str(getattr(config, "api_url", None) or "").strip()
+    api_key = str(getattr(config, "api_key", None) or "").strip()
+
+    # Fall back to the first stored stagewire instance when no inline config.
+    if not api_url:
+        instances = persisted.get("stagewire_instances") if isinstance(persisted, dict) else []
+        if isinstance(instances, list) and instances:
+            api_url = str(instances[0].get("api_url") or "").strip()
+            api_key = api_key or str(instances[0].get("api_key") or "").strip()
+
+    if not api_url:
+        return IntegrationConnectionTestRead(
+            ok=False,
+            plugin=plugin_key,
+            message="API URL is required to test connection",
+        )
+
+    parsed_url = urlparse(api_url)
+    if parsed_url.scheme not in {"http", "https"} or not parsed_url.hostname:
+        return IntegrationConnectionTestRead(
+            ok=False,
+            plugin=plugin_key,
+            message="API URL must be an absolute http(s) URL",
+        )
+
+    if parsed_url.username or parsed_url.password:
+        return IntegrationConnectionTestRead(
+            ok=False,
+            plugin=plugin_key,
+            message="API URL must not contain embedded credentials",
+        )
+
+    try:
+        port = parsed_url.port
+    except ValueError:
+        return IntegrationConnectionTestRead(
+            ok=False,
+            plugin=plugin_key,
+            message="API URL contains an invalid port",
+        )
+
+    if port is not None and port <= 0:
+        return IntegrationConnectionTestRead(
+            ok=False,
+            plugin=plugin_key,
+            message="API URL contains an invalid port",
+        )
+
+    allow_insecure = settings.allow_insecure_integration_hosts
+    if api_key and parsed_url.scheme != "https" and not allow_insecure:
+        return IntegrationConnectionTestRead(
+            ok=False,
+            plugin=plugin_key,
+            message="API URL must use HTTPS when API key is configured",
+        )
+
+    # Validate hostname resolves to a public IP (SSRF protection); skipped in dev-only mode.
+    if not allow_insecure:
+        hostname = parsed_url.hostname or ""
+        try:
+            resolved = socket.getaddrinfo(hostname, port or None, type=socket.SOCK_STREAM)
+        except (OSError, UnicodeError):
+            return IntegrationConnectionTestRead(
+                ok=False,
+                plugin=plugin_key,
+                message="API URL host could not be resolved",
+            )
+
+        for entry in resolved:
+            address = entry[4][0]
+            try:
+                ip_obj = ipaddress.ip_address(address)
+                if _is_disallowed_outbound_ip(ip_obj):
+                    return IntegrationConnectionTestRead(
+                        ok=False,
+                        plugin=plugin_key,
+                        message="API URL resolves to a non-public IP address",
+                    )
+            except ValueError:
+                pass
+
+    # Reconstruct the health URL from parsed components to prevent SSRF via URL manipulation
+    netloc = parsed_url.hostname or ""
+    if parsed_url.port:
+        netloc = f"{netloc}:{parsed_url.port}"
+    health_url = f"{parsed_url.scheme}://{netloc}/api/v1/health/ready"
+    headers: dict[str, str] = {
+        "User-Agent": "stockwire-rental-settings-test/1.0",
+        "Accept": "application/json",
+    }
+    if api_key:
+        headers["Authorization"] = f"Bearer {api_key}"
+
+    try:
+        response = httpx.get(health_url, headers=headers, timeout=8.0, follow_redirects=False)
+        if response.status_code < 400:
+            return IntegrationConnectionTestRead(
+                ok=True,
+                plugin=plugin_key,
+                message=f"Connected to Stagewire instance (status {response.status_code})",
+                status_code=response.status_code,
+            )
+        return IntegrationConnectionTestRead(
+            ok=False,
+            plugin=plugin_key,
+            message=f"Stagewire instance returned status {response.status_code}",
             status_code=response.status_code,
         )
     except httpx.HTTPError as exc:

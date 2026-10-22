@@ -421,6 +421,64 @@ class StockwireInstanceConfig(BaseModel):
     remote_customer_id: str | None = None
 
 
+class StagewireInstanceConfig(BaseModel):
+    """Stagewire (stage-plot / patch-sheet tool) integration instance.
+
+    Distinct from ``StockwireInstanceConfig`` (a different supplier/customer
+    sync feature). Stagewire registers itself with its base URL + API key so
+    stockwire-rental can call back into it. Mirrors the registration object in
+    the integration spec: ``base_url`` is stored as ``api_url`` to reuse the
+    shared integration transport.
+    """
+
+    id: str
+    name: str
+    enabled: bool = False
+    api_url: str | None = None
+    api_key: str | None = Field(default=None, exclude=True)
+    # Optional default customer on the stockwire-rental side that Stagewire
+    # jobs are linked to when created from a Stagewire workspace.
+    default_customer_id: int | None = None
+
+
+class StagewireInstanceOut(BaseModel):
+    id: str
+    name: str
+    enabled: bool = False
+    api_url: str | None = None
+    has_api_key: bool = False
+    default_customer_id: int | None = None
+
+
+class StagewireInstancesUpdate(BaseModel):
+    instances: list[StagewireInstanceConfig] = Field(default_factory=list)
+
+
+class StagewireInstanceTestBody(BaseModel):
+    """Optional draft values so the Test button can validate unsaved edits."""
+
+    api_url: str | None = None
+    api_key: str | None = None
+
+
+class StagewireInboundRegisterBody(BaseModel):
+    """Payload Stagewire sends to register itself on the stockwire-rental side.
+
+    Stagewire already knows the shared key (entered in both places), so it
+    provides it here; stockwire-rental stores base_url + key and can then call
+    back into Stagewire. The key is the shared secret, so its presence and
+    length are the (minimal) gate against arbitrary registration.
+    """
+
+    instance_id: str | None = None
+    name: str | None = None
+    base_url: str
+    api_key: str
+    # Required when the instance already has a different key: the key currently stored.
+    current_api_key: str | None = None
+    default_customer_id: int | None = None
+
+
 class ProductionPlannerConfig(BaseModel):
     enabled: bool = False
     api_key: str | None = None
@@ -444,6 +502,7 @@ class IntegrationsRead(BaseModel):
     productionplanner: ProductionPlannerReadConfig = Field(default_factory=ProductionPlannerReadConfig)
     llm: LlmConfig | None = None
     stockwire_instances: list[StockwireInstanceConfig] = Field(default_factory=list)
+    stagewire_instances: list[StagewireInstanceConfig] = Field(default_factory=list)
 
 
 class IntegrationsUpdate(BaseModel):
@@ -451,6 +510,7 @@ class IntegrationsUpdate(BaseModel):
     productionplanner: ProductionPlannerConfig | None = None
     llm: LlmConfig | None = None
     stockwire_instances: list[StockwireInstanceConfig] = Field(default_factory=list)
+    stagewire_instances: list[StagewireInstanceConfig] = Field(default_factory=list)
 
 
 class StockwireCustomerRead(BaseModel):
@@ -465,6 +525,14 @@ class StockwireCustomerRead(BaseModel):
 class StockwireCustomersRead(BaseModel):
     customers: list[StockwireCustomerRead] = Field(default_factory=list)
     count: int = 0
+
+
+class StagewireDeeplinkRead(BaseModel):
+    src: str
+    job_id: int
+    instance_id: str
+    route: str
+    message: str | None = None
 
 
 class IntegrationConnectionTestRequest(BaseModel):

@@ -392,7 +392,6 @@
         <q-card class="ec-card q-pa-md">
           <div class="row items-center q-mb-sm">
             <div class="text-subtitle1 col">{{ t('settings.customFields.title') }}</div>
-            <q-btn color="secondary" icon="electrical_services" :label="t('settings.customFields.prefillCableFields')" class="q-mr-sm" @click="prefillCableFields" />
             <q-btn color="primary" icon="add" :label="t('settings.customFields.newField')" unelevated @click="openCreateField" />
           </div>
 
@@ -786,6 +785,8 @@
            <div class="ec-card-title q-mb-sm">{{ t('settings.integrations.title') }}</div>
            <div class="text-body2 q-mb-md">{{ t('settings.integrations.description') }}</div>
          </q-card>
+
+         <StagewireInstancesCard />
 
          <q-card class="ec-card q-pa-md q-mt-md">
            <div class="row items-center justify-between q-mb-sm">
@@ -1856,6 +1857,7 @@ import { COUNTRIES } from '../constants/countries'
 import { getApiBaseUrl } from '../utils/runtime-config'
 
 import SettingsUserDialog from '../components/SettingsUserDialog.vue'
+import StagewireInstancesCard from '../components/StagewireInstancesCard.vue'
 import SettingsDeleteUserDialog from '../components/SettingsDeleteUserDialog.vue'
 import ApiKeyDialog from '../components/ApiKeyDialog.vue'
 import FieldDialog from '../components/FieldDialog.vue'
@@ -2511,16 +2513,6 @@ async function deleteField(definition) {
     await loadDefinitions()
   } catch (error) {
     $q.notify({ type: 'negative', message: error?.response?.data?.detail || t('common.deleteFailed') })
-  }
-}
-
-async function prefillCableFields() {
-  try {
-    await customFieldsStore.prefillProductCableFields()
-    await loadDefinitions()
-    $q.notify({ type: 'positive', message: t('settings.customFields.cableFieldsPrefilled') })
-  } catch (error) {
-    $q.notify({ type: 'negative', message: error?.response?.data?.detail || t('settings.customFields.prefillFailed') })
   }
 }
 
