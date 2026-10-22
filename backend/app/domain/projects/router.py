@@ -7,7 +7,7 @@ from app.db.session import get_db
 from app.domain.audit.service import record_activity
 from app.domain.auth.deps import get_current_user, require_editor
 from app.domain.auth.models import User
-from app.domain.customers.models import Customer
+from app.domain.customers.models import Company
 from app.domain.jobs.models import Job, JobRequirement
 from app.domain.projects.models import Project
 from app.domain.shared_schemas import ProductionPlannerSyncResponse
@@ -51,10 +51,10 @@ def list_projects(
 @router.post("", response_model=ProjectRead)
 def create_project(payload: ProjectCreate, db: Session = Depends(get_db), _: User = Depends(require_editor)) -> Project:
     data = payload.model_dump()
-    if data.get("customer_id") is not None:
-        customer = db.get(Customer, data["customer_id"])
-        if customer is None:
-            raise HTTPException(status_code=404, detail="Customer not found")
+    if data.get("company_id") is not None:
+        company = db.get(Company, data["company_id"])
+        if company is None:
+            raise HTTPException(status_code=404, detail="Company not found")
     if data.get("venue_id") is not None:
         venue = db.get(Venue, data["venue_id"])
         if venue is None:
@@ -78,10 +78,10 @@ def update_project(project_id: int, payload: ProjectUpdate, db: Session = Depend
         raise HTTPException(status_code=404, detail="Project not found")
 
     data = payload.model_dump(exclude_unset=True)
-    if "customer_id" in data and data["customer_id"] is not None:
-        customer = db.get(Customer, data["customer_id"])
-        if customer is None:
-            raise HTTPException(status_code=404, detail="Customer not found")
+    if "company_id" in data and data["company_id"] is not None:
+        company = db.get(Company, data["company_id"])
+        if company is None:
+            raise HTTPException(status_code=404, detail="Company not found")
     if "venue_id" in data and data["venue_id"] is not None:
         venue = db.get(Venue, data["venue_id"])
         if venue is None:
@@ -147,10 +147,10 @@ async def _sync_project_to_productionplanner(project: Project, db: Session) -> P
         description_parts.append(project.description)
     if project.start_date:
         description_parts.append(f"Project dates: {project.start_date} to {project.end_date or project.start_date}")
-    if project.customer_id:
-        customer = db.get(Customer, project.customer_id)
-        if customer:
-            description_parts.append(f"Customer: {customer.name}")
+    if project.company_id:
+        company = db.get(Company, project.company_id)
+        if company:
+            description_parts.append(f"Customer: {company.name}")
     if project.venue_id:
         venue = db.get(Venue, project.venue_id)
         if venue:

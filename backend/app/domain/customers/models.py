@@ -39,6 +39,10 @@ class Company(Base):
     email_notifications_enabled: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     preferred_language: Mapped[str | None] = mapped_column(String(10), nullable=True, default="en")
 
+    # Denormalized primary contact details (kept in sync with the primary contact Person).
+    email: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
+    phone: Mapped[str | None] = mapped_column(String(50), nullable=True)
+
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
 
     # Relationships

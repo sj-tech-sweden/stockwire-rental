@@ -8,8 +8,7 @@ class JobBase(BaseModel):
     job_code: str
     project_id: int | None = None
     location_in_venue: str | None = None
-    customer_id: int | None = None
-    customer_name: str | None = None
+    company_name: str | None = None
     venue_id: int | None = None
     venue_name: str | None = None
     description: str | None = None
@@ -21,7 +20,6 @@ class JobBase(BaseModel):
     invoice_paid_at: date | None = None
     email_notifications_enabled: bool = True
     notes: str | None = None
-    # New Company/Person fields (Phase 1 of entity split)
     company_id: int | None = None
     contact_person_id: int | None = None
 
@@ -34,8 +32,7 @@ class JobUpdate(BaseModel):
     job_code: str | None = None
     project_id: int | None = None
     location_in_venue: str | None = None
-    customer_id: int | None = None
-    customer_name: str | None = None
+    company_name: str | None = None
     venue_id: int | None = None
     venue_name: str | None = None
     description: str | None = None
@@ -47,7 +44,6 @@ class JobUpdate(BaseModel):
     invoice_paid_at: date | None = None
     email_notifications_enabled: bool | None = None
     notes: str | None = None
-    # New Company/Person fields (Phase 1 of entity split)
     company_id: int | None = None
     contact_person_id: int | None = None
 

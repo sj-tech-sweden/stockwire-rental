@@ -14,9 +14,8 @@ class Job(Base):
     job_code: Mapped[str] = mapped_column(String(50), unique=True, index=True)
     project_id: Mapped[int] = mapped_column(ForeignKey("projects.id", ondelete="SET NULL"), nullable=True, index=True)
     location_in_venue: Mapped[str] = mapped_column(String(255), nullable=True)
-    customer_id: Mapped[int] = mapped_column(ForeignKey("customers.id", ondelete="SET NULL"), nullable=True, index=True)
     venue_id: Mapped[int] = mapped_column(ForeignKey("venues.id", ondelete="SET NULL"), nullable=True, index=True)
-    customer_name: Mapped[str] = mapped_column(String(255), nullable=True, index=True)
+    company_name: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True, name="customer_name")
     venue_name: Mapped[str] = mapped_column(String(255), nullable=True, index=True)
     description: Mapped[str] = mapped_column(Text, nullable=True)
     status: Mapped[str] = mapped_column(String(50), default="draft", index=True)
@@ -45,7 +44,6 @@ class Job(Base):
 
     owner: Mapped["User"] = relationship(back_populates="jobs")
     project: Mapped["Project"] = relationship(back_populates="jobs")
-    customer_legacy: Mapped["Customer"] = relationship("Customer", back_populates="jobs")
     company: Mapped["Company | None"] = relationship("Company", back_populates="jobs")
     contact_person: Mapped["Person | None"] = relationship("Person", foreign_keys=[contact_person_id])
     venue: Mapped["Venue"] = relationship(back_populates="jobs")
