@@ -104,7 +104,7 @@
     <CompanyDeleteDialog
       v-model="deleteDialogOpen"
       :company="deleteTarget"
-      @deleted="onCustomerDeleted"
+      @deleted="onCompanyDeleted"
     />
   </q-page>
 </template>
@@ -175,22 +175,22 @@ const filteredCustomers = computed(() => {
 })
 
 async function focusCustomerFromQuery() {
-  const focusId = Number(route.query.focusCustomerId || 0)
+  const focusId = Number(route.query.focusCompanyId || 0)
   if (!focusId) return
-  const customer = store.companies.find(item => item.id === focusId)
-  if (customer) {
-    openDetail(customer)
+  const company = store.companies.find(item => item.id === focusId)
+  if (company) {
+    openDetail(company)
   }
 
   const nextQuery = { ...route.query }
-  delete nextQuery.focusCustomerId
+  delete nextQuery.focusCompanyId
   await router.replace({ path: '/companies', query: nextQuery })
 }
 
 onMounted(async () => {
   await Promise.all([
     store.fetchAll(),
-    customFieldsStore.fetchDefinitions('customer'),
+    customFieldsStore.fetchDefinitions('company'),
   ])
   await focusCustomerFromQuery()
 })
@@ -211,7 +211,7 @@ function confirmDelete(customer) {
   deleteDialogOpen.value = true
 }
 
-function onCustomerDeleted() {
+function onCompanyDeleted() {
   deleteDialogOpen.value = false
   deleteTarget.value = null
 }

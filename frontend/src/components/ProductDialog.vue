@@ -588,7 +588,7 @@ import { computed, ref, watch } from 'vue'
 import { useQuasar } from 'quasar'
 import { useI18n } from 'vue-i18n'
 import { useInventoryStore } from '../stores/inventory'
-import { useCustomersStore } from '../stores/customers'
+import { useCompaniesStore } from '../stores/companies'
 import { useSettingsStore } from '../stores/settings'
 import { useCustomFieldsStore } from '../stores/customFields'
 import { translateMaybePrefillCustomFieldLabel, translateMaybePrefillCustomFieldOption } from '../i18n/prefillContent'
@@ -617,7 +617,7 @@ const emit = defineEmits([
 const $q = useQuasar()
 const { t } = useI18n()
 const store = useInventoryStore()
-const customersStore = useCustomersStore()
+const companiesStore = useCompaniesStore()
 const settingsStore = useSettingsStore()
 const customFieldsStore = useCustomFieldsStore()
 
@@ -998,7 +998,7 @@ function enterAssociationMode(purpose) {
 }
 
 function supplierNameById(id) {
-  const supplier = customersStore.productSuppliers.find(s => s.id === id)
+  const supplier = companiesStore.productSuppliers.find(s => s.id === id)
   return supplier?.name || `Supplier #${id}`
 }
 
@@ -1586,8 +1586,8 @@ watch(() => props.modelValue, async (open) => {
     if (!customFieldsStore.definitions.length) {
       await customFieldsStore.fetchDefinitions('product')
     }
-    if (!customersStore.customers.length) {
-      customersStore.fetchAll().catch(() => {})
+    if (!companiesStore.companies.length) {
+      companiesStore.fetchAll().catch(() => {})
     }
     if (props.product) {
       await openEditProduct(props.product)

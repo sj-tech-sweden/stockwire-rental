@@ -60,7 +60,7 @@
         </q-td>
       </template>
 
-      <template #body-cell-customer_name="props">
+      <template #body-cell-company_name="props">
         <q-td :props="props">
           {{ props.value || '-' }}
         </q-td>
@@ -145,7 +145,7 @@
               <div class="text-subtitle2">{{ props.row.name }}</div>
               <div class="text-caption ec-text-muted">
                 <q-badge :color="statusColor(props.row.status)" :label="statusLabel(props.row.status)" class="q-mr-sm" />
-                {{ props.row.customer_name || '-' }} · {{ props.row.venue_name || '-' }}
+                {{ props.row.company_name || '-' }} · {{ props.row.venue_name || '-' }}
               </div>
             </q-card-section>
             <q-card-section class="q-pt-none q-pb-sm">
@@ -201,7 +201,7 @@ import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 
 import { useAuthStore } from '../stores/auth'
-import { useCustomersStore } from '../stores/customers'
+import { useCompaniesStore } from '../stores/companies'
 import { useProjectsStore } from '../stores/projects'
 import { useVenuesStore } from '../stores/venues'
 import { useInventoryStore } from '../stores/inventory'
@@ -215,7 +215,7 @@ const $q = useQuasar()
 const router = useRouter()
 const { t } = useI18n()
 const authStore = useAuthStore()
-const customersStore = useCustomersStore()
+const companiesStore = useCompaniesStore()
 const projectsStore = useProjectsStore()
 const venuesStore = useVenuesStore()
 const inventoryStore = useInventoryStore()
@@ -236,7 +236,7 @@ const columns = computed(() => [
   { name: 'name', label: t('projects.name'), field: 'name', sortable: true, align: 'left' },
   { name: 'status', label: t('projects.status'), field: 'status', sortable: true, align: 'left' },
   { name: 'description', label: t('projects.description'), field: 'description', sortable: true, align: 'left' },
-  { name: 'customer_name', label: t('projects.customer'), field: 'customer_name', sortable: true, align: 'left' },
+  { name: 'company_name', label: t('projects.customer'), field: 'company_name', sortable: true, align: 'left' },
   { name: 'venue_name', label: t('projects.venue'), field: 'venue_name', sortable: true, align: 'left' },
   { name: 'start_date', label: t('projects.startDate'), field: 'start_date', sortable: true, align: 'left', format: formatDate },
   { name: 'end_date', label: t('projects.endDate'), field: 'end_date', sortable: true, align: 'left', format: formatDate },
@@ -254,7 +254,7 @@ const filteredProjects = computed(() => {
   const term = search.value.trim().toLowerCase()
   if (!term) return projectsWithCounts.value
   return projectsWithCounts.value.filter(p => {
-    return [p.name, p.description, p.customer_name, p.venue_name, p.status]
+    return [p.name, p.description, p.company_name, p.venue_name, p.status]
       .filter(Boolean)
       .some(v => String(v).toLowerCase().includes(term))
   })
@@ -263,7 +263,7 @@ const filteredProjects = computed(() => {
 const projectsWithCounts = computed(() => {
   return projectsStore.projects.map(p => ({
     ...p,
-    customer_name: customerNameForId(p.customer_id),
+    company_name: companyNameForId(p.company_id),
     venue_name: venueNameForId(p.venue_id),
     job_count: projectJobs(p.id).length,
   }))
@@ -273,8 +273,8 @@ function projectJobs(projectId) {
   return jobsStore.jobs.filter(j => j.project_id === projectId)
 }
 
-function customerNameForId(id) {
-  return customersStore.customers.find(c => c.id === id)?.name || ''
+function companyNameForId(id) {
+  return companiesStore.companies.find(c => c.id === id)?.name || ''
 }
 
 function venueNameForId(id) {
@@ -325,7 +325,7 @@ function openNewJob(project) {
   router.push({
     path: '/jobs/new',
     query: {
-      customerId: project.customer_id,
+      companyId: project.company_id,
       venueId: project.venue_id,
       projectId: project.id,
     }
@@ -363,7 +363,7 @@ async function loadData() {
   try {
     await Promise.all([
       projectsStore.fetchAll(),
-      customersStore.fetchAll(),
+      companiesStore.fetchAll(),
       venuesStore.fetchAll(),
       inventoryStore.fetchAll(),
       jobsStore.fetchAll(),

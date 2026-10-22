@@ -123,7 +123,7 @@ const entityFilter = ref(null)
 const entityOptions = [
   { label: t('app.nav.jobs'), value: 'job' },
   { label: t('home.products'), value: 'product' },
-  { label: t('app.nav.companies'), value: 'customer' },
+  { label: t('app.nav.companies'), value: 'company' },
   { label: t('app.nav.venues'), value: 'venue' },
   { label: t('app.nav.scan'), value: 'scan' },
 ]
@@ -211,8 +211,8 @@ function entityRoute(log) {
   if (log.entity_type === 'product' && log.entity_id != null) {
     return { path: '/inventory', query: { tab: 'products', focusProductId: String(log.entity_id) } }
   }
-  if (log.entity_type === 'customer' && log.entity_id != null) {
-    return { path: '/companies', query: { focusCustomerId: String(log.entity_id) } }
+  if ((log.entity_type === 'company' || log.entity_type === 'customer') && log.entity_id != null) {
+    return { path: '/companies', query: { focusCompanyId: String(log.entity_id) } }
   }
   if (log.entity_type === 'venue' && log.entity_id != null) {
     return { path: '/venues', query: { focusVenueId: String(log.entity_id) } }

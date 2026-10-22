@@ -1,5 +1,5 @@
 import { useActivityStore } from '../stores/activity'
-import { useCustomersStore } from '../stores/customers'
+import { useCompaniesStore } from '../stores/companies'
 import { useInventoryStore } from '../stores/inventory'
 import { useJobsStore } from '../stores/jobs'
 import { useVenuesStore } from '../stores/venues'
@@ -27,7 +27,7 @@ export default ({ store }) => {
 
   const inventoryStore = useInventoryStore(store)
   const jobsStore = useJobsStore(store)
-  const customersStore = useCustomersStore(store)
+  const companiesStore = useCompaniesStore(store)
   const venuesStore = useVenuesStore(store)
   const activityStore = useActivityStore(store)
 
@@ -46,8 +46,8 @@ export default ({ store }) => {
     await Promise.allSettled([activityStore.fetchLogs(120)])
   })
 
-  const refreshCustomers = debounce(async () => {
-    await Promise.allSettled([customersStore.fetchAll()])
+  const refreshCompanies = debounce(async () => {
+    await Promise.allSettled([companiesStore.fetchAll()])
   })
 
   const refreshVenues = debounce(async () => {
@@ -60,13 +60,13 @@ export default ({ store }) => {
 
     if (topic.startsWith('inventory.')) refreshInventory()
     if (topic.startsWith('jobs.')) refreshJobs()
-    if (topic.startsWith('customers.')) refreshCustomers()
+    if (topic.startsWith('companies.')) refreshCompanies()
     if (topic.startsWith('venues.')) refreshVenues()
     if (
       topic.startsWith('activity.')
       || topic.startsWith('inventory.')
       || topic.startsWith('jobs.')
-      || topic.startsWith('customers.')
+      || topic.startsWith('companies.')
       || topic.startsWith('venues.')
     ) {
       refreshActivity()

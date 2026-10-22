@@ -7,7 +7,7 @@ import { cacheSnapshot, isOnline, queueMutation, readSnapshot } from '../service
 export const CUSTOM_FIELD_ENTITY_TYPES = [
   { label: 'Products', value: 'product' },
   { label: 'Jobs', value: 'job' },
-  { label: 'Customers', value: 'customer' },
+  { label: 'Companies', value: 'company' },
   { label: 'Venues', value: 'venue' },
 ]
 

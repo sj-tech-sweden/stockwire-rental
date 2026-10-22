@@ -375,7 +375,7 @@
                   <q-item-section>
                     <q-item-label class="text-weight-medium">{{ stop.job?.job_code || `Job #${stop.job_id}` }}</q-item-label>
                     <q-item-label caption>
-                      {{ stop.job?.customer_name || '—' }}
+                      {{ stop.job?.company_name || '—' }}
                       <template v-if="stop.job?.venue_name"> · {{ stop.job.venue_name }}</template>
                       <template v-if="stop.job?.venue_address"> · {{ stop.job.venue_address }}</template>
                     </q-item-label>

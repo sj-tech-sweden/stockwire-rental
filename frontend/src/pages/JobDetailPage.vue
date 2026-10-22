@@ -74,7 +74,7 @@
                 <q-badge v-if="currentJob" :color="statusColor(currentJob.status)" :label="statusLabel(currentJob.status)" />
               </div>
               <div class="text-body1 q-mb-sm">{{ currentJob?.description || t('jobs.noDescription') }}</div>
-              <div class="text-caption text-grey-7">{{ t('jobs.customer') }}: {{ customerDisplayName }}</div>
+              <div class="text-caption text-grey-7">{{ t('jobs.customer') }}: {{ companyDisplayName }}</div>
               <div class="text-caption text-grey-7">{{ t('jobs.venue') }}: {{ venueDisplayName }}</div>
               <div class="text-caption text-grey-7">{{ t('jobs.project') }}: {{ projectDisplayName }}</div>
               <div class="text-caption text-grey-7">{{ formattedDateRange }}</div>
@@ -223,23 +223,6 @@
                     <q-btn flat round dense icon="add" color="primary" size="sm" @click="personCreateDialogOpen = true" />
                   </template>
                 </q-select>
-              </div>
-              <div class="col-12 col-md-4">
-                <q-select
-                  v-model="form.customer_id"
-                  :options="filteredCustomerOptions"
-                  :label="t('jobs.customer') + ' (' + t('common.legacy') + ')'"
-                  outlined
-                  dense
-                  clearable
-                  use-input
-                  fill-input
-                  input-debounce="0"
-                  emit-value
-                  map-options
-                  :disable="!authStore.canEdit"
-                  @filter="filterCustomerOptions"
-                />
               </div>
             </div>
             <div class="row q-col-gutter-sm q-mt-sm">
@@ -628,7 +611,7 @@
       :end-date="form.end_date"
       :job-id="currentJob?.id || null"
     />
-    <CustomerPickerDialog v-model="customerPickerOpen" :customers="customersStore.customers" :selected-id="form.customer_id" @select="onCustomerSelected" />
+    <CompanyPickerDialog v-model="companyPickerOpen" :companies="companiesStore.companies" :selected-id="form.company_id" @select="onCompanySelected" />
     <CompanyCreateDialog v-model="companyCreateDialogOpen" @saved="onCompanyCreated" />
     <PersonCreateDialog v-model="personCreateDialogOpen" :company-id="form.company_id" @saved="onPersonCreated" />
     <VenuePickerDialog v-model="venuePickerOpen" :venues="venuesStore.venues" :selected-id="form.venue_id" @select="onVenueSelected" />
@@ -684,7 +667,6 @@ import { useI18n } from 'vue-i18n'
 
 import { JOB_STATUSES, useJobsStore } from '../stores/jobs'
 import { useInventoryStore } from '../stores/inventory'
-import { useCustomersStore } from '../stores/customers'
 import { useCompaniesStore } from '../stores/companies'
 import { usePersonsStore } from '../stores/persons'
 import { useVenuesStore } from '../stores/venues'
@@ -705,7 +687,7 @@ import JobProductRequirementDialog from '../components/JobProductRequirementDial
 import JobRentalRequirementDialog from '../components/JobRentalRequirementDialog.vue'
 import CrewRequirementDialog from '../components/CrewRequirementDialog.vue'
 import CrewAssignmentDialog from '../components/CrewAssignmentDialog.vue'
-import CustomerPickerDialog from '../components/CustomerPickerDialog.vue'
+import CompanyPickerDialog from '../components/CompanyPickerDialog.vue'
 import CompanyCreateDialog from '../components/CompanyCreateDialog.vue'
 import PersonCreateDialog from '../components/PersonCreateDialog.vue'
 import VenuePickerDialog from '../components/VenuePickerDialog.vue'
@@ -722,7 +704,6 @@ const isPhone = computed(() => $q.screen.lt.md)
 
 const jobsStore = useJobsStore()
 const inventoryStore = useInventoryStore()
-const customersStore = useCustomersStore()
 const companiesStore = useCompaniesStore()
 const personsStore = usePersonsStore()
 const venuesStore = useVenuesStore()
@@ -738,7 +719,7 @@ const isDirty = ref(false)
 const formRef = ref(null)
 const requirementDialogOpen = ref(false)
 const rentalRequirementDialogOpen = ref(false)
-const customerPickerOpen = ref(false)
+const companyPickerOpen = ref(false)
 const companyCreateDialogOpen = ref(false)
 const personCreateDialogOpen = ref(false)
 const venuePickerOpen = ref(false)
@@ -754,7 +735,6 @@ const startDateRef = ref(null)
 const endDateRef = ref(null)
 const crewRequirementRows = ref([])
 const crewAssignmentRows = ref([])
-const filteredCustomerOptions = ref([])
 const filteredCompanyOptions = ref([])
 const filteredPersonOptions = ref([])
 const filteredVenueOptions = ref([])
@@ -901,10 +881,6 @@ async function syncToProductionPlanner() {
 }
 
 const statusOptions = computed(() => JOB_STATUSES.map(status => ({ label: statusLabel(status.value), value: status.value })))
-const customerOptions = computed(() => customersStore.customers.map(customer => ({
-  label: customer.email ? `${customer.name} · ${customer.email}` : customer.name,
-  value: customer.id,
-})))
 const companyOptions = computed(() => {
   return (companiesStore.companies || []).map(company => ({
     label: company.name,
@@ -936,8 +912,6 @@ function emptyForm() {
     job_code: '',
     status: 'draft',
     description: '',
-    customer_id: null,
-    customer_name: '',
     company_id: null,
     contact_person_id: null,
     venue_id: null,
@@ -1033,17 +1007,6 @@ function cloneRequirementRows(rows = []) {
   }))
 }
 
-function filterCustomerOptions(val, update) {
-  update(() => {
-    const needle = val.trim().toLowerCase()
-    if (!needle) {
-      filteredCustomerOptions.value = customerOptions.value
-      return
-    }
-    filteredCustomerOptions.value = customerOptions.value.filter(option => option.label.toLowerCase().includes(needle))
-  })
-}
-
 function filterCompanyOptions(val, update) {
   update(() => {
     const needle = val.trim().toLowerCase()
@@ -1076,10 +1039,6 @@ function filterVenueOptions(val, update) {
     filteredVenueOptions.value = venueOptions.value.filter(option => option.label.toLowerCase().includes(needle))
   })
 }
-
-watch(customerOptions, (options) => {
-  filteredCustomerOptions.value = options
-}, { immediate: true })
 
 watch(companyOptions, (options) => {
   filteredCompanyOptions.value = options
@@ -1185,9 +1144,9 @@ const summaryTotals = computed(() => {
   })
 })
 
-const customerDisplayName = computed(() => {
-  const selected = customersStore.customers.find(customer => customer.id === (form.value.customer_id || currentJob.value?.customer_id))
-  return selected?.name || form.value.customer_name || currentJob.value?.customer_name || t('jobs.unassigned')
+const companyDisplayName = computed(() => {
+  const selected = companiesStore.companies.find(company => company.id === (form.value.company_id || currentJob.value?.company_id))
+  return selected?.name || form.value.company_name || currentJob.value?.company_name || t('jobs.unassigned')
 })
 
 const venueDisplayName = computed(() => {
@@ -1304,9 +1263,9 @@ function onCrewAssignmentSaved() {
   loadCrewData()
 }
 
-function onCustomerSelected(customer) {
-  form.value.customer_id = customer.id
-  form.value.customer_name = customer.name
+function onCompanySelected(company) {
+  form.value.company_id = company.id
+  form.value.company_name = company.name
 }
 
 function onCompanyCreated(company) {
@@ -1336,9 +1295,9 @@ function syncFromJob(job) {
     job_code: job.job_code ?? '',
     status: job.status ?? 'draft',
     description: job.description ?? '',
-    customer_id: job.customer_id ?? null,
-    customer_name: job.customer_name ?? '',
     company_id: job.company_id ?? null,
+    company_name: job.company_name ?? '',
+    contact_person_id: job.contact_person_id ?? null,
     contact_person_id: job.contact_person_id ?? null,
     venue_id: job.venue_id ?? null,
     venue_name: job.venue_name ?? '',
@@ -1408,7 +1367,6 @@ async function loadData() {
     await Promise.all([
       jobsStore.fetchAll(),
       inventoryStore.fetchAll(),
-      customersStore.fetchAll(),
       companiesStore.fetchAll(),
       personsStore.fetchAll(),
       venuesStore.fetchAll(),
@@ -1419,15 +1377,15 @@ async function loadData() {
     ])
 
     if (isNewJob.value) {
-      const customerId = Number(route.query.customerId || 0)
+      const companyId = Number(route.query.companyId || 0)
       const venueId = Number(route.query.venueId || 0)
       const projectId = Number(route.query.projectId || 0)
-      const customer = customerId > 0 ? customersStore.customers.find(c => c.id === customerId) : null
+      const company = companyId > 0 ? companiesStore.companies.find(c => c.id === companyId) : null
       const venue = venueId > 0 ? venuesStore.venues.find(v => v.id === venueId) : null
       form.value = emptyForm()
-      if (customer) {
-        form.value.customer_id = customer.id
-        form.value.customer_name = customer.name
+      if (company) {
+        form.value.company_id = company.id
+        form.value.company_name = company.name
       }
       if (venue) {
         form.value.venue_id = venue.id
@@ -1456,12 +1414,12 @@ async function createJob() {
 
   saving.value = true
   try {
-    const selectedCustomer = customersStore.customers.find(customer => customer.id === form.value.customer_id)
+    const selectedCompany = companiesStore.companies.find(company => company.id === form.value.company_id)
     const selectedVenue = venuesStore.venues.find(venue => venue.id === form.value.venue_id)
 
     const payload = {
       ...form.value,
-      customer_name: selectedCustomer?.name || form.value.customer_name || '',
+      company_name: selectedCompany?.name || form.value.company_name || '',
       venue_name: selectedVenue?.name || form.value.venue_name || '',
       start_date: normalizeDate(form.value.start_date),
       end_date: normalizeDate(form.value.end_date),
@@ -1520,13 +1478,13 @@ async function saveChanges() {
 
   saving.value = true
   try {
-    const selectedCustomer = customersStore.customers.find(customer => customer.id === form.value.customer_id)
+    const selectedCompany = companiesStore.companies.find(company => company.id === form.value.company_id)
     const selectedVenue = venuesStore.venues.find(venue => venue.id === form.value.venue_id)
 
     const payload = {
       ...currentJob.value,
       ...form.value,
-      customer_name: selectedCustomer?.name || form.value.customer_name || currentJob.value.customer_name || '',
+      company_name: selectedCompany?.name || form.value.company_name || currentJob.value.company_name || '',
       venue_name: selectedVenue?.name || form.value.venue_name || currentJob.value.venue_name || '',
       start_date: normalizeDate(form.value.start_date),
       end_date: normalizeDate(form.value.end_date),

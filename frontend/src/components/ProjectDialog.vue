@@ -26,8 +26,8 @@
           />
 
           <q-select
-            v-model="form.customer_id"
-            :options="customerOptions"
+            v-model="form.company_id"
+            :options="companyOptions"
             :label="t('projects.customer')"
             outlined
             dense
@@ -38,10 +38,10 @@
             emit-value
             map-options
             class="q-mt-sm"
-            @filter="filterCustomerOptions"
+            @filter="filterCompanyOptions"
           />
 
-          <CustomerCreateInline class="q-mt-sm" @created="onCustomerCreated" />
+          <CompanyCreateInline class="q-mt-sm" @created="onCompanyCreated" />
 
           <q-select
             v-model="form.venue_id"
@@ -106,10 +106,10 @@ import { computed, ref, watch } from 'vue'
 import { useQuasar } from 'quasar'
 import { useI18n } from 'vue-i18n'
 
-import { useCustomersStore } from '../stores/customers'
+import { useCompaniesStore } from '../stores/companies'
 import { useVenuesStore } from '../stores/venues'
 import { useProjectsStore } from '../stores/projects'
-import CustomerCreateInline from './CustomerCreateInline.vue'
+import CompanyCreateInline from './CompanyCreateInline.vue'
 import VenueCreateInline from './VenueCreateInline.vue'
 
 const props = defineProps({
@@ -121,7 +121,7 @@ const emit = defineEmits(['update:modelValue', 'saved'])
 
 const $q = useQuasar()
 const { t } = useI18n()
-const customersStore = useCustomersStore()
+const companiesStore = useCompaniesStore()
 const venuesStore = useVenuesStore()
 const projectsStore = useProjectsStore()
 
@@ -137,7 +137,7 @@ function emptyForm() {
   return {
     name: '',
     description: null,
-    customer_id: null,
+    company_id: null,
     venue_id: null,
     start_date: null,
     end_date: null,
@@ -152,8 +152,8 @@ const statusOptions = [
   { label: t('projects.statusCancelled'), value: 'cancelled' },
 ]
 
-const customerOptions = computed(() => {
-  return customersStore.customers.map(c => ({ label: c.name, value: c.id }))
+const companyOptions = computed(() => {
+  return companiesStore.companies.map(c => ({ label: c.name, value: c.id }))
 })
 
 const venueOptions = computed(() => {
@@ -163,7 +163,7 @@ const venueOptions = computed(() => {
 let customerFilterTimer = null
 let venueFilterTimer = null
 
-function filterCustomerOptions(input, update) {
+function filterCompanyOptions(input, update) {
   clearTimeout(customerFilterTimer)
   customerFilterTimer = setTimeout(() => {
     update()
@@ -177,8 +177,8 @@ function filterVenueOptions(input, update) {
   }, 150)
 }
 
-function onCustomerCreated(customer) {
-  form.value.customer_id = customer.id
+function onCompanyCreated(company) {
+  form.value.company_id = company.id
 }
 
 function onVenueCreated(venue) {
@@ -191,7 +191,7 @@ watch(() => props.modelValue, (open) => {
       form.value = {
         name: props.project.name || '',
         description: props.project.description || null,
-        customer_id: props.project.customer_id || null,
+        company_id: props.project.company_id || null,
         venue_id: props.project.venue_id || null,
         start_date: props.project.start_date || null,
         end_date: props.project.end_date || null,
@@ -201,8 +201,8 @@ watch(() => props.modelValue, (open) => {
     } else {
       form.value = emptyForm()
     }
-    if (!customersStore.customers.length) {
-      customersStore.fetchAll()
+    if (!companiesStore.companies.length) {
+      companiesStore.fetchAll()
     }
     if (!venuesStore.venues.length) {
       venuesStore.fetchAll()

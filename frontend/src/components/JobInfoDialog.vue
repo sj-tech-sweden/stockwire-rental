@@ -22,9 +22,9 @@
 
           <div class="row q-col-gutter-sm q-mb-md">
             <div class="col-12 col-md-6">
-              <q-input :model-value="customerDisplayName" :label="t('jobs.customer')" outlined dense readonly @click="customerPickerOpen = true">
+              <q-input :model-value="companyDisplayName" :label="t('jobs.customer')" outlined dense readonly @click="companyPickerOpen = true">
                 <template #append>
-                  <q-btn flat dense round icon="edit" size="sm" @click.stop="customerPickerOpen = true" />
+                  <q-btn flat dense round icon="edit" size="sm" @click.stop="companyPickerOpen = true" />
                 </template>
               </q-input>
             </div>
@@ -140,7 +140,7 @@
       </q-card-actions>
     </q-card>
 
-    <CustomerPickerDialog v-model="customerPickerOpen" :customers="customersStore.customers" :selected-id="form.customer_id" @select="onCustomerSelected" />
+    <CompanyPickerDialog v-model="companyPickerOpen" :companies="companiesStore.companies" :selected-id="form.company_id" @select="onCompanySelected" />
     <VenuePickerDialog v-model="venuePickerOpen" :venues="venuesStore.venues" :selected-id="form.venue_id" @select="onVenueSelected" />
     <JobProductRequirementDialog
       v-model="productRequirementDialogOpen"
@@ -168,14 +168,14 @@ import { useQuasar } from 'quasar'
 import { useI18n } from 'vue-i18n'
 
 import { JOB_STATUSES, useJobsStore } from '../stores/jobs'
-import { useCustomersStore } from '../stores/customers'
+import { useCompaniesStore } from '../stores/companies'
 import { useVenuesStore } from '../stores/venues'
 import { useInventoryStore } from '../stores/inventory'
 import { useCustomFieldsStore } from '../stores/customFields'
 import { useSettingsStore } from '../stores/settings'
 import { useProjectsStore } from '../stores/projects'
 import EntityAttachmentsPanel from './EntityAttachmentsPanel.vue'
-import CustomerPickerDialog from './CustomerPickerDialog.vue'
+import CompanyPickerDialog from './CompanyPickerDialog.vue'
 import VenuePickerDialog from './VenuePickerDialog.vue'
 import JobProductRequirementDialog from './JobProductRequirementDialog.vue'
 import JobRentalRequirementDialog from './JobRentalRequirementDialog.vue'
@@ -194,7 +194,7 @@ const emit = defineEmits(['update:modelValue', 'saved'])
 const $q = useQuasar()
 const { t } = useI18n()
 const jobsStore = useJobsStore()
-const customersStore = useCustomersStore()
+const companiesStore = useCompaniesStore()
 const venuesStore = useVenuesStore()
 const inventoryStore = useInventoryStore()
 const customFieldsStore = useCustomFieldsStore()
@@ -207,7 +207,7 @@ const activeCurrencyCode = computed(() => normalizeCurrencyCode(settingsStore.co
 const formRef = ref(null)
 const saving = ref(false)
 
-const customerPickerOpen = ref(false)
+const companyPickerOpen = ref(false)
 const venuePickerOpen = ref(false)
 const productRequirementDialogOpen = ref(false)
 const rentalRequirementDialogOpen = ref(false)
@@ -224,8 +224,8 @@ function emptyForm() {
     description: '',
     project_id: null,
     location_in_venue: '',
-    customer_id: null,
-    customer_name: '',
+    company_id: null,
+    company_name: '',
     venue_id: null,
     venue_name: '',
     status: 'draft',
@@ -256,12 +256,12 @@ function statusLabel(value) {
 
 const projectOptions = computed(() => projectsStore.projects.map(p => ({ label: p.name, value: p.id })))
 
-const customerDisplayName = computed(() => {
-  if (form.value.customer_id) {
-    const c = customersStore.customers.find(c => c.id === form.value.customer_id)
+const companyDisplayName = computed(() => {
+  if (form.value.company_id) {
+    const c = companiesStore.companies.find(c => c.id === form.value.company_id)
     if (c) return c.email ? `${c.name} · ${c.email}` : c.name
   }
-  return form.value.customer_name || t('jobs.unassigned')
+  return form.value.company_name || t('jobs.unassigned')
 })
 
 const venueDisplayName = computed(() => {
@@ -298,9 +298,9 @@ function formatFieldValue(field) {
   return String(field.value)
 }
 
-function onCustomerSelected(customer) {
-  form.value.customer_id = customer.id
-  form.value.customer_name = customer.name
+function onCompanySelected(company) {
+  form.value.company_id = company.id
+  form.value.company_name = company.name
 }
 
 function onVenueSelected(venue) {
@@ -356,7 +356,7 @@ async function saveJob() {
   try {
     const payload = {
       ...form.value,
-      customer_name: form.value.customer_name || customerDisplayName.value,
+      company_name: form.value.company_name || companyDisplayName.value,
       venue_name: form.value.venue_name || venueDisplayName.value,
       start_date: normalizeDate(form.value.start_date),
       end_date: normalizeDate(form.value.end_date),
@@ -397,8 +397,8 @@ watch(() => props.modelValue, async (open) => {
       description: props.job.description ?? '',
       project_id: props.job.project_id ?? null,
       location_in_venue: props.job.location_in_venue ?? '',
-      customer_id: props.job.customer_id ?? null,
-      customer_name: props.job.customer_name ?? '',
+      company_id: props.job.company_id ?? null,
+      company_name: props.job.company_name ?? '',
       venue_id: props.job.venue_id ?? null,
       venue_name: props.job.venue_name ?? '',
       status: props.job.status ?? 'draft',

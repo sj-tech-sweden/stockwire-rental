@@ -164,7 +164,7 @@ const typeOptions = computed(() => [
 
 const jobOptions = computed(() => {
   return (jobsStore.jobs || []).map(job => ({
-    label: `${job.job_code}${job.customer_name ? ` - ${job.customer_name}` : ''}`,
+    label: `${job.job_code}${job.company_name ? ` - ${job.company_name}` : ''}`,
     value: job.id,
   }))
 })

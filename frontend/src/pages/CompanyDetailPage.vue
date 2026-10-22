@@ -9,6 +9,7 @@
       </div>
       <div class="col-auto row q-gutter-sm">
         <q-btn v-if="!isNewCompany && authStore.canEdit" color="negative" outline icon="delete" :label="t('companies.delete')" @click="confirmDelete" />
+        <q-btn v-if="!isNewCompany && authStore.canEdit" color="secondary" outline icon="list_alt" :label="t('companies.customFields')" @click="customFieldsDialogOpen = true" />
         <q-btn v-if="authStore.canEdit" color="primary" unelevated :label="isNewCompany ? t('companies.create') : t('app.actions.save')" :loading="saving" @click="isNewCompany ? createCompany() : saveChanges()" />
       </div>
     </div>
@@ -274,6 +275,12 @@
       :company="currentCompany"
       @deleted="onCompanyDeleted"
     />
+
+    <CompanyCustomFieldsDialog
+      v-model="customFieldsDialogOpen"
+      :company-id="currentCompany?.id || null"
+      @saved="loadInfo"
+    />
   </q-page>
 </template>
 
@@ -289,6 +296,7 @@ import { useSettingsStore } from '../stores/settings'
 import { COUNTRIES } from '../constants/countries'
 import { getTwentyCompanyUrl } from '../utils/twenty-links'
 import CompanyDeleteDialog from '../components/CompanyDeleteDialog.vue'
+import CompanyCustomFieldsDialog from '../components/CompanyCustomFieldsDialog.vue'
 
 const JOB_STATUSES = [
   { value: 'draft', color: 'grey', key: 'jobs.statusDraft' },
@@ -311,6 +319,7 @@ const saving = ref(false)
 const formRef = ref(null)
 const info = ref(null)
 const deleteDialogOpen = ref(false)
+const customFieldsDialogOpen = ref(false)
 const twentyConfig = ref(null)
 
 const languageOptions = [

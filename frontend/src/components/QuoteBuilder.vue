@@ -47,11 +47,11 @@
           />
         </div>
 
-        <div v-if="job && (job.start_date || job.customer_name || job.venue_name)" class="text-caption text-grey-8 q-mb-sm">
+        <div v-if="job && (job.start_date || job.company_name || job.venue_name)" class="text-caption text-grey-8 q-mb-sm">
           <template v-if="job.start_date && job.end_date">
             {{ t('quotes.rentalPeriod') }}: {{ job.start_date }} – {{ job.end_date }} ({{ rentalDays }} {{ t('crew.days') }})
           </template>
-          <template v-if="job.customer_name"> · {{ job.customer_name }}</template>
+          <template v-if="job.company_name"> · {{ job.company_name }}</template>
           <template v-if="job.venue_name"> · {{ job.venue_name }}</template>
         </div>
 

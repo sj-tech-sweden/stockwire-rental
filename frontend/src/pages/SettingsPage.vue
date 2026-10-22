@@ -1247,8 +1247,8 @@
               </div>
               <div class="col-12 col-md-6">
                 <q-select
-                  v-model="instance.supplier_customer_id"
-                  :options="customersStore.customers.map(c => ({ label: c.name, value: c.id }))"
+                  v-model="instance.supplier_company_id"
+                  :options="companiesStore.companies.map(c => ({ label: c.name, value: c.id }))"
                   :label="t('settings.integrations.stockwire.supplierCustomer')"
                   :hint="t('settings.integrations.stockwire.supplierCustomerHint')"
                   outlined
@@ -1831,7 +1831,7 @@ import {
   DEFAULT_MANUFACTURER_OPTIONS,
   useSettingsStore,
 } from '../stores/settings'
-import { useCustomersStore } from '../stores/customers'
+import { useCompaniesStore } from '../stores/companies'
 import { useCompactGrid } from '../composables/useCompactGrid'
 import {
   clearQueuedMutations,
@@ -1953,7 +1953,7 @@ const customFieldsStore = useCustomFieldsStore()
 const inventoryStore = useInventoryStore()
 const jobsStore = useJobsStore()
 const settingsStore = useSettingsStore()
-const customersStore = useCustomersStore()
+const companiesStore = useCompaniesStore()
 
 const locationTypeInput = ref('')
 const locationTypeDraft = ref([...DEFAULT_LOCATION_TYPES])
@@ -2876,7 +2876,7 @@ function addStockwireInstance() {
       enabled: false,
       api_url: null,
       api_key: null,
-      supplier_customer_id: null,
+      supplier_company_id: null,
       remote_customer_id: null,
     },
   ]
@@ -2897,7 +2897,7 @@ async function saveStockwireInstances() {
       enabled: Boolean(instance.enabled),
       api_url: String(instance.api_url || '').trim() || null,
       api_key: String(instance.api_key || '').trim() || null,
-      supplier_customer_id: instance.supplier_customer_id != null ? Number(instance.supplier_customer_id) : null,
+      supplier_company_id: instance.supplier_company_id != null ? Number(instance.supplier_company_id) : null,
       remote_customer_id: String(instance.remote_customer_id || '').trim() || null,
     }))
     const saved = await settingsStore.updateIntegrations({
@@ -4207,7 +4207,7 @@ onMounted(async () => {
       settingsStore.fetchSmtpSettings(),
       settingsStore.fetchCompanyProfile(),
       jobsStore.fetchAll(),
-      customersStore.fetchAll(),
+      companiesStore.fetchAll(),
       fetchVersionInfo(),
       settingsStore.fetchCalendarFeeds(),
     ])
