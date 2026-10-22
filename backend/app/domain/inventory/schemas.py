@@ -92,6 +92,7 @@ class ProductBase(BaseModel):
     crew_rate_type: str | None = None
     crew_hourly_rate: Decimal | None = None
     is_public: bool = False
+    specs: dict | None = None
 
 
 class ProductCreate(ProductBase):
@@ -128,6 +129,7 @@ class ProductUpdate(BaseModel):
     crew_rate_type: str | None = None
     crew_hourly_rate: Decimal | None = None
     is_public: bool | None = None
+    specs: dict | None = None
 
 
 class ProductBulkUpdateRequest(BaseModel):

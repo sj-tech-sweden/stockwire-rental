@@ -70,6 +70,9 @@ class Settings(BaseSettings):
     password_reset_expire_minutes: int = 15
     password_reset_base_url: str = "http://localhost:9000"
     frontend_base_url: str = ""
+    # Dev-only: lets the Stagewire connection test reach plain-HTTP and private-network
+    # hosts (e.g. host.docker.internal). Ignored unless APP_ENV is a development value.
+    integration_allow_insecure_dev: bool = False
     api_base_url: str = ""
 
     prometheus_enabled: bool = True
@@ -108,6 +111,10 @@ class Settings(BaseSettings):
     @property
     def cors_origins_list(self) -> list[str]:
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
+
+    @property
+    def allow_insecure_integration_hosts(self) -> bool:
+        return self.integration_allow_insecure_dev and self.app_env.lower() in {"development", "dev", "local"}
 
     @property
     def effective_frontend_base_url(self) -> str:
