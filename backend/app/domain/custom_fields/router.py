@@ -265,6 +265,127 @@ def upsert_entity_values(
     return list_entity_values(entity_type=entity_type, entity_id=entity_id, db=db)
 
 
+@router.post("/definitions/prefill-product-cable", response_model=list[CustomFieldDefinitionRead])
+def prefill_product_cable_definitions(
+    db: Session = Depends(get_db),
+    _: User = Depends(require_admin),
+) -> list[CustomFieldDefinitionRead]:
+    common_connector_options = [
+        # Power
+        "PowerCON True1",
+        "PowerCON 20A",
+        "Schuko",
+        "CEE 16A",
+        "CEE 32A",
+        "CEE 64A",
+        "CEE 128A",
+        "IEC C13",
+        "IEC C19",
+        # DMX
+        "XLR 3-pin",
+        "XLR 5-pin",
+        # Data
+        "EtherCON RJ45",
+        "RJ45",
+        "USB-A",
+        "USB-C",
+        # Video
+        "BNC",
+        "SDI BNC",
+        "HDMI Type A",
+        "DisplayPort",
+        "HDMI"
+        # Audio
+        "XLR",
+        "TRS 6.35mm",
+        "TS 6.35mm",
+        "RCA",
+        "Speakon NL2",
+        "Speakon NL4",
+    ]
+
+    defaults = [
+        {
+            "key": "cable_type",
+            "label": "Cable Type",
+            "value_type": CustomFieldValueTypes.SELECT,
+            "options": ["XLR", "PowerCon", "DMX", "Ethernet", "TRS", "BNC", "HDMI", "Other"],
+        },
+        {
+            "key": "connector_a",
+            "label": "Connector A",
+            "value_type": CustomFieldValueTypes.SELECT,
+            "options": common_connector_options,
+        },
+        {
+            "key": "connector_b",
+            "label": "Connector B",
+            "value_type": CustomFieldValueTypes.SELECT,
+            "options": common_connector_options,
+        },
+        {
+            "key": "length_m",
+            "label": "Length (m)",
+            "value_type": CustomFieldValueTypes.NUMBER,
+            "options": [],
+        },
+        {
+            "key": "cable_area_mm2",
+            "label": "Cable Area (mm²)",
+            "value_type": CustomFieldValueTypes.NUMBER,
+            "options": [],
+        },
+        {
+            "key": "is_balanced",
+            "label": "Balanced",
+            "value_type": CustomFieldValueTypes.BOOLEAN,
+            "options": [],
+        },
+    ]
+
+    for item in defaults:
+        existing = db.scalar(
+            select(CustomFieldDefinition)
+            .where(CustomFieldDefinition.entity_type == CustomFieldEntityTypes.PRODUCT)
+            .where(CustomFieldDefinition.key == item["key"])
+        )
+        if existing is None and item["key"] == "cable_area_mm2":
+            # Backward compatibility: migrate legacy AWG field key to mm² field.
+            existing = db.scalar(
+                select(CustomFieldDefinition)
+                .where(CustomFieldDefinition.entity_type == CustomFieldEntityTypes.PRODUCT)
+                .where(CustomFieldDefinition.key == "awg")
+            )
+        if existing is None:
+            existing = CustomFieldDefinition(
+                entity_type=CustomFieldEntityTypes.PRODUCT,
+                key=item["key"],
+                label=item["label"],
+                value_type=item["value_type"],
+                options_json=_to_options_json(item["options"]),
+                is_required=False,
+                is_active=True,
+            )
+            db.add(existing)
+        else:
+            existing.key = item["key"]
+            existing.label = item["label"]
+            existing.value_type = item["value_type"]
+            existing.options_json = _to_options_json(item["options"])
+            existing.is_active = True
+
+    db.commit()
+
+    definitions = list(
+        db.scalars(
+            select(CustomFieldDefinition)
+            .where(CustomFieldDefinition.entity_type == CustomFieldEntityTypes.PRODUCT)
+            .order_by(CustomFieldDefinition.label)
+        ).all()
+    )
+    return [_to_definition_read(definition) for definition in definitions]
+
+
 def _normalize_key(value: str) -> str:
     key = value.strip().lower().replace(" ", "_")
     if not key:
