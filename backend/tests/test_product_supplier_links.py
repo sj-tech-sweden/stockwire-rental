@@ -2,7 +2,7 @@
 from decimal import Decimal
 
 from app.db import session as _dbsession
-from app.domain.customers.models import Company, Customer
+from app.domain.customers.models import Company
 from app.domain.inventory.models import Product, ProductSupplier, VendorProduct
 from app.domain.purchasing.models import PurchaseOrder
 
@@ -12,7 +12,7 @@ def _seed(db=None):
     s = db or _dbsession.SessionLocal()
     try:
         s.add(Company(id=1, name="Thomann"))
-        s.add(Customer(id=1, name="Thomann Supplier", is_product_supplier=True))
+        s.add(Company(id=1, name="Thomann Supplier", is_product_supplier=True))
         s.add(Product(id=1, sku="P-1", name="Mic Stand", min_order_qty=2))
         s.add(
             VendorProduct(

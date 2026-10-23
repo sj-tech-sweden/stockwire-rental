@@ -5,7 +5,7 @@ from datetime import date
 from sqlalchemy import select
 
 from app.db import session as _dbsession
-from app.domain.customers.models import Company, Customer
+from app.domain.customers.models import Company
 from app.domain.inventory.models import Device, Product, ProductSupplier, VendorProduct
 from app.domain.jobs.models import Job, JobRequirement
 from app.domain.purchasing.models import PurchaseOrder, PurchaseOrderLine
@@ -211,8 +211,8 @@ def _seed_po_fixture():
         db.add_all([Company(id=10, name="Sup X"), Company(id=11, name="Sup Y")])
         db.add_all(
             [
-                Customer(id=10, name="Sup X", is_product_supplier=True),
-                Customer(id=11, name="Sup Y", is_product_supplier=True),
+                Company(id=10, name="Sup X", is_product_supplier=True),
+                Company(id=11, name="Sup Y", is_product_supplier=True),
             ]
         )
         db.add_all(
@@ -275,7 +275,7 @@ def test_po_preserves_original_currency_when_fx_missing(client):
     db = _dbsession.SessionLocal()
     try:
         db.add(Company(id=1, name="Anthropic 2"))
-        db.add(Customer(id=1, name="Anthropic 2", is_product_supplier=True))
+        db.add(Company(id=1, name="Anthropic 2", is_product_supplier=True))
         # FX base is SEK but there is no EUR rate, so EUR lines cannot convert.
         db.add(
             AppSetting(
@@ -857,7 +857,7 @@ def test_product_purchase_info_links_vendor_catalog_item(client):
     try:
         db.add_all([
             Company(id=20, name="Sup Z"),
-            Customer(id=20, name="Sup Z", is_product_supplier=True),
+            Company(id=20, name="Sup Z", is_product_supplier=True),
         ])
         db.add(Product(id=910, sku="PI-1", name="Widget", min_stock_level=3, min_order_qty=2))
         db.add(ProductSupplier(id=10, product_id=910, supplier_id=20, supplier_company_id=20, is_primary=True, unit_cost=5))
@@ -1315,11 +1315,11 @@ def test_product_purchase_info_links_non_primary_supplier(client):
 
 
 def test_restock_without_company_uses_customer_name(client):
-    """A below-limit product linked only to a Customer (no Company) must still be
-    restocked, with the supplier filled from the Customer name."""
+    """A below-limit product linked only to a Company (no other supplier) must still be
+    restocked, with the supplier filled from the Company name."""
     db = _dbsession.SessionLocal()
     try:
-        db.add(Customer(id=60, name="Loose Customer", is_product_supplier=True))
+        db.add(Company(id=60, name="Loose Customer", is_product_supplier=True))
         db.add(Product(id=503, name="Loose Item", sku="LI", product_type="consumable", min_stock_level=5))
         db.add(
             ProductSupplier(id=11, product_id=503, supplier_id=60, supplier_company_id=None, is_primary=True)

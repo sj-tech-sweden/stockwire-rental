@@ -1298,7 +1298,6 @@ function syncFromJob(job) {
     company_id: job.company_id ?? null,
     company_name: job.company_name ?? '',
     contact_person_id: job.contact_person_id ?? null,
-    contact_person_id: job.contact_person_id ?? null,
     venue_id: job.venue_id ?? null,
     venue_name: job.venue_name ?? '',
     project_id: job.project_id ?? null,
