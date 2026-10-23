@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.21.0](https://github.com/sj-tech-sweden/stockwire-rental/compare/0.20.0...0.21.0) (2026-10-23)
+
+
+### Features
+
+* **settings:** add opt-in flag to relax SSRF check for integration connection tests ([ec0cfcf](https://github.com/sj-tech-sweden/stockwire-rental/commit/ec0cfcffdec43068ea064b6834e93020f0ace4e9))
+* **settings:** add opt-in flag to relax SSRF check for integration connection tests ([318dd0d](https://github.com/sj-tech-sweden/stockwire-rental/commit/318dd0dd88c26a9520343120d62cb787e5817c51))
+
 ## [0.20.0](https://github.com/sj-tech-sweden/stockwire-rental/compare/0.19.2...0.20.0) (2026-10-23)
 
 
