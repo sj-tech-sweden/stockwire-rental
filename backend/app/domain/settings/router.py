@@ -2636,38 +2636,42 @@ def _test_stockwire_connection(
             message="API URL contains an invalid port",
         )
 
-    if api_key and parsed_url.scheme != "https":
+    allow_insecure = settings.allow_insecure_integration_hosts
+    if api_key and parsed_url.scheme != "https" and not allow_insecure:
         return IntegrationConnectionTestRead(
             ok=False,
             plugin=plugin_key,
             message="API URL must use HTTPS when API key is configured",
         )
 
-    # Validate hostname resolves to a public IP (SSRF protection)
-    hostname = parsed_url.hostname or ""
-    try:
-        resolved = socket.getaddrinfo(hostname, port or None, type=socket.SOCK_STREAM)
-    except (OSError, UnicodeError):
-        return IntegrationConnectionTestRead(
-            ok=False,
-            plugin=plugin_key,
-            message="API URL host could not be resolved",
-        )
-
-    for entry in resolved:
-        address = entry[4][0]
+    # Validate hostname resolves to a public IP (SSRF protection); skipped when
+    # allow_insecure_integration_hosts is enabled (opt-in for ingress URLs that resolve
+    # to internal IPs).
+    if not allow_insecure:
+        hostname = parsed_url.hostname or ""
         try:
-            ip_obj = ipaddress.ip_address(address)
-            if _is_disallowed_outbound_ip(ip_obj):
-                return IntegrationConnectionTestRead(
-                    ok=False,
-                    plugin=plugin_key,
-                    message="API URL resolves to a non-public IP address",
-                )
-        except ValueError:
-            # ipaddress.ip_address raises ValueError for non-IP strings (e.g. IPv6 zone IDs);
-            # skip those entries and continue checking the remaining resolved addresses
-            pass
+            resolved = socket.getaddrinfo(hostname, port or None, type=socket.SOCK_STREAM)
+        except (OSError, UnicodeError):
+            return IntegrationConnectionTestRead(
+                ok=False,
+                plugin=plugin_key,
+                message="API URL host could not be resolved",
+            )
+
+        for entry in resolved:
+            address = entry[4][0]
+            try:
+                ip_obj = ipaddress.ip_address(address)
+                if _is_disallowed_outbound_ip(ip_obj):
+                    return IntegrationConnectionTestRead(
+                        ok=False,
+                        plugin=plugin_key,
+                        message="API URL resolves to a non-public IP address",
+                    )
+            except ValueError:
+                # ipaddress.ip_address raises ValueError for non-IP strings (e.g. IPv6 zone IDs);
+                # skip those entries and continue checking the remaining resolved addresses
+                pass
 
     # Reconstruct the health URL from parsed components to prevent SSRF via URL manipulation
     netloc = parsed_url.hostname or ""
@@ -2979,7 +2983,9 @@ def _test_stagewire_connection(
             message="API URL must use HTTPS when API key is configured",
         )
 
-    # Validate hostname resolves to a public IP (SSRF protection); skipped in dev-only mode.
+    # Validate hostname resolves to a public IP (SSRF protection); skipped when
+    # allow_insecure_integration_hosts is enabled (opt-in for ingress URLs that resolve
+    # to internal IPs).
     if not allow_insecure:
         hostname = parsed_url.hostname or ""
         try:
