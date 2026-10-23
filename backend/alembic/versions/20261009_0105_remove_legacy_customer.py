@@ -15,8 +15,8 @@ populated by 0074/0075, so this migration:
   * drops the leftover jobs.customer_id and projects.customer_id columns,
   * drops the now-unused customers table.
 
-Revision ID: 0104
-Revises: 0103
+Revision ID: 0105
+Revises: 0104
 Create Date: 2026-10-22
 
 """
@@ -25,8 +25,8 @@ from alembic import op
 import sqlalchemy as sa
 
 
-revision = "0104"
-down_revision = "0103"
+revision = "0105"
+down_revision = "0104"
 branch_labels = None
 depends_on = None
 
