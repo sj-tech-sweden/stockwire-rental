@@ -11,8 +11,7 @@ def _seed(db=None):
     own = db is None
     s = db or _dbsession.SessionLocal()
     try:
-        s.add(Company(id=1, name="Thomann"))
-        s.add(Company(id=1, name="Thomann Supplier", is_product_supplier=True))
+        s.add(Company(id=1, name="Thomann", is_product_supplier=True))
         s.add(Product(id=1, sku="P-1", name="Mic Stand", min_order_qty=2))
         s.add(
             VendorProduct(
