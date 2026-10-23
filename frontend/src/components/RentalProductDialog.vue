@@ -141,7 +141,7 @@ import { useI18n } from 'vue-i18n'
 import { useInventoryStore } from '../stores/inventory'
 import { useCustomFieldsStore } from '../stores/customFields'
 import { useSettingsStore } from '../stores/settings'
-import { useCustomersStore } from '../stores/customers'
+import { useCompaniesStore } from '../stores/companies'
 import { normalizeCurrencyCode } from '../constants/currencies'
 import { translateMaybePrefillCustomFieldLabel, translateMaybePrefillCustomFieldOption } from '../i18n/prefillContent'
 import SupplierPickerInline from './SupplierPickerInline.vue'
@@ -161,7 +161,7 @@ const { t } = useI18n()
 const store = useInventoryStore()
 const customFieldsStore = useCustomFieldsStore()
 const settingsStore = useSettingsStore()
-const customersStore = useCustomersStore()
+const companiesStore = useCompaniesStore()
 
 const isPhone = computed(() => $q.screen.lt.md)
 const activeCurrencyCode = computed(() => normalizeCurrencyCode(settingsStore.companyProfile?.currency, 'SEK'))
@@ -372,8 +372,8 @@ watch(() => props.modelValue, async (open) => {
     if (!customFieldsStore.definitions.length) {
       await customFieldsStore.fetchDefinitions('product')
     }
-    if (!customersStore.customers.length) {
-      customersStore.fetchAll().catch(() => {})
+    if (!companiesStore.companies.length) {
+      companiesStore.fetchAll().catch(() => {})
     }
     if (props.product) {
       await openEdit(props.product)

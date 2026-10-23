@@ -97,7 +97,7 @@ import { computed, watch } from 'vue'
 import { useQuasar } from 'quasar'
 import { useI18n } from 'vue-i18n'
 import { useSettingsStore } from '../stores/settings'
-import { useCustomersStore } from '../stores/customers'
+import { useCompaniesStore } from '../stores/companies'
 import { useJobsStore } from '../stores/jobs'
 import { normalizeCurrencyCode } from '../constants/currencies'
 import EntityAttachmentsPanel from './EntityAttachmentsPanel.vue'
@@ -116,7 +116,7 @@ const emit = defineEmits([
 const $q = useQuasar()
 const { t } = useI18n()
 const settingsStore = useSettingsStore()
-const customersStore = useCustomersStore()
+const companiesStore = useCompaniesStore()
 const jobsStore = useJobsStore()
 
 const isPhone = computed(() => $q.screen.lt.md)
@@ -134,7 +134,7 @@ function eventoryInstanceLabelById(instanceId) {
 }
 
 function supplierNameById(supplierId) {
-  const supplier = customersStore.customers.find(c => c.id === supplierId)
+  const supplier = companiesStore.companies.find(c => c.id === supplierId)
   return supplier?.name || `Supplier #${supplierId}`
 }
 
@@ -192,8 +192,8 @@ const linkedJobs = computed(() => {
 })
 
 watch(() => props.modelValue, (open) => {
-  if (open && !customersStore.customers.length) {
-    customersStore.fetchAll().catch(() => {})
+  if (open && !companiesStore.companies.length) {
+    companiesStore.fetchAll().catch(() => {})
   }
 })
 </script>

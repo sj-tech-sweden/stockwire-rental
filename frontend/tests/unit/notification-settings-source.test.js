@@ -5,11 +5,11 @@ describe('notification settings source wiring', () => {
   const frontendRoot = resolve(import.meta.dirname, '../..')
 
   it('exposes customer and job email notification toggles in source', () => {
-    const customerPage = readFileSync(resolve(frontendRoot, 'src/pages/CustomerDetailPage.vue'), 'utf8')
+    const companyPage = readFileSync(resolve(frontendRoot, 'src/pages/CompanyDetailPage.vue'), 'utf8')
     const jobPage = readFileSync(resolve(frontendRoot, 'src/pages/JobDetailPage.vue'), 'utf8')
 
-    expect(customerPage).toContain("email_notifications_enabled")
-    expect(customerPage).toContain("customers.emailNotificationsEnabled")
+    expect(companyPage).toContain("email_notifications_enabled")
+    expect(companyPage).toContain("companies.emailNotificationsEnabled")
     expect(jobPage).toContain("email_notifications_enabled")
     expect(jobPage).toContain("jobs.emailNotificationsEnabled")
   })

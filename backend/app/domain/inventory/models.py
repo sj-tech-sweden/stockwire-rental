@@ -150,7 +150,7 @@ class Device(Base):
     purchase_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     purchase_price: Mapped[Decimal | None] = mapped_column(Numeric(10, 2), nullable=True)
     purchased_from: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    supplier_id: Mapped[int | None] = mapped_column(ForeignKey("customers.id", ondelete="SET NULL"), nullable=True, index=True)
+    supplier_id: Mapped[int | None] = mapped_column(ForeignKey("companies.id", ondelete="SET NULL"), nullable=True, index=True)
     sold_price: Mapped[Decimal | None] = mapped_column(Numeric(10, 2), nullable=True)
     finance_upto: Mapped[str | None] = mapped_column(String(255), nullable=True)
     finance_company: Mapped[str | None] = mapped_column(String(255), nullable=True)
@@ -163,7 +163,7 @@ class Device(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
 
     product: Mapped[Product] = relationship(back_populates="devices")
-    supplier: Mapped["Customer | None"] = relationship("Customer", foreign_keys=[supplier_id])
+    supplier: Mapped["Company | None"] = relationship("Company", foreign_keys=[supplier_id])
     location_zone: Mapped["Zone | None"] = relationship(back_populates="devices")
     case_device: Mapped["Device | None"] = relationship(
         "Device",
@@ -246,8 +246,7 @@ class ProductSupplier(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     product_id: Mapped[int] = mapped_column(ForeignKey("products.id", ondelete="CASCADE"), index=True)
-    supplier_id: Mapped[int] = mapped_column(ForeignKey("customers.id", ondelete="CASCADE"), index=True)
-    supplier_company_id: Mapped[int | None] = mapped_column(ForeignKey("companies.id", ondelete="SET NULL"), nullable=True, index=True)
+    supplier_id: Mapped[int] = mapped_column(ForeignKey("companies.id", ondelete="CASCADE"), index=True)
     vendor_product_id: Mapped[int | None] = mapped_column(
         ForeignKey("vendor_products.id", ondelete="SET NULL"), nullable=True, index=True
     )
@@ -258,8 +257,7 @@ class ProductSupplier(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
 
     product: Mapped[Product] = relationship("Product", back_populates="supplier_links")
-    supplier_legacy: Mapped["Customer"] = relationship("Customer", back_populates="supplied_products")
-    supplier_company: Mapped["Company | None"] = relationship("Company", back_populates="supplied_products")
+    supplier: Mapped["Company"] = relationship("Company", back_populates="supplied_products")
     vendor_product: Mapped["VendorProduct | None"] = relationship("VendorProduct")
 
 

@@ -285,17 +285,17 @@ def test_eventory_connection_disallowed_head_peer_does_not_retry_get(client):
     }
 
 
-def test_customers_and_venues_crud(client):
-    customer = client.post(
-        "/api/v1/customers",
+def test_companies_and_venues_crud(client):
+    company = client.post(
+        "/api/v1/companies",
         json={"name": "Tsunami Events", "email": "info@example.com", "phone": "+46 70 123 45 67"},
     )
-    assert customer.status_code == 200
-    customer_id = customer.json()["id"]
+    assert company.status_code == 200
+    company_id = company.json()["id"]
 
-    updated_customer = client.put(f"/api/v1/customers/{customer_id}", json={"name": "Tsunami Events AB"})
-    assert updated_customer.status_code == 200
-    assert updated_customer.json()["name"] == "Tsunami Events AB"
+    updated_company = client.put(f"/api/v1/companies/{company_id}", json={"name": "Tsunami Events AB"})
+    assert updated_company.status_code == 200
+    assert updated_company.json()["name"] == "Tsunami Events AB"
 
     venue = client.post(
         "/api/v1/venues",
@@ -308,10 +308,10 @@ def test_customers_and_venues_crud(client):
     assert updated_venue.status_code == 200
     assert updated_venue.json()["city"] == "Gothenburg"
 
-    customers = client.get("/api/v1/customers")
+    companies = client.get("/api/v1/companies")
     venues = client.get("/api/v1/venues")
 
-    assert customers.status_code == 200 and customers.json()["total"] == 1
+    assert companies.status_code == 200 and companies.json()["total"] == 1
     assert venues.status_code == 200 and venues.json()["total"] == 1
 
 
@@ -445,7 +445,7 @@ def test_jobs_and_finance_crud(client):
     assert in_use_device.status_code == 200
 
     customer = client.post(
-        "/api/v1/customers",
+        "/api/v1/companies",
         json={"name": "Customer One", "email": "customer@example.com"},
     )
     customer_id = customer.json()["id"]
@@ -460,7 +460,7 @@ def test_jobs_and_finance_crud(client):
         "/api/v1/jobs",
         json={
             "job_code": "JOB-1",
-            "customer_id": customer_id,
+            "company_id": customer_id,
             "venue_id": venue_id,
             "status": "draft",
             "description": "Test job",
@@ -470,7 +470,7 @@ def test_jobs_and_finance_crud(client):
     )
     assert job.status_code == 200
     job_id = job.json()["id"]
-    assert job.json()["customer_name"] == "Customer One"
+    assert job.json()["company_name"] == "Customer One"
     assert job.json()["venue_name"] == "Venue One"
 
     updated_job = client.put(f"/api/v1/jobs/{job_id}", json={"status": "confirmed"})
@@ -1647,7 +1647,7 @@ def test_scan_operations_and_job_requirement_bulk(client):
     assert device.status_code == 200
 
     customer = client.post(
-        "/api/v1/customers",
+        "/api/v1/companies",
         json={"name": "Scan Customer", "email": "scan@example.com"},
     )
     assert customer.status_code == 200
@@ -1662,7 +1662,7 @@ def test_scan_operations_and_job_requirement_bulk(client):
         "/api/v1/jobs",
         json={
             "job_code": "JOB-SCAN-001",
-            "customer_id": customer.json()["id"],
+            "company_id": customer.json()["id"],
             "venue_id": venue.json()["id"],
             "status": "confirmed",
         },
@@ -1790,7 +1790,7 @@ def test_case_scan_out_marks_contained_device_as_checked_out(client):
     assert child_device.status_code == 200
 
     customer = client.post(
-        "/api/v1/customers",
+        "/api/v1/companies",
         json={"name": "Case Scan Customer", "email": "case-scan@example.com"},
     )
     assert customer.status_code == 200
@@ -1805,7 +1805,7 @@ def test_case_scan_out_marks_contained_device_as_checked_out(client):
         "/api/v1/jobs",
         json={
             "job_code": "JOB-SCAN-CASE-001",
-            "customer_id": customer.json()["id"],
+            "company_id": customer.json()["id"],
             "venue_id": venue.json()["id"],
             "status": "confirmed",
         },
@@ -2066,7 +2066,7 @@ def test_bulk_delete_products_cascades_devices_and_requirements(client):
     assert device.status_code == 200
     device_id = device.json()["id"]
 
-    customer = client.post("/api/v1/customers", json={"name": "Cascade Customer", "email": "cascade@example.com"})
+    customer = client.post("/api/v1/companies", json={"name": "Cascade Customer", "email": "cascade@example.com"})
     assert customer.status_code == 200
     venue = client.post("/api/v1/venues", json={"name": "Cascade Venue", "city": "Stockholm"})
     assert venue.status_code == 200
@@ -2074,7 +2074,7 @@ def test_bulk_delete_products_cascades_devices_and_requirements(client):
         "/api/v1/jobs",
         json={
             "job_code": "JOB-CASCADE-001",
-            "customer_id": customer.json()["id"],
+            "company_id": customer.json()["id"],
             "venue_id": venue.json()["id"],
             "status": "confirmed",
         },

@@ -41,7 +41,7 @@
           </template>
           <template #body-cell-customer="bodyProps">
             <q-td :props="bodyProps">
-              {{ bodyProps.row.customer_name || '—' }}
+              {{ bodyProps.row.company_name || '—' }}
             </q-td>
           </template>
           <template #body-cell-venue="bodyProps">
@@ -89,7 +89,7 @@ const selectedIds = ref(new Set())
 const columns = [
   { name: 'select', label: '', field: 'select', align: 'center', style: 'width: 40px' },
   { name: 'job_code', label: t('jobs.jobCode'), field: 'job_code', align: 'left' },
-  { name: 'customer', label: t('customers.title'), field: 'customer_name', align: 'left' },
+  { name: 'company', label: t('customers.title'), field: 'company_name', align: 'left' },
   { name: 'venue', label: t('venues.title'), field: 'venue_name', align: 'left' },
   { name: 'status', label: t('common.status'), field: 'status', align: 'left' },
   { name: 'start_date', label: t('jobs.startDate'), field: 'start_date', align: 'left' },
@@ -102,7 +102,7 @@ const filteredJobs = computed(() => {
     if (!q) return true
     return (
       (j.job_code || '').toLowerCase().includes(q) ||
-      (j.customer_name || '').toLowerCase().includes(q) ||
+      (j.company_name || '').toLowerCase().includes(q) ||
       (j.venue_name || '').toLowerCase().includes(q)
     )
   })

@@ -42,7 +42,7 @@
               </q-item-section>
               <q-item-section>
                 <q-item-label class="text-caption">
-                  <span class="text-weight-medium">{{ stop.job_code }}</span> — {{ stop.customer_name || '—' }}
+                  <span class="text-weight-medium">{{ stop.job_code }}</span> — {{ stop.company_name || '—' }}
                 </q-item-label>
                 <q-item-label v-if="stop.venue_address" caption class="text-caption">{{ stop.venue_address }}</q-item-label>
               </q-item-section>

@@ -294,7 +294,7 @@ import { useQuasar } from 'quasar'
 import { useI18n } from 'vue-i18n'
 import { useInventoryStore } from '../stores/inventory'
 import { useJobsStore } from '../stores/jobs'
-import { useCustomersStore } from '../stores/customers'
+import { useCompaniesStore } from '../stores/companies'
 import { useSettingsStore } from '../stores/settings'
 import { useCustomFieldsStore } from '../stores/customFields'
 import { useWarehouseLedsStore } from '../stores/warehouseLeds'
@@ -324,7 +324,7 @@ const $q = useQuasar()
 const { t } = useI18n()
 const store = useInventoryStore()
 const jobsStore = useJobsStore()
-const customersStore = useCustomersStore()
+const companiesStore = useCompaniesStore()
 const settingsStore = useSettingsStore()
 const customFieldsStore = useCustomFieldsStore()
 const warehouseLedsStore = useWarehouseLedsStore()
@@ -411,8 +411,8 @@ watch(() => props.modelValue, async (open) => {
   if (open) {
     drillDownFocusId.value = null
     mapExpanded.value = false
-    if (!customersStore.customers.length) {
-      customersStore.fetchAll().catch(() => {})
+    if (!companiesStore.companies.length) {
+      companiesStore.fetchAll().catch(() => {})
     }
     if (props.product?.id) {
       if (!customFieldsStore.definitions.length) {
@@ -540,7 +540,7 @@ function productNameById(productId) {
 }
 
 function supplierNameById(supplierId) {
-  const supplier = customersStore.customers.find(c => c.id === supplierId)
+  const supplier = companiesStore.companies.find(c => c.id === supplierId)
   return supplier?.name || `Supplier #${supplierId}`
 }
 

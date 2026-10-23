@@ -208,7 +208,7 @@
             <q-card-section class="q-pt-none q-pb-sm">
               <div class="text-caption" v-if="props.row.company_name">{{ t('jobs.company') }}: {{ props.row.company_name }}</div>
               <div class="text-caption" v-if="props.row.contact_person_name">{{ t('jobs.contactPerson') }}: {{ props.row.contact_person_name }}</div>
-              <div class="text-caption" v-if="!props.row.company_name && !props.row.contact_person_name">{{ t('jobs.customerLabel') }}: {{ customerNameForId(props.row.customer_id) || t('jobs.unassigned') }}</div>
+              <div class="text-caption" v-if="!props.row.company_name && !props.row.contact_person_name">{{ t('jobs.customerLabel') }}: {{ companyNameForId(props.row.company_id) || t('jobs.unassigned') }}</div>
               <div class="text-caption">
                 {{ t('jobs.venueLabel') }}: {{ venueNameForId(props.row.venue_id) || t('jobs.unassigned') }}
                 <a
@@ -266,7 +266,7 @@
                 <q-item-label>{{ job.job_code }}</q-item-label>
                 <q-item-label caption>
                   <q-badge :color="statusColor(job.status)" :label="statusLabel(job.status)" class="q-mr-xs" />
-                  {{ job.company_name || customerNameForId(job.customer_id) || t('jobs.unassigned') }}
+                  {{ job.company_name || companyNameForId(job.company_id) || t('jobs.unassigned') }}
                 </q-item-label>
               </q-item-section>
               <q-item-section side>
@@ -296,7 +296,6 @@ import { useI18n } from 'vue-i18n'
 import { useQuasar } from 'quasar'
 
 import { JOB_STATUSES, useJobsStore } from '../stores/jobs'
-import { useCustomersStore } from '../stores/customers'
 import { useCompaniesStore } from '../stores/companies'
 import { usePersonsStore } from '../stores/persons'
 import { useVenuesStore } from '../stores/venues'
@@ -312,7 +311,6 @@ import JobDeleteDialog from '../components/JobDeleteDialog.vue'
 
 const compactGrid = useCompactGrid(1024)
 const jobsStore = useJobsStore()
-const customersStore = useCustomersStore()
 const companiesStore = useCompaniesStore()
 const personsStore = usePersonsStore()
 const venuesStore = useVenuesStore()
@@ -569,7 +567,6 @@ async function loadData() {
   try {
     await Promise.all([
       jobsStore.fetchAll(),
-      customersStore.fetchAll(),
       companiesStore.fetchAll(),
       personsStore.fetchAll(),
       venuesStore.fetchAll(),
@@ -620,8 +617,8 @@ watch(
   }
 )
 
-function customerNameForId(id) {
-  return customersStore.customers.find(customer => customer.id === id)?.name ?? ''
+function companyNameForId(id) {
+  return companiesStore.companies.find(company => company.id === id)?.name ?? ''
 }
 
 function venueNameForId(id) {

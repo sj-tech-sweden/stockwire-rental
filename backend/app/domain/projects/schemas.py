@@ -6,7 +6,7 @@ from pydantic import BaseModel
 class ProjectBase(BaseModel):
     name: str
     description: str | None = None
-    customer_id: int | None = None
+    company_id: int | None = None
     venue_id: int | None = None
     start_date: date | None = None
     end_date: date | None = None
@@ -21,7 +21,7 @@ class ProjectCreate(ProjectBase):
 class ProjectUpdate(BaseModel):
     name: str | None = None
     description: str | None = None
-    customer_id: int | None = None
+    company_id: int | None = None
     venue_id: int | None = None
     start_date: date | None = None
     end_date: date | None = None

@@ -16,19 +16,19 @@
       <q-card-section class="q-pt-none" style="max-height: 50vh; overflow: auto">
         <q-list bordered separator class="rounded-borders">
           <q-item
-            v-for="customer in filteredCustomers"
-            :key="customer.id"
+            v-for="company in filteredCompanies"
+            :key="company.id"
             clickable
-            :active="customer.id === selectedId"
+            :active="company.id === selectedId"
             active-class="bg-primary text-white"
-            @click="selectCustomer(customer)"
+            @click="selectCustomer(company)"
           >
             <q-item-section>
-              <q-item-label>{{ customer.name }}</q-item-label>
-              <q-item-label v-if="customer.email" caption>{{ customer.email }}</q-item-label>
+              <q-item-label>{{ company.name }}</q-item-label>
+              <q-item-label v-if="company.email" caption>{{ company.email }}</q-item-label>
             </q-item-section>
           </q-item>
-          <q-item v-if="!filteredCustomers.length">
+          <q-item v-if="!filteredCompanies.length">
             <q-item-section>
               <q-item-label caption>{{ t('customers.noCustomersFound') }}</q-item-label>
             </q-item-section>
@@ -46,7 +46,7 @@ import { useI18n } from 'vue-i18n'
 
 const props = defineProps({
   modelValue: Boolean,
-  customers: { type: Array, default: () => [] },
+  companies: { type: Array, default: () => [] },
   selectedId: { type: Number, default: null },
 })
 
@@ -57,17 +57,17 @@ const { t } = useI18n()
 const search = ref('')
 const isPhone = computed(() => $q.screen.lt.md)
 
-const filteredCustomers = computed(() => {
+const filteredCompanies = computed(() => {
   const term = search.value.trim().toLowerCase()
-  if (!term) return props.customers
-  return props.customers.filter(c =>
+  if (!term) return props.companies
+  return props.companies.filter(c =>
     String(c.name || '').toLowerCase().includes(term) ||
     String(c.email || '').toLowerCase().includes(term)
   )
 })
 
-function selectCustomer(customer) {
-  emit('select', customer)
+function selectCustomer(company) {
+  emit('select', company)
   emit('update:modelValue', false)
 }
 </script>

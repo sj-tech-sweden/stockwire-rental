@@ -15,7 +15,7 @@ from app.db.session import get_db
 from app.domain.auth.deps import get_current_user, require_editor
 from app.domain.auth.models import User
 from app.domain.audit.service import record_activity
-from app.domain.customers.models import Customer
+from app.domain.customers.models import Company
 from app.domain.jobs.models import Job, JobRequirement
 from app.domain.inventory.models import Product, VendorProduct
 from app.domain.realtime.events import emit_realtime_event
@@ -196,7 +196,7 @@ def _prepare_job_payload(data: dict, db: Session) -> dict:
         if not prepared["job_code"]:
             raise HTTPException(status_code=400, detail="Job code is required")
 
-    for field in ("description", "customer_name", "venue_name", "notes"):
+    for field in ("description", "company_name", "venue_name", "notes"):
         if field in prepared:
             prepared[field] = _clean_text(prepared[field])
 
@@ -209,15 +209,15 @@ def _prepare_job_payload(data: dict, db: Session) -> dict:
     elif prepared.get("invoice_paid_at"):
         prepared["invoice_paid"] = True
 
-    if "customer_id" in prepared:
-        customer_id = prepared["customer_id"]
-        if customer_id is not None:
-            customer = db.get(Customer, customer_id)
-            if customer is None:
-                raise HTTPException(status_code=404, detail="Customer not found")
-            prepared["customer_name"] = customer.name
-        elif "customer_name" not in prepared:
-            prepared["customer_name"] = None
+    if "company_id" in prepared:
+        company_id = prepared["company_id"]
+        if company_id is not None:
+            company = db.get(Company, company_id)
+            if company is None:
+                raise HTTPException(status_code=404, detail="Company not found")
+            prepared["company_name"] = company.name
+        elif "company_name" not in prepared:
+            prepared["company_name"] = None
 
     if "project_id" in prepared:
         project_id = prepared["project_id"]
@@ -265,7 +265,7 @@ async def _sync_job_to_productionplanner(job: Job, db: Session) -> ProductionPla
             success=False,
             message="ProductionPlanner API key not configured",
         )
-    project_name = f"{job.job_code} - {job.customer_name or job.venue_name or 'Job'}"
+    project_name = f"{job.job_code} - {job.company_name or job.venue_name or 'Job'}"
     description_parts = []
     if job.description:
         description_parts.append(job.description)

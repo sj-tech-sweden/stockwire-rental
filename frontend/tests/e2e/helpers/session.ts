@@ -74,11 +74,24 @@ export async function getAccessToken(request: APIRequestContext, session: Sessio
   return String(payload?.access_token || '')
 }
 
+async function logFailure(response: { status: () => number; text: () => Promise<string> }, path: string) {
+  let body = ''
+  try {
+    body = (await response.text()).slice(0, 1000)
+  } catch {
+    body = '<unreadable>'
+  }
+  console.error(`[api] ${response.status()} ${path} -> ${body}`)
+}
+
 export async function apiPost(request: APIRequestContext, token: string, path: string, data: unknown) {
   const response = await request.post(`${apiBase}${path}`, {
     headers: { Authorization: `Bearer ${token}` },
     data,
   })
+  if (!response.ok()) {
+    await logFailure(response, path)
+  }
   expect(response.ok()).toBeTruthy()
   return response.json()
 }
@@ -88,6 +101,9 @@ export async function apiPut(request: APIRequestContext, token: string, path: st
     headers: { Authorization: `Bearer ${token}` },
     data,
   })
+  if (!response.ok()) {
+    await logFailure(response, path)
+  }
   expect(response.ok()).toBeTruthy()
   return response.json()
 }

@@ -1080,7 +1080,7 @@ export const useSettingsStore = defineStore('settings', () => {
         enabled: Boolean(instance.enabled),
         api_url: String(instance.api_url || '').trim() || null,
         api_key: String(instance.api_key || '').trim() || null,
-        supplier_customer_id: instance.supplier_customer_id != null ? Number(instance.supplier_customer_id) : null,
+        supplier_company_id: instance.supplier_company_id != null ? Number(instance.supplier_company_id) : null,
         remote_customer_id: String(instance.remote_customer_id || '').trim() || null,
       }))
 

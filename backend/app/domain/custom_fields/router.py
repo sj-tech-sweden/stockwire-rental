@@ -20,7 +20,7 @@ from app.domain.custom_fields.schemas import (
     CustomFieldValuesUpsertRequest,
     CustomFieldValueTypes,
 )
-from app.domain.customers.models import Customer
+from app.domain.customers.models import Company
 from app.domain.inventory.models import Product
 from app.domain.jobs.models import Job
 from app.domain.venues.models import Venue
@@ -440,7 +440,7 @@ def _ensure_entity_exists(entity_type: str, entity_id: int, db: Session) -> None
     elif entity_type == CustomFieldEntityTypes.JOB:
         entity = db.get(Job, entity_id)
     elif entity_type == CustomFieldEntityTypes.CUSTOMER:
-        entity = db.get(Customer, entity_id)
+        entity = db.get(Company, entity_id)
     else:
         entity = db.get(Venue, entity_id)
 

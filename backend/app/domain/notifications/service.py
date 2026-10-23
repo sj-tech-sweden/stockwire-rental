@@ -11,7 +11,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.config import settings
-from app.domain.customers.models import Customer
+from app.domain.customers.models import Company
 from app.domain.notifications.models import (
     NotificationLog,
     NotificationTemplate,
@@ -113,7 +113,7 @@ def _resolve_event_channels(
     return (up.email_enabled, up.web_push_enabled)
 
 
-def _customer_locale(customer: Customer | None, db: Session) -> str:
+def _customer_locale(customer: Company | None, db: Session) -> str:
     """Get the locale for a customer.
 
     Priority: customer preferred → company default → English
@@ -149,7 +149,7 @@ def _company_default_locale(db: Session) -> str:
     return "en"
 
 
-def _customer_can_receive_email(customer: Customer | None, job: Any | None) -> bool:
+def _customer_can_receive_email(customer: Company | None, job: Any | None) -> bool:
     if customer is None or not customer.email:
         return False
     if not customer.email_notifications_enabled:
@@ -216,7 +216,7 @@ def send_notification(db: Session, payload: dict[str, Any]) -> list[dict[str, An
     customer = None
     user = None
     if recipient_type == "customer":
-        customer = db.get(Customer, recipient_id)
+        customer = db.get(Company, recipient_id)
         locale = _customer_locale(customer, db)
     else:
         user = db.get(User, recipient_id)

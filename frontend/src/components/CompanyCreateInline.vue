@@ -82,7 +82,7 @@ import { useQuasar } from 'quasar'
 import { useI18n } from 'vue-i18n'
 
 import { api } from '../boot/axios'
-import { useCustomersStore } from '../stores/customers'
+import { useCompaniesStore } from '../stores/companies'
 import { useCustomFieldsStore } from '../stores/customFields'
 import { translateMaybePrefillCustomFieldLabel, translateMaybePrefillCustomFieldOption } from '../i18n/prefillContent'
 
@@ -90,7 +90,7 @@ const emit = defineEmits(['created'])
 
 const $q = useQuasar()
 const { t } = useI18n()
-const customersStore = useCustomersStore()
+const companiesStore = useCompaniesStore()
 const customFieldsStore = useCustomFieldsStore()
 
 const saving = ref(false)
@@ -116,7 +116,7 @@ function customFieldOption(option) {
 }
 
 function createEmptyFieldRows() {
-  const defs = (customFieldsStore.definitions || []).filter(def => def.entity_type === 'customer' && def.is_active !== false)
+  const defs = (customFieldsStore.definitions || []).filter(def => def.entity_type === 'company' && def.is_active !== false)
   return defs.map(def => ({
     field_definition_id: def.id,
     label: def.label,
@@ -128,7 +128,7 @@ function createEmptyFieldRows() {
 
 async function loadFieldRows() {
   if (!customFieldsStore.definitions.length) {
-    await customFieldsStore.fetchDefinitions('customer')
+    await customFieldsStore.fetchDefinitions('company')
   }
   fieldRows.value = createEmptyFieldRows()
 }
@@ -141,19 +141,19 @@ async function save() {
   }
   saving.value = true
   try {
-    const { data } = await api.post('/api/v1/customers', {
+    const { data } = await api.post('/api/v1/companies', {
       name,
       email: draft.value.email?.trim() || null,
       phone: draft.value.phone?.trim() || null,
       notes: draft.value.notes?.trim() || null,
     })
     if (fieldRows.value.length) {
-      await customFieldsStore.saveEntityValues('customer', data.id, fieldRows.value.map(row => ({
+      await customFieldsStore.saveEntityValues('company', data.id, fieldRows.value.map(row => ({
         field_definition_id: row.field_definition_id,
         value: row.value,
       })))
     }
-    await customersStore.fetchAll()
+    await companiesStore.fetchAll()
     $q.notify({ type: 'positive', message: t('customers.createdNotice') })
     draft.value = emptyDraft()
     fieldRows.value = createEmptyFieldRows()

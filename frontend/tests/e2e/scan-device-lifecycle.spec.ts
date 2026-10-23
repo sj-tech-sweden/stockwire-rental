@@ -9,7 +9,7 @@ test('scan device lifecycle job out and in flow', async ({ page, request }) => {
   const now = Date.now()
   const assetTag = `E2E-SCAN-${now}`
 
-  const customer = await apiPost(request, token, '/api/v1/customers', {
+  const company = await apiPost(request, token, '/api/v1/companies', {
     name: `Scan Customer ${now}`,
     email: `scan-customer-${now}@example.com`,
   })
@@ -21,7 +21,7 @@ test('scan device lifecycle job out and in flow', async ({ page, request }) => {
 
   const job = await apiPost(request, token, '/api/v1/jobs', {
     job_code: `SCAN-${now}`,
-    customer_id: customer.id,
+    company_id: company.id,
     venue_id: venue.id,
     status: 'confirmed',
     description: `Scan lifecycle ${now}`,

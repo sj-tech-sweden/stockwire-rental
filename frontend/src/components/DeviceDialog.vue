@@ -153,7 +153,6 @@ import { useQuasar } from 'quasar'
 import { useI18n } from 'vue-i18n'
 import { DEVICE_STATUSES, useInventoryStore } from '../stores/inventory'
 import { api } from '../boot/axios'
-import { useCustomersStore } from '../stores/customers'
 import { useSettingsStore } from '../stores/settings'
 import SupplierPickerInline from './SupplierPickerInline.vue'
 import { isRentalProduct } from '../utils/inventory-overview'
@@ -172,7 +171,6 @@ const emit = defineEmits(['update:modelValue', 'saved'])
 const $q = useQuasar()
 const { t } = useI18n()
 const store = useInventoryStore()
-const customersStore = useCustomersStore()
 const settingsStore = useSettingsStore()
 
 const saving = ref(false)

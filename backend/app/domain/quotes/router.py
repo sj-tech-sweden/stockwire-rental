@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 from app.db.session import get_db
 from app.domain.auth.deps import get_current_user
 from app.domain.jobs.models import Job
-from app.domain.customers.models import Customer
+from app.domain.customers.models import Company
 from app.domain.quotes.settings import QUOTES_KEY, DEFAULT_QUOTES, get_quotes_settings
 from app.domain.quotes.templates import ensure_default_quote_template
 from app.domain.settings.accessors import get_company_profile_default_language
@@ -58,10 +58,10 @@ def generate_quote(job_id: int, db: Session = Depends(get_db)) -> Response:
     # to the server default language (company profile) when the customer has no
     # language preference.
     language = get_company_profile_default_language(db)
-    if job.customer_id:
-        customer = db.get(Customer, job.customer_id)
-        if customer and customer.preferred_language:
-            language = customer.preferred_language
+    if job.company_id:
+        company = db.get(Company, job.company_id)
+        if company and company.preferred_language:
+            language = company.preferred_language
 
     try:
         pdf_bytes = pdf_service.generate_pdf(

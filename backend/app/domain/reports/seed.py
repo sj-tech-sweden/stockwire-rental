@@ -167,7 +167,7 @@ _DEFAULT_TEMPLATES = [
                         {"type": "heading", "text": "RETURN CHECK-IN AUDIT", "level": 1},
                         {"type": "key_value", "source": "job", "fields": [
                             {"key": "job_code", "label": "Job Code"},
-                            {"key": "customer_name", "label": "Customer"},
+                            {"key": "company_name", "label": "Company"},
                             {"key": "start_date", "label": "Rental Start"},
                             {"key": "end_date", "label": "Rental End"},
                         ]},
@@ -204,7 +204,7 @@ _DEFAULT_TEMPLATES = [
                         {"type": "heading", "text": "VEHICLE LOAD SUMMARY", "level": 1},
                         {"type": "key_value", "source": "job", "fields": [
                             {"key": "job_code", "label": "Job Code"},
-                            {"key": "customer_name", "label": "Customer"},
+                            {"key": "company_name", "label": "Company"},
                             {"key": "venue_name", "label": "Venue"},
                         ]},
                     ],
@@ -334,7 +334,7 @@ _DEFAULT_TEMPLATES = [
                         {"type": "heading", "text": "DELIVERY HANDOVER", "level": 1},
                         {"type": "key_value", "source": "job", "fields": [
                             {"key": "job_code", "label": "Job Code"},
-                            {"key": "customer_name", "label": "Customer"},
+                            {"key": "company_name", "label": "Company"},
                             {"key": "venue_name", "label": "Venue"},
                             {"key": "start_date", "label": "Delivery Date"},
                         ]},
@@ -380,7 +380,7 @@ _DEFAULT_TEMPLATES = [
                                 "columns": [
                                     [
                                         {"type": "heading", "text": "Customer", "level": 2},
-                                        {"type": "paragraph", "text": "{{ job.customer_name }}", "style": "body"},
+                                        {"type": "paragraph", "text": "{{ job.company_name }}", "style": "body"},
                                         {"type": "paragraph", "text": "{{ job.venue_name }}", "style": "small"},
                                     ],
                                     [
@@ -416,7 +416,7 @@ _DEFAULT_TEMPLATES = [
                         {"type": "heading", "text": "VENUE COMPLIANCE & SAFETY PACKET", "level": 1},
                         {"type": "key_value", "source": "job", "fields": [
                             {"key": "job_code", "label": "Job Code"},
-                            {"key": "customer_name", "label": "Customer"},
+                            {"key": "company_name", "label": "Company"},
                             {"key": "venue_name", "label": "Venue"},
                             {"key": "start_date", "label": "Event Date"},
                         ]},

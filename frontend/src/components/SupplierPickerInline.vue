@@ -51,7 +51,7 @@
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useQuasar } from 'quasar'
-import { useCustomersStore } from '../stores/customers'
+import { useCompaniesStore } from '../stores/companies'
 
 const props = defineProps({
   modelValue: { type: Number, default: null },
@@ -64,7 +64,7 @@ const emit = defineEmits(['update:modelValue', 'created'])
 
 const { t } = useI18n()
 const $q = useQuasar()
-const customersStore = useCustomersStore()
+const companiesStore = useCompaniesStore()
 
 const showCreate = ref(false)
 const creating = ref(false)
@@ -83,7 +83,7 @@ watch(() => props.supplierType, (val) => {
 })
 
 const allOptions = computed(() => {
-  let list = customersStore.customers
+  let list = companiesStore.companies
   if (props.supplierType === 'product') {
     list = list.filter(c => c.is_product_supplier)
   } else if (props.supplierType === 'rental') {
@@ -105,7 +105,7 @@ function onFilter(val, update) {
   update(() => {
     const term = String(val || '').toLowerCase()
     if (term && props.productSupplierIds && props.productSupplierIds.length) {
-      let list = customersStore.customers
+      let list = companiesStore.companies
       if (props.supplierType === 'product') {
         list = list.filter(c => c.is_product_supplier)
       } else if (props.supplierType === 'rental') {
@@ -137,7 +137,7 @@ async function createSupplier() {
       is_rental_supplier: newIsRentalSupplier.value,
       is_crew_supplier: newIsCrewSupplier.value,
     }
-    const created = await customersStore.createCustomer(payload)
+    const created = await companiesStore.createCompany(payload)
     emit('update:modelValue', created.id)
     emit('created', created)
     showCreate.value = false

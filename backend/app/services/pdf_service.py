@@ -399,7 +399,7 @@ class PDFService:
 
         if entity_type == "job":
             from app.domain.jobs.models import Job
-            from app.domain.customers.models import Customer
+            from app.domain.customers.models import Company
             from app.domain.venues.models import Venue
 
             job = self.db.get(Job, entity_id)
@@ -412,16 +412,16 @@ class PDFService:
                     "end_date": str(job.end_date) if job.end_date else None,
                     "sales_price": float(job.sales_price) if job.sales_price else 0,
                     "notes": job.notes,
-                    "customer_name": job.customer_name,
+                    "customer_name": job.company_name,
                     "venue_name": job.venue_name,
                 }
-                if job.customer_id:
-                    customer = self.db.get(Customer, job.customer_id)
-                    if customer:
+                if job.company_id:
+                    company = self.db.get(Company, job.company_id)
+                    if company:
                         context["customer"] = {
-                            "name": customer.name,
-                            "email": customer.email,
-                            "phone": customer.phone,
+                            "name": company.name,
+                            "email": company.email,
+                            "phone": company.phone,
                         }
                 if job.venue_id:
                     venue = self.db.get(Venue, job.venue_id)

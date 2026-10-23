@@ -488,7 +488,7 @@
             <q-badge color="primary" text-color="white" :label="`${t('jobs.status')}: ${activeWorkflowJob.status || '-'}`" />
           </div>
           <div class="col-12 col-md-3 text-caption">
-            {{ t('jobs.customerLabel') }}: {{ activeWorkflowJob.customer_name || t('jobs.unassigned') }}
+            {{ t('jobs.customerLabel') }}: {{ activeWorkflowJob.company_name || t('jobs.unassigned') }}
           </div>
           <div class="col-12 col-md-3 text-caption">
             {{ t('jobs.venueLabel') }}: {{ activeWorkflowJob.venue_name || t('jobs.unassigned') }}

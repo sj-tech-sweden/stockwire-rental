@@ -75,7 +75,7 @@ import { translateMaybePrefillCustomFieldLabel, translateMaybePrefillCustomField
 
 const props = defineProps({
   modelValue: Boolean,
-  customerId: { type: Number, default: null },
+  companyId: { type: Number, default: null },
   rows: { type: Array, default: () => [] },
 })
 
@@ -101,7 +101,7 @@ function customFieldOption(option) {
 }
 
 function createEmptyFieldRows() {
-  const defs = (customFieldsStore.definitions || []).filter(def => def.entity_type === 'customer' && def.is_active !== false)
+  const defs = (customFieldsStore.definitions || []).filter(def => def.entity_type === 'company' && def.is_active !== false)
   return defs.map(def => ({
     field_definition_id: def.id,
     label: def.label,
@@ -112,12 +112,12 @@ function createEmptyFieldRows() {
 }
 
 async function loadFieldRows() {
-  if (!props.customerId) {
+  if (!props.companyId) {
     localRows.value = props.rows.length ? props.rows.map(r => ({ ...r })) : createEmptyFieldRows()
     return
   }
   try {
-    const data = await customFieldsStore.fetchEntityValues('customer', props.customerId)
+    const data = await customFieldsStore.fetchEntityValues('company', props.companyId)
     localRows.value = Array.isArray(data?.values) ? data.values.map(v => ({ ...v })) : createEmptyFieldRows()
   } catch {
     localRows.value = createEmptyFieldRows()
@@ -125,13 +125,13 @@ async function loadFieldRows() {
 }
 
 async function saveValues() {
-  if (!props.customerId) {
+  if (!props.companyId) {
     emit('update:modelValue', false)
     return
   }
   saving.value = true
   try {
-    await customFieldsStore.saveEntityValues('customer', props.customerId, localRows.value.map(row => ({
+    await customFieldsStore.saveEntityValues('company', props.companyId, localRows.value.map(row => ({
       field_definition_id: row.field_definition_id,
       value: row.value,
     })))
@@ -145,7 +145,7 @@ async function saveValues() {
 watch(() => props.modelValue, async (open) => {
   if (open) {
     if (!customFieldsStore.definitions.length) {
-      await customFieldsStore.fetchDefinitions('customer')
+      await customFieldsStore.fetchDefinitions('company')
     }
     await loadFieldRows()
   }

@@ -9,7 +9,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.domain.inventory.models import Product, InventoryCategory
-from app.domain.customers.models import Customer
+from app.domain.customers.models import Company
 from app.domain.jobs.models import Job
 
 TOOLS = [
@@ -232,8 +232,8 @@ def _list_customers(args: dict, db: Session) -> dict:
     query = args.get("query", "")
     q = f"%{query}%"
     customers = db.scalars(
-        select(Customer).where(
-            (Customer.name.ilike(q)) | (Customer.email.ilike(q))
+        select(Company).where(
+            (Company.name.ilike(q)) | (Company.email.ilike(q))
         ).limit(10)
     ).all()
     return {

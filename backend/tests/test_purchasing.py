@@ -5,7 +5,7 @@ from datetime import date
 from sqlalchemy import select
 
 from app.db import session as _dbsession
-from app.domain.customers.models import Company, Customer
+from app.domain.customers.models import Company
 from app.domain.inventory.models import Device, Product, ProductSupplier, VendorProduct
 from app.domain.jobs.models import Job, JobRequirement
 from app.domain.purchasing.models import PurchaseOrder, PurchaseOrderLine
@@ -208,11 +208,10 @@ def _seed_po_fixture():
     """Seed two suppliers, products (one below min stock), and two jobs."""
     db = _dbsession.SessionLocal()
     try:
-        db.add_all([Company(id=10, name="Sup X"), Company(id=11, name="Sup Y")])
         db.add_all(
             [
-                Customer(id=10, name="Sup X", is_product_supplier=True),
-                Customer(id=11, name="Sup Y", is_product_supplier=True),
+                Company(id=10, name="Sup X", is_product_supplier=True),
+                Company(id=11, name="Sup Y", is_product_supplier=True),
             ]
         )
         db.add_all(
@@ -223,7 +222,7 @@ def _seed_po_fixture():
         )
         db.add(
             ProductSupplier(
-                id=1, product_id=300, supplier_id=10, supplier_company_id=10,
+                id=1, product_id=300, supplier_id=10,
                 is_primary=True, unit_cost=5,
             )
         )
@@ -274,8 +273,7 @@ def test_po_preserves_original_currency_when_fx_missing(client):
 
     db = _dbsession.SessionLocal()
     try:
-        db.add(Company(id=1, name="Anthropic 2"))
-        db.add(Customer(id=1, name="Anthropic 2", is_product_supplier=True))
+        db.add(Company(id=1, name="Anthropic 2", is_product_supplier=True))
         # FX base is SEK but there is no EUR rate, so EUR lines cannot convert.
         db.add(
             AppSetting(
@@ -359,7 +357,7 @@ def test_restock_resolves_vendor_from_vendor_product(client):
         )
         db.add(
             ProductSupplier(
-                id=5, product_id=400, supplier_id=20, supplier_company_id=None,
+                id=5, product_id=400, supplier_id=20,
                 vendor_product_id=40, is_primary=True,
             )
         )
@@ -856,11 +854,10 @@ def test_product_purchase_info_links_vendor_catalog_item(client):
     db = _dbsession.SessionLocal()
     try:
         db.add_all([
-            Company(id=20, name="Sup Z"),
-            Customer(id=20, name="Sup Z", is_product_supplier=True),
+            Company(id=20, name="Sup Z", is_product_supplier=True),
         ])
         db.add(Product(id=910, sku="PI-1", name="Widget", min_stock_level=3, min_order_qty=2))
-        db.add(ProductSupplier(id=10, product_id=910, supplier_id=20, supplier_company_id=20, is_primary=True, unit_cost=5))
+        db.add(ProductSupplier(id=10, product_id=910, supplier_id=20, is_primary=True, unit_cost=5))
         db.add(VendorProduct(id=60, sku="PI-1", name="Widget", unit_cost=12, currency="USD", stock_quantity=4, availability="in_stock", vendor_id=20))
         db.commit()
     finally:
@@ -868,7 +865,7 @@ def test_product_purchase_info_links_vendor_catalog_item(client):
     resp = client.get("/api/v1/inventory/products/910/purchase-info")
     assert resp.status_code == 200, resp.text
     info = resp.json()
-    assert info["supplier_company_id"] == 20
+    assert info["supplier_id"] == 20
     assert info["vendor_product_id"] == 60
     assert float(info["unit_cost"]) == 12
     assert info["currency"] == "USD"
@@ -1091,7 +1088,7 @@ def test_reorder_product_supplier_opens_new_po(client):
         )
         db.add(
             ProductSupplier(
-                id=70, product_id=700, supplier_id=70, supplier_company_id=70,
+                id=70, product_id=700, supplier_id=70,
                 is_primary=True, vendor_product_id=70,
             )
         )
@@ -1124,7 +1121,7 @@ def test_reorder_product_supplier_rejects_mismatched_po(client):
         )
         db.add(
             ProductSupplier(
-                id=71, product_id=701, supplier_id=71, supplier_company_id=71,
+                id=71, product_id=701, supplier_id=71,
                 is_primary=True, vendor_product_id=71,
             )
         )
@@ -1233,7 +1230,7 @@ def test_product_purchase_info_uses_explicit_vendor_link(client):
         )
         db.add(
             ProductSupplier(
-                id=7, product_id=500, supplier_id=30, supplier_company_id=None,
+                id=7, product_id=500, supplier_id=30,
                 vendor_product_id=50, is_primary=True,
             )
         )
@@ -1262,7 +1259,7 @@ def test_preview_include_restock_lists_consumable(client):
             VendorProduct(id=51, sku="TC-VP", name="Test förbrukningsvara", unit_cost=9, currency="EUR", vendor_id=31)
         )
         db.add(
-            ProductSupplier(id=8, product_id=501, supplier_id=31, supplier_company_id=None, vendor_product_id=51, is_primary=True)
+            ProductSupplier(id=8, product_id=501, supplier_id=31, vendor_product_id=51, is_primary=True)
         )
         db.commit()
     finally:
@@ -1297,10 +1294,10 @@ def test_product_purchase_info_links_non_primary_supplier(client):
             )
         )
         db.add(
-            ProductSupplier(id=9, product_id=502, supplier_id=40, supplier_company_id=40, is_primary=True)
+            ProductSupplier(id=9, product_id=502, supplier_id=40, is_primary=True)
         )
         db.add(
-            ProductSupplier(id=10, product_id=502, supplier_id=41, supplier_company_id=41, vendor_product_id=52)
+            ProductSupplier(id=10, product_id=502, supplier_id=41, vendor_product_id=52)
         )
         db.commit()
     finally:
@@ -1315,14 +1312,14 @@ def test_product_purchase_info_links_non_primary_supplier(client):
 
 
 def test_restock_without_company_uses_customer_name(client):
-    """A below-limit product linked only to a Customer (no Company) must still be
-    restocked, with the supplier filled from the Customer name."""
+    """A below-limit product linked only to a Company (no other supplier) must still be
+    restocked, with the supplier filled from the Company name."""
     db = _dbsession.SessionLocal()
     try:
-        db.add(Customer(id=60, name="Loose Customer", is_product_supplier=True))
+        db.add(Company(id=60, name="Loose Customer", is_product_supplier=True))
         db.add(Product(id=503, name="Loose Item", sku="LI", product_type="consumable", min_stock_level=5))
         db.add(
-            ProductSupplier(id=11, product_id=503, supplier_id=60, supplier_company_id=None, is_primary=True)
+            ProductSupplier(id=11, product_id=503, supplier_id=60, is_primary=True)
         )
         db.commit()
     finally:

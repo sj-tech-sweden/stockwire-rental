@@ -91,11 +91,11 @@ def _route_volume_cm3(product: Product) -> Decimal:
 
 def _build_job_stop_read(job: Job) -> dict:
     venue = job.venue if hasattr(job, "venue") and job.venue else None
-    customer = job.customer if hasattr(job, "customer") and job.customer else None
+    customer = job.company if hasattr(job, "company") and job.company else None
     return {
         "id": job.id,
         "job_code": job.job_code,
-        "customer_name": customer.name if customer else (job.customer_name or None),
+        "customer_name": customer.name if customer else (job.company_name or None),
         "venue_name": venue.name if venue else (job.venue_name or None),
         "venue_address": venue.address if venue else None,
         "venue_city": venue.city if venue else None,
@@ -155,7 +155,7 @@ def _load_route_with_joins(route_id: int, db: Session) -> DeliveryRoute | None:
         select(DeliveryRoute)
         .options(
             joinedload(DeliveryRoute.stops).joinedload(RouteStop.job).joinedload(Job.venue),
-            joinedload(DeliveryRoute.stops).joinedload(RouteStop.job).joinedload(Job.customer_legacy),
+            joinedload(DeliveryRoute.stops).joinedload(RouteStop.job).joinedload(Job.company),
             joinedload(DeliveryRoute.stops).joinedload(RouteStop.vehicle),
             joinedload(DeliveryRoute.vehicle_assignments).joinedload(RouteVehicle.vehicle),
         )
@@ -222,7 +222,7 @@ def list_routes(
 ):
     q = select(DeliveryRoute).options(
         joinedload(DeliveryRoute.stops).joinedload(RouteStop.job).joinedload(Job.venue),
-        joinedload(DeliveryRoute.stops).joinedload(RouteStop.job).joinedload(Job.customer_legacy),
+        joinedload(DeliveryRoute.stops).joinedload(RouteStop.job).joinedload(Job.company),
         joinedload(DeliveryRoute.stops).joinedload(RouteStop.vehicle),
         joinedload(DeliveryRoute.vehicle_assignments).joinedload(RouteVehicle.vehicle),
     )
@@ -579,7 +579,7 @@ def get_packing_list(route_id: int, db: Session = Depends(get_db), _user: User =
         if not job:
             continue
         venue = job.venue if hasattr(job, "venue") and job.venue else None
-        customer = job.customer if hasattr(job, "customer") and job.customer else None
+        customer = job.company if hasattr(job, "company") and job.company else None
         products: list[PackingListProduct] = []
         stop_weight = Decimal("0")
         stop_volume = Decimal("0")
@@ -601,7 +601,7 @@ def get_packing_list(route_id: int, db: Session = Depends(get_db), _user: User =
         packing_stops.append(PackingListStop(
             stop_order=idx, drop_off_order=stop.stop_order,
             job_id=job.id, job_code=job.job_code,
-            customer_name=customer.name if customer else (job.customer_name or None),
+            customer_name=customer.name if customer else (job.company_name or None),
             venue_name=venue.name if venue else (job.venue_name or None),
             venue_address=venue.address if venue else None,
             vehicle_name=stop.vehicle.name if stop.vehicle else None,
