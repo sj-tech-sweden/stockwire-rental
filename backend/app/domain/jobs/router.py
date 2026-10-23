@@ -5,9 +5,9 @@ from urllib.request import Request
 from urllib.parse import urljoin
 from urllib.error import HTTPError, URLError
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Response, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Response, status
 from pydantic import BaseModel
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.orm import Session, selectinload
 
 from app.api.pagination import PaginationParams, PaginatedResponse, paginate_query
@@ -27,6 +27,7 @@ from app.domain.jobs.schemas import (
     JobRequirementBulkItem,
     JobRequirementBulkUpsert,
     JobRequirementCreate,
+    JobRequirementCreateBody,
     JobRequirementRead,
     JobRequirementUpdate,
     JobUpdate,
@@ -60,11 +61,17 @@ def bootstrap_status() -> dict[str, str]:
 def list_jobs(
     db: Session = Depends(get_db),
     project_id: int | None = None,
+    search: str | None = Query(None, description="Match job code, description or venue"),
     pagination: PaginationParams = Depends(),
 ) -> PaginatedResponse[JobRead]:
     stmt = select(Job).order_by(Job.id)
     if project_id is not None:
         stmt = stmt.where(Job.project_id == project_id)
+    if search and search.strip():
+        like = f"%{search.strip()}%"
+        stmt = stmt.where(
+            or_(Job.job_code.ilike(like), Job.description.ilike(like), Job.venue_name.ilike(like))
+        )
     items, total = paginate_query(db, stmt, pagination.skip, pagination.limit)
     return PaginatedResponse(
         items=items,
@@ -443,6 +450,20 @@ def create_requirement(payload: JobRequirementCreate, db: Session = Depends(get_
     return req
 
 
+@router.delete("/requirements/{requirement_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_requirement(
+    requirement_id: int, db: Session = Depends(get_db), _: User = Depends(require_editor)
+) -> Response:
+    req = db.get(JobRequirement, requirement_id)
+    if req is None:
+        raise HTTPException(status_code=404, detail="Job requirement not found")
+    job_id = req.job_id
+    db.delete(req)
+    db.commit()
+    emit_realtime_event("jobs.updated", {"entity": "requirement", "action": "delete", "id": requirement_id, "job_id": job_id})
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
 @router.put("/requirements/{requirement_id}", response_model=JobRequirementRead)
 def update_requirement(
     requirement_id: int, payload: JobRequirementUpdate, db: Session = Depends(get_db), _: User = Depends(require_editor)
@@ -528,6 +549,55 @@ def bulk_upsert_requirements(job_id: int, payload: JobRequirementBulkUpsert, db:
     db.commit()
     emit_realtime_event("jobs.updated", {"entity": "requirement", "action": "bulk_upsert", "job_id": job_id})
     return list(db.scalars(select(JobRequirement).where(JobRequirement.job_id == job_id).order_by(JobRequirement.id)).all())
+
+
+@router.post("/{job_id}/requirements", response_model=JobRequirementRead)
+def create_job_requirement(
+    job_id: int,
+    payload: JobRequirementCreateBody,
+    db: Session = Depends(get_db),
+    _: User = Depends(require_editor),
+) -> JobRequirement:
+    """Add a single requirement to a job (Stagewire gear push-back).
+
+    Accepts a product reference by ``product_id`` or ``sku`` (resolved to a
+    product_id), mirroring Stagewire's ``StockwireAdditionItem``. The requirement
+    records the *need* for the gear; it does not create a rental booking.
+    """
+    job = db.get(Job, job_id)
+    if job is None:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    product_id = payload.product_id
+    if product_id is None and payload.sku:
+        sku = str(payload.sku or "").strip()
+        product = db.scalars(select(Product).where(Product.sku.ilike(sku))).first()
+        if product is None:
+            raise HTTPException(status_code=404, detail=f"Product not found for SKU: {payload.sku}")
+        product_id = product.id
+    if product_id is not None:
+        if db.get(Product, product_id) is None:
+            raise HTTPException(status_code=404, detail=f"Product not found: {product_id}")
+    if payload.vendor_product_id is not None:
+        if db.get(VendorProduct, payload.vendor_product_id) is None:
+            raise HTTPException(status_code=404, detail=f"Vendor product not found: {payload.vendor_product_id}")
+
+    req = JobRequirement(
+        job_id=job_id,
+        product_id=product_id,
+        vendor_product_id=payload.vendor_product_id,
+        unit_price=payload.unit_price,
+        quantity_required=payload.quantity_required,
+        quantity_picked=payload.quantity_picked,
+        is_scannable=payload.is_scannable,
+        notes=payload.notes,
+        label=payload.label,
+    )
+    db.add(req)
+    db.commit()
+    db.refresh(req)
+    emit_realtime_event("jobs.updated", {"entity": "requirement", "action": "create", "id": req.id, "job_id": job_id})
+    return req
 
 
 # ── Eventory Rental Job Creation ─────────────────────────────────────────────

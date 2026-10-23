@@ -25,6 +25,7 @@ from app.domain.purchasing.router import router as purchasing_router
 from app.domain.projects.router import router as projects_router
 from app.domain.quotes.router import router as quotes_router
 from app.domain.realtime.router import router as realtime_router
+from app.domain.settings.router import public_router as settings_public_router
 from app.domain.settings.router import router as settings_router
 from app.domain.storage.router import router as storage_router
 from app.domain.venues.router import router as venues_router
@@ -52,6 +53,7 @@ api_router.include_router(realtime_router)
 api_router.include_router(venues_router)
 api_router.include_router(finance_router)
 api_router.include_router(settings_router)
+api_router.include_router(settings_public_router)
 api_router.include_router(storage_router)
 api_router.include_router(integrations_router)
 api_router.include_router(route_planner_router)

@@ -3,6 +3,9 @@ FROM node:24-alpine AS deps
 WORKDIR /app
 
 COPY package.json package-lock.json ./
+# Patches must be present before `npm ci` so the `patch-package` postinstall
+# can apply them to the freshly installed dependencies.
+COPY patches ./patches
 RUN npm ci --no-audit --no-fund
 
 
@@ -12,6 +15,8 @@ WORKDIR /app
 
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
+# Safety net: ensure patches are applied even if the deps-stage postinstall was skipped.
+RUN [ -d patches ] && ./node_modules/.bin/patch-package || true
 
 EXPOSE 9000
 
@@ -24,6 +29,8 @@ WORKDIR /app
 
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
+# Safety net: ensure patches are applied even if the deps-stage postinstall was skipped.
+RUN [ -d patches ] && ./node_modules/.bin/patch-package || true
 
 RUN npm run build
 

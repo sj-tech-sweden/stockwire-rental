@@ -69,6 +69,7 @@ class JobRequirementBase(BaseModel):
     quantity_picked: int = 0
     is_scannable: bool = True
     notes: str | None = None
+    label: str | None = None
 
     @model_validator(mode="after")
     def _require_source(self):
@@ -89,12 +90,38 @@ class JobRequirementUpdate(BaseModel):
     quantity_required: int | None = None
     quantity_picked: int | None = None
     notes: str | None = None
+    label: str | None = None
 
 
 class JobRequirementRead(JobRequirementBase):
     id: int
 
     model_config = {"from_attributes": True}
+
+
+class JobRequirementCreateBody(BaseModel):
+    """Body for ``POST /jobs/{job_id}/requirements``.
+
+    Mirrors Stagewire's ``StockwireAdditionItem``: a product reference (by
+    ``product_id`` or ``sku``), ``quantity`` → ``quantity_required``, ``label``
+    and ``notes``.
+    """
+
+    product_id: int | None = None
+    sku: str | None = None
+    vendor_product_id: int | None = None
+    unit_price: Decimal | None = None
+    quantity_required: int = 1
+    quantity_picked: int = 0
+    is_scannable: bool = True
+    label: str | None = None
+    notes: str | None = None
+
+    @model_validator(mode="after")
+    def _require_source(self):
+        if self.product_id is None and self.vendor_product_id is None and not self.sku:
+            raise ValueError("Either product_id, sku, or vendor_product_id must be set")
+        return self
 
 
 class JobRequirementBulkItem(BaseModel):
@@ -105,6 +132,7 @@ class JobRequirementBulkItem(BaseModel):
     quantity_picked: int = 0
     is_scannable: bool = True
     notes: str | None = None
+    label: str | None = None
 
     @model_validator(mode="after")
     def _require_source(self):

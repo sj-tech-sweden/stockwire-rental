@@ -66,6 +66,8 @@ class JobRequirement(Base):
     quantity_picked: Mapped[int] = mapped_column(default=0)
     is_scannable: Mapped[bool] = mapped_column(default=True)
     notes: Mapped[str] = mapped_column(Text, nullable=True)
+    # Free-form label for the requirement (e.g. Stagewire gear line label).
+    label: Mapped[str | None] = mapped_column(String(255), nullable=True)
 
     job: Mapped[Job] = relationship(back_populates="requirements")
     product: Mapped["Product"] = relationship(back_populates="requirements", overlaps="requirements")

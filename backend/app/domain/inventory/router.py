@@ -8,7 +8,7 @@ from collections import defaultdict
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from fastapi import UploadFile, File, Query
-from sqlalchemy import func, or_, select
+from sqlalchemy import Integer, cast, func, or_, select
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import DataError, IntegrityError, SQLAlchemyError
 
@@ -37,6 +37,7 @@ from app.domain.inventory.models import (
 )
 from app.domain.jobs.models import Job, JobRequirement
 from app.domain.customers.models import Company
+from app.domain.custom_fields.models import CustomFieldDefinition, CustomFieldValue
 from app.domain.purchasing.models import PurchaseOrder
 from app.domain.purchasing.schemas import ManualPOItem
 from app.domain.purchasing.service import (
@@ -870,6 +871,90 @@ def _resolve_hirehop_category(db: Session, product_data: dict[str, Any]) -> Inve
     return None
 
 
+CABLE_SPEC_KEYS = ["cable_type", "connector_a", "connector_b", "length_m", "cable_area_mm2", "is_balanced"]
+
+
+@router.post("/products/specs/migrate-cable-custom-fields", summary="Migrate cable custom fields into the specs JSON column")
+def migrate_cable_custom_fields_to_specs(
+    db: Session = Depends(get_db),
+    _: User = Depends(require_admin),
+) -> dict:
+    """Move the shipped cable custom-field values onto each product's ``specs``
+    JSON column (grouped), then deactivate the old cable custom-field
+    definitions so they are no longer shown as ad-hoc custom fields."""
+    defs = (
+        db.execute(
+            select(CustomFieldDefinition).where(
+                CustomFieldDefinition.entity_type == "product",
+                CustomFieldDefinition.key.in_(CABLE_SPEC_KEYS),
+            )
+        )
+        .scalars()
+        .all()
+    )
+    if not defs:
+        return {"migrated_products": 0, "deactivated_definitions": 0, "note": "no cable definitions found"}
+
+    def_key_type = {d.key: d.value_type for d in defs}
+    def_id_to_key = {d.id: d.key for d in defs}
+    def_ids = list(def_id_to_key.keys())
+
+    values = (
+        db.execute(
+            select(CustomFieldValue).where(
+                CustomFieldValue.entity_type == "product",
+                CustomFieldValue.field_definition_id.in_(def_ids),
+            )
+        )
+        .scalars()
+        .all()
+    )
+
+    # Group values by product id, coercing to the spec value type.
+    by_product: dict[int, dict[str, Any]] = defaultdict(dict)
+    for v in values:
+        key = def_id_to_key.get(v.field_definition_id)
+        if not key or v.value_text is None:
+            continue
+        raw = v.value_text
+        if def_key_type.get(key) == "number":
+            try:
+                raw = float(raw)
+            except (TypeError, ValueError):
+                continue
+        elif def_key_type.get(key) == "boolean":
+            raw = str(raw).strip().lower() in ("true", "1", "yes", "y")
+        by_product[v.entity_id][key] = raw
+
+    migrated = 0
+    for product_id, spec_updates in by_product.items():
+        product = db.get(Product, product_id)
+        if not product:
+            continue
+        specs = dict(product.specs or {})
+        changed = False
+        for k, val in spec_updates.items():
+            if specs.get(k) != val:
+                specs[k] = val
+                changed = True
+        if changed:
+            product.specs = specs
+            migrated += 1
+
+    db.flush()
+
+    for d in defs:
+        d.is_active = False
+    db.flush()
+
+    db.commit()
+    return {
+        "migrated_products": migrated,
+        "deactivated_definitions": len(defs),
+        "migrated_keys": CABLE_SPEC_KEYS,
+    }
+
+
 @router.get("/products", response_model=PaginatedResponse[ProductRead])
 def list_products(
     db: Session = Depends(get_db),
@@ -879,6 +964,9 @@ def list_products(
     brand: str | None = Query(None, description="Filter by brand (exact, case-insensitive)"),
     manufacturer: str | None = Query(None, description="Filter by manufacturer (exact, case-insensitive)"),
     category: str | None = Query(None, description="Filter by category (exact)"),
+    category_id: int | None = Query(None, description="Filter by product category tree node id (includes descendants)"),
+    min_inputs: int | None = Query(None, description="Minimum mixer input count (from specs.inputs)"),
+    min_outputs: int | None = Query(None, description="Minimum mixer output/bus count (from specs.outputs)"),
 ) -> PaginatedResponse[ProductRead]:
     stmt = select(Product)
     if exclude_rental:
@@ -892,6 +980,24 @@ def list_products(
         stmt = stmt.where(Product.manufacturer.ilike(manufacturer))
     if category:
         stmt = stmt.where(Product.category == category)
+    if category_id is not None:
+        ids = _descendant_category_ids(db, category_id)
+        stmt = stmt.where(Product.category_id.in_(ids))
+    # Mixer / stagebox I/O suggestion filters (Stagewire): compare against specs
+    # JSON counts, accepting either the mixer keys (inputs/outputs) or the
+    # stagebox keys (sb_inputs/sb_outputs).
+    if min_inputs is not None:
+        inputs_expr = cast(
+            func.coalesce(Product.specs["inputs"].as_string(), Product.specs["sb_inputs"].as_string()),
+            Integer,
+        )
+        stmt = stmt.where(inputs_expr >= min_inputs)
+    if min_outputs is not None:
+        outputs_expr = cast(
+            func.coalesce(Product.specs["outputs"].as_string(), Product.specs["sb_outputs"].as_string()),
+            Integer,
+        )
+        stmt = stmt.where(outputs_expr >= min_outputs)
     stmt = stmt.order_by(Product.id)
     products, total = paginate_query(db, stmt, pagination.skip, pagination.limit)
     if not products:
@@ -3417,6 +3523,21 @@ def _build_category_tree(categories: list[InventoryCategory]) -> list[InventoryC
     return [build_node(root) for root in roots]
 
 
+def _descendant_category_ids(db: Session, root_id: int) -> list[int]:
+    categories = db.scalars(select(InventoryCategory)).all()
+    children_by_parent: dict[int | None, list[int]] = defaultdict(list)
+    for cat in categories:
+        children_by_parent[cat.parent_id].append(cat.id)
+    ids = [root_id]
+    queue = [root_id]
+    while queue:
+        current = queue.pop()
+        for child in children_by_parent.get(current, []):
+            ids.append(child)
+            queue.append(child)
+    return ids
+
+
 def _build_zone_tree(zones: list[Zone]) -> list[ZoneTreeRead]:
     children_by_parent: dict[int | None, list[Zone]] = defaultdict(list)
     for zone in zones:
@@ -4451,6 +4572,7 @@ def _to_product_read(db: Session, product: Product) -> ProductRead:
             "weight_kg": product.weight_kg,
             "height_cm": product.height_cm,
             "width_cm": product.width_cm,
+            "specs": product.specs,
             "depth_cm": product.depth_cm,
             "maintenance_interval_days": product.maintenance_interval_days,
             "power_consumption_watts": product.power_consumption_watts,

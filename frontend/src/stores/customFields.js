@@ -102,12 +102,6 @@ export const useCustomFieldsStore = defineStore('custom-fields', () => {
     return data
   }
 
-  async function prefillProductCableFields() {
-    const { data } = await api.post('/api/v1/custom-fields/definitions/prefill-product-cable')
-    definitions.value = data
-    return data
-  }
-
   return {
     definitions,
     loading,
@@ -118,6 +112,5 @@ export const useCustomFieldsStore = defineStore('custom-fields', () => {
     fetchAllValues,
     fetchEntityValues,
     saveEntityValues,
-    prefillProductCableFields,
   }
 })

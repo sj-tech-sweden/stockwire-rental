@@ -17,6 +17,16 @@
           @click="showExportDialog = true"
         />
         <q-btn
+          v-if="stagewireReady"
+          color="secondary"
+          outline
+          icon="open_in_new"
+          :label="isPhone ? undefined : t('jobs.openInStagewire')"
+          class="q-mr-sm"
+          :disable="!currentJob?.id"
+          @click="openInStagewire"
+        />
+        <q-btn
           color="primary"
           outline
           icon="receipt_long"
@@ -1557,6 +1567,28 @@ const poPickerColumns = computed(() => [
   },
 ])
 
+const stagewireReady = ref(false)
+
+async function loadStagewireReady() {
+  try {
+    const { data } = await api.get('/api/v1/settings/integrations/stagewire-instances')
+    stagewireReady.value = (data || []).some((i) => i.enabled && i.api_url && i.has_api_key)
+  } catch {
+    stagewireReady.value = false
+  }
+}
+
+async function openInStagewire() {
+  if (!currentJob.value?.id) return
+  try {
+    const { data } = await api.get(`/api/v1/settings/integrations/stagewire/job-link/${currentJob.value.id}`)
+    window.open(data.url, '_blank')
+  } catch (err) {
+    const detail = err?.response?.data?.detail || err?.message || 'Could not open Stagewire'
+    $q.notify({ type: 'negative', message: detail })
+  }
+}
+
 function openJobPo() {
   poBuilderJobIds.value = [currentJobId.value]
   poBuilderPoId.value = null
@@ -1594,6 +1626,10 @@ function startAddToPo() {
 function onPoBuilderDone() {
   $q.notify({ type: 'positive', message: t('purchasing.createPo') })
 }
+
+onMounted(() => {
+  loadStagewireReady()
+})
 
 onMounted(async () => {
   await loadData()

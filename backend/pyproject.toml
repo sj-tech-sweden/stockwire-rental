@@ -9,11 +9,11 @@ description = "Stockwire Rental backend"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
-  "fastapi==0.159.1",
+  "fastapi==0.161.1",
   "uvicorn[standard]==0.54.0",
   "email-validator==2.3.0",
   "jinja2==3.1.6",
-  "pydantic-settings==2.16.0",
+  "pydantic-settings==2.16.1",
   "pywebpush==2.5.0",
   "sqlalchemy==2.1.6",
   "asyncpg==0.32.0",
@@ -27,10 +27,10 @@ dependencies = [
   "python-multipart==0.0.32",
   "httpx==0.28.1",
   "paho-mqtt==2.1.0",
-  "boto3==1.43.117",
+  "boto3==1.43.118",
   "prometheus-fastapi-instrumentator==8.1.0",
   "icalendar==7.3.0",
-  "openai>=3.36.1,<3.37.0",
+  "openai>=3.37.0,<3.38.0",
   "slowapi>=0.1.9",
   "reportlab>=5,<5.2",
   "pypdf>=6.21,<6.22",
@@ -41,7 +41,7 @@ dev = [
   "pytest==9.1.1",
   "pytest-asyncio==1.4.0",
   "httpx==0.28.1",
-  "ruff==0.17.1"
+  "ruff==0.17.2"
 ]
 
 [tool.pytest.ini_options]

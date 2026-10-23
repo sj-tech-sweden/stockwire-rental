@@ -35,6 +35,7 @@ services:
       APP_NAME: ${APP_NAME:-Stockwire Rental API}
       APP_ENV: ${APP_ENV:-development}
       APP_HOST: 0.0.0.0
+      INTEGRATION_ALLOW_INSECURE_DEV: ${INTEGRATION_ALLOW_INSECURE_DEV:-true}
       APP_PORT: 8000
       POSTGRES_HOST: postgres
       POSTGRES_PORT: 5432
