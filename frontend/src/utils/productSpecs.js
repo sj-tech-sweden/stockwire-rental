@@ -1,7 +1,7 @@
 /**
  * Grouped product specification fields.
  *
- * Keeps structured data (mixer I/O counts, cable attributes, …) in a single
+ * Keeps structured data (mixer I/O counts, cable attributes, speaker details, …) in a single
  * `specs` JSON column on the product instead of ad-hoc custom fields, while
  * only exposing the fields that are valid for a given product (matched by
  * product_type and/or category). Stagewire reads `specs.inputs` / `specs.outputs`
@@ -42,6 +42,9 @@ export const PRODUCT_SPEC_FIELDS = {
   // Speaker / PA
   spk_power_w: { labelKey: 'inventory.specSpkPowerW', type: 'number', min: 0, step: 1, unit: 'W' },
   spk_max_spl_db: { labelKey: 'inventory.specSpkMaxSpl', type: 'number', min: 0, step: 0.1, unit: 'dB' },
+  target_spl_db: { labelKey: 'inventory.specSpkTargetSpl', type: 'number', min: 0, step: 0.1, unit: 'dB' },
+  dispersion_h_deg: { labelKey: 'inventory.specSpkDispersionH', type: 'number', min: 0, max: 360, step: 1, unit: '°' },
+  throw_m: { labelKey: 'inventory.specSpkThrowM', type: 'number', min: 0, step: 0.1, unit: 'm' },
   spk_impedance_ohm: { labelKey: 'inventory.specSpkImpedance', type: 'number', min: 0, step: 0.1, unit: 'Ω' },
   spk_driver_config: {
     labelKey: 'inventory.specSpkDriver',
@@ -99,7 +102,16 @@ export const PRODUCT_SPEC_GROUPS = [
   {
     key: 'speaker',
     labelKey: 'inventory.specGroupSpeaker',
-    fields: ['spk_power_w', 'spk_max_spl_db', 'spk_impedance_ohm', 'spk_driver_config', 'spk_flyable'],
+    fields: [
+      'spk_power_w',
+      'spk_max_spl_db',
+      'target_spl_db',
+      'dispersion_h_deg',
+      'throw_m',
+      'spk_impedance_ohm',
+      'spk_driver_config',
+      'spk_flyable',
+    ],
   },
   {
     key: 'lighting',
@@ -120,6 +132,22 @@ export const PRODUCT_SPEC_GROUPS = [
 
 export function specFieldDef(key) {
   return PRODUCT_SPEC_FIELDS[key]
+}
+
+// Assumes max SPL is specified at 1 m in free field (20 dB loss per distance decade).
+export function calculateSpeakerThrow(maxSplDb, targetSplDb) {
+  const maxSpl = Number(maxSplDb)
+  const targetSpl = Number(targetSplDb)
+  if (
+    maxSplDb === null || maxSplDb === undefined || maxSplDb === ''
+    || targetSplDb === null || targetSplDb === undefined || targetSplDb === ''
+    || !Number.isFinite(maxSpl) || !Number.isFinite(targetSpl)
+  ) {
+    return null
+  }
+
+  const distance = 10 ** ((maxSpl - targetSpl) / 20)
+  return Number.isFinite(distance) && distance > 0 ? Number(distance.toFixed(2)) : null
 }
 
 // Groups that currently have at least one populated field in `specs`.

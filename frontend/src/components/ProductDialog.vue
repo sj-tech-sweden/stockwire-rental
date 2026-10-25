@@ -553,14 +553,17 @@
                     />
                     <q-input
                       v-else-if="PRODUCT_SPEC_FIELDS[fieldKey].type === 'number'"
-                      :model-value="getSpecValue(productForm.specs, fieldKey)"
+                      :model-value="fieldKey === 'throw_m' ? calculatedSpeakerThrowM : getSpecValue(productForm.specs, fieldKey)"
                       :label="t(PRODUCT_SPEC_FIELDS[fieldKey].labelKey)"
                       :type="'number'"
                       :min="PRODUCT_SPEC_FIELDS[fieldKey].min"
+                      :max="PRODUCT_SPEC_FIELDS[fieldKey].max"
                       :step="PRODUCT_SPEC_FIELDS[fieldKey].step"
+                      :readonly="fieldKey === 'throw_m'"
+                      :hint="fieldKey === 'throw_m' ? t('inventory.specSpkThrowHelp') : undefined"
                       outlined
                       dense
-                      @update:model-value="val => (productForm.specs = setSpecValue(productForm.specs, fieldKey, val === '' || val == null ? null : Number(val)))"
+                      @update:model-value="val => updateProductSpec(fieldKey, val === '' || val == null ? null : Number(val))"
                     />
                     <q-input
                       v-else
@@ -665,6 +668,7 @@ import { normalizeCurrencyCode } from '../constants/currencies'
 import { translateCategory } from '../utils/translate-helpers'
 import { isRentalProduct } from '../utils/inventory-overview'
 import {
+  calculateSpeakerThrow,
   PRODUCT_SPEC_FIELDS,
   PRODUCT_SPEC_GROUPS,
   activeSpecGroups,
@@ -764,6 +768,14 @@ const manualSpecGroups = ref([])
 const productFieldRows = ref([])
 
 const activeSpecGroupList = computed(() => activeSpecGroups(productForm.value.specs, manualSpecGroups.value))
+const calculatedSpeakerThrowM = computed(() => calculateSpeakerThrow(
+  productForm.value.specs?.spk_max_spl_db,
+  productForm.value.specs?.target_spl_db,
+))
+
+function updateProductSpec(fieldKey, value) {
+  productForm.value.specs = setSpecValue(productForm.value.specs, fieldKey, value)
+}
 
 function availableSpecGroups() {
   const active = new Set(activeSpecGroupList.value.map((g) => g.key))
@@ -1547,8 +1559,10 @@ async function saveProduct() {
       min_stock_level: productForm.value.min_stock_level != null ? Number(productForm.value.min_stock_level) : null,
       min_order_qty: productForm.value.min_order_qty != null ? Number(productForm.value.min_order_qty) : null,
       is_public: !!productForm.value.is_public,
-      specs: productForm.value.specs && typeof productForm.value.specs === 'object' ? productForm.value.specs : {},
+      specs: { ...(productForm.value.specs && typeof productForm.value.specs === 'object' ? productForm.value.specs : {}) },
     }
+    if (calculatedSpeakerThrowM.value === null) delete payload.specs.throw_m
+    else payload.specs.throw_m = calculatedSpeakerThrowM.value
 
     let savedProduct
     if (productEditing.value) {
