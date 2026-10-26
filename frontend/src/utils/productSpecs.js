@@ -150,6 +150,22 @@ export function calculateSpeakerThrow(maxSplDb, targetSplDb) {
   return Number.isFinite(distance) && distance > 0 ? Number(distance.toFixed(2)) : null
 }
 
+export function getSpeakerThrowValue(specs, calculatedThrow) {
+  return specs?.throw_m_manual === true ? getSpecValue(specs, 'throw_m') : calculatedThrow
+}
+
+export function setSpeakerThrowManualMode(specs, manual, calculatedThrow) {
+  const next = { ...(specs || {}) }
+  if (manual) {
+    next.throw_m_manual = true
+    next.throw_m = calculatedThrow
+  } else {
+    delete next.throw_m_manual
+    next.throw_m = calculatedThrow
+  }
+  return next
+}
+
 // Groups that currently have at least one populated field in `specs`.
 export function populatedSpecGroups(specs) {
   const s = specs || {}
@@ -168,6 +184,7 @@ export function removeSpecGroup(specs, groupKey) {
   if (!group) return specs
   const next = { ...(specs || {}) }
   for (const f of group.fields) delete next[f]
+  if (groupKey === 'speaker') delete next.throw_m_manual
   return next
 }
 

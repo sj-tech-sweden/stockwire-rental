@@ -533,6 +533,14 @@
                   </div>
                   <div v-for="fieldKey in group.fields" :key="fieldKey" class="q-mb-sm">
                     <q-toggle
+                      v-if="fieldKey === 'throw_m'"
+                      :model-value="productForm.specs?.throw_m_manual === true"
+                      :label="t('inventory.specSpkThrowManual')"
+                      dense
+                      class="q-mb-sm"
+                      @update:model-value="handleSpeakerThrowManual"
+                    />
+                    <q-toggle
                       v-if="PRODUCT_SPEC_FIELDS[fieldKey].type === 'boolean'"
                       :model-value="!!getSpecValue(productForm.specs, fieldKey)"
                       :label="t(PRODUCT_SPEC_FIELDS[fieldKey].labelKey)"
@@ -553,14 +561,14 @@
                     />
                     <q-input
                       v-else-if="PRODUCT_SPEC_FIELDS[fieldKey].type === 'number'"
-                      :model-value="fieldKey === 'throw_m' ? calculatedSpeakerThrowM : getSpecValue(productForm.specs, fieldKey)"
+                      :model-value="fieldKey === 'throw_m' ? getSpeakerThrowValue(productForm.specs, calculatedSpeakerThrowM) : getSpecValue(productForm.specs, fieldKey)"
                       :label="t(PRODUCT_SPEC_FIELDS[fieldKey].labelKey)"
                       :type="'number'"
                       :min="PRODUCT_SPEC_FIELDS[fieldKey].min"
                       :max="PRODUCT_SPEC_FIELDS[fieldKey].max"
                       :step="PRODUCT_SPEC_FIELDS[fieldKey].step"
-                      :readonly="fieldKey === 'throw_m'"
-                      :hint="fieldKey === 'throw_m' ? t('inventory.specSpkThrowHelp') : undefined"
+                      :readonly="fieldKey === 'throw_m' && productForm.specs?.throw_m_manual !== true"
+                      :hint="fieldKey === 'throw_m' ? t(productForm.specs?.throw_m_manual === true ? 'inventory.specSpkThrowManualHelp' : 'inventory.specSpkThrowHelp') : undefined"
                       outlined
                       dense
                       @update:model-value="val => updateProductSpec(fieldKey, val === '' || val == null ? null : Number(val))"
@@ -669,12 +677,14 @@ import { translateCategory } from '../utils/translate-helpers'
 import { isRentalProduct } from '../utils/inventory-overview'
 import {
   calculateSpeakerThrow,
+  getSpeakerThrowValue,
   PRODUCT_SPEC_FIELDS,
   PRODUCT_SPEC_GROUPS,
   activeSpecGroups,
   removeSpecGroup,
   getSpecValue,
   setSpecValue,
+  setSpeakerThrowManualMode,
 } from '../utils/productSpecs'
 import { useProductImage } from '../composables/useProductImage'
 import { api } from '../boot/axios'
@@ -775,6 +785,14 @@ const calculatedSpeakerThrowM = computed(() => calculateSpeakerThrow(
 
 function updateProductSpec(fieldKey, value) {
   productForm.value.specs = setSpecValue(productForm.value.specs, fieldKey, value)
+}
+
+function handleSpeakerThrowManual(enabled) {
+  productForm.value.specs = setSpeakerThrowManualMode(
+    productForm.value.specs,
+    enabled,
+    calculatedSpeakerThrowM.value,
+  )
 }
 
 function availableSpecGroups() {
@@ -1561,8 +1579,15 @@ async function saveProduct() {
       is_public: !!productForm.value.is_public,
       specs: { ...(productForm.value.specs && typeof productForm.value.specs === 'object' ? productForm.value.specs : {}) },
     }
-    if (calculatedSpeakerThrowM.value === null) delete payload.specs.throw_m
-    else payload.specs.throw_m = calculatedSpeakerThrowM.value
+    if (payload.specs.throw_m_manual === true) {
+      if (payload.specs.throw_m === null || payload.specs.throw_m === undefined || payload.specs.throw_m === '') {
+        delete payload.specs.throw_m
+      }
+    } else {
+      delete payload.specs.throw_m_manual
+      if (calculatedSpeakerThrowM.value === null) delete payload.specs.throw_m
+      else payload.specs.throw_m = calculatedSpeakerThrowM.value
+    }
 
     let savedProduct
     if (productEditing.value) {

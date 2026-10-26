@@ -1,8 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import {
   calculateSpeakerThrow,
+  getSpeakerThrowValue,
   PRODUCT_SPEC_GROUPS,
   PRODUCT_SPEC_FIELDS,
+  removeSpecGroup,
+  setSpeakerThrowManualMode,
 } from '../../src/utils/productSpecs.js'
 
 describe('speaker product specifications', () => {
@@ -27,5 +30,21 @@ describe('speaker product specifications', () => {
     expect(calculateSpeakerThrow(100, null)).toBeNull()
     expect(calculateSpeakerThrow('not-a-number', 94)).toBeNull()
     expect(calculateSpeakerThrow(100, 'not-a-number')).toBeNull()
+  })
+
+  it('removes manual throw mode with the speaker specification group', () => {
+    expect(removeSpecGroup({ throw_m: 12, throw_m_manual: true, spk_power_w: 500 }, 'speaker')).toEqual({})
+  })
+
+  it('uses a manually entered throw only when manual mode is enabled', () => {
+    expect(getSpeakerThrowValue({ throw_m: 12, throw_m_manual: true }, 10)).toBe(12)
+    expect(getSpeakerThrowValue({ throw_m: 12 }, 10)).toBe(10)
+    expect(setSpeakerThrowManualMode({ throw_m: 12 }, true, 10)).toEqual({
+      throw_m: 10,
+      throw_m_manual: true,
+    })
+    expect(setSpeakerThrowManualMode({ throw_m: 12, throw_m_manual: true }, false, 10)).toEqual({
+      throw_m: 10,
+    })
   })
 })
