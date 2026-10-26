@@ -1,12 +1,15 @@
 import { describe, expect, it } from 'vitest'
 import {
+  calculateCameraSensorWidth,
   calculateSpeakerThrow,
+  getCameraSensorWidth,
   getSpeakerThrowValue,
   PRODUCT_SPEC_GROUPS,
   PRODUCT_SPEC_FIELDS,
   productSpecDisplayGroups,
   removeSpecGroup,
   setSpeakerThrowManualMode,
+  withCalculatedCameraSensorWidth,
 } from '../../src/utils/productSpecs.js'
 
 describe('speaker product specifications', () => {
@@ -62,25 +65,54 @@ describe('speaker product specifications', () => {
       const cameraFields = PRODUCT_SPEC_GROUPS.find((group) => group.key === 'camera').fields
       const lensFields = PRODUCT_SPEC_GROUPS.find((group) => group.key === 'lens').fields
 
-      expect(cameraFields).toEqual(['cam_sensor_width_mm', 'cam_max_distance_m'])
+      expect(cameraFields).toEqual([
+        'cam_aspect_ratio',
+        'cam_sensor_diagonal_mm',
+        'cam_sensor_width_mm',
+        'cam_max_distance_m',
+      ])
       expect(lensFields).toEqual(['lens_focal_length_min_mm', 'lens_focal_length_max_mm'])
       expect(PRODUCT_SPEC_FIELDS.cam_sensor_width_mm.unit).toBe('mm')
+      expect(PRODUCT_SPEC_FIELDS.cam_sensor_diagonal_mm.unit).toBe('mm')
       expect(PRODUCT_SPEC_FIELDS.cam_max_distance_m.unit).toBe('m')
       expect(PRODUCT_SPEC_FIELDS.lens_focal_length_min_mm.unit).toBe('mm')
       expect(PRODUCT_SPEC_FIELDS.lens_focal_length_max_mm.unit).toBe('mm')
+    })
+
+    it('calculates and persists sensor width from aspect ratio and diagonal size', () => {
+      expect(calculateCameraSensorWidth('3:2', 28.2)).toBe(23.46)
+      expect(calculateCameraSensorWidth('16:9', 15.86)).toBe(13.82)
+      expect(calculateCameraSensorWidth('4:3', 15.86)).toBe(12.69)
+      expect(calculateCameraSensorWidth('invalid', 15.86)).toBeNull()
+      expect(calculateCameraSensorWidth('3:2', null)).toBeNull()
+
+      const specs = {
+        cam_aspect_ratio: '3:2',
+        cam_sensor_diagonal_mm: 28.2,
+        cam_sensor_width_mm: 23.5,
+      }
+      expect(getCameraSensorWidth(specs)).toBe(23.46)
+      expect(withCalculatedCameraSensorWidth(specs)).toEqual({
+        ...specs,
+        cam_sensor_width_mm: 23.46,
+      })
+      expect(specs.cam_sensor_width_mm).toBe(23.5)
     })
 
     it('formats all populated camera and lens specs for product info', () => {
       const translate = (key) => ({
         'inventory.specGroupCamera': 'Camera',
         'inventory.specCamSensorWidth': 'Sensor Width (mm)',
+        'inventory.specCamAspectRatio': 'Sensor Aspect Ratio',
+        'inventory.specCamSensorDiagonal': 'Sensor Diagonal (mm)',
         'inventory.specGroupLens': 'Lens',
         'inventory.specLensFocalLengthMin': 'Minimum Focal Length (mm)',
         'common.true': 'True',
       }[key] || key)
 
       expect(productSpecDisplayGroups({
-        cam_sensor_width_mm: 23.5,
+        cam_aspect_ratio: '3:2',
+        cam_sensor_diagonal_mm: 28.2,
         cam_max_distance_m: 0,
         lens_focal_length_min_mm: 24,
         lens_focal_length_max_mm: 70,
@@ -95,7 +127,9 @@ describe('speaker product specifications', () => {
           key: 'camera',
           label: 'Camera',
           fields: [
-            { key: 'cam_sensor_width_mm', label: 'Sensor Width (mm)', value: 23.5 },
+            { key: 'cam_aspect_ratio', label: 'Sensor Aspect Ratio', value: '3:2' },
+            { key: 'cam_sensor_diagonal_mm', label: 'Sensor Diagonal (mm)', value: 28.2 },
+            { key: 'cam_sensor_width_mm', label: 'Sensor Width (mm)', value: 23.46 },
             { key: 'cam_max_distance_m', label: 'inventory.specCamMaxDistance', value: 0 },
           ],
         },

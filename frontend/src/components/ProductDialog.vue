@@ -561,14 +561,14 @@
                     />
                     <q-input
                       v-else-if="PRODUCT_SPEC_FIELDS[fieldKey].type === 'number'"
-                      :model-value="fieldKey === 'throw_m' ? getSpeakerThrowValue(productForm.specs, calculatedSpeakerThrowM) : getSpecValue(productForm.specs, fieldKey)"
+                      :model-value="fieldKey === 'throw_m' ? getSpeakerThrowValue(productForm.specs, calculatedSpeakerThrowM) : fieldKey === 'cam_sensor_width_mm' ? getCameraSensorWidth(productForm.specs) : getSpecValue(productForm.specs, fieldKey)"
                       :label="t(PRODUCT_SPEC_FIELDS[fieldKey].labelKey)"
                       :type="'number'"
                       :min="PRODUCT_SPEC_FIELDS[fieldKey].min"
                       :max="PRODUCT_SPEC_FIELDS[fieldKey].max"
                       :step="PRODUCT_SPEC_FIELDS[fieldKey].step"
-                      :readonly="fieldKey === 'throw_m' && productForm.specs?.throw_m_manual !== true"
-                      :hint="fieldKey === 'throw_m' ? t(productForm.specs?.throw_m_manual === true ? 'inventory.specSpkThrowManualHelp' : 'inventory.specSpkThrowHelp') : undefined"
+                      :readonly="(fieldKey === 'throw_m' && productForm.specs?.throw_m_manual !== true) || (fieldKey === 'cam_sensor_width_mm' && calculateCameraSensorWidth(productForm.specs?.cam_aspect_ratio, productForm.specs?.cam_sensor_diagonal_mm) !== null)"
+                      :hint="fieldKey === 'throw_m' ? t(productForm.specs?.throw_m_manual === true ? 'inventory.specSpkThrowManualHelp' : 'inventory.specSpkThrowHelp') : fieldKey === 'cam_sensor_width_mm' && calculateCameraSensorWidth(productForm.specs?.cam_aspect_ratio, productForm.specs?.cam_sensor_diagonal_mm) !== null ? t('inventory.specCamSensorWidthHelp') : undefined"
                       outlined
                       dense
                       @update:model-value="val => updateProductSpec(fieldKey, val === '' || val == null ? null : Number(val))"
@@ -577,6 +577,7 @@
                       v-else
                       :model-value="getSpecValue(productForm.specs, fieldKey)"
                       :label="t(PRODUCT_SPEC_FIELDS[fieldKey].labelKey)"
+                      :hint="fieldKey === 'cam_aspect_ratio' ? t('inventory.specCamAspectRatioHelp') : undefined"
                       outlined
                       dense
                       @update:model-value="val => (productForm.specs = setSpecValue(productForm.specs, fieldKey, val))"
@@ -676,7 +677,9 @@ import { normalizeCurrencyCode } from '../constants/currencies'
 import { translateCategory } from '../utils/translate-helpers'
 import { isRentalProduct } from '../utils/inventory-overview'
 import {
+  calculateCameraSensorWidth,
   calculateSpeakerThrow,
+  getCameraSensorWidth,
   getSpeakerThrowValue,
   PRODUCT_SPEC_FIELDS,
   PRODUCT_SPEC_GROUPS,
@@ -685,6 +688,7 @@ import {
   getSpecValue,
   setSpecValue,
   setSpeakerThrowManualMode,
+  withCalculatedCameraSensorWidth,
 } from '../utils/productSpecs'
 import { useProductImage } from '../composables/useProductImage'
 import { api } from '../boot/axios'
@@ -1579,6 +1583,7 @@ async function saveProduct() {
       is_public: !!productForm.value.is_public,
       specs: { ...(productForm.value.specs && typeof productForm.value.specs === 'object' ? productForm.value.specs : {}) },
     }
+    payload.specs = withCalculatedCameraSensorWidth(payload.specs)
     if (payload.specs.throw_m_manual === true) {
       if (payload.specs.throw_m === null || payload.specs.throw_m === undefined || payload.specs.throw_m === '') {
         delete payload.specs.throw_m

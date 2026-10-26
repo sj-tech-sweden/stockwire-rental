@@ -79,6 +79,8 @@ export const PRODUCT_SPEC_FIELDS = {
   vid_inputs: { labelKey: 'inventory.specVidInputs', type: 'text' },
   vm_inputs: { labelKey: 'inventory.specVidMixerInputs', type: 'number', min: 0, step: 1 },
   vm_outputs: { labelKey: 'inventory.specVidMixerOutputs', type: 'number', min: 0, step: 1 },
+  cam_aspect_ratio: { labelKey: 'inventory.specCamAspectRatio', type: 'text' },
+  cam_sensor_diagonal_mm: { labelKey: 'inventory.specCamSensorDiagonal', type: 'number', min: 0, step: 0.1, unit: 'mm' },
   cam_sensor_width_mm: { labelKey: 'inventory.specCamSensorWidth', type: 'number', min: 0, step: 0.1, unit: 'mm' },
   cam_max_distance_m: { labelKey: 'inventory.specCamMaxDistance', type: 'number', min: 0, step: 0.1, unit: 'm' },
   lens_focal_length_min_mm: { labelKey: 'inventory.specLensFocalLengthMin', type: 'number', min: 0, step: 0.1, unit: 'mm' },
@@ -142,7 +144,7 @@ export const PRODUCT_SPEC_GROUPS = [
   {
     key: 'camera',
     labelKey: 'inventory.specGroupCamera',
-    fields: ['cam_sensor_width_mm', 'cam_max_distance_m'],
+    fields: ['cam_aspect_ratio', 'cam_sensor_diagonal_mm', 'cam_sensor_width_mm', 'cam_max_distance_m'],
   },
   {
     key: 'lens',
@@ -171,6 +173,38 @@ export function calculateSpeakerThrow(maxSplDb, targetSplDb) {
   return Number.isFinite(distance) && distance > 0 ? Number(distance.toFixed(2)) : null
 }
 
+export function calculateCameraSensorWidth(aspectRatio, diagonalMm) {
+  const match = String(aspectRatio ?? '').trim().match(
+    /^(\d+(?:\.\d+)?)\s*[:/xX]\s*(\d+(?:\.\d+)?)$/,
+  )
+  const diagonal = Number(diagonalMm)
+  if (!match || !Number.isFinite(diagonal) || diagonal <= 0) return null
+
+  const aspectWidth = Number(match[1])
+  const aspectHeight = Number(match[2])
+  if (
+    !Number.isFinite(aspectWidth) || aspectWidth <= 0
+    || !Number.isFinite(aspectHeight) || aspectHeight <= 0
+  ) {
+    return null
+  }
+
+  const width = diagonal * aspectWidth / Math.hypot(aspectWidth, aspectHeight)
+  return Number.isFinite(width) && width > 0 ? Number(width.toFixed(2)) : null
+}
+
+export function getCameraSensorWidth(specs) {
+  return calculateCameraSensorWidth(specs?.cam_aspect_ratio, specs?.cam_sensor_diagonal_mm)
+    ?? getSpecValue(specs, 'cam_sensor_width_mm')
+}
+
+export function withCalculatedCameraSensorWidth(specs) {
+  const next = { ...(specs || {}) }
+  const width = calculateCameraSensorWidth(next.cam_aspect_ratio, next.cam_sensor_diagonal_mm)
+  if (width !== null) next.cam_sensor_width_mm = width
+  return next
+}
+
 export function getSpeakerThrowValue(specs, calculatedThrow) {
   return specs?.throw_m_manual === true ? getSpecValue(specs, 'throw_m') : calculatedThrow
 }
@@ -195,17 +229,22 @@ export function populatedSpecGroups(specs) {
 
 export function productSpecDisplayGroups(specs, translate) {
   const values = specs || {}
+  const cameraSensorWidth = getCameraSensorWidth(values)
   return populatedSpecGroups(values).map((group) => ({
     key: group.key,
     label: translate(group.labelKey),
     fields: group.fields
-      .filter((key) => values[key] !== undefined && values[key] !== null && values[key] !== '')
+      .filter((key) => key === 'cam_sensor_width_mm'
+        ? cameraSensorWidth !== undefined && cameraSensorWidth !== null && cameraSensorWidth !== ''
+        : values[key] !== undefined && values[key] !== null && values[key] !== '')
       .map((key) => ({
         key,
         label: translate(PRODUCT_SPEC_FIELDS[key].labelKey),
-        value: PRODUCT_SPEC_FIELDS[key].type === 'boolean'
-          ? translate(values[key] ? 'common.true' : 'common.false')
-          : values[key],
+        value: key === 'cam_sensor_width_mm'
+          ? cameraSensorWidth
+          : PRODUCT_SPEC_FIELDS[key].type === 'boolean'
+            ? translate(values[key] ? 'common.true' : 'common.false')
+            : values[key],
       })),
   }))
 }
