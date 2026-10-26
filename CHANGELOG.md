@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.24.0](https://github.com/sj-tech-sweden/stockwire-rental/compare/0.23.0...0.24.0) (2026-10-26)
+
+
+### Features
+
+* **inventory:** add video and camera specs ([122d3d6](https://github.com/sj-tech-sweden/stockwire-rental/commit/122d3d63ac11090c26ed4e244474284171c03434))
+* **inventory:** calculate camera sensor width ([f2974f6](https://github.com/sj-tech-sweden/stockwire-rental/commit/f2974f637b975edee62e5f5105c861b43fc35163))
+
+
+### Bug Fixes
+
+* **inventory:** preserve and display product specs ([08d45ad](https://github.com/sj-tech-sweden/stockwire-rental/commit/08d45ad93122caab57424da3463eafdd40126d31))
+
 ## [0.23.0](https://github.com/sj-tech-sweden/stockwire-rental/compare/0.22.0...0.23.0) (2026-10-26)
 
 
