@@ -1,5 +1,27 @@
 # Changelog
 
+## [0.22.0](https://github.com/sj-tech-sweden/stockwire-rental/compare/0.21.0...0.22.0) (2026-10-26)
+
+
+### Features
+
+* **deps:** update dependency fastapi to v0.162.0 ([74b8dda](https://github.com/sj-tech-sweden/stockwire-rental/commit/74b8ddad2029119e3765683fc4b7c8936fef4399))
+* **deps:** update dependency fastapi to v0.162.0 ([a1da092](https://github.com/sj-tech-sweden/stockwire-rental/commit/a1da09266484147eb7a8c544a5baab6a732e5998))
+* **inventory:** add calculated speaker throw specs ([f5cc083](https://github.com/sj-tech-sweden/stockwire-rental/commit/f5cc0838a28594f2632510f3278eff1d9e64a1c1))
+* **inventory:** add calculated speaker throw specs ([02d6b13](https://github.com/sj-tech-sweden/stockwire-rental/commit/02d6b1300079e17e753feda63043d72774c87807))
+
+
+### Bug Fixes
+
+* **deps:** update dependency pytest-asyncio to v1.4.1 ([42bd5d6](https://github.com/sj-tech-sweden/stockwire-rental/commit/42bd5d637d8c250f8c3c6c81baadcd054ca62d43))
+* **deps:** update dependency pytest-asyncio to v1.4.1 ([7d30dcd](https://github.com/sj-tech-sweden/stockwire-rental/commit/7d30dcdd87b24da6b74ec477ea4a79765ec38353))
+
+
+### Miscellaneous
+
+* **deps:** bump the npm_and_yarn group across 2 directories with 4 updates ([018af21](https://github.com/sj-tech-sweden/stockwire-rental/commit/018af210bf792aea8722f40eb4f4f4455b478d1c))
+* **deps:** bump the npm_and_yarn group across 2 directories with 4 updates ([43cff28](https://github.com/sj-tech-sweden/stockwire-rental/commit/43cff2881665440731e332b9e218d3fd9c4a25d1))
+
 ## [0.21.0](https://github.com/sj-tech-sweden/stockwire-rental/compare/0.20.0...0.21.0) (2026-10-23)
 
 
