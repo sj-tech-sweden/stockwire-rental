@@ -77,6 +77,12 @@ export const PRODUCT_SPEC_FIELDS = {
   },
   vid_throw_ratio: { labelKey: 'inventory.specVidThrowRatio', type: 'number', min: 0, step: 0.01 },
   vid_inputs: { labelKey: 'inventory.specVidInputs', type: 'text' },
+  vm_inputs: { labelKey: 'inventory.specVidMixerInputs', type: 'number', min: 0, step: 1 },
+  vm_outputs: { labelKey: 'inventory.specVidMixerOutputs', type: 'number', min: 0, step: 1 },
+  cam_sensor_width_mm: { labelKey: 'inventory.specCamSensorWidth', type: 'number', min: 0, step: 0.1, unit: 'mm' },
+  cam_max_distance_m: { labelKey: 'inventory.specCamMaxDistance', type: 'number', min: 0, step: 0.1, unit: 'm' },
+  lens_focal_length_min_mm: { labelKey: 'inventory.specLensFocalLengthMin', type: 'number', min: 0, step: 0.1, unit: 'mm' },
+  lens_focal_length_max_mm: { labelKey: 'inventory.specLensFocalLengthMax', type: 'number', min: 0, step: 0.1, unit: 'mm' },
 }
 
 // A group is shown for a product when it already has data in `specs` (so saved
@@ -127,6 +133,21 @@ export const PRODUCT_SPEC_GROUPS = [
     key: 'video',
     labelKey: 'inventory.specGroupVideo',
     fields: ['vid_lumens', 'vid_resolution', 'vid_throw_ratio', 'vid_inputs'],
+  },
+  {
+    key: 'video_mixer',
+    labelKey: 'inventory.specGroupVideoMixer',
+    fields: ['vm_inputs', 'vm_outputs'],
+  },
+  {
+    key: 'camera',
+    labelKey: 'inventory.specGroupCamera',
+    fields: ['cam_sensor_width_mm', 'cam_max_distance_m'],
+  },
+  {
+    key: 'lens',
+    labelKey: 'inventory.specGroupLens',
+    fields: ['lens_focal_length_min_mm', 'lens_focal_length_max_mm'],
   },
 ]
 

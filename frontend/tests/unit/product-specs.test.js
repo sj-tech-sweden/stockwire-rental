@@ -47,4 +47,26 @@ describe('speaker product specifications', () => {
       throw_m: 10,
     })
   })
+
+  describe('video product specifications', () => {
+    it('exposes separate video mixer input and output counts', () => {
+      const videoMixerFields = PRODUCT_SPEC_GROUPS.find((group) => group.key === 'video_mixer').fields
+
+      expect(videoMixerFields).toEqual(['vm_inputs', 'vm_outputs'])
+      expect(PRODUCT_SPEC_FIELDS.vm_inputs.type).toBe('number')
+      expect(PRODUCT_SPEC_FIELDS.vm_outputs.type).toBe('number')
+    })
+
+    it('exposes camera and lens geometry for camera coverage', () => {
+      const cameraFields = PRODUCT_SPEC_GROUPS.find((group) => group.key === 'camera').fields
+      const lensFields = PRODUCT_SPEC_GROUPS.find((group) => group.key === 'lens').fields
+
+      expect(cameraFields).toEqual(['cam_sensor_width_mm', 'cam_max_distance_m'])
+      expect(lensFields).toEqual(['lens_focal_length_min_mm', 'lens_focal_length_max_mm'])
+      expect(PRODUCT_SPEC_FIELDS.cam_sensor_width_mm.unit).toBe('mm')
+      expect(PRODUCT_SPEC_FIELDS.cam_max_distance_m.unit).toBe('m')
+      expect(PRODUCT_SPEC_FIELDS.lens_focal_length_min_mm.unit).toBe('mm')
+      expect(PRODUCT_SPEC_FIELDS.lens_focal_length_max_mm.unit).toBe('mm')
+    })
+  })
 })
