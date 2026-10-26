@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.23.0](https://github.com/sj-tech-sweden/stockwire-rental/compare/0.22.0...0.23.0) (2026-10-26)
+
+
+### Features
+
+* **inventory:** allow manual speaker throw length ([23e0e1e](https://github.com/sj-tech-sweden/stockwire-rental/commit/23e0e1e536785128765607f3180b4621f36a8ef7))
+
 ## [0.22.0](https://github.com/sj-tech-sweden/stockwire-rental/compare/0.21.0...0.22.0) (2026-10-26)
 
 
