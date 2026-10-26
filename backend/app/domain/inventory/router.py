@@ -1125,6 +1125,7 @@ def list_products(
             "height_cm": product.height_cm,
             "width_cm": product.width_cm,
             "depth_cm": product.depth_cm,
+            "specs": product.specs,
             "maintenance_interval_days": product.maintenance_interval_days,
             "power_consumption_watts": product.power_consumption_watts,
             "daily_rate": product.daily_rate,

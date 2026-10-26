@@ -193,6 +193,23 @@ export function populatedSpecGroups(specs) {
   return PRODUCT_SPEC_GROUPS.filter((group) => group.fields.some((f) => s[f] !== undefined && s[f] !== null && s[f] !== ''))
 }
 
+export function productSpecDisplayGroups(specs, translate) {
+  const values = specs || {}
+  return populatedSpecGroups(values).map((group) => ({
+    key: group.key,
+    label: translate(group.labelKey),
+    fields: group.fields
+      .filter((key) => values[key] !== undefined && values[key] !== null && values[key] !== '')
+      .map((key) => ({
+        key,
+        label: translate(PRODUCT_SPEC_FIELDS[key].labelKey),
+        value: PRODUCT_SPEC_FIELDS[key].type === 'boolean'
+          ? translate(values[key] ? 'common.true' : 'common.false')
+          : values[key],
+      })),
+  }))
+}
+
 // All groups that should be visible: populated ones plus any explicitly added.
 export function activeSpecGroups(specs, explicitlyAddedKeys = []) {
   const populated = new Set(populatedSpecGroups(specs).map((g) => g.key))

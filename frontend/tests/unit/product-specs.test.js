@@ -4,6 +4,7 @@ import {
   getSpeakerThrowValue,
   PRODUCT_SPEC_GROUPS,
   PRODUCT_SPEC_FIELDS,
+  productSpecDisplayGroups,
   removeSpecGroup,
   setSpeakerThrowManualMode,
 } from '../../src/utils/productSpecs.js'
@@ -67,6 +68,46 @@ describe('speaker product specifications', () => {
       expect(PRODUCT_SPEC_FIELDS.cam_max_distance_m.unit).toBe('m')
       expect(PRODUCT_SPEC_FIELDS.lens_focal_length_min_mm.unit).toBe('mm')
       expect(PRODUCT_SPEC_FIELDS.lens_focal_length_max_mm.unit).toBe('mm')
+    })
+
+    it('formats all populated camera and lens specs for product info', () => {
+      const translate = (key) => ({
+        'inventory.specGroupCamera': 'Camera',
+        'inventory.specCamSensorWidth': 'Sensor Width (mm)',
+        'inventory.specGroupLens': 'Lens',
+        'inventory.specLensFocalLengthMin': 'Minimum Focal Length (mm)',
+        'common.true': 'True',
+      }[key] || key)
+
+      expect(productSpecDisplayGroups({
+        cam_sensor_width_mm: 23.5,
+        cam_max_distance_m: 0,
+        lens_focal_length_min_mm: 24,
+        lens_focal_length_max_mm: 70,
+        spk_flyable: true,
+      }, translate)).toEqual([
+        {
+          key: 'speaker',
+          label: 'inventory.specGroupSpeaker',
+          fields: [{ key: 'spk_flyable', label: 'inventory.specSpkFlyable', value: 'True' }],
+        },
+        {
+          key: 'camera',
+          label: 'Camera',
+          fields: [
+            { key: 'cam_sensor_width_mm', label: 'Sensor Width (mm)', value: 23.5 },
+            { key: 'cam_max_distance_m', label: 'inventory.specCamMaxDistance', value: 0 },
+          ],
+        },
+        {
+          key: 'lens',
+          label: 'Lens',
+          fields: [
+            { key: 'lens_focal_length_min_mm', label: 'Minimum Focal Length (mm)', value: 24 },
+            { key: 'lens_focal_length_max_mm', label: 'inventory.specLensFocalLengthMax', value: 70 },
+          ],
+        },
+      ])
     })
   })
 })

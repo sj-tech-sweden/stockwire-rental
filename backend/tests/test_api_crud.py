@@ -162,6 +162,45 @@ def test_inventory_crud(client):
     assert list_products.json()["items"][0]["in_store_devices"] == 3
 
 
+def test_product_specs_persist_through_detail_and_list_endpoints(client):
+    created = client.post(
+        "/api/v1/inventory/products",
+        json={
+            "sku": "CAM-SPEC-01",
+            "name": "Camera with lens",
+            "specs": {
+                "cam_sensor_width_mm": 23.5,
+                "cam_max_distance_m": 20,
+                "lens_focal_length_min_mm": 24,
+                "lens_focal_length_max_mm": 70,
+            },
+        },
+    )
+    assert created.status_code == 200
+    product_id = created.json()["id"]
+    assert created.json()["specs"]["cam_sensor_width_mm"] == 23.5
+
+    updated_specs = {
+        "cam_sensor_width_mm": 36,
+        "cam_max_distance_m": 30,
+        "lens_focal_length_min_mm": 24,
+        "lens_focal_length_max_mm": 105,
+    }
+    updated = client.put(
+        f"/api/v1/inventory/products/{product_id}",
+        json={"specs": updated_specs},
+    )
+    assert updated.status_code == 200
+    assert updated.json()["specs"] == updated_specs
+
+    detail = client.get(f"/api/v1/inventory/products/{product_id}")
+    listed = client.get("/api/v1/inventory/products")
+    assert detail.status_code == 200
+    assert detail.json()["specs"] == updated_specs
+    listed_product = next(item for item in listed.json()["items"] if item["id"] == product_id)
+    assert listed_product["specs"] == updated_specs
+
+
 def test_eventory_connection_get_fallback_treats_http_error_as_reachable(client):
     class FakeSocket:
         def getpeername(self):
