@@ -34,7 +34,9 @@ depends_on = None
 def upgrade() -> None:
     # 1. product_suppliers: supplier_id keeps its column name but must point at
     #    companies. supplier_company_id was already populated by 0074, so copy it
-    #    across (exact, no name matching) and drop the redundant column.
+    #    across (exact, no name matching) and drop the redundant column. Remove
+    #    the old customers FK before copying company IDs into supplier_id.
+    op.drop_constraint("product_suppliers_supplier_id_fkey", "product_suppliers", type_="foreignkey")
     op.execute(
         """
         UPDATE product_suppliers
@@ -48,7 +50,6 @@ def upgrade() -> None:
     op.drop_index("ix_product_suppliers_supplier_company_id", table_name="product_suppliers")
     op.drop_column("product_suppliers", "supplier_company_id")
 
-    op.drop_constraint("product_suppliers_supplier_id_fkey", "product_suppliers", type_="foreignkey")
     op.create_foreign_key(
         "product_suppliers_supplier_id_fkey",
         "product_suppliers",

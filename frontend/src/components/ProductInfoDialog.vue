@@ -80,6 +80,18 @@
           </q-item>
         </q-list>
 
+        <template v-for="group in productSpecGroups" :key="group.key">
+          <div class="text-subtitle2 q-mb-sm">{{ group.label }}</div>
+          <q-list bordered separator class="rounded-borders q-mb-md">
+            <q-item v-for="field in group.fields" :key="field.key">
+              <q-item-section>
+                <q-item-label>{{ field.label }}</q-item-label>
+                <q-item-label caption>{{ field.value }}</q-item-label>
+              </q-item-section>
+            </q-item>
+          </q-list>
+        </template>
+
         <div v-if="product?.suppliers?.length" class="text-subtitle2 q-mb-sm">Suppliers</div>
         <q-list v-if="product?.suppliers?.length" bordered separator class="rounded-borders q-mb-md">
           <q-item v-for="sup in product.suppliers" :key="`sup-${sup.id}`">
@@ -301,6 +313,7 @@ import { useWarehouseLedsStore } from '../stores/warehouseLeds'
 import { normalizeCurrencyCode } from '../constants/currencies'
 import { buildZonePath, getEffectiveZoneId, formatMoney } from '../utils/inventory-helpers'
 import { translateProductType, translateCategory } from '../utils/translate-helpers'
+import { productSpecDisplayGroups } from '../utils/productSpecs'
 import { useProductImage } from '../composables/useProductImage'
 import EntityAttachmentsPanel from './EntityAttachmentsPanel.vue'
 import LocateDeviceMapDialog from './LocateDeviceMapDialog.vue'
@@ -331,6 +344,7 @@ const warehouseLedsStore = useWarehouseLedsStore()
 
 const infoCustomFieldValues = ref([])
 const { imageUrl: productImageUrl, fetchImage: fetchProductImage, cleanup: cleanupProductImage } = useProductImage()
+const productSpecGroups = computed(() => productSpecDisplayGroups(props.product?.specs, t))
 
 const mapExpanded = ref(false)
 const warehouseMapRef = ref(null)
