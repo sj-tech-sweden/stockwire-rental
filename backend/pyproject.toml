@@ -30,7 +30,7 @@ dependencies = [
   "boto3==1.43.119",
   "prometheus-fastapi-instrumentator==8.1.0",
   "icalendar==7.3.0",
-  "openai>=3.37.0,<3.38.0",
+  "openai>=3.39.0,<3.40.0",
   "slowapi>=0.1.9",
   "reportlab>=5,<5.2",
   "pypdf>=6.21,<6.22",
