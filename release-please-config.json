@@ -3,7 +3,8 @@
   "release-type": "simple",
   "packages": {
     ".": {
-      "release-type": "simple"
+      "release-type": "simple",
+      "bump-minor-pre-major": true
     }
   },
   "pull-request-title-pattern": "chore: release ${version}",
