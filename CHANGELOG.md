@@ -1,5 +1,43 @@
 # Changelog
 
+## [0.25.0](https://github.com/sj-tech-sweden/stockwire-rental/compare/0.24.0...0.25.0) (2026-10-28)
+
+
+### ⚠ BREAKING CHANGES
+
+* **deps:** Update Node.js to v26
+* **deps:** Update dependency node to v26
+
+### Features
+
+* **deps:** update dependency axios to v1.21.0 ([adb3731](https://github.com/sj-tech-sweden/stockwire-rental/commit/adb37317249379446840dcb97c02556c4d65c334))
+* **deps:** update dependency axios to v1.21.0 ([43e87d4](https://github.com/sj-tech-sweden/stockwire-rental/commit/43e87d498cfbc2de2bd6424d32f950e4ae6bbce1))
+* **deps:** Update dependency node to v26 ([af53efb](https://github.com/sj-tech-sweden/stockwire-rental/commit/af53efbdde407c396d82fa923bfaca56e70f9b4a))
+* **deps:** update dependency openai to &gt;=3.39.0,&lt;3.40.0 ([a916e46](https://github.com/sj-tech-sweden/stockwire-rental/commit/a916e4645204314c3f7e41409f47f6843b6b203c))
+* **deps:** update dependency openai to &gt;=3.39.0,&lt;3.40.0 ([d7d0f61](https://github.com/sj-tech-sweden/stockwire-rental/commit/d7d0f617b0bdde26a2abb0d3a637524ef4159780))
+* **deps:** update dependency openai to &gt;=3.40.0,&lt;3.41.0 ([2814b31](https://github.com/sj-tech-sweden/stockwire-rental/commit/2814b31b8d741151f7283823d24ef660891210a1))
+* **deps:** update dependency openai to &gt;=3.40.0,&lt;3.41.0 ([3c8e5c3](https://github.com/sj-tech-sweden/stockwire-rental/commit/3c8e5c3f48b59b1d6faf9d0acaed01b35ed26679))
+* **deps:** update dependency pytest to v9.2.0 ([c556253](https://github.com/sj-tech-sweden/stockwire-rental/commit/c55625353b9688a28c184b978f5c6d0211422ded))
+* **deps:** update dependency pytest to v9.2.0 ([3ee0b98](https://github.com/sj-tech-sweden/stockwire-rental/commit/3ee0b98c2b230e0fa50862629eaf52692242d28b))
+* **deps:** Update Node.js to v26 ([6eb5924](https://github.com/sj-tech-sweden/stockwire-rental/commit/6eb5924228dc171d51f9edd8b16ffdb83027ff28))
+* **inventory:** add fixture profile specifications ([e7213b9](https://github.com/sj-tech-sweden/stockwire-rental/commit/e7213b9c14e1e74aa117faf18fd8f77677b470b7))
+* **inventory:** add projector throw and lens specs ([f179c11](https://github.com/sj-tech-sweden/stockwire-rental/commit/f179c11d2cfa6e56c77f5e91190a1e4d563e3941))
+
+
+### Bug Fixes
+
+* **deps:** update dependency boto3 to v1.43.119 ([9b78f7f](https://github.com/sj-tech-sweden/stockwire-rental/commit/9b78f7f91899087f9b1c75e20043ccdc2b632f54))
+* **deps:** update dependency boto3 to v1.43.119 ([582c422](https://github.com/sj-tech-sweden/stockwire-rental/commit/582c4226f773fdadff10dfac4fc0d221e3a512d4))
+* **deps:** update dependency boto3 to v1.43.120 ([60e8d97](https://github.com/sj-tech-sweden/stockwire-rental/commit/60e8d97cf5ecc5546fb4f3156efb755755008c0f))
+* **deps:** update dependency boto3 to v1.43.120 ([d191b2c](https://github.com/sj-tech-sweden/stockwire-rental/commit/d191b2c63693730b79aeadb6df83a4ac23350e77))
+* **deps:** update dependency ruff to v0.17.3 ([11cf0c6](https://github.com/sj-tech-sweden/stockwire-rental/commit/11cf0c6b0750ed15bf7e64fa8120c7454d111b3f))
+* **deps:** update dependency ruff to v0.17.3 ([d21cb6d](https://github.com/sj-tech-sweden/stockwire-rental/commit/d21cb6d78168c1138f0cb2ffb3f2f15d1eb650e7))
+
+
+### Miscellaneous
+
+* **release:** keep pre-1.0 breaking bumps minor ([9946f56](https://github.com/sj-tech-sweden/stockwire-rental/commit/9946f569518d87a802e4d715492f2eeaba0d71fa))
+
 ## [0.24.0](https://github.com/sj-tech-sweden/stockwire-rental/compare/0.23.0...0.24.0) (2026-10-26)
 
 
