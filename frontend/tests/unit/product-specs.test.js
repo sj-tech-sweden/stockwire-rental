@@ -2,13 +2,17 @@ import { describe, expect, it } from 'vitest'
 import {
   calculateCameraSensorWidth,
   calculateSpeakerThrow,
+  addFixtureChannelMode,
   getCameraSensorWidth,
+  getFixtureChannelModes,
   getSpeakerThrowValue,
   PRODUCT_SPEC_GROUPS,
   PRODUCT_SPEC_FIELDS,
   productSpecDisplayGroups,
+  removeFixtureChannelMode,
   removeSpecGroup,
   setSpeakerThrowManualMode,
+  updateFixtureChannelMode,
   withCalculatedCameraSensorWidth,
 } from '../../src/utils/productSpecs.js'
 
@@ -76,6 +80,33 @@ describe('speaker product specifications', () => {
       expect(PRODUCT_SPEC_FIELDS.proj_aspect_ratio.type).toBe('number')
       expect(PRODUCT_SPEC_FIELDS.proj_lens_shift_horizontal_pct.unit).toBe('%')
       expect(PRODUCT_SPEC_FIELDS.proj_lens_shift_vertical_pct.unit).toBe('%')
+    })
+
+    it('stores fixture type and channel modes as structured specs', () => {
+      const lightingFields = PRODUCT_SPEC_GROUPS.find((group) => group.key === 'lighting').fields
+      expect(lightingFields).toContain('fixture_type')
+      expect(lightingFields).toContain('channel_modes')
+      expect(PRODUCT_SPEC_FIELDS.fixture_type.type).toBe('text')
+      expect(PRODUCT_SPEC_FIELDS.channel_modes.type).toBe('channel_modes')
+
+      let specs = { fixture_type: 'MAC Aura' }
+      specs = addFixtureChannelMode(specs)
+      specs = updateFixtureChannelMode(specs, 0, 'name', 'Mode 1')
+      specs = updateFixtureChannelMode(specs, 0, 'footprint', '16')
+      expect(specs).toEqual({
+        fixture_type: 'MAC Aura',
+        channel_modes: [{ name: 'Mode 1', footprint: 16 }],
+      })
+      expect(getFixtureChannelModes(specs)).toEqual([{ name: 'Mode 1', footprint: 16 }])
+      expect(removeFixtureChannelMode(specs, 0)).toEqual({ fixture_type: 'MAC Aura' })
+
+      const translate = (key) => key === 'inventory.specLtDmxChannels' ? 'DMX channels' : key
+      expect(productSpecDisplayGroups(specs, translate).find((group) => group.key === 'lighting').fields)
+        .toContainEqual({
+          key: 'channel_modes',
+          label: 'inventory.specFixtureChannelModes',
+          value: 'Mode 1: 16 DMX channels',
+        })
     })
 
     it('exposes camera and lens geometry for camera coverage', () => {
