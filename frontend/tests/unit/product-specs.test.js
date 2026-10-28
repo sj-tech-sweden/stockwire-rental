@@ -61,6 +61,23 @@ describe('speaker product specifications', () => {
       expect(PRODUCT_SPEC_FIELDS.vm_outputs.type).toBe('number')
     })
 
+    it('exposes projector throw, aspect ratio, and lens shift specs', () => {
+      const videoFields = PRODUCT_SPEC_GROUPS.find((group) => group.key === 'video').fields
+
+      expect(videoFields).toContain('proj_throw_ratio_min')
+      expect(videoFields).toContain('proj_throw_ratio_max')
+      expect(videoFields).toContain('proj_aspect_ratio')
+      expect(videoFields).toContain('proj_lens_shift_horizontal_pct')
+      expect(videoFields).toContain('proj_lens_shift_vertical_pct')
+      expect(videoFields).not.toContain('vid_throw_ratio')
+      expect(PRODUCT_SPEC_FIELDS).not.toHaveProperty('vid_throw_ratio')
+      expect(PRODUCT_SPEC_FIELDS.proj_throw_ratio_min.type).toBe('number')
+      expect(PRODUCT_SPEC_FIELDS.proj_throw_ratio_max.type).toBe('number')
+      expect(PRODUCT_SPEC_FIELDS.proj_aspect_ratio.type).toBe('number')
+      expect(PRODUCT_SPEC_FIELDS.proj_lens_shift_horizontal_pct.unit).toBe('%')
+      expect(PRODUCT_SPEC_FIELDS.proj_lens_shift_vertical_pct.unit).toBe('%')
+    })
+
     it('exposes camera and lens geometry for camera coverage', () => {
       const cameraFields = PRODUCT_SPEC_GROUPS.find((group) => group.key === 'camera').fields
       const lensFields = PRODUCT_SPEC_GROUPS.find((group) => group.key === 'lens').fields

@@ -577,7 +577,7 @@
                       v-else
                       :model-value="getSpecValue(productForm.specs, fieldKey)"
                       :label="t(PRODUCT_SPEC_FIELDS[fieldKey].labelKey)"
-                      :hint="fieldKey === 'cam_aspect_ratio' ? t('inventory.specCamAspectRatioHelp') : undefined"
+                      :hint="fieldKey === 'cam_aspect_ratio' ? t('inventory.specCamAspectRatioHelp') : fieldKey === 'proj_aspect_ratio' ? t('inventory.specProjAspectRatioHelp') : fieldKey === 'proj_throw_ratio_min' || fieldKey === 'proj_throw_ratio_max' ? t('inventory.specProjThrowRatioHelp') : fieldKey === 'proj_lens_shift_horizontal_pct' || fieldKey === 'proj_lens_shift_vertical_pct' ? t('inventory.specProjLensShiftHelp') : undefined"
                       outlined
                       dense
                       @update:model-value="val => (productForm.specs = setSpecValue(productForm.specs, fieldKey, val))"
