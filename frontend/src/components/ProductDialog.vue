@@ -532,6 +532,57 @@
                     <q-btn flat dense round icon="close" size="sm" color="grey-7" :aria-label="t('inventory.specRemoveGroup')" @click="removeSpecGroupHandler(group.key)" />
                   </div>
                   <div v-for="fieldKey in group.fields" :key="fieldKey" class="q-mb-sm">
+                    <div v-if="PRODUCT_SPEC_FIELDS[fieldKey].type === 'channel_modes'" class="q-mb-sm">
+                      <div class="text-caption q-mb-xs">{{ t(PRODUCT_SPEC_FIELDS[fieldKey].labelKey) }}</div>
+                      <div
+                        v-for="(mode, modeIndex) in getFixtureChannelModes(productForm.specs)"
+                        :key="modeIndex"
+                        class="row items-start q-col-gutter-sm q-mb-xs"
+                      >
+                        <div class="col">
+                          <q-input
+                            :model-value="mode.name"
+                            :label="t('inventory.specFixtureChannelModeName')"
+                            :rules="[val => !!String(val || '').trim() || t('inventory.specFixtureChannelModeNameRequired')]"
+                            outlined
+                            dense
+                            @update:model-value="val => updateFixtureChannelModeHandler(modeIndex, 'name', val)"
+                          />
+                        </div>
+                        <div class="col">
+                          <q-input
+                            :model-value="mode.footprint"
+                            :label="t('inventory.specFixtureChannelModeFootprint')"
+                            type="number"
+                            min="1"
+                            step="1"
+                            :rules="[val => Number.isInteger(Number(val)) && Number(val) > 0 || t('inventory.specFixtureChannelModeFootprintRequired')]"
+                            outlined
+                            dense
+                            @update:model-value="val => updateFixtureChannelModeHandler(modeIndex, 'footprint', val)"
+                          />
+                        </div>
+                        <div class="col-auto">
+                          <q-btn
+                            flat
+                            round
+                            dense
+                            icon="close"
+                            color="grey-7"
+                            :aria-label="t('inventory.specFixtureRemoveChannelMode')"
+                            @click="removeFixtureChannelModeHandler(modeIndex)"
+                          />
+                        </div>
+                      </div>
+                      <q-btn
+                        flat
+                        dense
+                        icon="add"
+                        color="primary"
+                        :label="t('inventory.specFixtureAddChannelMode')"
+                        @click="productForm.specs = addFixtureChannelMode(productForm.specs)"
+                      />
+                    </div>
                     <q-toggle
                       v-if="fieldKey === 'throw_m'"
                       :model-value="productForm.specs?.throw_m_manual === true"
@@ -574,7 +625,7 @@
                       @update:model-value="val => updateProductSpec(fieldKey, val === '' || val == null ? null : Number(val))"
                     />
                     <q-input
-                      v-else
+                      v-else-if="PRODUCT_SPEC_FIELDS[fieldKey].type !== 'channel_modes'"
                       :model-value="getSpecValue(productForm.specs, fieldKey)"
                       :label="t(PRODUCT_SPEC_FIELDS[fieldKey].labelKey)"
                       :hint="fieldKey === 'cam_aspect_ratio' ? t('inventory.specCamAspectRatioHelp') : fieldKey === 'proj_aspect_ratio' ? t('inventory.specProjAspectRatioHelp') : fieldKey === 'proj_throw_ratio_min' || fieldKey === 'proj_throw_ratio_max' ? t('inventory.specProjThrowRatioHelp') : fieldKey === 'proj_lens_shift_horizontal_pct' || fieldKey === 'proj_lens_shift_vertical_pct' ? t('inventory.specProjLensShiftHelp') : undefined"
@@ -679,6 +730,8 @@ import { isRentalProduct } from '../utils/inventory-overview'
 import {
   calculateCameraSensorWidth,
   calculateSpeakerThrow,
+  addFixtureChannelMode,
+  getFixtureChannelModes,
   getCameraSensorWidth,
   getSpeakerThrowValue,
   PRODUCT_SPEC_FIELDS,
@@ -688,6 +741,8 @@ import {
   getSpecValue,
   setSpecValue,
   setSpeakerThrowManualMode,
+  removeFixtureChannelMode,
+  updateFixtureChannelMode,
   withCalculatedCameraSensorWidth,
 } from '../utils/productSpecs'
 import { useProductImage } from '../composables/useProductImage'
@@ -789,6 +844,14 @@ const calculatedSpeakerThrowM = computed(() => calculateSpeakerThrow(
 
 function updateProductSpec(fieldKey, value) {
   productForm.value.specs = setSpecValue(productForm.value.specs, fieldKey, value)
+}
+
+function updateFixtureChannelModeHandler(index, field, value) {
+  productForm.value.specs = updateFixtureChannelMode(productForm.value.specs, index, field, value)
+}
+
+function removeFixtureChannelModeHandler(index) {
+  productForm.value.specs = removeFixtureChannelMode(productForm.value.specs, index)
 }
 
 function handleSpeakerThrowManual(enabled) {

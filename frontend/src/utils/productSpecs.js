@@ -54,6 +54,8 @@ export const PRODUCT_SPEC_FIELDS = {
   spk_flyable: { labelKey: 'inventory.specSpkFlyable', type: 'boolean' },
   // Lighting fixture
   lt_dmx_channels: { labelKey: 'inventory.specLtDmxChannels', type: 'number', min: 0, step: 1 },
+  fixture_type: { labelKey: 'inventory.specFixtureProfileType', type: 'text' },
+  channel_modes: { labelKey: 'inventory.specFixtureChannelModes', type: 'channel_modes' },
   lt_fixture_type: {
     labelKey: 'inventory.specLtFixtureType',
     type: 'select',
@@ -128,7 +130,15 @@ export const PRODUCT_SPEC_GROUPS = [
   {
     key: 'lighting',
     labelKey: 'inventory.specGroupLighting',
-    fields: ['lt_dmx_channels', 'lt_fixture_type', 'lt_power_w', 'lt_beam_angle', 'lt_rgbwa'],
+    fields: [
+      'fixture_type',
+      'channel_modes',
+      'lt_dmx_channels',
+      'lt_fixture_type',
+      'lt_power_w',
+      'lt_beam_angle',
+      'lt_rgbwa',
+    ],
   },
   {
     key: 'power',
@@ -257,7 +267,11 @@ export function productSpecDisplayGroups(specs, translate) {
           ? cameraSensorWidth
           : PRODUCT_SPEC_FIELDS[key].type === 'boolean'
             ? translate(values[key] ? 'common.true' : 'common.false')
-            : values[key],
+            : PRODUCT_SPEC_FIELDS[key].type === 'channel_modes'
+              ? getFixtureChannelModes(values)
+                .map((mode) => `${mode.name}: ${mode.footprint} ${translate('inventory.specLtDmxChannels')}`)
+                .join(', ')
+              : values[key],
       })),
   }))
 }
@@ -290,5 +304,43 @@ export function setSpecValue(specs, key, value) {
   } else {
     next[key] = value
   }
+  return next
+}
+
+export function getFixtureChannelModes(specs) {
+  if (!Array.isArray(specs?.channel_modes)) return []
+  return specs.channel_modes.map((mode) => ({
+    name: mode && typeof mode.name === 'string' ? mode.name : '',
+    footprint: mode && Number.isInteger(Number(mode.footprint)) && Number(mode.footprint) > 0
+      && mode.footprint !== null && mode.footprint !== undefined && mode.footprint !== ''
+      ? Number(mode.footprint)
+      : null,
+  }))
+}
+
+export function addFixtureChannelMode(specs) {
+  return {
+    ...(specs || {}),
+    channel_modes: [...getFixtureChannelModes(specs), { name: '', footprint: null }],
+  }
+}
+
+export function updateFixtureChannelMode(specs, index, field, value) {
+  const modes = getFixtureChannelModes(specs)
+  if (!modes[index] || !['name', 'footprint'].includes(field)) return specs || {}
+  modes[index] = {
+    ...modes[index],
+    [field]: field === 'footprint'
+      ? (value === null || value === '' ? null : Number(value))
+      : value,
+  }
+  return { ...(specs || {}), channel_modes: modes }
+}
+
+export function removeFixtureChannelMode(specs, index) {
+  const modes = getFixtureChannelModes(specs).filter((_, modeIndex) => modeIndex !== index)
+  const next = { ...(specs || {}) }
+  if (modes.length) next.channel_modes = modes
+  else delete next.channel_modes
   return next
 }
