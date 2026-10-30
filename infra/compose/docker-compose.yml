@@ -94,7 +94,7 @@ services:
       - backend
 
   prometheus:
-    image: prom/prometheus:v3.15.0
+    image: prom/prometheus:v3.15.1
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
       - '--web.config.file=/etc/prometheus/web.yml'
@@ -110,7 +110,7 @@ services:
       - frontend
 
   grafana:
-    image: grafana/grafana:13.2.3
+    image: grafana/grafana:13.3.0
     environment:
       GF_INSTALL_PLUGINS: ""
       GF_AUTH_ANONYMOUS_ENABLED: "true"
