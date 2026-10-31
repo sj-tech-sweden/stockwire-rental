@@ -1,5 +1,35 @@
 # Changelog
 
+## [0.26.0](https://github.com/sj-tech-sweden/stockwire-rental/compare/0.25.0...0.26.0) (2026-10-31)
+
+
+### Features
+
+* **deps:** update dependency openai to &gt;=3.41.0,&lt;3.42.0 ([d56357d](https://github.com/sj-tech-sweden/stockwire-rental/commit/d56357db6578c0f287ff23eaf6d8a9c2c755db2a))
+* **deps:** update dependency openai to &gt;=3.41.0,&lt;3.42.0 ([cbfdeba](https://github.com/sj-tech-sweden/stockwire-rental/commit/cbfdebaf89622ae24f6e73b34ce89ca717692407))
+* **deps:** update dependency openai to &gt;=3.42.0,&lt;3.43.0 ([29aa09d](https://github.com/sj-tech-sweden/stockwire-rental/commit/29aa09d66410cede6cb26a213a484ec8e1394f05))
+* **deps:** update dependency openai to &gt;=3.42.0,&lt;3.43.0 ([607f9d8](https://github.com/sj-tech-sweden/stockwire-rental/commit/607f9d8f3f55e15d604fb60d4332fcfd52059e98))
+
+
+### Bug Fixes
+
+* **deps:** update dependency boto3 to v1.43.121 ([3f30866](https://github.com/sj-tech-sweden/stockwire-rental/commit/3f308665abd0f1c4b219c4a039e35305ae7b3f89))
+* **deps:** update dependency boto3 to v1.43.121 ([31b5d36](https://github.com/sj-tech-sweden/stockwire-rental/commit/31b5d36d609b74ce30bf4a63d1f0cbff105cb569))
+* **deps:** update dependency boto3 to v1.43.122 ([e406d5d](https://github.com/sj-tech-sweden/stockwire-rental/commit/e406d5df6b05fd7bd6634547b0f6071b9bb547d0))
+* **deps:** update dependency boto3 to v1.43.122 ([9a2a4cf](https://github.com/sj-tech-sweden/stockwire-rental/commit/9a2a4cff25612163ea775938ccf4934f6aa0aa1c))
+* **deps:** update dependency boto3 to v1.43.123 ([8313e3a](https://github.com/sj-tech-sweden/stockwire-rental/commit/8313e3a999bffeba7c4154ee8db6bde0bc02da96))
+* **deps:** update dependency boto3 to v1.43.123 ([c170cff](https://github.com/sj-tech-sweden/stockwire-rental/commit/c170cff3a9432efd1eab6ae599f4949bfb572b59))
+* **deps:** update dependency fake-indexeddb to v6.2.7 ([645f0b4](https://github.com/sj-tech-sweden/stockwire-rental/commit/645f0b44a9d8f0071bb81fa08af596c4d70d6d15))
+* **deps:** update dependency fake-indexeddb to v6.2.7 ([5c61c2c](https://github.com/sj-tech-sweden/stockwire-rental/commit/5c61c2c0b7944fe0bce01f71743dc975c824810d))
+* **deps:** update dependency pydantic-settings to v2.16.2 ([98d9fa6](https://github.com/sj-tech-sweden/stockwire-rental/commit/98d9fa607c160c4964d858f9734c59aa68f77e8c))
+* **deps:** update dependency pydantic-settings to v2.16.2 ([6a22939](https://github.com/sj-tech-sweden/stockwire-rental/commit/6a22939ba8e0a9756093d554f7c5791aceb9577e))
+
+
+### Miscellaneous
+
+* **deps:** bump follow-redirects ([d9f45d5](https://github.com/sj-tech-sweden/stockwire-rental/commit/d9f45d555b8bb4573056c6056c3b114c543fa29c))
+* **deps:** bump follow-redirects from 1.16.1 to 1.16.2 in /frontend in the npm_and_yarn group across 1 directory ([b0a1b86](https://github.com/sj-tech-sweden/stockwire-rental/commit/b0a1b86b7c492bfe9b3f56bccfed6c7b0c76e4e2))
+
 ## [0.25.0](https://github.com/sj-tech-sweden/stockwire-rental/compare/0.24.0...0.25.0) (2026-10-28)
 
 
