@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "stockwire-assistant": {
+      "type": "http",
+      "url": "https://your-stockwire-host/mcp",
+      "comment": "OAuth-capable MCP clients discover and authenticate via the issuer URL (mcp_issuer_url). The browser login flow issues the access token automatically. For local dev the URL is typically http://localhost:9000/mcp (the API's port), and the issuer metadata lives at /.well-known/oauth-authorization-server."
+    }
+  }
+}

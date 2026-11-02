@@ -78,6 +78,9 @@ class Settings(BaseSettings):
     # environment. Off by default so production stays strict unless explicitly enabled.
     integration_allow_insecure_hosts: bool = False
     api_base_url: str = ""
+    # Public base URL the MCP + OAuth endpoints are served from. Used to build the
+    # OAuth issuer/metadata. Leave empty to fall back to effective_api_base_url.
+    mcp_issuer_url: str = ""
 
     prometheus_enabled: bool = True
     prometheus_pushgateway: str = ""
