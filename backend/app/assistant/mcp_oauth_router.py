@@ -392,8 +392,9 @@ def _sso_buttons_html(next_url: str, providers: list[SSOProviderSummary]) -> str
             "/oauth/sso/oidc/start" if provider.kind == "oidc" else "/oauth/sso/saml/start"
         )
         href = f"{start_path}/{quote(provider.provider, safe='')}?next={safe_next}"
+        safe_href = html.escape(href, quote=True)
         buttons.append(
-            f'<a class="sso-btn" href="{href}">Continue with {label}</a>'
+            f'<a class="sso-btn" href="{safe_href}">Continue with {label}</a>'
         )
     if not buttons:
         return ""
