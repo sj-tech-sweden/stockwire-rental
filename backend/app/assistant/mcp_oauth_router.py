@@ -25,7 +25,7 @@ import base64
 import html
 import json
 from typing import Any
-from urllib.parse import quote, urlencode, urlparse
+from urllib.parse import parse_qsl, quote, urlencode, urlparse
 
 import jwt
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
@@ -166,11 +166,12 @@ def _validate_redirect_uri(client: McpOAuthClient, redirect_uri: str | None) -> 
 
 
 def _safe_next(next_url: str | None) -> str:
-    """Only allow same-origin (host-less) redirects to /oauth/authorize.
+    """Only allow same-origin redirects to the OAuth authorize endpoint.
 
-    The result is rebuilt from the parsed path + query so it can never carry a
-    scheme or authority (which would make it an off-site redirect), satisfying
-    open-redirect checks and the URL-redirection scanner.
+    The result is always rebuilt to the fixed internal path
+    ``/oauth/authorize`` plus an allow-listed subset of query parameters.
+    This avoids forwarding an attacker-controlled URL while preserving
+    expected OAuth flow parameters.
     """
     default = "/oauth/authorize"
     if not next_url:
@@ -181,11 +182,22 @@ def _safe_next(next_url: str | None) -> str:
     # Reject anything that is not a bare same-origin relative path.
     if parsed.scheme or parsed.netloc or parsed.fragment:
         return default
-    if not parsed.path.startswith("/oauth/authorize"):
+    if parsed.path != "/oauth/authorize":
         return default
 
-    # Rebuild from trusted components only (no scheme, netloc or fragment).
-    return parsed.path + (f"?{parsed.query}" if parsed.query else "")
+    allowed_keys = {
+        "response_type",
+        "client_id",
+        "redirect_uri",
+        "scope",
+        "state",
+        "code_challenge",
+        "code_challenge_method",
+    }
+    filtered_pairs = [(k, v) for (k, v) in parse_qsl(parsed.query, keep_blank_values=False) if k in allowed_keys]
+    if not filtered_pairs:
+        return default
+    return f"{default}?{urlencode(filtered_pairs, doseq=True)}"
 
 
 @router.api_route("/oauth/authorize", methods=["GET", "POST"])
