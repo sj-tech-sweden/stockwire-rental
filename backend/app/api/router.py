@@ -16,6 +16,7 @@ from app.assistant.router import router as assistant_router
 from app.domain.warehouse_leds.router import router as warehouse_leds_router
 from app.domain.inventory.router import router as inventory_router
 from app.domain.inventory.public_router import router as public_products_router
+from app.domain.inventory.public_router import stockwire_router
 from app.domain.inventory.vendor_router import plugin_router as vendor_catalog_router
 from app.domain.inventory.vendor_router import router as vendor_products_router
 from app.domain.inventory.vendor_router import sources_router as vendor_sources_router
@@ -37,6 +38,7 @@ api_router.include_router(auth_router)
 api_router.include_router(audit_router)
 api_router.include_router(inventory_router)
 api_router.include_router(public_products_router)
+api_router.include_router(stockwire_router)
 api_router.include_router(vendor_products_router)
 api_router.include_router(vendor_catalog_router)
 api_router.include_router(vendor_sources_router)

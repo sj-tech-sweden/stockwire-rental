@@ -2,16 +2,20 @@ import { describe, expect, it } from 'vitest'
 import {
   calculateCameraSensorWidth,
   calculateSpeakerThrow,
+  addConnectorGroup,
   addFixtureChannelMode,
   getCameraSensorWidth,
+  getConnectorGroups,
   getFixtureChannelModes,
   getSpeakerThrowValue,
   PRODUCT_SPEC_GROUPS,
   PRODUCT_SPEC_FIELDS,
   productSpecDisplayGroups,
+  removeConnectorGroup,
   removeFixtureChannelMode,
   removeSpecGroup,
   setSpeakerThrowManualMode,
+  updateConnectorGroup,
   updateFixtureChannelMode,
   withCalculatedCameraSensorWidth,
 } from '../../src/utils/productSpecs.js'
@@ -25,6 +29,52 @@ describe('speaker product specifications', () => {
     expect(speakerFields).toContain('target_spl_db')
     expect(PRODUCT_SPEC_FIELDS.dispersion_h_deg.unit).toBe('°')
     expect(PRODUCT_SPEC_FIELDS.throw_m.unit).toBe('m')
+  })
+
+  describe('Stagewire connector specifications', () => {
+    it('creates, normalizes, and removes connector groups', () => {
+      let specs = addConnectorGroup({ power_inlet: 'iec_c13' })
+      specs = updateConnectorGroup(specs, 0, 'connector', 'DANTE')
+      specs = updateConnectorGroup(specs, 0, 'direction', 'out')
+      specs = updateConnectorGroup(specs, 0, 'count', '4')
+      specs = updateConnectorGroup(specs, 0, 'signal', 'audio')
+
+      expect(specs).toEqual({
+        power_inlet: 'iec_c13',
+        connectors: [{ connector: 'dante', direction: 'out', count: 4, signal: 'audio' }],
+      })
+      expect(removeConnectorGroup(specs, 0)).toEqual({ power_inlet: 'iec_c13' })
+    })
+
+    it('reads legacy connector names as bidirectional single connectors', () => {
+      expect(getConnectorGroups({
+        connectors: ['sdi', 'Custom Connector', { connector: 'HDMI', direction: 'unknown', count: 0 }],
+      })).toEqual([
+        { connector: 'sdi', direction: 'both', count: 1 },
+        { connector: 'custom connector', direction: 'both', count: 1 },
+        { connector: 'hdmi', direction: 'both', count: 1 },
+      ])
+    })
+
+    it('includes connector specs in product information display groups', () => {
+      const groups = productSpecDisplayGroups({
+        connectors: [{ connector: 'xlr3', direction: 'in', count: 8, signal: 'audio' }],
+        power_inlet: 'attached_schuko',
+      }, (key) => key)
+
+      expect(groups.find((group) => group.key === 'connectors').fields).toEqual([
+        {
+          key: 'connectors',
+          label: 'inventory.specConnectors',
+          value: '8 × xlr3 (in) · audio',
+        },
+        {
+          key: 'power_inlet',
+          label: 'inventory.specPowerInlet',
+          value: 'attached_schuko',
+        },
+      ])
+    })
   })
 
   it('calculates free-field throw from max SPL and target SPL', () => {

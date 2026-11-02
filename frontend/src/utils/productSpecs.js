@@ -16,6 +16,15 @@ export const COMMON_CONNECTOR_OPTIONS = [
   'RCA', 'Speakon NL2', 'Speakon NL4',
 ]
 
+export const STAGEWIRE_CONNECTOR_OPTIONS = [
+  'xlr3', 'xlr5', 'trs', 'speakon', 'dante', 'aes50', 'madi', 'avb', 'ethernet',
+  'ethercon', 'fiber', 'sdi', 'hdmi', 'displayport', 'bnc', 'usb', 'dmx',
+  'powercon', 'schuko', 'cee16',
+]
+
+const CONNECTOR_DIRECTIONS = ['in', 'out', 'both']
+const CONNECTOR_SIGNALS = ['audio', 'video', 'dmx', 'power', 'data']
+
 // Field definitions, keyed by spec key. `type` controls the editor control.
 export const PRODUCT_SPEC_FIELDS = {
   // Cables
@@ -39,6 +48,13 @@ export const PRODUCT_SPEC_FIELDS = {
   sb_inputs: { labelKey: 'inventory.specInputs', type: 'number', min: 0, step: 1 },
   sb_outputs: { labelKey: 'inventory.specOutputs', type: 'number', min: 0, step: 1 },
   sb_aux: { labelKey: 'inventory.specAux', type: 'number', min: 0, step: 1 },
+  // Stagewire connector groups: { connector, direction, count, signal? }.
+  connectors: { labelKey: 'inventory.specConnectors', type: 'connectors' },
+  power_inlet: {
+    labelKey: 'inventory.specPowerInlet',
+    type: 'select',
+    options: ['iec_c13', 'attached_schuko', 'powercon', 'cee16', 'other'],
+  },
   // Speaker / PA
   spk_power_w: { labelKey: 'inventory.specSpkPowerW', type: 'number', min: 0, step: 1, unit: 'W' },
   spk_max_spl_db: { labelKey: 'inventory.specSpkMaxSpl', type: 'number', min: 0, step: 0.1, unit: 'dB' },
@@ -174,6 +190,11 @@ export const PRODUCT_SPEC_GROUPS = [
     labelKey: 'inventory.specGroupLens',
     fields: ['lens_focal_length_min_mm', 'lens_focal_length_max_mm'],
   },
+  {
+    key: 'connectors',
+    labelKey: 'inventory.specGroupConnectors',
+    fields: ['connectors', 'power_inlet'],
+  },
 ]
 
 export function specFieldDef(key) {
@@ -247,7 +268,10 @@ export function setSpeakerThrowManualMode(specs, manual, calculatedThrow) {
 // Groups that currently have at least one populated field in `specs`.
 export function populatedSpecGroups(specs) {
   const s = specs || {}
-  return PRODUCT_SPEC_GROUPS.filter((group) => group.fields.some((f) => s[f] !== undefined && s[f] !== null && s[f] !== ''))
+  return PRODUCT_SPEC_GROUPS.filter((group) => group.fields.some((field) => {
+    if (field === 'connectors') return getConnectorGroups(s).length > 0
+    return s[field] !== undefined && s[field] !== null && s[field] !== ''
+  }))
 }
 
 export function productSpecDisplayGroups(specs, translate) {
@@ -271,7 +295,11 @@ export function productSpecDisplayGroups(specs, translate) {
               ? getFixtureChannelModes(values)
                 .map((mode) => `${mode.name}: ${mode.footprint} ${translate('inventory.specLtDmxChannels')}`)
                 .join(', ')
-              : values[key],
+            : PRODUCT_SPEC_FIELDS[key].type === 'connectors'
+              ? getConnectorGroups(values)
+                .map((group) => `${group.count > 1 ? `${group.count} × ` : ''}${group.connector}${group.direction !== 'both' ? ` (${group.direction})` : ''}${group.signal ? ` · ${group.signal}` : ''}`)
+                .join(', ')
+            : values[key],
       })),
   }))
 }
@@ -304,6 +332,64 @@ export function setSpecValue(specs, key, value) {
   } else {
     next[key] = value
   }
+  return next
+}
+
+export function getConnectorGroups(specs) {
+  if (!Array.isArray(specs?.connectors)) return []
+  return specs.connectors.map((entry) => {
+    const raw = typeof entry === 'string' ? { connector: entry } : entry
+    if (!raw || typeof raw !== 'object') return null
+    const connector = String(raw.connector || '').trim().toLowerCase()
+    if (!connector) return null
+    const direction = CONNECTOR_DIRECTIONS.includes(String(raw.direction || '').toLowerCase())
+      ? String(raw.direction).toLowerCase()
+      : 'both'
+    const countValue = Number(raw.count)
+    const count = Number.isInteger(countValue) && countValue > 0 ? countValue : 1
+    const signal = CONNECTOR_SIGNALS.includes(String(raw.signal || '').toLowerCase())
+      ? String(raw.signal).toLowerCase()
+      : null
+    return { connector, direction, count, ...(signal ? { signal } : {}) }
+  }).filter(Boolean)
+}
+
+export function addConnectorGroup(specs) {
+  return {
+    ...(specs || {}),
+    connectors: [...getConnectorGroups(specs), { connector: 'xlr3', direction: 'both', count: 1 }],
+  }
+}
+
+export function updateConnectorGroup(specs, index, field, value) {
+  const groups = getConnectorGroups(specs)
+  if (!groups[index] || !['connector', 'direction', 'count', 'signal'].includes(field)) return specs || {}
+  const updated = { ...groups[index] }
+  if (field === 'connector') {
+    updated.connector = String(value || '').trim().toLowerCase()
+  } else if (field === 'count') {
+    const count = Number(value)
+    updated.count = Number.isInteger(count) && count > 0 ? count : 1
+  } else if (field === 'signal') {
+    if (CONNECTOR_SIGNALS.includes(String(value || '').toLowerCase())) {
+      updated.signal = String(value).toLowerCase()
+    } else {
+      delete updated.signal
+    }
+  } else {
+    updated.direction = CONNECTOR_DIRECTIONS.includes(String(value || '').toLowerCase())
+      ? String(value).toLowerCase()
+      : 'both'
+  }
+  groups[index] = updated
+  return { ...(specs || {}), connectors: groups }
+}
+
+export function removeConnectorGroup(specs, index) {
+  const connectors = getConnectorGroups(specs).filter((_, connectorIndex) => connectorIndex !== index)
+  const next = { ...(specs || {}) }
+  if (connectors.length) next.connectors = connectors
+  else delete next.connectors
   return next
 }
 

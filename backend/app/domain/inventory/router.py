@@ -1222,6 +1222,74 @@ def get_product(product_id: int, db: Session = Depends(get_db)) -> ProductRead:
     return _to_product_read(db, product)
 
 
+@router.get("/products/{product_id}/availability")
+def get_product_availability(
+    product_id: int,
+    start_date: date = Query(..., description="First rental date (inclusive)"),
+    end_date: date = Query(..., description="Last rental date (inclusive)"),
+    db: Session = Depends(get_db),
+) -> dict[str, int | date]:
+    """Return the product's minimum available device quantity for an inclusive date range."""
+    if start_date > end_date:
+        raise HTTPException(status_code=422, detail="start_date must be on or before end_date")
+
+    if db.get(Product, product_id) is None:
+        raise HTTPException(status_code=404, detail="Product not found")
+
+    total_quantity = int(
+        db.scalar(
+            select(func.count())
+            .select_from(Device)
+            .where(
+                Device.product_id == product_id,
+                Device.status.in_(["available", "reserved", "in_use"]),
+                or_(Device.condition.is_(None), Device.condition != "damaged"),
+            )
+        )
+        or 0
+    )
+
+    reservations = db.execute(
+        select(Job.start_date, Job.end_date, JobRequirement.quantity_required)
+        .join(JobRequirement, JobRequirement.job_id == Job.id)
+        .where(
+            JobRequirement.product_id == product_id,
+            Job.status.notin_(["cancelled", "completed"]),
+            Job.start_date.is_not(None),
+            Job.end_date.is_not(None),
+            Job.start_date <= end_date,
+            Job.end_date >= start_date,
+        )
+    ).all()
+
+    reservation_changes: dict[date, int] = defaultdict(int)
+    for job_start, job_end, quantity_required in reservations:
+        quantity = max(int(quantity_required or 0), 0)
+        if quantity == 0:
+            continue
+        overlap_start = max(job_start, start_date)
+        overlap_end = min(job_end, end_date)
+        reservation_changes[overlap_start] += quantity
+        reservation_changes[overlap_end + timedelta(days=1)] -= quantity
+
+    max_reserved_quantity = 0
+    reserved_quantity = 0
+    for change_date in sorted(reservation_changes):
+        if change_date > end_date:
+            break
+        reserved_quantity += reservation_changes[change_date]
+        max_reserved_quantity = max(max_reserved_quantity, reserved_quantity)
+
+    return {
+        "product_id": product_id,
+        "start_date": start_date,
+        "end_date": end_date,
+        "total_quantity": total_quantity,
+        "max_reserved_quantity": max_reserved_quantity,
+        "available_quantity": max(total_quantity - max_reserved_quantity, 0),
+    }
+
+
 @router.post("/products", response_model=ProductRead)
 def create_product(payload: ProductCreate, db: Session = Depends(get_db), current_user: User = Depends(require_editor)) -> ProductRead:
     data = payload.model_dump()
