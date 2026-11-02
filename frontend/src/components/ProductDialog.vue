@@ -583,6 +583,84 @@
                         @click="productForm.specs = addFixtureChannelMode(productForm.specs)"
                       />
                     </div>
+                    <div v-else-if="PRODUCT_SPEC_FIELDS[fieldKey].type === 'connectors'" class="q-mb-sm">
+                      <div class="text-caption q-mb-xs">{{ t(PRODUCT_SPEC_FIELDS[fieldKey].labelKey) }}</div>
+                      <div
+                        v-for="(connector, connectorIndex) in getConnectorGroups(productForm.specs)"
+                        :key="connectorIndex"
+                        class="row items-start q-col-gutter-sm q-mb-xs"
+                      >
+                        <div class="col-12 col-md-4">
+                          <q-select
+                            :model-value="connector.connector"
+                            :options="STAGEWIRE_CONNECTOR_OPTIONS.map(value => ({ label: value, value }))"
+                            :label="t('inventory.specConnectorKind')"
+                            use-input
+                            fill-input
+                            new-value-mode="add-unique"
+                            emit-value
+                            map-options
+                            outlined
+                            dense
+                            @update:model-value="value => updateConnectorGroupHandler(connectorIndex, 'connector', value)"
+                          />
+                        </div>
+                        <div class="col-6 col-md-2">
+                          <q-select
+                            :model-value="connector.direction"
+                            :options="['in', 'out', 'both']"
+                            :label="t('inventory.specConnectorDirection')"
+                            outlined
+                            dense
+                            emit-value
+                            @update:model-value="value => updateConnectorGroupHandler(connectorIndex, 'direction', value)"
+                          />
+                        </div>
+                        <div class="col-6 col-md-2">
+                          <q-input
+                            :model-value="connector.count"
+                            :label="t('inventory.specConnectorCount')"
+                            type="number"
+                            min="1"
+                            step="1"
+                            outlined
+                            dense
+                            @update:model-value="value => updateConnectorGroupHandler(connectorIndex, 'count', value)"
+                          />
+                        </div>
+                        <div class="col-10 col-md-3">
+                          <q-select
+                            :model-value="connector.signal || null"
+                            :options="['audio', 'video', 'dmx', 'power', 'data']"
+                            :label="t('inventory.specConnectorSignal')"
+                            clearable
+                            outlined
+                            dense
+                            emit-value
+                            @update:model-value="value => updateConnectorGroupHandler(connectorIndex, 'signal', value)"
+                          />
+                        </div>
+                        <div class="col-2 col-md-1">
+                          <q-btn
+                            flat
+                            round
+                            dense
+                            icon="close"
+                            color="grey-7"
+                            :aria-label="t('inventory.specConnectorRemove')"
+                            @click="productForm.specs = removeConnectorGroup(productForm.specs, connectorIndex)"
+                          />
+                        </div>
+                      </div>
+                      <q-btn
+                        flat
+                        dense
+                        icon="add"
+                        color="primary"
+                        :label="t('inventory.specConnectorAdd')"
+                        @click="productForm.specs = addConnectorGroup(productForm.specs)"
+                      />
+                    </div>
                     <q-toggle
                       v-if="fieldKey === 'throw_m'"
                       :model-value="productForm.specs?.throw_m_manual === true"
@@ -625,7 +703,7 @@
                       @update:model-value="val => updateProductSpec(fieldKey, val === '' || val == null ? null : Number(val))"
                     />
                     <q-input
-                      v-else-if="PRODUCT_SPEC_FIELDS[fieldKey].type !== 'channel_modes'"
+                      v-else-if="!['channel_modes', 'connectors'].includes(PRODUCT_SPEC_FIELDS[fieldKey].type)"
                       :model-value="getSpecValue(productForm.specs, fieldKey)"
                       :label="t(PRODUCT_SPEC_FIELDS[fieldKey].labelKey)"
                       :hint="fieldKey === 'cam_aspect_ratio' ? t('inventory.specCamAspectRatioHelp') : fieldKey === 'proj_aspect_ratio' ? t('inventory.specProjAspectRatioHelp') : fieldKey === 'proj_throw_ratio_min' || fieldKey === 'proj_throw_ratio_max' ? t('inventory.specProjThrowRatioHelp') : fieldKey === 'proj_lens_shift_horizontal_pct' || fieldKey === 'proj_lens_shift_vertical_pct' ? t('inventory.specProjLensShiftHelp') : undefined"
@@ -730,17 +808,22 @@ import { isRentalProduct } from '../utils/inventory-overview'
 import {
   calculateCameraSensorWidth,
   calculateSpeakerThrow,
+  addConnectorGroup,
   addFixtureChannelMode,
   getFixtureChannelModes,
+  getConnectorGroups,
   getCameraSensorWidth,
   getSpeakerThrowValue,
   PRODUCT_SPEC_FIELDS,
   PRODUCT_SPEC_GROUPS,
+  STAGEWIRE_CONNECTOR_OPTIONS,
   activeSpecGroups,
+  removeConnectorGroup,
   removeSpecGroup,
   getSpecValue,
   setSpecValue,
   setSpeakerThrowManualMode,
+  updateConnectorGroup,
   removeFixtureChannelMode,
   updateFixtureChannelMode,
   withCalculatedCameraSensorWidth,
@@ -848,6 +931,10 @@ function updateProductSpec(fieldKey, value) {
 
 function updateFixtureChannelModeHandler(index, field, value) {
   productForm.value.specs = updateFixtureChannelMode(productForm.value.specs, index, field, value)
+}
+
+function updateConnectorGroupHandler(index, field, value) {
+  productForm.value.specs = updateConnectorGroup(productForm.value.specs, index, field, value)
 }
 
 function removeFixtureChannelModeHandler(index) {

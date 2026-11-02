@@ -20,9 +20,19 @@ from app.domain.settings.models import AppSetting
 from app.domain.storage.models import AssetFile
 
 router = APIRouter(prefix="/public", tags=["public"])
+stockwire_router = APIRouter(prefix="/stockwire", tags=["stockwire"])
 
 COMPANY_PROFILE_KEY = "company.profile"
 PRODUCT_IMAGE_CATEGORY = "product-image"
+
+_STAGEWIRE_CONNECTOR_KINDS = {
+    "xlr3", "xlr5", "trs", "speakon", "dante", "aes50", "madi", "avb",
+    "ethernet", "ethercon", "fiber", "sdi", "hdmi", "displayport", "bnc",
+    "usb", "dmx", "powercon", "schuko", "cee16",
+}
+_STAGEWIRE_POWER_INLETS = {"iec_c13", "attached_schuko", "powercon", "cee16", "other"}
+_STAGEWIRE_SIGNALS = {"audio", "video", "dmx", "power", "data"}
+_STAGEWIRE_DIRECTIONS = {"in", "out", "both"}
 
 # Fallback labels so the endpoint works even before translations are seeded.
 PRODUCT_TYPE_LABELS: dict[str, dict[str, str]] = {
@@ -220,6 +230,102 @@ def _product_to_public(
     )
 
 
+def _coerce_int(value):
+    if value is None:
+        return None
+    if isinstance(value, bool):
+        return int(value)
+    try:
+        numeric = int(value)
+    except (TypeError, ValueError):
+        return None
+    return numeric if numeric >= 0 else 0
+
+
+def _coerce_float(value):
+    if value is None:
+        return None
+    if isinstance(value, bool):
+        return float(value)
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _normalize_stagewire_connector_groups(specs: object) -> list[dict[str, object]]:
+    if specs is None:
+        return []
+    if isinstance(specs, list):
+        specs_obj = {"connectors": specs}
+    elif isinstance(specs, dict):
+        specs_obj = specs
+    else:
+        return []
+
+    raw_groups = specs_obj.get("connectors")
+    if raw_groups is None:
+        return []
+    if isinstance(raw_groups, list):
+        entries = raw_groups
+    else:
+        entries = [raw_groups]
+
+    groups: list[dict[str, object]] = []
+    for entry in entries:
+        if isinstance(entry, str):
+            entry = {"connector": entry}
+        if not isinstance(entry, dict):
+            continue
+        connector = str(entry.get("connector") or "").strip().lower()
+        if not connector:
+            continue
+        direction = str(entry.get("direction") or "").strip().lower()
+        if direction not in _STAGEWIRE_DIRECTIONS:
+            direction = "both"
+        raw_count = entry.get("count", 1)
+        count = _coerce_int(raw_count)
+        if count is None or count < 1:
+            count = 1
+        signal = str(entry.get("signal") or "").strip().lower()
+        if signal not in _STAGEWIRE_SIGNALS:
+            signal = None
+        normalized = {"connector": connector, "direction": direction, "count": count}
+        if signal is not None:
+            normalized["signal"] = signal
+        groups.append(normalized)
+    return groups
+
+
+def _normalize_stagewire_power_inlet(specs: object) -> str:
+    if not isinstance(specs, dict):
+        return "iec_c13"
+    value = str(specs.get("power_inlet") or "").strip().lower()
+    if value not in _STAGEWIRE_POWER_INLETS:
+        return "iec_c13"
+    return value
+
+
+def _normalize_stagewire_inputs(specs: object) -> int | None:
+    if not isinstance(specs, dict):
+        return None
+    for key in ("inputs", "sb_inputs"):
+        value = _coerce_int(specs.get(key))
+        if value is not None:
+            return value
+    return None
+
+
+def _normalize_stagewire_outputs(specs: object) -> int | None:
+    if not isinstance(specs, dict):
+        return None
+    for key in ("outputs", "sb_outputs"):
+        value = _coerce_int(specs.get(key))
+        if value is not None:
+            return value
+    return None
+
+
 @router.get("/products", response_model=PaginatedResponse[PublicProductRead])
 def list_public_products(
     db: Session = Depends(get_db),
@@ -302,3 +408,27 @@ def get_public_product(
     return _product_to_public(
         product, resolved_locale, images, type_translations, categories_by_id
     )
+
+
+@stockwire_router.get("/products/{product_id}/device-specs")
+def get_stagewire_device_specs(product_id: int, db: Session = Depends(get_db)) -> dict[str, object]:
+    product = db.get(Product, product_id)
+    if product is None:
+        raise HTTPException(status_code=404, detail="Product not found")
+
+    specs = product.specs if isinstance(product.specs, dict) else {}
+    if isinstance(product.specs, list):
+        specs = {"connectors": product.specs}
+
+    connector_groups = _normalize_stagewire_connector_groups(specs)
+    if not connector_groups and isinstance(product.specs, list):
+        connector_groups = _normalize_stagewire_connector_groups({"connectors": product.specs})
+
+    return {
+        "connector_groups": connector_groups,
+        "power_inlet": _normalize_stagewire_power_inlet(specs),
+        "inputs": _normalize_stagewire_inputs(specs),
+        "outputs": _normalize_stagewire_outputs(specs),
+        "weight_kg": _coerce_float(product.weight_kg),
+        "power_watts": _coerce_float(product.power_consumption_watts),
+    }

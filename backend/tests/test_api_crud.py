@@ -185,6 +185,11 @@ def test_product_specs_persist_through_detail_and_list_endpoints(client):
         "cam_max_distance_m": 30,
         "lens_focal_length_min_mm": 24,
         "lens_focal_length_max_mm": 105,
+        "connectors": [
+            {"connector": "sdi", "direction": "out", "count": 4, "signal": "video"},
+            {"connector": "usb", "direction": "both", "count": 2},
+        ],
+        "power_inlet": "iec_c13",
     }
     updated = client.put(
         f"/api/v1/inventory/products/{product_id}",
@@ -199,6 +204,125 @@ def test_product_specs_persist_through_detail_and_list_endpoints(client):
     assert detail.json()["specs"] == updated_specs
     listed_product = next(item for item in listed.json()["items"] if item["id"] == product_id)
     assert listed_product["specs"] == updated_specs
+
+
+def test_stagewire_device_specs_route_returns_normalized_connector_data(client):
+    product = client.post(
+        "/api/v1/inventory/products",
+        json={
+            "sku": "STAGEWIRE-01",
+            "name": "Stagewire test product",
+            "weight_kg": "12.5",
+            "power_consumption_watts": "560",
+            "specs": {
+                "connectors": [
+                    {"connector": "sdi", "direction": "out", "count": 4, "signal": "video"},
+                    {"connector": "USB", "direction": "in", "count": 2, "signal": "data"},
+                ],
+                "power_inlet": "attached_schuko",
+                "inputs": 16,
+                "outputs": 8,
+            },
+        },
+    )
+    assert product.status_code == 200
+    product_id = product.json()["id"]
+
+    response = client.get(f"/api/v1/stockwire/products/{product_id}/device-specs")
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["connector_groups"] == [
+        {"connector": "sdi", "direction": "out", "count": 4, "signal": "video"},
+        {"connector": "usb", "direction": "in", "count": 2, "signal": "data"},
+    ]
+    assert payload["power_inlet"] == "attached_schuko"
+    assert payload["inputs"] == 16
+    assert payload["outputs"] == 8
+    assert payload["weight_kg"] == 12.5
+    assert payload["power_watts"] == 560.0
+
+    legacy = client.put(
+        f"/api/v1/inventory/products/{product_id}",
+        json={"specs": ["hdmi", "ethernet"]},
+    )
+    assert legacy.status_code == 200
+    response = client.get(f"/api/v1/stockwire/products/{product_id}/device-specs")
+    assert response.status_code == 200
+    assert response.json()["connector_groups"] == [
+        {"connector": "hdmi", "direction": "both", "count": 1},
+        {"connector": "ethernet", "direction": "both", "count": 1},
+    ]
+
+
+def test_product_availability_uses_peak_overlapping_job_requirements(client):
+    product = client.post(
+        "/api/v1/inventory/products",
+        json={"sku": "AVAIL-01", "name": "Availability test product"},
+    )
+    assert product.status_code == 200
+    product_id = product.json()["id"]
+
+    zone = client.post(
+        "/api/v1/inventory/zones",
+        json={"code": "AVAIL-ZONE", "name": "Availability zone", "zone_type": "rack"},
+    )
+    assert zone.status_code == 200
+    for index in range(4):
+        created_device = client.post(
+            "/api/v1/inventory/devices",
+            json={
+                "product_id": product_id,
+                "asset_tag": f"AVAIL-01-{index + 1:03d}",
+                "location_zone_id": zone.json()["id"],
+                "status": "available",
+                "condition": "good",
+            },
+        )
+        assert created_device.status_code == 200
+
+    def create_job(job_code, status, start_date, end_date, quantity):
+        job = client.post(
+            "/api/v1/jobs",
+            json={
+                "job_code": job_code,
+                "status": status,
+                "start_date": start_date,
+                "end_date": end_date,
+            },
+        )
+        assert job.status_code == 200
+        requirement = client.post(
+            f"/api/v1/jobs/{job.json()['id']}/requirements",
+            json={"product_id": product_id, "quantity_required": quantity},
+        )
+        assert requirement.status_code == 200
+
+    create_job("AVAIL-A", "confirmed", "2026-07-12", "2026-07-14", 2)
+    create_job("AVAIL-B", "confirmed", "2026-07-14", "2026-07-15", 3)
+    create_job("AVAIL-C", "cancelled", "2026-07-12", "2026-07-15", 20)
+
+    partial_range = client.get(
+        f"/api/v1/inventory/products/{product_id}/availability",
+        params={"start_date": "2026-07-12", "end_date": "2026-07-13"},
+    )
+    assert partial_range.status_code == 200
+    assert partial_range.json()["total_quantity"] == 4
+    assert partial_range.json()["max_reserved_quantity"] == 2
+    assert partial_range.json()["available_quantity"] == 2
+
+    full_range = client.get(
+        f"/api/v1/inventory/products/{product_id}/availability",
+        params={"start_date": "2026-07-12", "end_date": "2026-07-15"},
+    )
+    assert full_range.status_code == 200
+    assert full_range.json()["max_reserved_quantity"] == 5
+    assert full_range.json()["available_quantity"] == 0
+
+    invalid_range = client.get(
+        f"/api/v1/inventory/products/{product_id}/availability",
+        params={"start_date": "2026-07-16", "end_date": "2026-07-15"},
+    )
+    assert invalid_range.status_code == 422
 
 
 def test_eventory_connection_get_fallback_treats_http_error_as_reachable(client):
