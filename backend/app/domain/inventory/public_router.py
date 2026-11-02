@@ -25,11 +25,6 @@ stockwire_router = APIRouter(prefix="/stockwire", tags=["stockwire"])
 COMPANY_PROFILE_KEY = "company.profile"
 PRODUCT_IMAGE_CATEGORY = "product-image"
 
-_STAGEWIRE_CONNECTOR_KINDS = {
-    "xlr3", "xlr5", "trs", "speakon", "dante", "aes50", "madi", "avb",
-    "ethernet", "ethercon", "fiber", "sdi", "hdmi", "displayport", "bnc",
-    "usb", "dmx", "powercon", "schuko", "cee16",
-}
 _STAGEWIRE_POWER_INLETS = {"iec_c13", "attached_schuko", "powercon", "cee16", "other"}
 _STAGEWIRE_SIGNALS = {"audio", "video", "dmx", "power", "data"}
 _STAGEWIRE_DIRECTIONS = {"in", "out", "both"}
