@@ -39,7 +39,14 @@ app.add_middleware(
     allow_origins=settings.cors_origins_list,
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-    allow_headers=["Authorization", "Content-Type", "X-API-Key", "X-Refresh-Token"],
+    allow_headers=[
+        "Authorization",
+        "Content-Type",
+        "X-API-Key",
+        "X-Refresh-Token",
+        "mcp-session-id",
+        "mcp-protocol-version",
+    ],
     expose_headers=["X-Total-Count"],
 )
 
@@ -61,6 +68,42 @@ async def security_headers_middleware(request: Request, call_next) -> Response:
 
 app.include_router(twenty_webhook_router)
 app.include_router(api_router)
+
+# ---------------------------------------------------------------------------
+# MCP server (Model Context Protocol) + OAuth authorization server
+# ---------------------------------------------------------------------------
+# Mounted inside the API so it shares the database, CORS, and security. The
+# OAuth endpoints issue access tokens against the existing user store; the /mcp
+# streamable-HTTP endpoint is protected by StockwireTokenVerifier (validates
+# those tokens). Guarded so a future `mcp` SDK break does not take down the API.
+try:
+    from mcp.server.auth.settings import AuthSettings, ClientRegistrationOptions
+
+    from app.assistant.mcp_oauth import StockwireTokenVerifier, mcp_issuer_url
+    from app.assistant.mcp_oauth_router import router as mcp_oauth_router
+    from app.assistant.mcp_server import build_server
+
+    # OAuth discovery + authorize/token/register/revoke endpoints.
+    app.include_router(mcp_oauth_router)
+
+    _mcp_auth = AuthSettings(
+        issuer_url=mcp_issuer_url(),
+        resource_server_url=f"{mcp_issuer_url()}/mcp",
+        client_registration_options=ClientRegistrationOptions(enabled=True),
+        required_scopes=["mcp"],
+        # The access token is our own JWT; the verifier validates it without a
+        # separate RFC 8707 resource indicator, so do not require one.
+        validate_token_resource=False,
+    )
+    _mcp_server = build_server(
+        token_verifier=StockwireTokenVerifier(),
+        auth=_mcp_auth,
+    )
+    _mcp_app = _mcp_server.streamable_http_app(streamable_http_path="/")
+    app.mount("/mcp", _mcp_app)
+    logger.info("MCP server mounted at /mcp (OAuth-protected)")
+except ImportError:  # pragma: no cover - mcp optional at runtime
+    logger.warning("MCP server not mounted: 'mcp' package is not installed.")
 
 if os.environ.get("PROMETHEUS_ENABLED", "true").lower() == "true" and settings.prometheus_enabled:
     from app.services.metrics import setup_metrics

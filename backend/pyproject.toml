@@ -31,6 +31,10 @@ dependencies = [
   "prometheus-fastapi-instrumentator==8.1.0",
   "icalendar==7.3.0",
   "openai>=3.42.0,<3.43.0",
+  # MCP server exposing the assistant tools to outside agents.
+  # v2 high-level API (MCPServer). No upper bound: v3+ allowed; any API drift
+  # (e.g. import path / tool() signature) will be fixed when we bump.
+  "mcp>=2.0.0",
   "slowapi>=0.1.9",
   "reportlab>=5,<5.2",
   "pypdf>=6.21,<6.22",
@@ -59,4 +63,8 @@ target-version = "py312"
 # Alembic migration files expose revision metadata as module-level constants
 # that Alembic reads via introspection; they are intentionally "unused" in
 # the Python sense, so do not flag them.
-per-file-ignores = { "alembic/versions/*.py" = ["F841"] }
+[tool.ruff.lint.per-file-ignores]
+"alembic/versions/*.py" = ["F841"]
+# FastAPI dependency injection via ``Depends(...)`` in signature defaults is the
+# established pattern across the codebase (and flagged as B008 by ruff).
+"app/assistant/mcp_oauth_router.py" = ["B008"]
