@@ -18,7 +18,7 @@ from app.domain.auth.deps import get_current_user, require_admin
 from app.domain.settings.models import AppSetting
 from app.domain.settings.router import INTEGRATIONS_KEY, _parse_integrations
 from app.assistant.schemas import ChatRequest
-from app.assistant.tools import TOOLS, execute_tool
+from app.assistant.tools import TOOLS, WRITE_TOOLS, execute_tool
 
 logger = logging.getLogger(__name__)
 
@@ -27,19 +27,20 @@ router = APIRouter(prefix="/assistant", tags=["assistant"])
 SYSTEM_PROMPT = """You are Stockwire Assistant, an AI helper for the Stockwire Rental inventory management system.
 
 You can help users with:
-- Checking inventory stock and availability
+- Checking inventory stock and date-range availability
 - Looking up rental rates and pricing
 - Searching for customers and suppliers
 - Finding products by name, category, or type
-- Listing recent jobs and their status
+- Listing jobs and inspecting their gear manifests
 - Browsing product categories
-- Updating product information (manufacturer, category)
+- Managing job manifest line items and customer records
+- Reporting damaged equipment and updating device status
 
 IMPORTANT RULES:
 - When users ask about a product by number (e.g., "1510"), first search for it using search_products to find the full name. Then use check_inventory_stock with the full product name (e.g., "Pelican 1510").
 - Always use full product names or SKU codes when calling tools, never just numbers.
 - When users ask about availability for a vague date (e.g., "next weekend"), ASK them to clarify which specific dates they mean. For example: "Do you mean this weekend (Aug 2-3) or next weekend (Aug 9-10)?" Then use the clarified dates.
-- When users ask about future availability, explain that you can only show current stock levels, not future reservations.
+- For date-range availability, always request exact start and end dates if the user's dates are vague.
 - When a tool call fails, explain what went wrong and suggest alternatives.
 - For batch operations (like updating multiple products), use batch_update_manufacturers instead of calling update_product_manufacturer multiple times.
 
@@ -181,8 +182,7 @@ async def chat(request: ChatRequest, db=Depends(get_db), _user=Depends(require_a
                     yield f"data: {json.dumps({'type': 'tool_call', 'tool': tc['function']['name'], 'args': args})}\n\n"
 
                     tool_name = tc["function"]["name"]
-                    write_tools = {"update_product_manufacturer", "update_product_category", "batch_update_manufacturers"}
-                    if tool_name in write_tools and getattr(_user, "role", None) != "admin":
+                    if tool_name in WRITE_TOOLS and getattr(_user, "role", None) != "admin":
                         result = {"error": "Admin privileges required for this tool"}
                     else:
                         result = execute_tool(tool_name, args, db)

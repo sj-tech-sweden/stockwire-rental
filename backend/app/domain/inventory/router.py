@@ -35,6 +35,10 @@ from app.domain.inventory.models import (
     VendorProduct,
     Zone,
 )
+from app.domain.inventory.availability import (
+    MissingProductsError,
+    calculate_product_availability,
+)
 from app.domain.jobs.models import Job, JobRequirement
 from app.domain.customers.models import Company
 from app.domain.custom_fields.models import CustomFieldDefinition, CustomFieldValue
@@ -1221,78 +1225,12 @@ def _calculate_product_availability(
     end_date: date,
     db: Session,
 ) -> list[dict[str, int | date]]:
-    if start_date > end_date:
-        raise HTTPException(status_code=422, detail="start_date must be on or before end_date")
-
-    existing_ids = set(db.scalars(select(Product.id).where(Product.id.in_(product_ids))).all())
-    missing_ids = [product_id for product_id in product_ids if product_id not in existing_ids]
-    if missing_ids:
-        raise HTTPException(status_code=404, detail=f"Product(s) not found: {missing_ids}")
-
-    device_counts = {
-        product_id: int(quantity)
-        for product_id, quantity in db.execute(
-            select(Device.product_id, func.count())
-            .where(
-                Device.product_id.in_(product_ids),
-                Device.status.in_(["available", "reserved", "in_use"]),
-                or_(Device.condition.is_(None), Device.condition != "damaged"),
-            )
-            .group_by(Device.product_id)
-        )
-    }
-
-    reservations = db.execute(
-        select(
-            JobRequirement.product_id,
-            Job.start_date,
-            Job.end_date,
-            JobRequirement.quantity_required,
-        )
-        .join(JobRequirement, JobRequirement.job_id == Job.id)
-        .where(
-            JobRequirement.product_id.in_(product_ids),
-            Job.status.notin_(["cancelled", "completed"]),
-            Job.start_date.is_not(None),
-            Job.end_date.is_not(None),
-            Job.start_date <= end_date,
-            Job.end_date >= start_date,
-        )
-    ).all()
-
-    reservation_changes: dict[int, dict[date, int]] = defaultdict(lambda: defaultdict(int))
-    for product_id, job_start, job_end, quantity_required in reservations:
-        quantity = max(int(quantity_required or 0), 0)
-        if quantity == 0:
-            continue
-        overlap_start = max(job_start, start_date)
-        overlap_end = min(job_end, end_date)
-        reservation_changes[product_id][overlap_start] += quantity
-        reservation_changes[product_id][overlap_end + timedelta(days=1)] -= quantity
-
-    availability: list[dict[str, int | date]] = []
-    for product_id in product_ids:
-        max_reserved_quantity = 0
-        reserved_quantity = 0
-        for change_date in sorted(reservation_changes[product_id]):
-            if change_date > end_date:
-                break
-            reserved_quantity += reservation_changes[product_id][change_date]
-            max_reserved_quantity = max(max_reserved_quantity, reserved_quantity)
-
-        total_quantity = device_counts.get(product_id, 0)
-        availability.append(
-            {
-                "product_id": product_id,
-                "start_date": start_date,
-                "end_date": end_date,
-                "total_quantity": total_quantity,
-                "max_reserved_quantity": max_reserved_quantity,
-                "available_quantity": max(total_quantity - max_reserved_quantity, 0),
-            }
-        )
-
-    return availability
+    try:
+        return calculate_product_availability(db, product_ids, start_date, end_date)
+    except MissingProductsError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
 
 
 @router.get("/products/availability")

@@ -23,7 +23,7 @@ Security note
 The MCP server connects directly to the database and bypasses the FastAPI auth
 layer, so it is an admin-equivalent, privileged surface. Run it only where the
 agent is trusted. Set ``STOCKWIRE_MCP_READONLY=true`` to expose read-only tools
-only (disabling the manufacturer/category write tools).
+only (disabling all registered write tools).
 """
 
 import inspect
@@ -34,7 +34,7 @@ from typing import Any
 from sqlalchemy.exc import SQLAlchemyError
 
 from app.assistant.mcp_oauth import get_mcp_claims
-from app.assistant.tools import TOOLS, execute_tool
+from app.assistant.tools import TOOLS, WRITE_TOOLS, execute_tool
 from app.db.session import SessionLocal
 
 # MCPServer (the v2 high-level API; the old ``FastMCP`` was renamed) is imported
@@ -47,13 +47,6 @@ try:  # pragma: no cover - exercised only when mcp is installed
 except ImportError:  # pragma: no cover
     MCPServer = None
     _MCP_AVAILABLE = False
-
-# Tools that mutate data. Everything else in TOOLS is read-only.
-WRITE_TOOLS = {
-    "update_product_manufacturer",
-    "update_product_category",
-    "batch_update_manufacturers",
-}
 
 # Map JSON-Schema primitive types to Python types used for the dynamic
 # function signature. Anything unknown falls back to ``str``.
