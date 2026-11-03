@@ -1,5 +1,53 @@
 # Changelog
 
+## [0.26.0](https://github.com/sj-tech-sweden/stockwire-rental/compare/0.25.0...0.26.0) (2026-11-03)
+
+
+### Features
+
+* **assistant:** add rental operations tools ([f672b44](https://github.com/sj-tech-sweden/stockwire-rental/commit/f672b44248eb6f69e02ee96c7deed582e3861e86))
+* **deps:** update dependency openai to &gt;=3.41.0,&lt;3.42.0 ([d56357d](https://github.com/sj-tech-sweden/stockwire-rental/commit/d56357db6578c0f287ff23eaf6d8a9c2c755db2a))
+* **deps:** update dependency openai to &gt;=3.41.0,&lt;3.42.0 ([cbfdeba](https://github.com/sj-tech-sweden/stockwire-rental/commit/cbfdebaf89622ae24f6e73b34ce89ca717692407))
+* **deps:** update dependency openai to &gt;=3.42.0,&lt;3.43.0 ([29aa09d](https://github.com/sj-tech-sweden/stockwire-rental/commit/29aa09d66410cede6cb26a213a484ec8e1394f05))
+* **deps:** update dependency openai to &gt;=3.42.0,&lt;3.43.0 ([607f9d8](https://github.com/sj-tech-sweden/stockwire-rental/commit/607f9d8f3f55e15d604fb60d4332fcfd52059e98))
+* **deps:** update dependency vitest to v5.1.0 ([03a2072](https://github.com/sj-tech-sweden/stockwire-rental/commit/03a207213246893ed1233788dc7cc4097e9827b9))
+* **deps:** update dependency vitest to v5.1.0 ([e94f60a](https://github.com/sj-tech-sweden/stockwire-rental/commit/e94f60a749f70a2b227a576492fc2568fc469b6d))
+* **inventory:** add batch availability product listings ([40f2dd0](https://github.com/sj-tech-sweden/stockwire-rental/commit/40f2dd092892193cb0f46797cafaf18f18104956))
+* **inventory:** add product availability and connector specs ([8011dfd](https://github.com/sj-tech-sweden/stockwire-rental/commit/8011dfdc11e799a76b174bca8467b9ef4001158b))
+* **mcp:** add OAuth-protected MCP server and bridge SSO into login ([5aa0541](https://github.com/sj-tech-sweden/stockwire-rental/commit/5aa0541f2b367909ff986dc45b3fba013a68f652))
+* **mcp:** OAuth-protected MCP server with SSO bridge ([8df5b0d](https://github.com/sj-tech-sweden/stockwire-rental/commit/8df5b0dea7dfbbbd81735ee2da9158dfddd49f21))
+
+
+### Bug Fixes
+
+* **deps:** update dependency boto3 to v1.43.121 ([3f30866](https://github.com/sj-tech-sweden/stockwire-rental/commit/3f308665abd0f1c4b219c4a039e35305ae7b3f89))
+* **deps:** update dependency boto3 to v1.43.121 ([31b5d36](https://github.com/sj-tech-sweden/stockwire-rental/commit/31b5d36d609b74ce30bf4a63d1f0cbff105cb569))
+* **deps:** update dependency boto3 to v1.43.122 ([e406d5d](https://github.com/sj-tech-sweden/stockwire-rental/commit/e406d5df6b05fd7bd6634547b0f6071b9bb547d0))
+* **deps:** update dependency boto3 to v1.43.122 ([9a2a4cf](https://github.com/sj-tech-sweden/stockwire-rental/commit/9a2a4cff25612163ea775938ccf4934f6aa0aa1c))
+* **deps:** update dependency boto3 to v1.43.123 ([8313e3a](https://github.com/sj-tech-sweden/stockwire-rental/commit/8313e3a999bffeba7c4154ee8db6bde0bc02da96))
+* **deps:** update dependency boto3 to v1.43.123 ([c170cff](https://github.com/sj-tech-sweden/stockwire-rental/commit/c170cff3a9432efd1eab6ae599f4949bfb572b59))
+* **deps:** update dependency fake-indexeddb to v6.2.7 ([645f0b4](https://github.com/sj-tech-sweden/stockwire-rental/commit/645f0b44a9d8f0071bb81fa08af596c4d70d6d15))
+* **deps:** update dependency fake-indexeddb to v6.2.7 ([5c61c2c](https://github.com/sj-tech-sweden/stockwire-rental/commit/5c61c2c0b7944fe0bce01f71743dc975c824810d))
+* **deps:** update dependency psycopg to v3.3.7 ([ab94e6a](https://github.com/sj-tech-sweden/stockwire-rental/commit/ab94e6ab55d16fce19debd19e27ac3de46239b0c))
+* **deps:** update dependency psycopg to v3.3.7 ([9b09796](https://github.com/sj-tech-sweden/stockwire-rental/commit/9b09796fcfd0d44bc1a71708c1b0bb9b1b0c48ec))
+* **deps:** update dependency pydantic-settings to v2.16.2 ([98d9fa6](https://github.com/sj-tech-sweden/stockwire-rental/commit/98d9fa607c160c4964d858f9734c59aa68f77e8c))
+* **deps:** update dependency pydantic-settings to v2.16.2 ([6a22939](https://github.com/sj-tech-sweden/stockwire-rental/commit/6a22939ba8e0a9756093d554f7c5791aceb9577e))
+* **deps:** update dependency pytest-asyncio to v1.4.1.post1 ([1a96e9c](https://github.com/sj-tech-sweden/stockwire-rental/commit/1a96e9ce9e3b61eec13f20a2d2cd850d8abf66c2))
+* **deps:** update dependency pytest-asyncio to v1.4.1.post1 ([031cc96](https://github.com/sj-tech-sweden/stockwire-rental/commit/031cc9613d9e98e7628089d3aeba2a0730f604b6))
+* **deps:** update dependency python-multipart to v0.0.33 ([b4513b3](https://github.com/sj-tech-sweden/stockwire-rental/commit/b4513b35b4b1b601c7b24a1ba0d0f9604eef0247))
+* **deps:** update dependency python-multipart to v0.0.33 ([ff3305e](https://github.com/sj-tech-sweden/stockwire-rental/commit/ff3305e5b3164c08d7210474edd4a3115bef03ef))
+* **deps:** update dependency vue-i18n to v11.4.17 ([3306aa0](https://github.com/sj-tech-sweden/stockwire-rental/commit/3306aa000680abb3579b7cfd9f26238a0c66f41c))
+* **deps:** update dependency vue-i18n to v11.4.17 ([bbda340](https://github.com/sj-tech-sweden/stockwire-rental/commit/bbda34074538e82b046a51029d097ed4253c31b4))
+* **deps:** update dependency vue-i18n to v11.4.18 ([3aabc93](https://github.com/sj-tech-sweden/stockwire-rental/commit/3aabc93269e6583e38272592391c613dc2a07570))
+* **deps:** update dependency vue-i18n to v11.4.18 ([52397b6](https://github.com/sj-tech-sweden/stockwire-rental/commit/52397b6c4c44564750966947a55662937fe6f0af))
+* **inventory:** remove unused connector kinds constant ([2f42234](https://github.com/sj-tech-sweden/stockwire-rental/commit/2f42234e9fd01d4c33bb9a81b4f8ba0eb0751715))
+
+
+### Miscellaneous
+
+* **deps:** bump follow-redirects ([d9f45d5](https://github.com/sj-tech-sweden/stockwire-rental/commit/d9f45d555b8bb4573056c6056c3b114c543fa29c))
+* **deps:** bump follow-redirects from 1.16.1 to 1.16.2 in /frontend in the npm_and_yarn group across 1 directory ([b0a1b86](https://github.com/sj-tech-sweden/stockwire-rental/commit/b0a1b86b7c492bfe9b3f56bccfed6c7b0c76e4e2))
+
 ## [0.25.0](https://github.com/sj-tech-sweden/stockwire-rental/compare/0.24.0...0.25.0) (2026-10-28)
 
 
