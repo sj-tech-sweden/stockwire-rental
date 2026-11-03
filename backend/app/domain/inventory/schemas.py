@@ -225,6 +225,14 @@ class ProductRead(ProductBase):
     model_config = {"from_attributes": True}
 
 
+class ProductAvailabilityRead(ProductRead):
+    start_date: date
+    end_date: date
+    total_quantity: int
+    max_reserved_quantity: int
+    available_quantity: int
+
+
 class DeviceBase(BaseModel):
     product_id: int
     asset_tag: str | None = None

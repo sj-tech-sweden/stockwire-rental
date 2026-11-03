@@ -102,6 +102,7 @@ from app.domain.inventory.schemas import (
     ProductCreate,
     ProductDevicesBulkCreate,
     ProductBulkUpdateRequest,
+    ProductAvailabilityRead,
     ProductRead,
     ProductSupplierRead,
     ProductSupplierUpsert,
@@ -1214,6 +1215,176 @@ def product_purchase_info(
     }
 
 
+def _calculate_product_availability(
+    product_ids: list[int],
+    start_date: date,
+    end_date: date,
+    db: Session,
+) -> list[dict[str, int | date]]:
+    if start_date > end_date:
+        raise HTTPException(status_code=422, detail="start_date must be on or before end_date")
+
+    existing_ids = set(db.scalars(select(Product.id).where(Product.id.in_(product_ids))).all())
+    missing_ids = [product_id for product_id in product_ids if product_id not in existing_ids]
+    if missing_ids:
+        raise HTTPException(status_code=404, detail=f"Product(s) not found: {missing_ids}")
+
+    device_counts = {
+        product_id: int(quantity)
+        for product_id, quantity in db.execute(
+            select(Device.product_id, func.count())
+            .where(
+                Device.product_id.in_(product_ids),
+                Device.status.in_(["available", "reserved", "in_use"]),
+                or_(Device.condition.is_(None), Device.condition != "damaged"),
+            )
+            .group_by(Device.product_id)
+        )
+    }
+
+    reservations = db.execute(
+        select(
+            JobRequirement.product_id,
+            Job.start_date,
+            Job.end_date,
+            JobRequirement.quantity_required,
+        )
+        .join(JobRequirement, JobRequirement.job_id == Job.id)
+        .where(
+            JobRequirement.product_id.in_(product_ids),
+            Job.status.notin_(["cancelled", "completed"]),
+            Job.start_date.is_not(None),
+            Job.end_date.is_not(None),
+            Job.start_date <= end_date,
+            Job.end_date >= start_date,
+        )
+    ).all()
+
+    reservation_changes: dict[int, dict[date, int]] = defaultdict(lambda: defaultdict(int))
+    for product_id, job_start, job_end, quantity_required in reservations:
+        quantity = max(int(quantity_required or 0), 0)
+        if quantity == 0:
+            continue
+        overlap_start = max(job_start, start_date)
+        overlap_end = min(job_end, end_date)
+        reservation_changes[product_id][overlap_start] += quantity
+        reservation_changes[product_id][overlap_end + timedelta(days=1)] -= quantity
+
+    availability: list[dict[str, int | date]] = []
+    for product_id in product_ids:
+        max_reserved_quantity = 0
+        reserved_quantity = 0
+        for change_date in sorted(reservation_changes[product_id]):
+            if change_date > end_date:
+                break
+            reserved_quantity += reservation_changes[product_id][change_date]
+            max_reserved_quantity = max(max_reserved_quantity, reserved_quantity)
+
+        total_quantity = device_counts.get(product_id, 0)
+        availability.append(
+            {
+                "product_id": product_id,
+                "start_date": start_date,
+                "end_date": end_date,
+                "total_quantity": total_quantity,
+                "max_reserved_quantity": max_reserved_quantity,
+                "available_quantity": max(total_quantity - max_reserved_quantity, 0),
+            }
+        )
+
+    return availability
+
+
+@router.get("/products/availability")
+def get_products_availability(
+    product_ids: list[str] = Query(..., description="Product IDs, comma-separated or repeated"),
+    start_date: date = Query(..., description="First rental date (inclusive)"),
+    end_date: date = Query(..., description="Last rental date (inclusive)"),
+    db: Session = Depends(get_db),
+) -> list[dict[str, int | date]]:
+    """Return availability for multiple products over an inclusive date range."""
+    parsed_ids: list[int] = []
+    seen_ids: set[int] = set()
+    for value in product_ids:
+        for token in value.split(","):
+            token = token.strip()
+            if not token.isdecimal():
+                raise HTTPException(
+                    status_code=422, detail="product_ids must contain positive integers"
+                )
+            product_id = int(token)
+            if product_id < 1 or product_id > 2_147_483_647:
+                raise HTTPException(
+                    status_code=422, detail="product_ids must contain valid product IDs"
+                )
+            if product_id not in seen_ids:
+                parsed_ids.append(product_id)
+                seen_ids.add(product_id)
+    if not parsed_ids:
+        raise HTTPException(status_code=422, detail="At least one product_id is required")
+    return _calculate_product_availability(parsed_ids, start_date, end_date, db)
+
+
+@router.get(
+    "/products/with-availability",
+    response_model=PaginatedResponse[ProductAvailabilityRead],
+)
+def list_products_with_availability(
+    start_date: date = Query(..., description="First rental date (inclusive)"),
+    end_date: date = Query(..., description="Last rental date (inclusive)"),
+    db: Session = Depends(get_db),
+    pagination: PaginationParams = Depends(),
+    search: str | None = Query(None, description="Filter by product name or SKU"),
+    exclude_rental: bool = Query(False, description="Exclude rental products from the result"),
+    brand: str | None = Query(None, description="Filter by brand (exact, case-insensitive)"),
+    manufacturer: str | None = Query(None, description="Filter by manufacturer (exact, case-insensitive)"),
+    category: str | None = Query(None, description="Filter by category (exact)"),
+    category_id: int | None = Query(None, description="Filter by product category tree node id (includes descendants)"),
+    min_inputs: int | None = Query(None, description="Minimum mixer input count (from specs.inputs)"),
+    min_outputs: int | None = Query(None, description="Minimum mixer output/bus count (from specs.outputs)"),
+) -> PaginatedResponse[ProductAvailabilityRead]:
+    """Return a paginated product list with availability for an inclusive date range."""
+    if start_date > end_date:
+        raise HTTPException(status_code=422, detail="start_date must be on or before end_date")
+
+    products_page = list_products(
+        db=db,
+        pagination=pagination,
+        search=search,
+        exclude_rental=exclude_rental,
+        brand=brand,
+        manufacturer=manufacturer,
+        category=category,
+        category_id=category_id,
+        min_inputs=min_inputs,
+        min_outputs=min_outputs,
+    )
+    product_availability = (
+        _calculate_product_availability(
+            [product.id for product in products_page.items],
+            start_date,
+            end_date,
+            db,
+        )
+        if products_page.items
+        else []
+    )
+    availability_by_id = {item["product_id"]: item for item in product_availability}
+
+    return PaginatedResponse[ProductAvailabilityRead](
+        items=[
+            ProductAvailabilityRead.model_validate(
+                {**product.model_dump(), **availability_by_id[product.id]}
+            )
+            for product in products_page.items
+        ],
+        total=products_page.total,
+        skip=products_page.skip,
+        limit=products_page.limit,
+        has_more=products_page.has_more,
+    )
+
+
 @router.get("/products/{product_id}", response_model=ProductRead)
 def get_product(product_id: int, db: Session = Depends(get_db)) -> ProductRead:
     product = db.get(Product, product_id)
@@ -1230,64 +1401,7 @@ def get_product_availability(
     db: Session = Depends(get_db),
 ) -> dict[str, int | date]:
     """Return the product's minimum available device quantity for an inclusive date range."""
-    if start_date > end_date:
-        raise HTTPException(status_code=422, detail="start_date must be on or before end_date")
-
-    if db.get(Product, product_id) is None:
-        raise HTTPException(status_code=404, detail="Product not found")
-
-    total_quantity = int(
-        db.scalar(
-            select(func.count())
-            .select_from(Device)
-            .where(
-                Device.product_id == product_id,
-                Device.status.in_(["available", "reserved", "in_use"]),
-                or_(Device.condition.is_(None), Device.condition != "damaged"),
-            )
-        )
-        or 0
-    )
-
-    reservations = db.execute(
-        select(Job.start_date, Job.end_date, JobRequirement.quantity_required)
-        .join(JobRequirement, JobRequirement.job_id == Job.id)
-        .where(
-            JobRequirement.product_id == product_id,
-            Job.status.notin_(["cancelled", "completed"]),
-            Job.start_date.is_not(None),
-            Job.end_date.is_not(None),
-            Job.start_date <= end_date,
-            Job.end_date >= start_date,
-        )
-    ).all()
-
-    reservation_changes: dict[date, int] = defaultdict(int)
-    for job_start, job_end, quantity_required in reservations:
-        quantity = max(int(quantity_required or 0), 0)
-        if quantity == 0:
-            continue
-        overlap_start = max(job_start, start_date)
-        overlap_end = min(job_end, end_date)
-        reservation_changes[overlap_start] += quantity
-        reservation_changes[overlap_end + timedelta(days=1)] -= quantity
-
-    max_reserved_quantity = 0
-    reserved_quantity = 0
-    for change_date in sorted(reservation_changes):
-        if change_date > end_date:
-            break
-        reserved_quantity += reservation_changes[change_date]
-        max_reserved_quantity = max(max_reserved_quantity, reserved_quantity)
-
-    return {
-        "product_id": product_id,
-        "start_date": start_date,
-        "end_date": end_date,
-        "total_quantity": total_quantity,
-        "max_reserved_quantity": max_reserved_quantity,
-        "available_quantity": max(total_quantity - max_reserved_quantity, 0),
-    }
+    return _calculate_product_availability([product_id], start_date, end_date, db)[0]
 
 
 @router.post("/products", response_model=ProductRead)
