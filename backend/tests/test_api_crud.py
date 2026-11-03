@@ -318,6 +318,89 @@ def test_product_availability_uses_peak_overlapping_job_requirements(client):
     assert full_range.json()["max_reserved_quantity"] == 5
     assert full_range.json()["available_quantity"] == 0
 
+    second_product = client.post(
+        "/api/v1/inventory/products",
+        json={"sku": "AVAIL-02", "name": "Second availability product"},
+    )
+    assert second_product.status_code == 200
+    second_product_id = second_product.json()["id"]
+
+    batch = client.get(
+        "/api/v1/inventory/products/availability",
+        params={
+            "product_ids": f"{product_id},{product_id},{second_product_id}",
+            "start_date": "2026-07-12",
+            "end_date": "2026-07-15",
+        },
+    )
+    assert batch.status_code == 200
+    assert batch.json() == [
+        {
+            "product_id": product_id,
+            "start_date": "2026-07-12",
+            "end_date": "2026-07-15",
+            "total_quantity": 4,
+            "max_reserved_quantity": 5,
+            "available_quantity": 0,
+        },
+        {
+            "product_id": second_product_id,
+            "start_date": "2026-07-12",
+            "end_date": "2026-07-15",
+            "total_quantity": 0,
+            "max_reserved_quantity": 0,
+            "available_quantity": 0,
+        },
+    ]
+
+    product_list = client.get(
+        "/api/v1/inventory/products/with-availability",
+        params={
+            "search": "AVAIL",
+            "start_date": "2026-07-12",
+            "end_date": "2026-07-15",
+            "skip": 0,
+            "limit": 1,
+        },
+    )
+    assert product_list.status_code == 200
+    product_list_payload = product_list.json()
+    assert product_list_payload["total"] == 2
+    assert product_list_payload["has_more"] is True
+    assert len(product_list_payload["items"]) == 1
+    first_product = product_list_payload["items"][0]
+    assert first_product["id"] == product_id
+    assert first_product["sku"] == "AVAIL-01"
+    assert first_product["name"] == "Availability test product"
+    assert first_product["total_quantity"] == 4
+    assert first_product["max_reserved_quantity"] == 5
+    assert first_product["available_quantity"] == 0
+
+    repeated_ids = client.get(
+        "/api/v1/inventory/products/availability",
+        params=[
+            ("product_ids", str(product_id)),
+            ("product_ids", str(second_product_id)),
+            ("start_date", "2026-07-12"),
+            ("end_date", "2026-07-15"),
+        ],
+    )
+    assert repeated_ids.status_code == 200
+    assert [item["product_id"] for item in repeated_ids.json()] == [
+        product_id,
+        second_product_id,
+    ]
+
+    invalid_batch = client.get(
+        "/api/v1/inventory/products/availability",
+        params={
+            "product_ids": f"{product_id},invalid",
+            "start_date": "2026-07-12",
+            "end_date": "2026-07-15",
+        },
+    )
+    assert invalid_batch.status_code == 422
+
     invalid_range = client.get(
         f"/api/v1/inventory/products/{product_id}/availability",
         params={"start_date": "2026-07-16", "end_date": "2026-07-15"},
