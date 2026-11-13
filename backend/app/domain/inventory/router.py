@@ -95,6 +95,7 @@ from app.domain.inventory.schemas import (
     InventoryCategoryUpdate,
     CategoryTranslationCreate,
     CategoryTranslationRead,
+    CloneProduct,
     InventoryScanRequest,
     InventoryScanResponse,
     InventoryCheckedOutDeviceRead,
@@ -1384,6 +1385,83 @@ def create_product(payload: ProductCreate, db: Session = Depends(get_db), curren
     )
     emit_realtime_event("inventory.updated", {"entity": "product", "action": "create", "id": product.id})
     db.commit()
+    return _to_product_read(db, product)
+
+
+# Fields copied verbatim (as-is) from the source product when cloning. Related
+# rows (supplier links, accessories, components, required certifications) and
+# stock/barcode/external linkage are handled separately or intentionally reset.
+_PRODUCT_CLONE_FIELDS = (
+    "brand", "manufacturer", "product_type", "category", "category_id",
+    "is_rental_product", "supplier_name", "rental_price", "weight_kg",
+    "height_cm", "width_cm", "depth_cm", "maintenance_interval_days",
+    "power_consumption_watts", "daily_rate", "replace_cost", "min_stock_level",
+    "min_order_qty", "crew_skills", "crew_certifications", "crew_rate_type",
+    "crew_hourly_rate", "is_public",
+)
+
+def _generate_unique_product_name(db: Session, base: str) -> str:
+    """Return a name derived from `base` that is not already used. Tries
+    "{base} (Copy)", then "{base} (Copy-2)", "{base} (Copy-3)", ... so repeated
+    clones of the same product get a readable, incrementing suffix."""
+    existing = set(db.scalars(select(Product.name)).all())
+    candidate = f"{base} (Copy)"
+    suffix = 2
+    while candidate in existing:
+        candidate = f"{base} (Copy-{suffix})"
+        suffix += 1
+    return candidate
+
+
+@router.post("/products/{product_id}/clone", response_model=ProductRead, status_code=status.HTTP_201_CREATED)
+def clone_product(
+    product_id: int,
+    payload: CloneProduct | None = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_editor),
+) -> ProductRead:
+    """Create a new product that is a starting point for one similar to an
+    existing product. Copies the product *definition* and the `specs` JSON only:
+    a fresh unique SKU is auto-generated (the same way a normal new product gets
+    one), the name gets a "(Copy)" / "(Copy-2)" ... suffix, stock is reset to
+    zero, and barcode / external source & reference are cleared. Related rows
+    (supplier links, accessories, components, certifications) are intentionally
+    not copied, so the clone starts clean."""
+    source = db.get(Product, product_id)
+    if source is None:
+        raise HTTPException(status_code=404, detail="Product not found")
+
+    data = {field: getattr(source, field) for field in _PRODUCT_CLONE_FIELDS}
+    # Deep-copy the structured specs so edits to the clone don't mutate the source.
+    if source.specs is not None:
+        data["specs"] = json.loads(json.dumps(source.specs))
+    # SKU: a brand-new, normally-generated unique value (e.g. "PRD-0042") unless
+    # an explicit override is supplied. The clone is a distinct product, so it
+    # does not inherit the source SKU.
+    data["sku"] = (payload and payload.sku) or _generate_next_product_sku(db, "PRD-")
+    # Name: override or "{name} (Copy)" / "{name} (Copy-2)" ...
+    data["name"] = (payload and payload.name) or _generate_unique_product_name(db, source.name)
+    # Reset stock; clear barcode and external linkage.
+    data["eventory_available_qty"] = 0
+    data["barcode"] = None
+    data["external_source"] = None
+    data["external_reference"] = None
+
+    product = Product(**data)
+    db.add(product)
+    db.commit()
+    db.refresh(product)
+    record_activity(
+        db,
+        user_id=current_user.id,
+        entity_type="product",
+        entity_id=product.id,
+        action="create",
+        message_format="product_created",
+        message_params={"sku": product.sku, "name": product.name},
+        details={"sku": product.sku, "name": product.name, "cloned_from": source.id},
+    )
+    emit_realtime_event("inventory.updated", {"entity": "product", "action": "create", "id": product.id})
     return _to_product_read(db, product)
 
 
@@ -4706,6 +4784,14 @@ def _to_product_read(db: Session, product: Product) -> ProductRead:
             "rental_price": product.rental_price,
             "external_source": product.external_source,
             "external_reference": product.external_reference,
+            "barcode": product.barcode,
+            "min_stock_level": product.min_stock_level,
+            "min_order_qty": product.min_order_qty,
+            "crew_skills": product.crew_skills,
+            "crew_certifications": product.crew_certifications,
+            "crew_rate_type": product.crew_rate_type,
+            "crew_hourly_rate": product.crew_hourly_rate,
+            "is_public": product.is_public,
             "weight_kg": product.weight_kg,
             "height_cm": product.height_cm,
             "width_cm": product.width_cm,

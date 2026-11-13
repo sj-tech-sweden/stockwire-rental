@@ -221,6 +221,9 @@
               <q-btn flat dense round icon="info" :color="infoActionColor" class="q-mr-xs inventory-action-contrast" @click="openProductInfo(props.row)" />
               <q-btn flat dense round icon="calendar_month" :color="calendarActionColor" class="q-mr-xs inventory-action-contrast" @click="openProductAvailabilityCalendar(props.row)" />
               <q-btn flat dense round icon="edit" color="primary" @click="openEditProduct(props.row)" />
+              <q-btn flat dense round icon="content_copy" color="grey-8" class="q-ml-xs" :loading="cloningId === props.row.id" @click="duplicateProduct(props.row)">
+                <q-tooltip>{{ t('inventory.clone') }}</q-tooltip>
+              </q-btn>
               <q-btn flat dense round icon="description" color="secondary" @click="productExportTarget = props.row; productExportDialogOpen = true" />
             </q-td>
           </template>
@@ -250,6 +253,9 @@
                   <q-btn flat dense icon="info" :color="infoActionColor" class="inventory-action-contrast" @click="openProductInfo(props.row)" />
                   <q-btn flat dense icon="calendar_month" :color="calendarActionColor" class="inventory-action-contrast" @click="openProductAvailabilityCalendar(props.row)" />
                   <q-btn flat dense icon="edit" color="primary" @click="openEditProduct(props.row)" />
+                  <q-btn flat dense icon="content_copy" color="grey-8" @click="duplicateProduct(props.row)">
+                    <q-tooltip>{{ t('inventory.clone') }}</q-tooltip>
+                  </q-btn>
                 </q-card-actions>
               </q-card>
             </div>
@@ -1837,6 +1843,21 @@ function openCreateProduct() {
 function openEditProduct(product) {
   productEditing.value = product
   productDialogOpen.value = true
+}
+
+const cloningId = ref(null)
+
+async function duplicateProduct(product) {
+  cloningId.value = product.id
+  try {
+    const created = await store.cloneProduct(product.id)
+    openEditProduct(created)
+    $q.notify({ type: 'positive', message: t('inventory.productCloned') })
+  } catch (err) {
+    $q.notify({ type: 'negative', message: err?.response?.data?.detail || t('inventory.cloneFailed') })
+  } finally {
+    cloningId.value = null
+  }
 }
 
 function onProductDialogSaved() {

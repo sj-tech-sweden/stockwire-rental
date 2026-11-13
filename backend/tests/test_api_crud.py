@@ -2839,3 +2839,128 @@ def test_twenty_config_sync_interval(client):
 
     # Clean up
     client.delete("/api/v1/integrations/twenty/config")
+
+
+def test_clone_product_copies_definition_and_specs(client):
+    created = client.post(
+        "/api/v1/inventory/products",
+        json={
+            "sku": "MIX-ORIG-01",
+            "name": "Stagewise Mixer 32",
+            "category": "audio",
+            "brand": "Stagewise",
+            "manufacturer": "Stagewise AB",
+            "product_type": "equipment",
+            "is_rental_product": True,
+            "daily_rate": "450.00",
+            "replace_cost": "3200.00",
+            "weight_kg": "14.200",
+            "power_consumption_watts": "120.00",
+            "crew_skills": "audio",
+            "barcode": "1234567890123",
+            "external_source": "hirehop",
+            "external_reference": "ext-987",
+            "specs": {
+                "inputs": 48,
+                "outputs": 20,
+                "power_inlet": "iec_c13",
+                "mixer": {
+                    "architecture": "digital_bus_pool",
+                    "dsp_inputs": {"mono": 44, "stereo": 2},
+                    "bus_pool": {"total_slots": 30, "max_mixes": 20},
+                },
+            },
+        },
+    )
+    assert created.status_code == 200
+    source_id = created.json()["id"]
+    source_sku = created.json()["sku"]
+    source_specs = created.json()["specs"]
+
+    cloned = client.post(f"/api/v1/inventory/products/{source_id}/clone")
+    assert cloned.status_code == 201
+    body = cloned.json()
+
+    # New identity, but same definition.
+    assert body["id"] != source_id
+    assert body["name"] == "Stagewise Mixer 32 (Copy)"
+    # SKU is a fresh, normally-generated value (not derived from the source SKU).
+    assert body["sku"] != source_sku
+    assert body["sku"] != f"{source_sku}-copy"
+    assert body["sku"].startswith("PRD-")
+    assert body["brand"] == "Stagewise"
+    assert body["manufacturer"] == "Stagewise AB"
+    assert body["category"] == "audio"
+    assert body["product_type"] == "equipment"
+    assert body["is_rental_product"] is True
+    assert float(body["daily_rate"]) == 450.00
+    assert float(body["replace_cost"]) == 3200.00
+    assert body["weight_kg"] == "14.200"
+    assert body["power_consumption_watts"] == "120.00"
+    assert body["crew_skills"] == "audio"
+
+    # Specs deep-copied (equal, but independent).
+    assert body["specs"] == source_specs
+
+    # Stock reset; barcode and external linkage cleared.
+    assert body["eventory_available_qty"] == 0
+    assert body["barcode"] is None
+    assert body["external_source"] is None
+    assert body["external_reference"] is None
+
+    # Editing the clone's specs must not mutate the source.
+    mutated_specs = {**body["specs"], "outputs": 99}
+    client.put(f"/api/v1/inventory/products/{body['id']}", json={"specs": mutated_specs})
+    source_after = client.get(f"/api/v1/inventory/products/{source_id}")
+    assert source_after.json()["specs"]["outputs"] == 20
+
+
+def test_clone_product_generates_fresh_skus_and_copy_names(client):
+    created = client.post(
+        "/api/v1/inventory/products",
+        json={"sku": "DUP-SKU-01", "name": "Source Unit"},
+    )
+    assert created.status_code == 200
+    source_id = created.json()["id"]
+    source_sku = created.json()["sku"]
+
+    first = client.post(f"/api/v1/inventory/products/{source_id}/clone")
+    assert first.status_code == 201
+    # A fresh, normally-generated SKU (independent of the source SKU).
+    first_sku = first.json()["sku"]
+    assert first_sku != source_sku
+    assert first_sku.startswith("PRD-")
+    # Name gets a "(Copy)" suffix.
+    assert first.json()["name"] == "Source Unit (Copy)"
+
+    second = client.post(f"/api/v1/inventory/products/{source_id}/clone")
+    assert second.status_code == 201
+    # Each clone gets its own freshly generated SKU.
+    assert second.json()["sku"] != source_sku
+    assert second.json()["sku"] != first_sku
+    assert second.json()["sku"].startswith("PRD-")
+    # The "(Copy)" name is taken, so the next clone increments to "(Copy-2)".
+    assert second.json()["name"] == "Source Unit (Copy-2)"
+
+
+def test_clone_product_accepts_overrides(client):
+    created = client.post(
+        "/api/v1/inventory/products",
+        json={"sku": "OVR-01", "name": "Original"},
+    )
+    assert created.status_code == 200
+    source_id = created.json()["id"]
+
+    cloned = client.post(
+        f"/api/v1/inventory/products/{source_id}/clone",
+        json={"sku": "OVR-01-B", "name": "Custom Name"},
+    )
+    assert cloned.status_code == 201
+    assert cloned.json()["sku"] == "OVR-01-B"
+    assert cloned.json()["name"] == "Custom Name"
+
+
+def test_clone_product_returns_404_for_missing_source(client):
+    resp = client.post("/api/v1/inventory/products/999999/clone")
+    assert resp.status_code == 404
+
