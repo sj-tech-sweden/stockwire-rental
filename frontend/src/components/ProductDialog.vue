@@ -661,6 +661,256 @@
                         @click="productForm.specs = addConnectorGroup(productForm.specs)"
                       />
                     </div>
+                    <div v-else-if="PRODUCT_SPEC_FIELDS[fieldKey].type === 'mixer'" class="q-mb-sm">
+                      <template v-if="!getMixerSpec(productForm.specs)">
+                        <q-btn
+                          flat
+                          dense
+                          icon="add"
+                          color="primary"
+                          :label="t('inventory.specMixerSetup')"
+                          @click="productForm.specs = addMixerSpec(productForm.specs)"
+                        />
+                      </template>
+                      <template v-else>
+                        <div class="row items-start q-col-gutter-sm q-mb-xs">
+                          <div class="col-12 col-md-5">
+                            <q-select
+                              :model-value="getMixerSpec(productForm.specs).architecture"
+                              :options="MIXER_ARCHITECTURES.map(a => ({ label: t(a.labelKey), value: a.value }))"
+                              :label="t('inventory.specMixerArchitecture')"
+                              outlined
+                              dense
+                              emit-value
+                              map-options
+                              @update:model-value="val => (productForm.specs = setMixerArchitecture(productForm.specs, val))"
+                            />
+                          </div>
+                          <div class="col-12 col-md-3">
+                            <q-input
+                              :model-value="getMixerSpec(productForm.specs).dcas"
+                              :label="t('inventory.specMixerDcas')"
+                              type="number"
+                              min="0"
+                              step="1"
+                              outlined
+                              dense
+                              @update:model-value="val => (productForm.specs = setMixerDcas(productForm.specs, val))"
+                            />
+                          </div>
+                        </div>
+
+                        <div class="text-caption text-grey-8 q-mt-sm">{{ t('inventory.specMixerDspInputs') }}</div>
+                        <div class="row items-start q-col-gutter-sm q-mb-xs">
+                          <div class="col-4 col-md-2">
+                            <q-input
+                              :model-value="getMixerSpec(productForm.specs).dsp_inputs?.mono"
+                              :label="t('inventory.specMixerDspMono')"
+                              type="number" min="0" step="1"
+                              outlined dense
+                              @update:model-value="val => (productForm.specs = setMixerDspInput(productForm.specs, 'mono', val))"
+                            />
+                          </div>
+                          <div class="col-4 col-md-2">
+                            <q-input
+                              :model-value="getMixerSpec(productForm.specs).dsp_inputs?.stereo"
+                              :label="t('inventory.specMixerDspStereo')"
+                              type="number" min="0" step="1"
+                              outlined dense
+                              @update:model-value="val => (productForm.specs = setMixerDspInput(productForm.specs, 'stereo', val))"
+                            />
+                          </div>
+                          <div class="col-4 col-md-2">
+                            <q-input
+                              :model-value="getMixerSpec(productForm.specs).dsp_inputs?.fx_returns"
+                              :label="t('inventory.specMixerDspFxReturns')"
+                              type="number" min="0" step="1"
+                              outlined dense
+                              @update:model-value="val => (productForm.specs = setMixerDspInput(productForm.specs, 'fx_returns', val))"
+                            />
+                          </div>
+                        </div>
+
+                        <div class="text-caption text-grey-8 q-mt-sm">{{ t('inventory.specMixerBusPool') }}</div>
+                        <div class="row items-start q-col-gutter-sm q-mb-xs">
+                          <div class="col-6 col-md-2">
+                            <q-input
+                              :model-value="getMixerSpec(productForm.specs).bus_pool?.total_slots"
+                              :label="t('inventory.specMixerBusTotalSlots')"
+                              type="number" min="0" step="1"
+                              outlined dense
+                              @update:model-value="val => (productForm.specs = setMixerBusPoolField(productForm.specs, 'total_slots', val))"
+                            />
+                          </div>
+                          <div class="col-6 col-md-2">
+                            <q-input
+                              :model-value="getMixerSpec(productForm.specs).bus_pool?.max_mixes"
+                              :label="t('inventory.specMixerBusMaxMixes')"
+                              type="number" min="0" step="1"
+                              outlined dense
+                              @update:model-value="val => (productForm.specs = setMixerBusPoolField(productForm.specs, 'max_mixes', val))"
+                            />
+                          </div>
+                          <div class="col-6 col-md-2">
+                            <q-input
+                              :model-value="getMixerSpec(productForm.specs).bus_pool?.stereo_slot_cost"
+                              :label="t('inventory.specMixerBusStereoCost')"
+                              type="number" min="1" step="1"
+                              outlined dense
+                              @update:model-value="val => (productForm.specs = setMixerBusPoolField(productForm.specs, 'stereo_slot_cost', val))"
+                            />
+                          </div>
+                          <div class="col-6 col-md-2">
+                            <q-input
+                              :model-value="getMixerSpec(productForm.specs).bus_pool?.lcr_slot_cost"
+                              :label="t('inventory.specMixerBusLcrCost')"
+                              type="number" min="1" step="1"
+                              outlined dense
+                              @update:model-value="val => (productForm.specs = setMixerBusPoolField(productForm.specs, 'lcr_slot_cost', val))"
+                            />
+                          </div>
+                          <div class="col-12 col-md-4 row items-center">
+                            <q-toggle
+                              :model-value="!!getMixerSpec(productForm.specs).bus_pool?.odd_even_stereo_pairing"
+                              :label="t('inventory.specMixerBusOddEven')"
+                              dense
+                              @update:model-value="val => (productForm.specs = setMixerBusPoolField(productForm.specs, 'odd_even_stereo_pairing', val))"
+                            />
+                          </div>
+                        </div>
+
+                        <div class="text-caption text-grey-8 q-mt-sm">{{ t('inventory.specMixerBusAllowedRoles') }}</div>
+                        <div class="row q-gutter-xs q-mb-xs">
+                          <q-chip
+                            v-for="role in MIXER_BUS_ROLES"
+                            :key="role"
+                            clickable
+                            :color="(getMixerSpec(productForm.specs).bus_pool?.allowed_roles || []).includes(role) ? 'primary' : 'grey-3'"
+                            :text-color="(getMixerSpec(productForm.specs).bus_pool?.allowed_roles || []).includes(role) ? 'white' : 'dark'"
+                            @click="productForm.specs = toggleMixerAllowedRole(productForm.specs, role)"
+                          >
+                            {{ t(`inventory.specMixerRole_${role}`) }}
+                          </q-chip>
+                        </div>
+
+                        <div class="text-caption text-grey-8 q-mt-sm row items-center">
+                          <span>{{ t('inventory.specMixerSurface') }}</span>
+                          <q-space />
+                          <q-btn flat dense icon="add" color="primary" :label="t('inventory.specMixerSurfaceAddBank')" @click="productForm.specs = addMixerBank(productForm.specs)" />
+                        </div>
+                        <div class="row items-start q-col-gutter-sm q-mb-xs">
+                          <div class="col-12" v-for="(bank, bankIndex) in getMixerBanks(productForm.specs)" :key="bankIndex">
+                            <div class="row items-start q-col-gutter-sm">
+                              <div class="col-3 col-md-2">
+                                <q-input
+                                  :model-value="bank.id"
+                                  :label="t('inventory.specMixerBankId')"
+                                  outlined dense
+                                  @update:model-value="val => (productForm.specs = updateMixerBank(productForm.specs, bankIndex, 'id', val))"
+                                />
+                              </div>
+                              <div class="col-6 col-md-6">
+                                <q-input
+                                  :model-value="bank.label"
+                                  :label="t('inventory.specMixerBankLabel')"
+                                  outlined dense
+                                  @update:model-value="val => (productForm.specs = updateMixerBank(productForm.specs, bankIndex, 'label', val))"
+                                />
+                              </div>
+                              <div class="col-2 col-md-2">
+                                <q-input
+                                  :model-value="bank.faders"
+                                  :label="t('inventory.specMixerBankFaders')"
+                                  type="number" min="0" step="1"
+                                  outlined dense
+                                  @update:model-value="val => (productForm.specs = updateMixerBank(productForm.specs, bankIndex, 'faders', val))"
+                                />
+                              </div>
+                              <div class="col-1 col-md-2">
+                                <q-btn flat round dense icon="close" color="grey-7" :aria-label="t('inventory.specMixerBankRemove')" @click="productForm.specs = removeMixerBank(productForm.specs, bankIndex)" />
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                        <div class="row items-start q-col-gutter-sm q-mb-xs">
+                          <div class="col-6 col-md-3">
+                            <q-input
+                              :model-value="getMixerSpec(productForm.specs).surface?.layers"
+                              :label="t('inventory.specMixerSurfaceLayers')"
+                              type="number" min="0" step="1"
+                              outlined dense
+                              @update:model-value="val => (productForm.specs = setMixerSurfaceLayers(productForm.specs, val))"
+                            />
+                          </div>
+                        </div>
+
+                        <div class="text-caption text-grey-8 q-mt-sm row items-center">
+                          <span>{{ t('inventory.specMixerExpansionPorts') }}</span>
+                          <q-space />
+                          <q-btn flat dense icon="add" color="primary" :label="t('inventory.specMixerExpansionAdd')" @click="productForm.specs = addMixerExpansionPort(productForm.specs)" />
+                        </div>
+                        <div class="row items-start q-col-gutter-sm q-mb-xs" v-for="(port, portIndex) in getMixerExpansionPorts(productForm.specs)" :key="portIndex">
+                          <div class="col-12">
+                            <div class="row items-start q-col-gutter-sm">
+                              <div class="col-6 col-md-3">
+                                <q-select
+                                  :model-value="port.protocol"
+                                  :options="MIXER_EXPANSION_PROTOCOLS.map(value => ({ label: value, value }))"
+                                  :label="t('inventory.specMixerPortProtocol')"
+                                  use-input
+                                  fill-input
+                                  new-value-mode="add-unique"
+                                  emit-value
+                                  map-options
+                                  outlined
+                                  dense
+                                  @update:model-value="val => (productForm.specs = updateMixerExpansionPort(productForm.specs, portIndex, 'protocol', val))"
+                                />
+                              </div>
+                              <div class="col-6 col-md-2">
+                                <q-input
+                                  :model-value="port.max_channels_in"
+                                  :label="t('inventory.specMixerPortChIn')"
+                                  type="number" min="0" step="1"
+                                  outlined dense
+                                  @update:model-value="val => (productForm.specs = updateMixerExpansionPort(productForm.specs, portIndex, 'max_channels_in', val))"
+                                />
+                              </div>
+                              <div class="col-6 col-md-2">
+                                <q-input
+                                  :model-value="port.max_channels_out"
+                                  :label="t('inventory.specMixerPortChOut')"
+                                  type="number" min="0" step="1"
+                                  outlined dense
+                                  @update:model-value="val => (productForm.specs = updateMixerExpansionPort(productForm.specs, portIndex, 'max_channels_out', val))"
+                                />
+                              </div>
+                              <div class="col-6 col-md-2">
+                                <q-input
+                                  :model-value="port.slots"
+                                  :label="t('inventory.specMixerPortSlots')"
+                                  type="number" min="0" step="1"
+                                  outlined dense
+                                  @update:model-value="val => (productForm.specs = updateMixerExpansionPort(productForm.specs, portIndex, 'slots', val))"
+                                />
+                              </div>
+                              <div class="col-6 col-md-2">
+                                <q-input
+                                  :model-value="port.max_channels"
+                                  :label="t('inventory.specMixerPortMaxChannels')"
+                                  type="number" min="0" step="1"
+                                  outlined dense
+                                  @update:model-value="val => (productForm.specs = updateMixerExpansionPort(productForm.specs, portIndex, 'max_channels', val))"
+                                />
+                              </div>
+                              <div class="col-12 col-md-1">
+                                <q-btn flat round dense icon="close" color="grey-7" :aria-label="t('inventory.specMixerPortRemove')" @click="productForm.specs = removeMixerExpansionPort(productForm.specs, portIndex)" />
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </template>
+                    </div>
                     <q-toggle
                       v-if="fieldKey === 'throw_m'"
                       :model-value="productForm.specs?.throw_m_manual === true"
@@ -827,6 +1077,25 @@ import {
   removeFixtureChannelMode,
   updateFixtureChannelMode,
   withCalculatedCameraSensorWidth,
+  MIXER_ARCHITECTURES,
+  MIXER_BUS_ROLES,
+  MIXER_EXPANSION_PROTOCOLS,
+  getMixerSpec,
+  addMixerSpec,
+  setMixerArchitecture,
+  setMixerDcas,
+  setMixerDspInput,
+  setMixerBusPoolField,
+  toggleMixerAllowedRole,
+  setMixerSurfaceLayers,
+  getMixerBanks,
+  addMixerBank,
+  updateMixerBank,
+  removeMixerBank,
+  getMixerExpansionPorts,
+  addMixerExpansionPort,
+  updateMixerExpansionPort,
+  removeMixerExpansionPort,
 } from '../utils/productSpecs'
 import { useProductImage } from '../composables/useProductImage'
 import { api } from '../boot/axios'

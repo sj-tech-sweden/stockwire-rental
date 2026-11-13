@@ -972,6 +972,8 @@ def list_products(
     category_id: int | None = Query(None, description="Filter by product category tree node id (includes descendants)"),
     min_inputs: int | None = Query(None, description="Minimum mixer input count (from specs.inputs)"),
     min_outputs: int | None = Query(None, description="Minimum mixer output/bus count (from specs.outputs)"),
+    mixer_architecture: str | None = Query(None, description="Filter by mixer architecture (from specs.mixer.architecture)"),
+    min_bus_slots: int | None = Query(None, description="Minimum bus-pool slot count (from specs.mixer.bus_pool.total_slots)"),
 ) -> PaginatedResponse[ProductRead]:
     stmt = select(Product)
     if exclude_rental:
@@ -1003,6 +1005,15 @@ def list_products(
             Integer,
         )
         stmt = stmt.where(outputs_expr >= min_outputs)
+    # Digital-console mixer filters (Stagewire): compare against the structured
+    # specs.mixer block, which is optional. Products without a mixer block are
+    # excluded by these filters (NULL never satisfies an equality / >= check).
+    if mixer_architecture is not None:
+        arch_expr = func.lower(Product.specs["mixer"]["architecture"].as_string())
+        stmt = stmt.where(arch_expr == mixer_architecture.strip().lower())
+    if min_bus_slots is not None:
+        slots_expr = cast(Product.specs["mixer"]["bus_pool"]["total_slots"].as_string(), Integer)
+        stmt = stmt.where(slots_expr >= min_bus_slots)
     stmt = stmt.order_by(Product.id)
     products, total = paginate_query(db, stmt, pagination.skip, pagination.limit)
     if not products:
@@ -1296,6 +1307,11 @@ def list_products_with_availability(
         category_id=category_id,
         min_inputs=min_inputs,
         min_outputs=min_outputs,
+        # Pass the mixer filters explicitly as None: list_products is also used
+        # as an internal helper, where FastAPI's Query(None) defaults would leak
+        # the Query object (which is not None) and break the filters below.
+        mixer_architecture=None,
+        min_bus_slots=None,
     )
     product_availability = (
         _calculate_product_availability(
