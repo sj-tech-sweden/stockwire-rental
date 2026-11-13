@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import hmac
 import json
+import logging
 import secrets
 import base64
 from dataclasses import dataclass
@@ -13,8 +14,11 @@ from urllib.request import Request, urlopen
 
 from fastapi import HTTPException, status
 import jwt
+from jwt.algorithms import ECAlgorithm, RSAAlgorithm
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
+
+logger = logging.getLogger(__name__)
 
 from app.config import settings
 from app.domain.auth.models import Role, User
@@ -402,6 +406,22 @@ def verify_oidc_state(provided_state: str | None, expected_state: str | None) ->
         return False
 
 
+def _load_jwk_public_key(jwk: dict[str, Any]) -> Any:
+    """Convert an OIDC JWK dict into a PyJWT-verifiable public key object.
+
+    PyJWT's ``jwt.decode`` does not accept a bare JWK dict the way python-jose
+    did (python-jose called ``from_jwk`` on dicts internally). Passing the raw
+    dict makes PyJWT raise ``Expecting a PEM-formatted key.`` and OIDC logins
+    fail with a 401 "Invalid OIDC token". Parse the JWK explicitly instead.
+    """
+    kty = str(jwk.get("kty") or "").upper()
+    if kty == "RSA":
+        return RSAAlgorithm.from_jwk(jwk)
+    if kty == "EC":
+        return ECAlgorithm.from_jwk(jwk)
+    raise ValueError(f"Unsupported JWK key type: {kty!r}")
+
+
 def exchange_oidc_code(provider: OIDCProvider, code: str, redirect_uri: str) -> dict[str, Any]:
     token_payload = {
         "grant_type": "authorization_code",
@@ -420,22 +440,84 @@ def exchange_oidc_code(provider: OIDCProvider, code: str, redirect_uri: str) -> 
     if not keys:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="OIDC JWKS fetch failed")
 
+    # Pick the signing key by `kid` when present, otherwise fall back to trying
+    # every key (some IdPs omit `kid` or rotate keys mid-flight).
+    try:
+        header = jwt.get_unverified_header(id_token)
+    except Exception as exc:  # pragma: no cover - malformed token
+        logger.warning("OIDC token header could not be read: %s", exc)
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid OIDC token")
+
+    kid = header.get("kid")
+    candidate_keys = [k for k in keys if kid and k.get("kid") == kid] or keys
+
+    # Verify the signature first (audience/issuer are checked explicitly below so
+    # the failure reason is actionable instead of a silent "Invalid OIDC token").
     claims: dict[str, Any] | None = None
-    for key in keys:
+    last_error: Exception | None = None
+    for key in candidate_keys:
+        # PyJWT needs a parsed key object (or PEM/JSON string), not a bare JWK
+        # dict. python-jose accepted the dict; PyJWT does not.
+        try:
+            public_key = _load_jwk_public_key(key)
+        except Exception as exc:  # noqa: BLE001 - try the next candidate key
+            last_error = exc
+            continue
         try:
             claims = jwt.decode(
                 id_token,
-                key,
+                public_key,
                 algorithms=["RS256", "RS384", "RS512", "ES256", "ES384", "ES512"],
-                audience=provider.client_id,
-                issuer=provider.issuer,
+                options={"verify_aud": False, "verify_iss": False},
             )
             break
-        except Exception:
+        except Exception as exc:  # noqa: BLE001 - we re-raise a typed error below
+            last_error = exc
             continue
 
     if claims is None:
+        logger.warning(
+            "OIDC id_token signature verification failed (tried %d key(s)): %s",
+            len(candidate_keys),
+            last_error,
+        )
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid OIDC token")
+
+    # Issuer check (normalize trailing slashes so a missing/extra slash doesn't
+    # silently break login).
+    token_issuer = str(claims.get("iss") or "").rstrip("/")
+    expected_issuer = str(provider.issuer or "").rstrip("/")
+    if expected_issuer and token_issuer and token_issuer != expected_issuer:
+        logger.warning(
+            "OIDC issuer mismatch: token iss=%r, configured issuer=%r",
+            token_issuer,
+            expected_issuer,
+        )
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="OIDC token issuer does not match the configured provider issuer",
+        )
+
+    # Audience check. Accept the configured client_id, an Entra App ID URI
+    # (api://<client_id>), or the token's azp (Keycloak/Entra commonly populate
+    # azp instead of putting the client_id in aud).
+    aud = claims.get("aud")
+    aud_list = aud if isinstance(aud, list) else ([aud] if aud else [])
+    azp = str(claims.get("azp") or "")
+    accepted_audiences = {provider.client_id, f"api://{provider.client_id}"}
+    if azp:
+        accepted_audiences.add(azp)
+    if not any(a and a in aud_list for a in accepted_audiences if a):
+        logger.warning(
+            "OIDC audience mismatch: token aud=%r, azp=%r, expected client_id=%r",
+            aud,
+            azp,
+            provider.client_id,
+        )
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="OIDC token audience does not match the configured client_id",
+        )
 
     if int(claims.get("exp", 0) or 0) < int(datetime.now(timezone.utc).timestamp()):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Expired OIDC token")
