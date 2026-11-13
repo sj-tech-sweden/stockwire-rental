@@ -1400,23 +1400,16 @@ _PRODUCT_CLONE_FIELDS = (
     "crew_hourly_rate", "is_public",
 )
 
-_SKU_MAX_LEN = 64
-
-
-def _generate_unique_sku(db: Session, base: str) -> str:
-    """Return a SKU derived from `base` that is not already used. Tries `base`,
-    then `base-2`, `base-3`, ... until a free value is found. Bounded so a
-    pathological database can't cause an infinite loop."""
-    candidate = base
+def _generate_unique_product_name(db: Session, base: str) -> str:
+    """Return a name derived from `base` that is not already used. Tries
+    "{base} (Copy)", then "{base} (Copy-2)", "{base} (Copy-3)", ... so repeated
+    clones of the same product get a readable, incrementing suffix."""
+    existing = set(db.scalars(select(Product.name)).all())
+    candidate = f"{base} (Copy)"
     suffix = 2
-    while db.scalar(select(Product.id).where(Product.sku == candidate)) is not None:
-        suffix_str = f"-{suffix}"
-        candidate = f"{base[: _SKU_MAX_LEN - len(suffix_str)]}{suffix_str}"
+    while candidate in existing:
+        candidate = f"{base} (Copy-{suffix})"
         suffix += 1
-        if suffix > 9999:
-            # Extremely unlikely; fall back to a timestamp-based suffix.
-            candidate = f"{base[: _SKU_MAX_LEN - 9]}-{datetime.utcnow().strftime('%H%M%S%f')}"
-            break
     return candidate
 
 
@@ -1429,10 +1422,11 @@ def clone_product(
 ) -> ProductRead:
     """Create a new product that is a starting point for one similar to an
     existing product. Copies the product *definition* and the `specs` JSON only:
-    the name gets a "(Copy)" suffix, a fresh unique SKU is generated, stock is
-    reset to zero, and barcode / external source & reference are cleared. Related
-    rows (supplier links, accessories, components, certifications) are
-    intentionally not copied, so the clone starts clean."""
+    a fresh unique SKU is auto-generated (the same way a normal new product gets
+    one), the name gets a "(Copy)" / "(Copy-2)" ... suffix, stock is reset to
+    zero, and barcode / external source & reference are cleared. Related rows
+    (supplier links, accessories, components, certifications) are intentionally
+    not copied, so the clone starts clean."""
     source = db.get(Product, product_id)
     if source is None:
         raise HTTPException(status_code=404, detail="Product not found")
@@ -1441,10 +1435,12 @@ def clone_product(
     # Deep-copy the structured specs so edits to the clone don't mutate the source.
     if source.specs is not None:
         data["specs"] = json.loads(json.dumps(source.specs))
-    # SKU: a brand-new unique value derived from the source SKU unless overridden.
-    data["sku"] = (payload and payload.sku) or _generate_unique_sku(db, f"{source.sku}-copy")
-    # Name: override or "{name} (Copy)".
-    data["name"] = (payload and payload.name) or f"{source.name} (Copy)"
+    # SKU: a brand-new, normally-generated unique value (e.g. "PRD-0042") unless
+    # an explicit override is supplied. The clone is a distinct product, so it
+    # does not inherit the source SKU.
+    data["sku"] = (payload and payload.sku) or _generate_next_product_sku(db, "PRD-")
+    # Name: override or "{name} (Copy)" / "{name} (Copy-2)" ...
+    data["name"] = (payload and payload.name) or _generate_unique_product_name(db, source.name)
     # Reset stock; clear barcode and external linkage.
     data["eventory_available_qty"] = 0
     data["barcode"] = None

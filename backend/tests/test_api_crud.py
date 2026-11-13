@@ -2884,8 +2884,10 @@ def test_clone_product_copies_definition_and_specs(client):
     # New identity, but same definition.
     assert body["id"] != source_id
     assert body["name"] == "Stagewise Mixer 32 (Copy)"
+    # SKU is a fresh, normally-generated value (not derived from the source SKU).
     assert body["sku"] != source_sku
-    assert body["sku"] == f"{source_sku}-copy"
+    assert body["sku"] != f"{source_sku}-copy"
+    assert body["sku"].startswith("PRD-")
     assert body["brand"] == "Stagewise"
     assert body["manufacturer"] == "Stagewise AB"
     assert body["category"] == "audio"
@@ -2913,7 +2915,7 @@ def test_clone_product_copies_definition_and_specs(client):
     assert source_after.json()["specs"]["outputs"] == 20
 
 
-def test_clone_product_generates_unique_skus(client):
+def test_clone_product_generates_fresh_skus_and_copy_names(client):
     created = client.post(
         "/api/v1/inventory/products",
         json={"sku": "DUP-SKU-01", "name": "Source Unit"},
@@ -2924,11 +2926,21 @@ def test_clone_product_generates_unique_skus(client):
 
     first = client.post(f"/api/v1/inventory/products/{source_id}/clone")
     assert first.status_code == 201
-    assert first.json()["sku"] == f"{source_sku}-copy"
+    # A fresh, normally-generated SKU (independent of the source SKU).
+    first_sku = first.json()["sku"]
+    assert first_sku != source_sku
+    assert first_sku.startswith("PRD-")
+    # Name gets a "(Copy)" suffix.
+    assert first.json()["name"] == "Source Unit (Copy)"
 
     second = client.post(f"/api/v1/inventory/products/{source_id}/clone")
     assert second.status_code == 201
-    assert second.json()["sku"] == f"{source_sku}-copy-2"
+    # Each clone gets its own freshly generated SKU.
+    assert second.json()["sku"] != source_sku
+    assert second.json()["sku"] != first_sku
+    assert second.json()["sku"].startswith("PRD-")
+    # The "(Copy)" name is taken, so the next clone increments to "(Copy-2)".
+    assert second.json()["name"] == "Source Unit (Copy-2)"
 
 
 def test_clone_product_accepts_overrides(client):
