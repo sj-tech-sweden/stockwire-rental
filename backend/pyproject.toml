@@ -37,7 +37,7 @@ dependencies = [
   "mcp>=2.0.0",
   "slowapi>=0.1.9",
   "reportlab>=5,<5.2",
-  "pypdf>=7,<7.1",
+  "pypdf>=7,<7.2",
 ]
 
 [project.optional-dependencies]
