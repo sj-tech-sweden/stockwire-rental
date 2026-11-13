@@ -99,6 +99,14 @@ class ProductCreate(ProductBase):
     pass
 
 
+class CloneProduct(BaseModel):
+    """Optional overrides for a product clone. When omitted, the name gets a
+    " (Copy)" suffix and a fresh unique SKU is generated from the source."""
+
+    sku: str | None = None
+    name: str | None = None
+
+
 class ProductUpdate(BaseModel):
     sku: str | None = None
     name: str | None = None

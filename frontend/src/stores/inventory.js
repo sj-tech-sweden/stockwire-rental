@@ -224,6 +224,34 @@ export const useInventoryStore = defineStore('inventory', () => {
     return data
   }
 
+  // Clone an existing product as a new starting point: copy the definition + the
+  // specs JSON, generate a fresh SKU (or use overrides), reset stock and clear
+  // barcode / external linkage. Related rows (suppliers, accessories, components,
+  // certifications) are intentionally not copied. Mirrors the backend
+  // POST /api/v1/inventory/products/{id}/clone endpoint.
+  async function cloneProduct(productId, overrides = {}) {
+    if (!isOnline()) {
+      const source = products.value.find(p => p.id === productId)
+      if (source) {
+        const { id: _id, created_at: _c, total_devices: _t, in_store_devices: _i, on_site_devices: _o, damaged_devices: _d, eventory_packlists: _p, accessories: _a, components: _co, suppliers: _s, _offline_queued: _q, ...rest } = source
+        const payload = {
+          ...rest,
+          name: overrides.name || `${source.name} (Copy)`,
+          sku: overrides.sku || `${source.sku}-copy`,
+          eventory_available_qty: 0,
+          barcode: null,
+          external_source: null,
+          external_reference: null,
+        }
+        return await createProduct(payload)
+      }
+    }
+    const { data } = await api.post(`/api/v1/inventory/products/${productId}/clone`, overrides)
+    products.value = [...products.value, data]
+    await persistFetchAllSnapshot()
+    return data
+  }
+
   async function bulkUpdateProducts(ids, patch) {
     const { data } = await api.post('/api/v1/inventory/products/bulk-update', { ids, patch })
     await fetchAll()
@@ -855,6 +883,7 @@ export const useInventoryStore = defineStore('inventory', () => {
     moveCategory,
     createProduct,
     updateProduct,
+    cloneProduct,
     bulkUpdateProducts,
     bulkDeleteProducts,
     fetchProductAccessories,

@@ -1,7 +1,7 @@
 import json
 import re
 from typing import Any
-from datetime import date, timedelta
+from datetime import date, timedelta, datetime
 from decimal import Decimal, InvalidOperation
 
 from collections import defaultdict
@@ -95,6 +95,7 @@ from app.domain.inventory.schemas import (
     InventoryCategoryUpdate,
     CategoryTranslationCreate,
     CategoryTranslationRead,
+    CloneProduct,
     InventoryScanRequest,
     InventoryScanResponse,
     InventoryCheckedOutDeviceRead,
@@ -1384,6 +1385,87 @@ def create_product(payload: ProductCreate, db: Session = Depends(get_db), curren
     )
     emit_realtime_event("inventory.updated", {"entity": "product", "action": "create", "id": product.id})
     db.commit()
+    return _to_product_read(db, product)
+
+
+# Fields copied verbatim (as-is) from the source product when cloning. Related
+# rows (supplier links, accessories, components, required certifications) and
+# stock/barcode/external linkage are handled separately or intentionally reset.
+_PRODUCT_CLONE_FIELDS = (
+    "brand", "manufacturer", "product_type", "category", "category_id",
+    "is_rental_product", "supplier_name", "rental_price", "weight_kg",
+    "height_cm", "width_cm", "depth_cm", "maintenance_interval_days",
+    "power_consumption_watts", "daily_rate", "replace_cost", "min_stock_level",
+    "min_order_qty", "crew_skills", "crew_certifications", "crew_rate_type",
+    "crew_hourly_rate", "is_public",
+)
+
+_SKU_MAX_LEN = 64
+
+
+def _generate_unique_sku(db: Session, base: str) -> str:
+    """Return a SKU derived from `base` that is not already used. Tries `base`,
+    then `base-2`, `base-3`, ... until a free value is found. Bounded so a
+    pathological database can't cause an infinite loop."""
+    candidate = base
+    suffix = 2
+    while db.scalar(select(Product.id).where(Product.sku == candidate)) is not None:
+        suffix_str = f"-{suffix}"
+        candidate = f"{base[: _SKU_MAX_LEN - len(suffix_str)]}{suffix_str}"
+        suffix += 1
+        if suffix > 9999:
+            # Extremely unlikely; fall back to a timestamp-based suffix.
+            candidate = f"{base[: _SKU_MAX_LEN - 9]}-{datetime.utcnow().strftime('%H%M%S%f')}"
+            break
+    return candidate
+
+
+@router.post("/products/{product_id}/clone", response_model=ProductRead, status_code=status.HTTP_201_CREATED)
+def clone_product(
+    product_id: int,
+    payload: CloneProduct | None = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_editor),
+) -> ProductRead:
+    """Create a new product that is a starting point for one similar to an
+    existing product. Copies the product *definition* and the `specs` JSON only:
+    the name gets a "(Copy)" suffix, a fresh unique SKU is generated, stock is
+    reset to zero, and barcode / external source & reference are cleared. Related
+    rows (supplier links, accessories, components, certifications) are
+    intentionally not copied, so the clone starts clean."""
+    source = db.get(Product, product_id)
+    if source is None:
+        raise HTTPException(status_code=404, detail="Product not found")
+
+    data = {field: getattr(source, field) for field in _PRODUCT_CLONE_FIELDS}
+    # Deep-copy the structured specs so edits to the clone don't mutate the source.
+    if source.specs is not None:
+        data["specs"] = json.loads(json.dumps(source.specs))
+    # SKU: a brand-new unique value derived from the source SKU unless overridden.
+    data["sku"] = (payload and payload.sku) or _generate_unique_sku(db, f"{source.sku}-copy")
+    # Name: override or "{name} (Copy)".
+    data["name"] = (payload and payload.name) or f"{source.name} (Copy)"
+    # Reset stock; clear barcode and external linkage.
+    data["eventory_available_qty"] = 0
+    data["barcode"] = None
+    data["external_source"] = None
+    data["external_reference"] = None
+
+    product = Product(**data)
+    db.add(product)
+    db.commit()
+    db.refresh(product)
+    record_activity(
+        db,
+        user_id=current_user.id,
+        entity_type="product",
+        entity_id=product.id,
+        action="create",
+        message_format="product_created",
+        message_params={"sku": product.sku, "name": product.name},
+        details={"sku": product.sku, "name": product.name, "cloned_from": source.id},
+    )
+    emit_realtime_event("inventory.updated", {"entity": "product", "action": "create", "id": product.id})
     return _to_product_read(db, product)
 
 
