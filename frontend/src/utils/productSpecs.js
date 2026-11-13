@@ -50,6 +50,10 @@ export const PRODUCT_SPEC_FIELDS = {
   sb_aux: { labelKey: 'inventory.specAux', type: 'number', min: 0, step: 1 },
   // Stagewire connector groups: { connector, direction, count, signal? }.
   connectors: { labelKey: 'inventory.specConnectors', type: 'connectors' },
+  // Digital / modular console bus-pool model (specs.mixer.*). Edited by a
+  // dedicated editor rather than the generic field controls because the data is
+  // nested (dsp_inputs / bus_pool / surface / expansion_ports).
+  mixer: { labelKey: 'inventory.specGroupDigitalMixer', type: 'mixer' },
   power_inlet: {
     labelKey: 'inventory.specPowerInlet',
     type: 'select',
@@ -195,6 +199,11 @@ export const PRODUCT_SPEC_GROUPS = [
     labelKey: 'inventory.specGroupConnectors',
     fields: ['connectors', 'power_inlet'],
   },
+  {
+    key: 'digitalMixer',
+    labelKey: 'inventory.specGroupDigitalMixer',
+    fields: ['mixer'],
+  },
 ]
 
 export function specFieldDef(key) {
@@ -299,7 +308,9 @@ export function productSpecDisplayGroups(specs, translate) {
               ? getConnectorGroups(values)
                 .map((group) => `${group.count > 1 ? `${group.count} × ` : ''}${group.connector}${group.direction !== 'both' ? ` (${group.direction})` : ''}${group.signal ? ` · ${group.signal}` : ''}`)
                 .join(', ')
-            : values[key],
+              : PRODUCT_SPEC_FIELDS[key].type === 'mixer'
+                ? describeMixerSpec(values, translate)
+                : values[key],
       })),
   }))
 }
@@ -429,4 +440,216 @@ export function removeFixtureChannelMode(specs, index) {
   if (modes.length) next.channel_modes = modes
   else delete next.channel_modes
   return next
+}
+
+// --- Digital / modular console mixer model (specs.mixer) ----------------------
+//
+// Models the dynamic bus pool, decoupled DSP I/O, control-surface banks and
+// expansion ports of modern digital consoles (see backend
+// app/domain/inventory/mixer_spec.py for the matching typed model and the
+// bus-pool slot math). The block is optional; every accessor falls back to a
+// sensible empty structure rather than throwing on partial data.
+
+export const MIXER_ARCHITECTURES = [
+  { value: 'digital_bus_pool', labelKey: 'inventory.specMixerArchDigitalBusPool' },
+  { value: 'digital_fixed', labelKey: 'inventory.specMixerArchDigitalFixed' },
+  { value: 'fixed_analog', labelKey: 'inventory.specMixerArchFixedAnalog' },
+]
+
+// Bus roles that a console's bus pool may be allowed to host. Mirrors the
+// backend BusPool.allowed_roles vocabulary.
+export const MIXER_BUS_ROLES = ['aux', 'group', 'matrix', 'main', 'fx_send', 'sub']
+
+const MIXER_DEFAULT_STEREO_COST = 2
+const MIXER_DEFAULT_LCR_COST = 3
+
+function emptyMixerSpec() {
+  return {
+    architecture: 'digital_bus_pool',
+    dsp_inputs: { mono: null, stereo: null, fx_returns: null },
+    bus_pool: {
+      total_slots: null,
+      max_mixes: null,
+      stereo_slot_cost: MIXER_DEFAULT_STEREO_COST,
+      lcr_slot_cost: MIXER_DEFAULT_LCR_COST,
+      allowed_roles: [],
+      odd_even_stereo_pairing: false,
+    },
+    dcas: null,
+    surface: { banks: [], layers: null },
+    expansion_ports: [],
+  }
+}
+
+// Returns a deep, normalized mixer object, filling in nested defaults and
+// tolerating partial / legacy data. Returns a fresh empty spec when none exists.
+function cloneMixer(mixer) {
+  if (!mixer || typeof mixer !== 'object') return emptyMixerSpec()
+  const m = JSON.parse(JSON.stringify(mixer))
+  if (!m.dsp_inputs || typeof m.dsp_inputs !== 'object') m.dsp_inputs = { mono: null, stereo: null, fx_returns: null }
+  if (!m.bus_pool || typeof m.bus_pool !== 'object') m.bus_pool = {}
+  if (!Array.isArray(m.bus_pool.allowed_roles)) m.bus_pool.allowed_roles = []
+  if (m.bus_pool.stereo_slot_cost === undefined || m.bus_pool.stereo_slot_cost === null) {
+    m.bus_pool.stereo_slot_cost = MIXER_DEFAULT_STEREO_COST
+  }
+  if (m.bus_pool.lcr_slot_cost === undefined || m.bus_pool.lcr_slot_cost === null) {
+    m.bus_pool.lcr_slot_cost = MIXER_DEFAULT_LCR_COST
+  }
+  if (!m.surface || typeof m.surface !== 'object') m.surface = {}
+  if (!Array.isArray(m.surface.banks)) m.surface.banks = []
+  if (!Array.isArray(m.expansion_ports)) m.expansion_ports = []
+  return m
+}
+
+export function getMixerSpec(specs) {
+  const raw = specs && typeof specs === 'object' ? specs.mixer : undefined
+  if (!raw || typeof raw !== 'object') return null
+  return raw
+}
+
+export function addMixerSpec(specs) {
+  if (getMixerSpec(specs)) return specs || {}
+  return { ...(specs || {}), mixer: emptyMixerSpec() }
+}
+
+export function removeMixerSpec(specs) {
+  const next = { ...(specs || {}) }
+  delete next.mixer
+  return next
+}
+
+// Applies a mutation to a normalized copy of the mixer block and writes it back
+// to `specs`, returning a new specs object (never mutates the input).
+function updateMixerSpec(specs, mutate) {
+  const mixer = cloneMixer(getMixerSpec(specs))
+  mutate(mixer)
+  return { ...(specs || {}), mixer }
+}
+
+function toIntOrNull(value) {
+  if (value === '' || value === null || value === undefined) return null
+  const n = Number(value)
+  return Number.isFinite(n) ? n : null
+}
+
+export function setMixerArchitecture(specs, value) {
+  return updateMixerSpec(specs, (m) => { m.architecture = value || 'digital_bus_pool' })
+}
+
+export function setMixerDcas(specs, value) {
+  return updateMixerSpec(specs, (m) => { m.dcas = toIntOrNull(value) })
+}
+
+export function setMixerDspInput(specs, field, value) {
+  if (!['mono', 'stereo', 'fx_returns'].includes(field)) return specs || {}
+  return updateMixerSpec(specs, (m) => { m.dsp_inputs[field] = toIntOrNull(value) })
+}
+
+export function setMixerBusPoolField(specs, field, value) {
+  if (field === 'odd_even_stereo_pairing') {
+    const bool = value === true || value === 'true'
+    return updateMixerSpec(specs, (m) => { m.bus_pool.odd_even_stereo_pairing = bool })
+  }
+  if (!['total_slots', 'max_mixes', 'stereo_slot_cost', 'lcr_slot_cost'].includes(field)) return specs || {}
+  return updateMixerSpec(specs, (m) => { m.bus_pool[field] = toIntOrNull(value) })
+}
+
+export function toggleMixerAllowedRole(specs, role) {
+  return updateMixerSpec(specs, (m) => {
+    const roles = Array.isArray(m.bus_pool.allowed_roles) ? [...m.bus_pool.allowed_roles] : []
+    const idx = roles.indexOf(role)
+    if (idx >= 0) roles.splice(idx, 1)
+    else roles.push(role)
+    m.bus_pool.allowed_roles = roles
+  })
+}
+
+export function setMixerSurfaceLayers(specs, value) {
+  return updateMixerSpec(specs, (m) => { m.surface.layers = toIntOrNull(value) })
+}
+
+export function getMixerBanks(specs) {
+  const m = getMixerSpec(specs)
+  return Array.isArray(m?.surface?.banks) ? m.surface.banks : []
+}
+
+export function addMixerBank(specs) {
+  return updateMixerSpec(specs, (m) => {
+    const banks = Array.isArray(m.surface.banks) ? m.surface.banks : []
+    const id = String.fromCharCode(65 + banks.length) // A, B, C, ...
+    banks.push({ id, label: '', faders: null })
+    m.surface.banks = banks
+  })
+}
+
+export function updateMixerBank(specs, index, field, value) {
+  if (!['id', 'label', 'faders'].includes(field)) return specs || {}
+  return updateMixerSpec(specs, (m) => {
+    const banks = Array.isArray(m.surface.banks) ? m.surface.banks : []
+    if (!banks[index]) return
+    if (field === 'faders') banks[index].faders = toIntOrNull(value)
+    else banks[index][field] = value
+  })
+}
+
+export function removeMixerBank(specs, index) {
+  return updateMixerSpec(specs, (m) => {
+    const banks = Array.isArray(m.surface.banks) ? m.surface.banks : []
+    m.surface.banks = banks.filter((_, i) => i !== index)
+  })
+}
+
+export function getMixerExpansionPorts(specs) {
+  const m = getMixerSpec(specs)
+  return Array.isArray(m?.expansion_ports) ? m.expansion_ports : []
+}
+
+function emptyExpansionPort() {
+  return { protocol: 'dsnake', max_channels_in: null, max_channels_out: null, slots: null, max_channels: null }
+}
+
+export function addMixerExpansionPort(specs) {
+  return updateMixerSpec(specs, (m) => {
+    const ports = Array.isArray(m.expansion_ports) ? m.expansion_ports : []
+    ports.push(emptyExpansionPort())
+    m.expansion_ports = ports
+  })
+}
+
+export function updateMixerExpansionPort(specs, index, field, value) {
+  const numericFields = ['max_channels_in', 'max_channels_out', 'slots', 'max_channels']
+  if (!['protocol', ...numericFields].includes(field)) return specs || {}
+  return updateMixerSpec(specs, (m) => {
+    const ports = Array.isArray(m.expansion_ports) ? m.expansion_ports : []
+    if (!ports[index]) return
+    if (numericFields.includes(field)) ports[index][field] = toIntOrNull(value)
+    else ports[index][field] = value
+  })
+}
+
+export function removeMixerExpansionPort(specs, index) {
+  return updateMixerSpec(specs, (m) => {
+    const ports = Array.isArray(m.expansion_ports) ? m.expansion_ports : []
+    m.expansion_ports = ports.filter((_, i) => i !== index)
+  })
+}
+
+// Human-readable one-line summary for the read-only display (ProductInfoDialog).
+export function describeMixerSpec(specs, translate) {
+  const m = getMixerSpec(specs)
+  if (!m) return ''
+  const parts = []
+  const arch = MIXER_ARCHITECTURES.find((a) => a.value === m.architecture)
+  if (arch) parts.push(translate(arch.labelKey))
+  const dsp = m.dsp_inputs || {}
+  const dspTotal = (Number(dsp.mono) || 0) + 2 * (Number(dsp.stereo) || 0) + (Number(dsp.fx_returns) || 0)
+  if (dspTotal > 0) parts.push(`${dspTotal} ${translate('inventory.specMixerDspChannels')}`)
+  const pool = m.bus_pool || {}
+  if (pool.total_slots != null) parts.push(`${pool.total_slots} ${translate('inventory.specMixerBusSlots')}`)
+  if (pool.max_mixes != null) parts.push(`${pool.max_mixes} ${translate('inventory.specMixerMaxMixes')}`)
+  const banks = Array.isArray(m.surface?.banks) ? m.surface.banks : []
+  if (banks.length) parts.push(`${banks.length} ${translate('inventory.specMixerSurfaceBanks')}`)
+  const ports = Array.isArray(m.expansion_ports) ? m.expansion_ports : []
+  if (ports.length) parts.push(`${ports.length} ${translate('inventory.specMixerExpansionPortsShort')}`)
+  return parts.join(' · ')
 }

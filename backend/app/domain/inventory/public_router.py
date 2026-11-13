@@ -15,6 +15,7 @@ from app.domain.inventory.models import (
     Product,
     ProductTypeTranslation,
 )
+from app.domain.inventory.mixer_spec import normalize_mixer_spec
 from app.domain.inventory.schemas import PublicProductImage, PublicProductRead
 from app.domain.settings.models import AppSetting
 from app.domain.storage.models import AssetFile
@@ -321,6 +322,16 @@ def _normalize_stagewire_outputs(specs: object) -> int | None:
     return None
 
 
+def _normalize_stagewire_mixer(specs: object) -> dict | None:
+    """Surface the optional structured ``specs.mixer`` block for digital consoles.
+
+    Returns a clean dict, or ``None`` when the product has no (valid) mixer block.
+    """
+    if not isinstance(specs, dict):
+        return None
+    return normalize_mixer_spec(specs)
+
+
 @router.get("/products", response_model=PaginatedResponse[PublicProductRead])
 def list_public_products(
     db: Session = Depends(get_db),
@@ -424,6 +435,7 @@ def get_stagewire_device_specs(product_id: int, db: Session = Depends(get_db)) -
         "power_inlet": _normalize_stagewire_power_inlet(specs),
         "inputs": _normalize_stagewire_inputs(specs),
         "outputs": _normalize_stagewire_outputs(specs),
+        "mixer": _normalize_stagewire_mixer(specs),
         "weight_kg": _coerce_float(product.weight_kg),
         "power_watts": _coerce_float(product.power_consumption_watts),
     }
