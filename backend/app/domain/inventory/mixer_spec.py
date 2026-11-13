@@ -32,12 +32,6 @@ from pydantic import BaseModel, ConfigDict, Field
 # explicitly stereo/lcr is treated as a mono (1-slot) bus.
 BusType = Literal["mono", "stereo", "lcr"]
 
-_ALLOWED_ARCHITECTURES = {
-    "digital_bus_pool",
-    "digital_fixed",
-    "fixed_analog",
-}
-
 _STEREO_DEFAULT_SLOT_COST = 2
 _LCR_DEFAULT_SLOT_COST = 3
 

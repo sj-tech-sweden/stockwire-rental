@@ -124,9 +124,12 @@ export const PRODUCT_SPEC_GROUPS = [
     fields: ['cable_type', 'connector_a', 'connector_b', 'length_m', 'cable_area_mm2', 'is_balanced'],
   },
   {
+    // One unified "Mixer" group covering both the flat Stagewire counts and the
+    // structured bus-pool model, so a console's complete specs object carries
+    // inputs/outputs/power_inlet/connectors alongside specs.mixer.
     key: 'mixer',
     labelKey: 'inventory.specGroupMixer',
-    fields: ['inputs', 'outputs', 'aux', 'matrix'],
+    fields: ['inputs', 'outputs', 'power_inlet', 'connectors', 'mixer'],
   },
   {
     key: 'stagebox',
@@ -198,11 +201,6 @@ export const PRODUCT_SPEC_GROUPS = [
     key: 'connectors',
     labelKey: 'inventory.specGroupConnectors',
     fields: ['connectors', 'power_inlet'],
-  },
-  {
-    key: 'digitalMixer',
-    labelKey: 'inventory.specGroupDigitalMixer',
-    fields: ['mixer'],
   },
 ]
 
@@ -277,10 +275,25 @@ export function setSpeakerThrowManualMode(specs, manual, calculatedThrow) {
 // Groups that currently have at least one populated field in `specs`.
 export function populatedSpecGroups(specs) {
   const s = specs || {}
-  return PRODUCT_SPEC_GROUPS.filter((group) => group.fields.some((field) => {
-    if (field === 'connectors') return getConnectorGroups(s).length > 0
-    return s[field] !== undefined && s[field] !== null && s[field] !== ''
-  }))
+  // The Mixer group is only treated as populated when the product actually has
+  // mixer content (the structured `mixer` block or flat input/output counts).
+  // Two of its fields - connectors / power_inlet - are shared with many
+  // non-mixer devices (speakers, distros, cables), so they must not by
+  // themselves turn an unrelated product into a mixer.
+  const isMixerByContent = ['inputs', 'outputs', 'mixer'].some((f) => s[f] != null && s[f] !== '')
+  const groups = PRODUCT_SPEC_GROUPS.filter((group) => {
+    if (group.key === 'mixer') return isMixerByContent
+    return group.fields.some((field) => {
+      if (field === 'connectors') return getConnectorGroups(s).length > 0
+      return s[field] !== undefined && s[field] !== null && s[field] !== ''
+    })
+  })
+  // The unified Mixer group edits connectors / power_inlet itself, so the
+  // generic Connectors group is hidden for mixers to avoid duplicate editors.
+  if (groups.some((g) => g.key === 'mixer')) {
+    return groups.filter((g) => g.key !== 'connectors')
+  }
+  return groups
 }
 
 export function productSpecDisplayGroups(specs, translate) {
@@ -319,6 +332,9 @@ export function productSpecDisplayGroups(specs, translate) {
 export function activeSpecGroups(specs, explicitlyAddedKeys = []) {
   const populated = new Set(populatedSpecGroups(specs).map((g) => g.key))
   const keys = new Set([...populated, ...explicitlyAddedKeys])
+  // The unified Mixer group edits connectors / power_inlet itself, so the
+  // generic Connectors group is suppressed for mixers to avoid duplicate editors.
+  if (keys.has('mixer')) keys.delete('connectors')
   return PRODUCT_SPEC_GROUPS.filter((g) => keys.has(g.key))
 }
 
@@ -459,6 +475,12 @@ export const MIXER_ARCHITECTURES = [
 // Bus roles that a console's bus pool may be allowed to host. Mirrors the
 // backend BusPool.allowed_roles vocabulary.
 export const MIXER_BUS_ROLES = ['aux', 'group', 'matrix', 'main', 'fx_send', 'sub']
+
+// Known digital-console expansion / stagebox protocols. Offered as a dropdown
+// but the editor also accepts free-text values (e.g. vendor-specific cards).
+export const MIXER_EXPANSION_PROTOCOLS = [
+  'dsnake', 'aes50', 'dante', 'avb', 'madi', 'io_card', 'option_card', 'waves', 'other',
+]
 
 const MIXER_DEFAULT_STEREO_COST = 2
 const MIXER_DEFAULT_LCR_COST = 3

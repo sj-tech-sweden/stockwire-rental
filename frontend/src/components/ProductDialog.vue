@@ -853,10 +853,17 @@
                           <div class="col-12">
                             <div class="row items-start q-col-gutter-sm">
                               <div class="col-6 col-md-3">
-                                <q-input
+                                <q-select
                                   :model-value="port.protocol"
+                                  :options="MIXER_EXPANSION_PROTOCOLS.map(value => ({ label: value, value }))"
                                   :label="t('inventory.specMixerPortProtocol')"
-                                  outlined dense
+                                  use-input
+                                  fill-input
+                                  new-value-mode="add-unique"
+                                  emit-value
+                                  map-options
+                                  outlined
+                                  dense
                                   @update:model-value="val => (productForm.specs = updateMixerExpansionPort(productForm.specs, portIndex, 'protocol', val))"
                                 />
                               </div>
@@ -1072,6 +1079,7 @@ import {
   withCalculatedCameraSensorWidth,
   MIXER_ARCHITECTURES,
   MIXER_BUS_ROLES,
+  MIXER_EXPANSION_PROTOCOLS,
   getMixerSpec,
   addMixerSpec,
   setMixerArchitecture,
