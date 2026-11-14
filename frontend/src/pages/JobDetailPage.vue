@@ -5,7 +5,7 @@
         <q-btn flat icon="arrow_back" :label="isPhone ? undefined : t('jobs.backToJobs')" @click="goBack" />
       </div>
       <div class="col">
-        <div class="ec-page-title text-break">{{ isNewJob ? t('jobs.newJob') : (currentJob?.job_code || t('jobs.viewJob')) }}</div>
+        <div class="ec-page-title text-no-wrap">{{ isNewJob ? t('jobs.newJob') : (currentJob?.job_code || t('jobs.viewJob')) }}</div>
       </div>
       <div class="col-auto" v-if="authStore.canEdit && !isNewJob">
         <q-btn
