@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.29.0](https://github.com/sj-tech-sweden/stockwire-rental/compare/0.28.0...0.29.0) (2026-11-14)
+
+
+### Features
+
+* **deps:** update dependency fastapi to v0.163.0 ([#783](https://github.com/sj-tech-sweden/stockwire-rental/issues/783)) ([40feae9](https://github.com/sj-tech-sweden/stockwire-rental/commit/40feae931287869c99c6d7b472485c5942de6b65))
+
+
+### Bug Fixes
+
+* **settings:** document stagewire deeplink backend 302 behaviour ([#782](https://github.com/sj-tech-sweden/stockwire-rental/issues/782)) ([fe940d3](https://github.com/sj-tech-sweden/stockwire-rental/commit/fe940d3fdb0afa6d1ce1422b57832a5388c259f5))
+
 ## [0.28.0](https://github.com/sj-tech-sweden/stockwire-rental/compare/0.27.0...0.28.0) (2026-11-14)
 
 
