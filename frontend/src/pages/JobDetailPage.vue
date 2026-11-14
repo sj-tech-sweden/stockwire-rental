@@ -251,7 +251,11 @@
                   map-options
                   :disable="!authStore.canEdit"
                   @filter="filterVenueOptions"
-                />
+                >
+                  <template #after>
+                    <q-btn flat round dense icon="add" color="primary" size="sm" @click="venueCreateDialogOpen = true" />
+                  </template>
+                </q-select>
               </div>
             </div>
 
@@ -625,6 +629,7 @@
     <CompanyCreateDialog v-model="companyCreateDialogOpen" @saved="onCompanyCreated" />
     <PersonCreateDialog v-model="personCreateDialogOpen" :company-id="form.company_id" @saved="onPersonCreated" />
     <VenuePickerDialog v-model="venuePickerOpen" :venues="venuesStore.venues" :selected-id="form.venue_id" @select="onVenueSelected" />
+    <VenueDialog v-model="venueCreateDialogOpen" @saved="onVenueCreated" />
     <JobCustomFieldsDialog v-model="customFieldsDialogOpen" :job-id="currentJob?.id || null" @saved="reloadFieldRows" />
     <CrewRequirementDialog v-model="crewRequirementDialogOpen" :job-id="currentJob?.id || null" @saved="loadCrewData" />
     <CrewAssignmentDialog v-model="crewAssignmentDialogOpen" :job-id="currentJob?.id || null" :requirement-id="selectedCrewRequirementId" @saved="onCrewAssignmentSaved" />
@@ -701,6 +706,7 @@ import CompanyPickerDialog from '../components/CompanyPickerDialog.vue'
 import CompanyCreateDialog from '../components/CompanyCreateDialog.vue'
 import PersonCreateDialog from '../components/PersonCreateDialog.vue'
 import VenuePickerDialog from '../components/VenuePickerDialog.vue'
+import VenueDialog from '../components/VenueDialog.vue'
 import JobCustomFieldsDialog from '../components/JobCustomFieldsDialog.vue'
 import QuoteBuilder from '../components/QuoteBuilder.vue'
 import ReportExportDialog from '../components/ReportExportDialog.vue'
@@ -733,6 +739,7 @@ const companyPickerOpen = ref(false)
 const companyCreateDialogOpen = ref(false)
 const personCreateDialogOpen = ref(false)
 const venuePickerOpen = ref(false)
+const venueCreateDialogOpen = ref(false)
 const customFieldsDialogOpen = ref(false)
 const crewRequirementDialogOpen = ref(false)
 const crewAssignmentDialogOpen = ref(false)
@@ -1287,6 +1294,11 @@ function onPersonCreated(person) {
 }
 
 function onVenueSelected(venue) {
+  form.value.venue_id = venue.id
+  form.value.venue_name = venue.name
+}
+
+function onVenueCreated(venue) {
   form.value.venue_id = venue.id
   form.value.venue_name = venue.name
 }
