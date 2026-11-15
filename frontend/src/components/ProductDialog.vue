@@ -731,6 +731,64 @@
                           </div>
                         </div>
 
+                        <div class="text-caption text-grey-8 q-mt-sm">{{ t('inventory.specMixerFixedBuses') }}</div>
+                        <div class="row items-start q-col-gutter-sm q-mb-xs">
+                          <div class="col-4 col-md-2">
+                            <q-input
+                              :model-value="getFixedBuses(productForm.specs).aux_mono"
+                              :label="t('inventory.specMixerFixedAuxMono')"
+                              type="number" min="0" step="1"
+                              outlined dense
+                              @update:model-value="val => (productForm.specs = setFixedBus(productForm.specs, 'aux_mono', val))"
+                            />
+                          </div>
+                          <div class="col-4 col-md-2">
+                            <q-input
+                              :model-value="getFixedBuses(productForm.specs).aux_stereo"
+                              :label="t('inventory.specMixerFixedAuxStereo')"
+                              type="number" min="0" step="1"
+                              outlined dense
+                              @update:model-value="val => (productForm.specs = setFixedBus(productForm.specs, 'aux_stereo', val))"
+                            />
+                          </div>
+                          <div class="col-4 col-md-2">
+                            <q-input
+                              :model-value="getFixedBuses(productForm.specs).groups"
+                              :label="t('inventory.specMixerFixedGroups')"
+                              type="number" min="0" step="1"
+                              outlined dense
+                              @update:model-value="val => (productForm.specs = setFixedBus(productForm.specs, 'groups', val))"
+                            />
+                          </div>
+                          <div class="col-4 col-md-2">
+                            <q-input
+                              :model-value="getFixedBuses(productForm.specs).matrix"
+                              :label="t('inventory.specMixerFixedMatrix')"
+                              type="number" min="0" step="1"
+                              outlined dense
+                              @update:model-value="val => (productForm.specs = setFixedBus(productForm.specs, 'matrix', val))"
+                            />
+                          </div>
+                          <div class="col-4 col-md-2">
+                            <q-input
+                              :model-value="getFixedBuses(productForm.specs).main"
+                              :label="t('inventory.specMixerFixedMain')"
+                              type="number" min="0" step="1"
+                              outlined dense
+                              @update:model-value="val => (productForm.specs = setFixedBus(productForm.specs, 'main', val))"
+                            />
+                          </div>
+                          <div class="col-4 col-md-2">
+                            <q-input
+                              :model-value="getFixedBuses(productForm.specs).fx_sends"
+                              :label="t('inventory.specMixerFixedFxSends')"
+                              type="number" min="0" step="1"
+                              outlined dense
+                              @update:model-value="val => (productForm.specs = setFixedBus(productForm.specs, 'fx_sends', val))"
+                            />
+                          </div>
+                        </div>
+
                         <div class="text-caption text-grey-8 q-mt-sm">{{ t('inventory.specMixerBusPool') }}</div>
                         <div class="row items-start q-col-gutter-sm q-mb-xs">
                           <div class="col-6 col-md-2">
@@ -1085,6 +1143,8 @@ import {
   setMixerArchitecture,
   setMixerDcas,
   setMixerDspInput,
+  getFixedBuses,
+  setFixedBus,
   setMixerBusPoolField,
   toggleMixerAllowedRole,
   setMixerSurfaceLayers,

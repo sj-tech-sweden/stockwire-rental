@@ -567,6 +567,20 @@ export function setMixerDspInput(specs, field, value) {
   return updateMixerSpec(specs, (m) => { m.dsp_inputs[field] = toIntOrNull(value) })
 }
 
+export function getFixedBuses(specs) {
+  const m = getMixerSpec(specs)
+  return m?.fixed_buses || {}
+}
+
+export function setFixedBus(specs, field, value) {
+  const allowed = ['aux_mono', 'aux_stereo', 'groups', 'matrix', 'main', 'fx_sends']
+  if (!allowed.includes(field)) return specs || {}
+  return updateMixerSpec(specs, (m) => {
+    if (!m.fixed_buses || typeof m.fixed_buses !== 'object') m.fixed_buses = {}
+    m.fixed_buses[field] = toIntOrNull(value)
+  })
+}
+
 export function setMixerBusPoolField(specs, field, value) {
   if (field === 'odd_even_stereo_pairing') {
     const bool = value === true || value === 'true'
