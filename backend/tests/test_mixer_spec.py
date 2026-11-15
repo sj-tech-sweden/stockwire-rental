@@ -58,6 +58,24 @@ def test_parse_mixer_spec_valid():
     assert parsed.bus_pool.total_slots == 30
     assert parsed.bus_pool.stereo_slot_cost == 2
     assert parsed.dcas == 16
+
+
+def test_parse_mixer_spec_fixed_buses():
+    parsed = parse_mixer_spec({"mixer": {
+        "architecture": "digital_fixed",
+        "dcas": 8,
+        "dsp_inputs": {"mono": 16, "stereo": 1, "fx_returns": 4},
+        "fixed_buses": {"aux_mono": 4, "aux_stereo": 3, "groups": 2, "main": 1},
+        "surface": {"banks": [{"id": "A", "faders": 17}], "layers": 2},
+    }})
+    assert isinstance(parsed, MixerSpec)
+    assert parsed.architecture == "digital_fixed"
+    assert parsed.fixed_buses is not None
+    assert parsed.fixed_buses.aux_mono == 4
+    assert parsed.fixed_buses.aux_stereo == 3
+    assert parsed.fixed_buses.groups == 2
+    assert parsed.fixed_buses.main == 1
+    assert parsed.dcas == 8
     assert len(parsed.surface.banks) == 2
     assert len(parsed.expansion_ports) == 2
 

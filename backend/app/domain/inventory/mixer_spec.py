@@ -84,12 +84,30 @@ class ExpansionPort(BaseModel):
     max_channels: int | None = None
 
 
+class FixedBuses(BaseModel):
+    """Fixed (non-pooled) bus counts for simple/fixed consoles (A&H Qu, CQ, ...).
+
+    Each value is an independent capacity; a stereo aux counts as one
+    ``aux_stereo`` slot, not two mono slots.
+    """
+
+    model_config = ConfigDict(extra="ignore")
+
+    aux_mono: int | None = None
+    aux_stereo: int | None = None
+    groups: int | None = None
+    matrix: int | None = None
+    main: int | None = None
+    fx_sends: int | None = None
+
+
 class MixerSpec(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
     architecture: str | None = None
     dsp_inputs: DspInputs | None = None
     bus_pool: BusPool | None = None
+    fixed_buses: FixedBuses | None = None
     dcas: int | None = None
     surface: Surface | None = None
     expansion_ports: list[ExpansionPort] = Field(default_factory=list)
