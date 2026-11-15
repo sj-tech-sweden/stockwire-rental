@@ -437,6 +437,10 @@ function formatMoney(value) {
 }
 
 async function load() {
+  if (!props.jobId) {
+    loading.value = false
+    return
+  }
   loading.value = true
   try {
     const [qsRes, crewRes, jobRes] = await Promise.all([
@@ -485,6 +489,7 @@ async function loadReferencedVendorProducts() {
 }
 
 async function loadCrewRows() {
+  if (!props.jobId) return
   try {
     crewRows.value = (await crewStore.fetchJobCrewRequirements(props.jobId)) || []
   } catch {
