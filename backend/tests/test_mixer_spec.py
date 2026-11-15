@@ -76,8 +76,8 @@ def test_parse_mixer_spec_fixed_buses():
     assert parsed.fixed_buses.groups == 2
     assert parsed.fixed_buses.main == 1
     assert parsed.dcas == 8
-    assert len(parsed.surface.banks) == 2
-    assert len(parsed.expansion_ports) == 2
+    assert len(parsed.surface.banks) == 1
+    assert len(parsed.expansion_ports) == 0
 
 
 def test_parse_mixer_spec_applies_defaults():
