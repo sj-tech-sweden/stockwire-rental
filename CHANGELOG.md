@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.30.0](https://github.com/sj-tech-sweden/stockwire-rental/compare/0.29.0...0.30.0) (2026-11-15)
+
+
+### Features
+
+* **deps:** update dependency email-validator to v2.4.0 ([#786](https://github.com/sj-tech-sweden/stockwire-rental/issues/786)) ([54a52d9](https://github.com/sj-tech-sweden/stockwire-rental/commit/54a52d99fe209cd80852afdc635233f0c2fad621))
+* **jobs:** auto-generate job code and avoid quote load errors on new jobs ([#789](https://github.com/sj-tech-sweden/stockwire-rental/issues/789)) ([2f3149d](https://github.com/sj-tech-sweden/stockwire-rental/commit/2f3149d837bf91e7c619019961e6bcefa3926548))
+* **mixer-spec:** fixed_buses for fixed-aux digital consoles (Qu-16, ...) ([#790](https://github.com/sj-tech-sweden/stockwire-rental/issues/790)) ([3c9c5ec](https://github.com/sj-tech-sweden/stockwire-rental/commit/3c9c5ec5a6b2cbb77d8ae4875e7654e102604a5c))
+
+
+### Bug Fixes
+
+* **deps:** update dependency fastapi to v0.163.1 ([#788](https://github.com/sj-tech-sweden/stockwire-rental/issues/788)) ([07d664b](https://github.com/sj-tech-sweden/stockwire-rental/commit/07d664b81f73f7369bcdb3d276fb0b708d2857e3))
+* **jobs:** keep job code on one line in detail header ([#785](https://github.com/sj-tech-sweden/stockwire-rental/issues/785)) ([58456d0](https://github.com/sj-tech-sweden/stockwire-rental/commit/58456d0f35aa2d9a06d4523444aebe4d653293cf))
+
 ## [0.29.0](https://github.com/sj-tech-sweden/stockwire-rental/compare/0.28.0...0.29.0) (2026-11-14)
 
 
