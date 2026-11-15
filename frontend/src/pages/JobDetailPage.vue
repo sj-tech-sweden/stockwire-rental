@@ -163,7 +163,11 @@
                   dense
                   :disable="!authStore.canEdit"
                   :rules="[v => !!v || t('common.required')]"
-                />
+                >
+                  <template #append>
+                    <q-btn flat dense no-caps color="primary" icon="autorenew" :loading="generatingJobCode" @click="generateJobCode(true)" />
+                  </template>
+                </q-input>
               </div>
               <div class="col-12 col-md-6">
                 <q-select
@@ -601,7 +605,7 @@
         </q-card-section>
       </q-card>
 
-      <QuoteBuilder :job-id="currentJob?.id || 0" :job-code="currentJob?.job_code || ''" />
+      <QuoteBuilder v-if="!isNewJob" :job-id="currentJob?.id || 0" :job-code="currentJob?.job_code || ''" />
     </div>
 
     <!-- Floating save button on mobile -->
@@ -740,6 +744,7 @@ const companyCreateDialogOpen = ref(false)
 const personCreateDialogOpen = ref(false)
 const venuePickerOpen = ref(false)
 const venueCreateDialogOpen = ref(false)
+const generatingJobCode = ref(false)
 const customFieldsDialogOpen = ref(false)
 const crewRequirementDialogOpen = ref(false)
 const crewAssignmentDialogOpen = ref(false)
@@ -1303,6 +1308,17 @@ function onVenueCreated(venue) {
   form.value.venue_name = venue.name
 }
 
+async function generateJobCode(force = false) {
+  if (!force && form.value.job_code) return
+  generatingJobCode.value = true
+  try {
+    const code = await jobsStore.generateJobCode('JOB-')
+    if (code) form.value.job_code = code
+  } finally {
+    generatingJobCode.value = false
+  }
+}
+
 function syncFromJob(job) {
   if (!job) {
     form.value = emptyForm()
@@ -1404,6 +1420,7 @@ async function loadData() {
       const company = companyId > 0 ? companiesStore.companies.find(c => c.id === companyId) : null
       const venue = venueId > 0 ? venuesStore.venues.find(v => v.id === venueId) : null
       form.value = emptyForm()
+      generateJobCode()
       if (company) {
         form.value.company_id = company.id
         form.value.company_name = company.name
