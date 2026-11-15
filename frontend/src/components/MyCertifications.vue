@@ -66,12 +66,16 @@
             :rules="[v => !!v || t('common.required')]"
             @filter="filterCertTypes"
           >
+            <template #after>
+              <q-btn flat round dense icon="add" color="primary" size="sm" @click="certTypeCreateDialogOpen = true" />
+            </template>
             <template #no-option>
               <q-item>
                 <q-item-section class="text-grey">{{ t('crew.noMatchingCertTypes') }}</q-item-section>
               </q-item>
             </template>
           </q-select>
+          <CertificationCreateDialog v-model="certTypeCreateDialogOpen" @saved="onCertTypeCreated" />
           <q-input v-model="newCert.certificate_number" :label="t('crew.certificateNumber')" outlined dense class="q-mt-sm" />
           <div class="row q-col-gutter-sm q-mt-sm">
             <div class="col-6">
@@ -100,6 +104,7 @@ import { useQuasar } from 'quasar'
 import { useI18n } from 'vue-i18n'
 import { useCrewStore } from '../stores/crew'
 import { api } from '../boot/axios'
+import CertificationCreateDialog from './CertificationCreateDialog.vue'
 
 const $q = useQuasar()
 const { t } = useI18n()
@@ -114,6 +119,16 @@ const fileInput = ref(null)
 const uploadingCertId = ref(null)
 const certTypeFilter = ref('')
 const noProfile = ref(false)
+const certTypeCreateDialogOpen = ref(false)
+
+async function onCertTypeCreated(cert) {
+  certTypes.value = [cert, ...certTypes.value.filter(c => c.id !== cert.id)]
+  const term = (certTypeFilter.value || '').toLowerCase()
+  certTypeOptions.value = certTypes.value
+    .filter(c => !term || c.name.toLowerCase().includes(term) || (c.category || '').toLowerCase().includes(term))
+    .map(c => ({ label: c.name + (c.category ? ` (${c.category})` : ''), value: c.id }))
+  newCert.value.certification_type_id = cert.id
+}
 
 const newCert = ref({
   certification_type_id: null,
