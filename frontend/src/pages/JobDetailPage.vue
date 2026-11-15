@@ -1,13 +1,13 @@
 <template>
   <q-page class="q-pa-md ec-page">
-    <div class="row items-center justify-between q-col-gutter-sm q-mb-md">
+    <div class="row items-center q-col-gutter-sm q-mb-md">
       <div class="col-auto">
         <q-btn flat icon="arrow_back" :label="isPhone ? undefined : t('jobs.backToJobs')" @click="goBack" />
       </div>
-      <div class="col">
-        <div class="ec-page-title text-break">{{ isNewJob ? t('jobs.newJob') : (currentJob?.job_code || t('jobs.viewJob')) }}</div>
+      <div class="col" style="min-width: auto;">
+        <div class="ec-page-title text-no-wrap">{{ isNewJob ? t('jobs.newJob') : (currentJob?.job_code || t('jobs.viewJob')) }}</div>
       </div>
-      <div class="col-auto" v-if="authStore.canEdit && !isNewJob">
+      <div class="col-auto" style="margin-left: auto;" v-if="authStore.canEdit && !isNewJob">
         <q-btn
           color="secondary"
           outline
@@ -51,7 +51,7 @@
           @click="saveChanges()"
         />
       </div>
-      <div class="col-auto" v-if="authStore.canEdit && isNewJob">
+      <div class="col-auto" style="margin-left: auto;" v-if="authStore.canEdit && isNewJob">
         <q-btn
           ref="headerSaveBtn"
           color="primary"
