@@ -10,6 +10,7 @@ from app.db.session import get_db
 from app.domain.auth.deps import get_current_user, require_editor
 from app.domain.auth.models import User
 from app.domain.inventory.models import Product
+from app.domain.realtime.events import emit_realtime_event
 from app.domain.settings.models import AppSetting
 from app.domain.storage.models import AssetFile
 from app.domain.storage.schemas import AssetFileRead
@@ -254,6 +255,7 @@ async def upload_file(
     )
     db.add(row)
     db.commit()
+    emit_realtime_event("storage.updated", {"entity": "asset_file", "action": "create", "id": row.id})
     db.refresh(row)
     return _to_schema(row)
 
@@ -315,4 +317,4 @@ def delete_file(file_id: int, db: Session = Depends(get_db), _: User = Depends(r
     row.is_deleted = True
     db.add(row)
     db.commit()
-    return None
+    emit_realtime_event("storage.updated", {"entity": "asset_file", "action": "delete", "id": file_id})
