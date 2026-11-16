@@ -15,20 +15,21 @@ from app.domain.notifications.models import (
     NotificationTemplate,
     UserNotificationPreference,
 )
-from app.domain.notifications.seed import seed_notification_defaults
 from app.domain.notifications.schemas import (
+    MyNotificationPreferenceRead,
+    MyNotificationPreferenceUpdate,
     NotificationDispatchRequest,
     NotificationLogRead,
     NotificationPreferenceRead,
     NotificationPreferenceUpdate,
-    MyNotificationPreferenceRead,
-    MyNotificationPreferenceUpdate,
     NotificationTemplateCreate,
     NotificationTemplateRead,
     NotificationTemplateUpdate,
     PushSubscriptionCreate,
 )
+from app.domain.notifications.seed import seed_notification_defaults
 from app.domain.notifications.service import send_notification
+from app.domain.realtime.events import emit_realtime_event
 
 router = APIRouter(prefix="/notifications", tags=["notifications"])
 
@@ -75,6 +76,7 @@ def create_subscription(
         )
         db.add(sub)
     db.commit()
+    emit_realtime_event("notifications.updated", {"entity": "subscription", "action": "create", "id": sub.id})
     return Response(
         content='{"ok": true}',
         status_code=status.HTTP_201_CREATED,
@@ -93,6 +95,7 @@ def delete_subscription(
         raise HTTPException(status_code=404, detail="Subscription not found")
     db.delete(sub)
     db.commit()
+    emit_realtime_event("notifications.updated", {"entity": "subscription", "action": "delete", "id": subscription_id})
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
@@ -116,6 +119,7 @@ def create_template(payload: NotificationTemplateCreate, db: Session = Depends(g
     template = NotificationTemplate(**payload.model_dump())
     db.add(template)
     db.commit()
+    emit_realtime_event("notifications.updated", {"entity": "template", "action": "create", "id": template.id})
     db.refresh(template)
     return template
 
@@ -133,6 +137,7 @@ def update_template(
     for field, value in payload.model_dump(exclude_unset=True).items():
         setattr(template, field, value)
     db.commit()
+    emit_realtime_event("notifications.updated", {"entity": "template", "action": "update", "id": template_id})
     db.refresh(template)
     return template
 
@@ -148,6 +153,7 @@ def delete_template(
         raise HTTPException(status_code=404, detail="Template not found")
     db.delete(template)
     db.commit()
+    emit_realtime_event("notifications.updated", {"entity": "template", "action": "delete", "id": template_id})
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
@@ -172,6 +178,7 @@ def update_preference(
     for field, value in payload.model_dump(exclude_unset=True).items():
         setattr(pref, field, value)
     db.commit()
+    emit_realtime_event("notifications.updated", {"entity": "preference", "action": "update", "id": preference_id})
     db.refresh(pref)
     return pref
 
@@ -263,6 +270,7 @@ def update_my_preference(
         override.email_enabled = payload.email_enabled
         override.web_push_enabled = payload.web_push_enabled
     db.commit()
+    emit_realtime_event("notifications.updated", {"entity": "my_preference", "action": "update", "id": event_type})
     db.refresh(override)
 
     label_row = db.scalar(
@@ -294,6 +302,7 @@ def reset_my_preference(
     if override is not None:
         db.delete(override)
         db.commit()
+    emit_realtime_event("notifications.updated", {"entity": "my_preference", "action": "delete", "id": event_type})
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 

@@ -17,9 +17,12 @@ describe('notification settings source wiring', () => {
   it('wires profile notification channel and web notification subscription source', () => {
     const profilePage = readFileSync(resolve(frontendRoot, 'src/pages/ProfilePage.vue'), 'utf8')
     const authStore = readFileSync(resolve(frontendRoot, 'src/stores/auth.js'), 'utf8')
+    const notificationsStore = readFileSync(resolve(frontendRoot, 'src/stores/notifications.js'), 'utf8')
 
     expect(profilePage).toContain("notification_channel")
-    expect(profilePage).toContain("/api/v1/notifications/subscriptions")
+    // The web-push subscription POST now lives in the notifications store
+    // (centralised alongside the other notifications mutations).
+    expect(notificationsStore).toContain("/api/v1/notifications/subscriptions")
     expect(profilePage).toContain("Notification.requestPermission")
     expect(authStore).toContain("notification_channel")
   })
