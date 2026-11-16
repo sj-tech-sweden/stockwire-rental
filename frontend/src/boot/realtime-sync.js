@@ -15,6 +15,7 @@ import { useReportsStore } from '../stores/reports'
 import { useQuotesStore } from '../stores/quotes'
 import { useCalendarFeedsStore } from '../stores/calendarFeeds'
 import { useSettingsStore } from '../stores/settings'
+import { useStorageStore } from '../stores/storage'
 import { startRealtime, subscribeRealtime } from '../services/realtime/client'
 import { getApiBaseUrl } from '../utils/runtime-config'
 
@@ -53,6 +54,7 @@ export default ({ store }) => {
   const quotesStore = useQuotesStore(store)
   const calendarFeedsStore = useCalendarFeedsStore(store)
   const settingsStore = useSettingsStore(store)
+  const storageStore = useStorageStore(store)
   const activityStore = useActivityStore(store)
 
   const refreshCrew = debounce(async () => {
@@ -124,6 +126,14 @@ export default ({ store }) => {
     ])
   })
 
+  // Storage file uploads/deletes are broadcast under "storage.updated". Rather
+  // than fetching every file globally, we just invalidate the storage store;
+  // each mounted EntityAttachmentsPanel watches the revision and reloads its own
+  // entity.
+  const refreshStorage = debounce(async () => {
+    storageStore.invalidate()
+  })
+
   const refreshInventory = debounce(async () => {
     await Promise.allSettled([
       inventoryStore.fetchAll(),
@@ -177,6 +187,7 @@ export default ({ store }) => {
     if (topic.startsWith('reports.')) refreshReports()
     if (topic.startsWith('quotes.')) refreshQuotes()
     if (topic.startsWith('calendar_feeds.')) refreshCalendarFeeds()
+    if (topic.startsWith('storage.')) refreshStorage()
     if (
       topic.startsWith('activity.')
       || topic.startsWith('inventory.')

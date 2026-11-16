@@ -132,11 +132,12 @@
 </template>
 
 <script setup>
-import { onBeforeUnmount, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { useQuasar } from 'quasar'
 import { useI18n } from 'vue-i18n'
 
 import { api } from '../boot/axios'
+import { useStorageStore } from '../stores/storage'
 
 const props = defineProps({
   entityType: {
@@ -167,6 +168,7 @@ const props = defineProps({
 
 const $q = useQuasar()
 const { t } = useI18n()
+const storageStore = useStorageStore()
 
 const openState = ref(Boolean(props.defaultOpen))
 const loading = ref(false)
@@ -174,7 +176,16 @@ const uploading = ref(false)
 const deletingId = ref(null)
 const uploadFile = ref(null)
 const category = ref(props.defaultCategory)
-const files = ref([])
+// Display list is derived from the storage store, filtered to this entity. This
+// makes realtime refresh flow through: when storageStore.files changes (or its
+// revision bumps), this panel updates automatically.
+const files = computed(() =>
+  !props.entityId
+    ? []
+    : storageStore.files.filter(
+        (f) => f.entity_type === props.entityType && f.entity_id === props.entityId,
+      ),
+)
 const blobUrlsById = ref({})
 
 function formatSize(bytes) {
@@ -270,23 +281,14 @@ async function downloadFile(item) {
 }
 
 async function loadFiles() {
-  if (!props.entityId) {
-    files.value = []
-    return
-  }
+  if (!props.entityId) return
 
   loading.value = true
   try {
-    const { data } = await api.get('/api/v1/storage/files', {
-      params: {
-        entity_type: props.entityType,
-        entity_id: props.entityId,
-      },
+    await storageStore.fetchFiles({
+      entity_type: props.entityType,
+      entity_id: props.entityId,
     })
-    const rows = Array.isArray(data) ? data : []
-    files.value = rows
-    revokeAllBlobUrls()
-    await preloadPreviewBlobs(rows)
   } catch (error) {
     $q.notify({ type: 'negative', message: error?.response?.data?.detail || t('attachments.failedLoad') })
   } finally {
@@ -299,14 +301,11 @@ async function submitUpload() {
 
   uploading.value = true
   try {
-    const formData = new FormData()
-    formData.append('file', uploadFile.value)
-    formData.append('entity_type', props.entityType)
-    formData.append('entity_id', String(props.entityId))
-    formData.append('category', String(category.value || props.defaultCategory || 'document'))
-
-    await api.post('/api/v1/storage/files', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
+    await storageStore.uploadFile({
+      file: uploadFile.value,
+      entityType: props.entityType,
+      entityId: props.entityId,
+      category: category.value || props.defaultCategory || 'document',
     })
 
     uploadFile.value = null
@@ -322,7 +321,7 @@ async function submitUpload() {
 async function removeFile(item) {
   deletingId.value = item.id
   try {
-    await api.delete(`/api/v1/storage/files/${encodeURIComponent(item.id)}`)
+    await storageStore.deleteFile(item.id)
     await loadFiles()
     $q.notify({ type: 'positive', message: t('attachments.deleted') })
   } catch (error) {
@@ -332,14 +331,24 @@ async function removeFile(item) {
   }
 }
 
+// Re-run the (per-entity) load whenever the entity changes...
 watch(() => props.entityId, () => {
   uploadFile.value = null
-  if (props.entityId) {
-    loadFiles()
-  } else {
-    revokeAllBlobUrls()
-    files.value = []
-  }
+  revokeAllBlobUrls()
+  loadFiles()
+}, { immediate: true })
+
+// ...and whenever a storage realtime event invalidates the store (another client
+// uploaded/deleted a file). loadFiles does not touch the revision, so this won't
+// self-trigger.
+watch(() => storageStore.revision, () => {
+  loadFiles()
+})
+
+// Keep blob previews in sync with the displayed file list.
+watch(files, async (rows) => {
+  revokeAllBlobUrls()
+  await preloadPreviewBlobs(rows || [])
 }, { immediate: true })
 
 watch(() => props.defaultCategory, (nextValue) => {
