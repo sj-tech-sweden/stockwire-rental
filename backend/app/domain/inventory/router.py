@@ -1538,11 +1538,8 @@ def delete_product(
                 )
             for linked in linked_rows:
                 db.delete(linked)
-        linked_requirements = list(
-            db.scalars(select(JobRequirement).where(JobRequirement.product_id == product.id)).all()
-        )
-        for requirement in linked_requirements:
-            db.delete(requirement)
+        # JobRequirement.product_id is ON DELETE CASCADE, so linked requirements
+        # are removed automatically when the product is deleted.
         db.delete(product)
         db.commit()
     except IntegrityError as exc:
