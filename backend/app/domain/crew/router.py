@@ -5,21 +5,19 @@ from sqlalchemy.orm import Session, selectinload
 from app.db.session import get_db
 from app.domain.auth.deps import get_current_user
 from app.domain.auth.models import User
-from app.domain.jobs.models import Job
 from app.domain.crew.models import (
+    CrewCertification,
     CrewMember,
     CrewMemberCertification,
     CrewMemberSkill,
     CrewRole,
     CrewSkill,
-    CrewCertification,
     EquipmentRequiredCertification,
     JobCrewAssignment,
     JobCrewRequirement,
     JobRequiredSkill,
     JobRoleRequiredCertification,
 )
-from app.domain.customers.models import Person
 from app.domain.crew.schemas import (
     CrewCertificationCreate,
     CrewCertificationRead,
@@ -33,6 +31,8 @@ from app.domain.crew.schemas import (
     CrewRoleUpdate,
     CrewSkillCreate,
     CrewSkillRead,
+    CrewSuggestion,
+    JobComplianceResult,
     JobCrewAssignmentCreate,
     JobCrewAssignmentRead,
     JobCrewAssignmentUpdate,
@@ -40,14 +40,14 @@ from app.domain.crew.schemas import (
     JobCrewRequirementCreate,
     JobCrewRequirementRead,
     JobCrewRequirementUpdate,
-    CrewSuggestion,
-    SelfSkillToggle,
     SelfCertificationCreate,
-    SelfCertificationUpdate,
     SelfCertificationRead,
-    ComplianceWarning,
-    JobComplianceResult,
+    SelfCertificationUpdate,
+    SelfSkillToggle,
 )
+from app.domain.customers.models import Person
+from app.domain.jobs.models import Job
+from app.domain.realtime.events import emit_realtime_event
 from app.services.compliance_service import check_job_crew_compliance, compute_certification_status
 
 router = APIRouter(prefix="/crew", tags=["crew"], dependencies=[Depends(get_current_user)])
@@ -240,6 +240,7 @@ def create_crew_role(payload: CrewRoleCreate, db: Session = Depends(get_db)) -> 
     )
     db.add(role)
     db.commit()
+    emit_realtime_event("crew.updated", {"entity": "role", "action": "create", "id": role.id})
     db.refresh(role)
     return _to_crew_role_read(role)
 
@@ -261,6 +262,7 @@ def update_crew_role(role_id: int, payload: CrewRoleUpdate, db: Session = Depend
     if payload.sort_order is not None:
         role.sort_order = payload.sort_order
     db.commit()
+    emit_realtime_event("crew.updated", {"entity": "role", "action": "update", "id": role.id})
     db.refresh(role)
     return _to_crew_role_read(role)
 
@@ -280,6 +282,7 @@ def delete_crew_role(role_id: int, db: Session = Depends(get_db)) -> dict:
         )
     db.delete(role)
     db.commit()
+    emit_realtime_event("crew.updated", {"entity": "role", "action": "delete", "id": role_id})
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
@@ -312,6 +315,7 @@ def create_skill(payload: CrewSkillCreate, db: Session = Depends(get_db)) -> Cre
     )
     db.add(skill)
     db.commit()
+    emit_realtime_event("crew.updated", {"entity": "skill", "action": "create", "id": skill.id})
     db.refresh(skill)
     return _to_crew_skill_read(skill)
 
@@ -323,6 +327,7 @@ def delete_skill(skill_id: int, db: Session = Depends(get_db)) -> dict:
         raise HTTPException(status_code=404, detail="Skill not found")
     db.delete(skill)
     db.commit()
+    emit_realtime_event("crew.updated", {"entity": "skill", "action": "delete", "id": skill_id})
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
@@ -355,6 +360,7 @@ def create_certification(payload: CrewCertificationCreate, db: Session = Depends
     )
     db.add(cert)
     db.commit()
+    emit_realtime_event("crew.updated", {"entity": "certification", "action": "create", "id": cert.id})
     db.refresh(cert)
     return _to_crew_certification_read(cert)
 
@@ -366,6 +372,7 @@ def delete_certification(cert_id: int, db: Session = Depends(get_db)) -> dict:
         raise HTTPException(status_code=404, detail="Certification not found")
     db.delete(cert)
     db.commit()
+    emit_realtime_event("crew.updated", {"entity": "certification", "action": "delete", "id": cert_id})
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
@@ -458,6 +465,7 @@ def create_crew_member(payload: CrewMemberCreate, db: Session = Depends(get_db))
             member.preferred_roles.append(role)
 
     db.commit()
+    emit_realtime_event("crew.updated", {"entity": "member", "action": "create", "id": member.id})
     db.refresh(member)
     return _to_crew_member_read(db, member)
 
@@ -510,6 +518,7 @@ def update_crew_member(member_id: int, payload: CrewMemberUpdate, db: Session = 
                 member.preferred_roles.append(role)
 
     db.commit()
+    emit_realtime_event("crew.updated", {"entity": "member", "action": "update", "id": member.id})
     db.refresh(member)
     return _to_crew_member_read(db, member)
 
@@ -529,6 +538,7 @@ def delete_crew_member(member_id: int, db: Session = Depends(get_db)) -> dict:
         )
     db.delete(member)
     db.commit()
+    emit_realtime_event("crew.updated", {"entity": "member", "action": "delete", "id": member_id})
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
@@ -596,6 +606,7 @@ def create_job_crew_requirement(
             db.add(JobRequiredSkill(job_crew_requirement_id=req.id, skill_id=skill_id))
 
     db.commit()
+    emit_realtime_event("crew.updated", {"entity": "crew_requirement", "action": "create", "id": req.id})
     db.refresh(req)
     return _to_job_crew_requirement_read(db, req)
 
@@ -632,6 +643,7 @@ def update_job_crew_requirement(
     if payload.notes is not None:
         req.notes = payload.notes
     db.commit()
+    emit_realtime_event("crew.updated", {"entity": "crew_requirement", "action": "update", "id": req.id})
     db.refresh(req)
     return _to_job_crew_requirement_read(db, req)
 
@@ -651,6 +663,7 @@ def delete_job_crew_requirement(job_id: int, req_id: int, db: Session = Depends(
         )
     db.delete(req)
     db.commit()
+    emit_realtime_event("crew.updated", {"entity": "crew_requirement", "action": "delete", "id": req_id})
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
@@ -706,6 +719,7 @@ def bulk_upsert_job_crew_requirements(
             db.delete(existing_row)
 
     db.commit()
+    emit_realtime_event("crew.updated", {"entity": "crew_requirement", "action": "bulk_upsert", "id": job_id})
 
     refreshed = list(db.scalars(
         select(JobCrewRequirement)
@@ -784,6 +798,7 @@ def create_crew_assignment(payload: JobCrewAssignmentCreate, db: Session = Depen
         if req.hourly_rate is None and member.hourly_rate is not None:
             req.hourly_rate = member.hourly_rate
     db.commit()
+    emit_realtime_event("crew.updated", {"entity": "assignment", "action": "create", "id": assignment.id})
     db.refresh(assignment)
     return _to_job_crew_assignment_read(db, assignment)
 
@@ -802,6 +817,7 @@ def update_crew_assignment(
     if payload.notes is not None:
         assignment.notes = payload.notes
     db.commit()
+    emit_realtime_event("crew.updated", {"entity": "assignment", "action": "update", "id": assignment.id})
     db.refresh(assignment)
     return _to_job_crew_assignment_read(db, assignment)
 
@@ -816,6 +832,7 @@ def delete_crew_assignment(assignment_id: int, db: Session = Depends(get_db)) ->
     db.flush()
     _recalc_quantity_assigned(db, req_id)
     db.commit()
+    emit_realtime_event("crew.updated", {"entity": "assignment", "action": "delete", "id": assignment_id})
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
@@ -987,6 +1004,7 @@ def add_my_skill(
     if not existing:
         db.add(CrewMemberSkill(crew_member_id=member.id, skill_id=payload.skill_id))
         db.commit()
+    emit_realtime_event("crew.updated", {"entity": "member_skill", "action": "create", "id": payload.skill_id})
     member = _resolve_crew_member_for_user(db, current_user)
     return [_to_crew_skill_read(sk.skill) for sk in member.skills]
 
@@ -1007,6 +1025,7 @@ def remove_my_skill(
     if link:
         db.delete(link)
         db.commit()
+    emit_realtime_event("crew.updated", {"entity": "member_skill", "action": "delete", "id": skill_id})
     member = _resolve_crew_member_for_user(db, current_user)
     return [_to_crew_skill_read(sk.skill) for sk in member.skills]
 
@@ -1060,6 +1079,7 @@ def add_my_certification(
     )
     db.add(cert)
     db.commit()
+    emit_realtime_event("crew.updated", {"entity": "member_certification", "action": "create", "id": cert.id})
     db.refresh(cert)
     status_val = compute_certification_status(cert.expiry_date, None, None)
     return SelfCertificationRead(
@@ -1096,6 +1116,7 @@ def update_my_certification(
     if payload.expiry_date is not None:
         cert.expiry_date = payload.expiry_date
     db.commit()
+    emit_realtime_event("crew.updated", {"entity": "member_certification", "action": "update", "id": cert_id})
     db.refresh(cert)
     status_val = compute_certification_status(cert.expiry_date, None, None)
     cert_type = db.get(CrewCertification, cert.certification_id)
@@ -1125,6 +1146,7 @@ def remove_my_certification(
         raise HTTPException(status_code=404, detail="Certification not found")
     db.delete(cert)
     db.commit()
+    emit_realtime_event("crew.updated", {"entity": "member_certification", "action": "delete", "id": cert_id})
     return {"status": "ok"}
 
 
@@ -1156,6 +1178,7 @@ def set_equipment_required_certs(
         if cert:
             db.add(EquipmentRequiredCertification(product_id=product_id, certification_type_id=cert_id))
     db.commit()
+    emit_realtime_event("crew.updated", {"entity": "equipment_cert", "action": "update", "id": product_id})
     links = list(db.scalars(
         select(EquipmentRequiredCertification)
         .where(EquipmentRequiredCertification.product_id == product_id)
@@ -1189,6 +1212,7 @@ def set_role_required_certs(
         if cert:
             db.add(JobRoleRequiredCertification(job_role_id=role_id, certification_type_id=cert_id))
     db.commit()
+    emit_realtime_event("crew.updated", {"entity": "role_cert", "action": "update", "id": role_id})
     links = list(db.scalars(
         select(JobRoleRequiredCertification)
         .where(JobRoleRequiredCertification.job_role_id == role_id)
