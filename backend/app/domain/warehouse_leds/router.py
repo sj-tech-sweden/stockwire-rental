@@ -7,10 +7,11 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
-from app.domain.auth.router import get_current_user
 from app.domain.auth.models import User
+from app.domain.auth.router import get_current_user
 from app.domain.inventory.models import Device, Zone
 from app.domain.jobs.models import Job, JobRequirement
+from app.domain.realtime.events import emit_realtime_event
 from app.domain.warehouse_leds import mqtt_client
 from app.domain.warehouse_leds.esp_home import generate_esphome_yaml, generate_secrets_template
 from app.domain.warehouse_leds.models import LEDBinMapping, LEDController, LEDControllerZone
@@ -64,6 +65,7 @@ def create_controller(
     ctrl = LEDController(**body.model_dump())
     db.add(ctrl)
     db.commit()
+    emit_realtime_event("warehouse_leds.updated", {"entity": "controller", "action": "create", "id": ctrl.id})
     db.refresh(ctrl)
     return ctrl
 
@@ -93,6 +95,7 @@ def update_controller(
     for key, value in body.model_dump(exclude_unset=True).items():
         setattr(ctrl, key, value)
     db.commit()
+    emit_realtime_event("warehouse_leds.updated", {"entity": "controller", "action": "update", "id": controller_db_id})
     db.refresh(ctrl)
     return ctrl
 
@@ -108,6 +111,7 @@ def delete_controller(
         raise HTTPException(404, "Controller not found")
     db.delete(ctrl)
     db.commit()
+    emit_realtime_event("warehouse_leds.updated", {"entity": "controller", "action": "delete", "id": controller_db_id})
 
 
 # ---------------------------------------------------------------------------
@@ -166,6 +170,7 @@ def set_controller_zones(
         created.append(assignment)
 
     db.commit()
+    emit_realtime_event("warehouse_leds.updated", {"entity": "controller", "action": "update", "id": controller_db_id})
     for a in created:
         db.refresh(a)
     return created
@@ -232,6 +237,7 @@ def create_bin_mapping(
     mapping = LEDBinMapping(**body.model_dump())
     db.add(mapping)
     db.commit()
+    emit_realtime_event("warehouse_leds.updated", {"entity": "mapping", "action": "create", "id": mapping.id})
     db.refresh(mapping)
     return mapping
 
@@ -249,6 +255,7 @@ def update_bin_mapping(
     for key, value in body.model_dump(exclude_unset=True).items():
         setattr(mapping, key, value)
     db.commit()
+    emit_realtime_event("warehouse_leds.updated", {"entity": "mapping", "action": "update", "id": mapping_id})
     db.refresh(mapping)
     return mapping
 
@@ -264,6 +271,7 @@ def delete_bin_mapping(
         raise HTTPException(404, "Mapping not found")
     db.delete(mapping)
     db.commit()
+    emit_realtime_event("warehouse_leds.updated", {"entity": "mapping", "action": "delete", "id": mapping_id})
 
 
 @router.post("/mappings/bulk", status_code=201)
@@ -285,6 +293,7 @@ def bulk_create_bin_mappings(
         db.add(mapping)
         created += 1
     db.commit()
+    emit_realtime_event("warehouse_leds.updated", {"entity": "mapping", "action": "create", "id": None})
     return {"created": created, "skipped": skipped}
 
 
