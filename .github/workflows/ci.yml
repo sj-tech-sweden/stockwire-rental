@@ -161,13 +161,15 @@ jobs:
           mapfile -t FILES < <(find "$DIR" -maxdepth 1 -name '*.png' -printf '%f\n' | sort)
           if [ ${#FILES[@]} -eq 0 ]; then echo "No screenshot files found"; exit 0; fi
 
+          RUN_URL="https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+
           BODY="## 📸 PR Screenshots"$'\n'
           BODY+=$'\n'"Automated screenshots of key pages captured from this PR:"$'\n'
           for f in "${FILES[@]}"; do
             name="${f%.png}"
-            BODY+=$'\n'"- **${name}**: see artifact [\`${f}\`](../artifacts/pr-screenshots)"
+            BODY+=$'\n'"- **${name}**: [\`${f}\`](${RUN_URL})"
           done
-          BODY+=$'\n'$'\n'"Download the full screenshots from the **pr-screenshots** artifact above."
+          BODY+=$'\n'$'\n'"Download the **pr-screenshots** artifact from the [workflow run](${RUN_URL}) (Artifacts section)."
 
           EXISTING=$(gh api "repos/${GITHUB_REPOSITORY}/issues/${PR_NUMBER}/comments" \
             --jq '.[] | select(.user.type=="Bot" and (.body | contains("## 📸 PR Screenshots"))) | .id' | head -n1)
