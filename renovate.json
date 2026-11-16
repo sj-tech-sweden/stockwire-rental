@@ -27,7 +27,7 @@
       "automerge": false
     },
     {
-      "matchManagers": ["pyproject"],
+      "matchManagers": ["pep621"],
       "groupName": "backend dependencies",
       "automerge": false
     },
