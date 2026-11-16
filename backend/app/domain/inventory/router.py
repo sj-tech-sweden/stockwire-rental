@@ -1504,6 +1504,56 @@ def bulk_delete_products(
     return BulkOperationResult(deleted=deleted, skipped=skipped)
 
 
+@router.delete("/products/{product_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_product(
+    product_id: int,
+    delete_linked_devices: bool = Query(False),
+    db: Session = Depends(get_db),
+    _: User = Depends(require_editor),
+) -> None:
+    """Delete a single product. By default the request is rejected (409) when the
+    product still has linked devices; pass `delete_linked_devices=true` to also
+    remove those devices. Mirrors the bulk product delete."""
+    product = db.get(Product, product_id)
+    if product is None:
+        raise HTTPException(status_code=404, detail="Product not found")
+
+    linked_devices = db.scalar(select(func.count()).select_from(Device).where(Device.product_id == product.id)) or 0
+    if linked_devices > 0 and not delete_linked_devices:
+        raise HTTPException(
+            status_code=409,
+            detail="Product has linked devices; pass delete_linked_devices=true to remove it and its devices",
+        )
+
+    try:
+        if linked_devices > 0:
+            linked_rows = list(db.scalars(select(Device).where(Device.product_id == product.id)).all())
+            linked_ids = [d.id for d in linked_rows]
+            # Clear case_device_id references pointing at these devices to avoid FK violations.
+            if linked_ids:
+                db.execute(
+                    Device.__table__.update()
+                    .where(Device.case_device_id.in_(linked_ids))
+                    .values(case_device_id=None)
+                )
+            for linked in linked_rows:
+                db.delete(linked)
+        linked_requirements = list(
+            db.scalars(select(JobRequirement).where(JobRequirement.product_id == product.id)).all()
+        )
+        for requirement in linked_requirements:
+            db.delete(requirement)
+        db.delete(product)
+        db.commit()
+    except IntegrityError as exc:
+        db.rollback()
+        raise HTTPException(status_code=409, detail="Unable to delete product due to linked records") from exc
+    except SQLAlchemyError as exc:
+        db.rollback()
+        raise HTTPException(status_code=500, detail="Failed to delete product") from exc
+    emit_realtime_event("inventory.updated", {"entity": "product", "action": "delete", "id": product_id})
+
+
 @router.get("/products/{product_id}/accessories", response_model=list[ProductAccessoryRead])
 def list_product_accessories(product_id: int, db: Session = Depends(get_db)) -> list[ProductAccessoryRead]:
     product = db.get(Product, product_id)
@@ -2011,6 +2061,22 @@ def bulk_delete_devices(
     if deleted:
         emit_realtime_event("inventory.updated", {"entity": "device", "action": "bulk_delete", "count": deleted})
     return BulkOperationResult(deleted=deleted, skipped=skipped)
+
+
+@router.delete("/devices/{device_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_device(
+    device_id: int,
+    db: Session = Depends(get_db),
+    _: User = Depends(require_editor),
+) -> None:
+    """Delete a single device. References from other devices (case_device_id) are
+    set to NULL automatically by the foreign key. Mirrors the bulk device delete."""
+    device = db.get(Device, device_id)
+    if device is None:
+        raise HTTPException(status_code=404, detail="Device not found")
+    db.delete(device)
+    db.commit()
+    emit_realtime_event("inventory.updated", {"entity": "device", "action": "delete", "id": device_id})
 
 
 @router.get("/maintenance", response_model=list[DeviceMaintenanceRead])

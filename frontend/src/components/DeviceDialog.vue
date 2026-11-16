@@ -128,6 +128,10 @@
         default-category="device-document"
       />
       <q-card-actions :align="isPhone ? 'stretch' : 'right'" :class="isPhone ? 'q-pa-md bg-grey-2' : ''">
+        <template v-if="deviceEditing">
+          <q-btn flat color="negative" icon="delete" :label="t('app.actions.delete')" :class="isPhone ? 'full-width q-mb-sm' : ''" @click="confirmDeleteDevice" />
+          <q-space />
+        </template>
         <q-btn flat :class="isPhone ? 'full-width q-mb-sm' : ''" :label="t('app.actions.cancel')" @click="closeDialog" />
         <q-btn color="primary" unelevated :class="isPhone ? 'full-width' : ''" :label="deviceEditing ? t('app.actions.save') : t('inventory.create')" :loading="saving" @click="saveDevice" />
       </q-card-actions>
@@ -166,7 +170,7 @@ const props = defineProps({
   device: { type: Object, default: null },
   isPhone: { type: Boolean, default: false },
 })
-const emit = defineEmits(['update:modelValue', 'saved'])
+const emit = defineEmits(['update:modelValue', 'saved', 'deleted'])
 
 const $q = useQuasar()
 const { t } = useI18n()
@@ -403,6 +407,27 @@ function loadComponentDevices(deviceId) {
 
 function closeDialog() {
   emit('update:modelValue', false)
+}
+
+function confirmDeleteDevice() {
+  const id = props.device?.id
+  if (!id) return
+  $q.dialog({
+    title: t('inventory.deleteDevice'),
+    message: t('inventory.deleteDeviceConfirm', { name: props.device?.asset_tag || props.device?.serial_number || '' }),
+    cancel: t('app.actions.cancel'),
+    ok: { label: t('app.actions.delete'), color: 'negative' },
+    persistent: true,
+  }).onOk(async () => {
+    try {
+      await store.deleteDevice(id)
+      $q.notify({ type: 'positive', message: t('inventory.deviceDeleted') })
+      emit('update:modelValue', false)
+      emit('deleted', id)
+    } catch (err) {
+      $q.notify({ type: 'negative', message: err?.response?.data?.detail || t('app.actions.deleteFailed') })
+    }
+  })
 }
 
 async function generateDeviceAssetTag() {

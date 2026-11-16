@@ -732,6 +732,7 @@
       v-model="productDialogOpen"
       :product="productEditing"
       @saved="onProductDialogSaved"
+      @deleted="onProductDialogDeleted"
       @edit-device="openDeviceEditorFromLink"
       @view-device="openDeviceInfoFromLink"
       @edit-product="openProductEditorFromLink"
@@ -742,6 +743,7 @@
       :device="deviceEditing"
       :is-phone="isPhone"
       @saved="onDeviceDialogSaved"
+      @deleted="onDeviceDialogDeleted"
     />
 
     <CategoryDialog v-model="categoryDialogOpen" :category="categoryEditing" @saved="categoryDialogOpen = false" />
@@ -771,6 +773,7 @@
       @view-device="openDeviceInfoFromLink"
       @open-job="openJobFromLink"
       @report-defect="(id) => openDefectDialog(id)"
+      @delete-device="onDeviceInfoDeleted"
     />
 
     <ProductInfoDialog
@@ -780,6 +783,7 @@
       @view-device="openDeviceInfoFromLink"
       @edit-device="openDeviceEditorFromLink"
       @open-job="openJobFromLink"
+      @delete-product="onProductInfoDeleted"
     />
 
     <RentalProductInfoDialog
@@ -1843,6 +1847,13 @@ function onProductDialogSaved() {
   restorePendingInfoDialog()
 }
 
+// A product was deleted from the edit dialog: clear the editing reference so the
+// table selection stays consistent (the store already refreshed the list).
+function onProductDialogDeleted() {
+  productEditing.value = null
+  restorePendingInfoDialog()
+}
+
 function onRentalProductDialogSaved() {
   restorePendingInfoDialog()
 }
@@ -1858,6 +1869,23 @@ const deviceEditing = ref(null)
 
 function onDeviceDialogSaved() {
   restorePendingInfoDialog()
+}
+
+// A device was deleted from the edit dialog: clear the editing reference.
+function onDeviceDialogDeleted() {
+  deviceEditing.value = null
+}
+
+// A product was deleted from the info dialog: close it and drop the stale target.
+function onProductInfoDeleted() {
+  productInfoDialogOpen.value = false
+  productInfoTarget.value = null
+}
+
+// A device was deleted from the info dialog: close it and drop the stale target.
+function onDeviceInfoDeleted() {
+  deviceInfoDialogOpen.value = false
+  deviceInfoTarget.value = null
 }
 
 function openCreateDevice() {

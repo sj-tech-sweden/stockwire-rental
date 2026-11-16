@@ -993,6 +993,10 @@
         default-category="product-document"
       />
       <q-card-actions :align="isPhone ? 'stretch' : 'right'" :class="isPhone ? 'q-pa-md bg-grey-2' : ''">
+        <template v-if="productEditing">
+          <q-btn flat color="negative" icon="delete" :label="t('app.actions.delete')" :class="isPhone ? 'full-width q-mb-sm' : ''" @click="confirmDeleteProduct" />
+          <q-space />
+        </template>
         <q-btn flat :class="isPhone ? 'full-width q-mb-sm' : ''" :label="t('app.actions.cancel')" @click="closeProductDialog" />
         <q-btn color="primary" unelevated :class="isPhone ? 'full-width' : ''" :label="productEditing ? t('app.actions.save') : t('app.actions.create')" :loading="saving" @click="saveProduct" />
       </q-card-actions>
@@ -1114,6 +1118,7 @@ const emit = defineEmits([
   'edit-device',
   'view-device',
   'edit-product',
+  'deleted',
 ])
 
 const $q = useQuasar()
@@ -2091,6 +2096,34 @@ function closeProductDialog() {
   existingImageFileId.value = null
   imageCleared.value = false
   emit('update:modelValue', false)
+}
+
+// Delete the product currently being edited. If it still has linked devices the
+// server rejects the request unless we also delete those devices, so when that is
+// the case we ask for confirmation that includes removing them.
+function confirmDeleteProduct() {
+  const id = props.product?.id
+  if (!id) return
+  const deviceCount = props.product?.total_devices || 0
+  const message = deviceCount > 0
+    ? t('inventory.deleteProductWithDevicesConfirm', { name: props.product?.name || '', count: deviceCount })
+    : t('inventory.deleteProductConfirm', { name: props.product?.name || '' })
+  $q.dialog({
+    title: t('inventory.deleteProduct'),
+    message,
+    cancel: t('app.actions.cancel'),
+    ok: { label: t('app.actions.delete'), color: 'negative' },
+    persistent: true,
+  }).onOk(async () => {
+    try {
+      await store.deleteProduct(id, { deleteLinkedDevices: deviceCount > 0 })
+      $q.notify({ type: 'positive', message: t('inventory.productDeleted') })
+      emit('update:modelValue', false)
+      emit('deleted', id)
+    } catch (err) {
+      $q.notify({ type: 'negative', message: err?.response?.data?.detail || t('app.actions.deleteFailed') })
+    }
+  })
 }
 
 function onProductImageSelected() {

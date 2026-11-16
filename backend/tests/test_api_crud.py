@@ -2839,3 +2839,73 @@ def test_twenty_config_sync_interval(client):
 
     # Clean up
     client.delete("/api/v1/integrations/twenty/config")
+
+
+def test_delete_product_removes_it_and_returns_404(client):
+    created = client.post(
+        "/api/v1/inventory/products",
+        json={"sku": "DEL-PRD-01", "name": "To Delete"},
+    )
+    assert created.status_code == 200
+    pid = created.json()["id"]
+
+    deleted = client.delete(f"/api/v1/inventory/products/{pid}")
+    assert deleted.status_code == 204
+
+    fetched = client.get(f"/api/v1/inventory/products/{pid}")
+    assert fetched.status_code == 404
+
+
+def test_delete_product_rejects_when_linked_devices(client):
+    created = client.post(
+        "/api/v1/inventory/products",
+        json={"sku": "DEL-PRD-02", "name": "Has Devices"},
+    )
+    assert created.status_code == 200
+    pid = created.json()["id"]
+    device = client.post(
+        "/api/v1/inventory/devices",
+        json={"product_id": pid, "asset_tag": "DL-001", "status": "available", "condition": "good"},
+    )
+    assert device.status_code == 200
+    did = device.json()["id"]
+
+    # Without the flag the delete is rejected because devices are linked.
+    rejected = client.delete(f"/api/v1/inventory/products/{pid}")
+    assert rejected.status_code == 409
+
+    # With the flag the product and its devices are removed.
+    ok = client.delete(f"/api/v1/inventory/products/{pid}", params={"delete_linked_devices": True})
+    assert ok.status_code == 204
+    assert client.get(f"/api/v1/inventory/products/{pid}").status_code == 404
+    assert client.get(f"/api/v1/inventory/devices/{did}").status_code == 404
+
+
+def test_delete_product_returns_404_for_missing_source(client):
+    resp = client.delete("/api/v1/inventory/products/999999")
+    assert resp.status_code == 404
+
+
+def test_delete_device_removes_it(client):
+    created = client.post(
+        "/api/v1/inventory/products",
+        json={"sku": "DEL-PRD-03", "name": "Device Parent"},
+    )
+    assert created.status_code == 200
+    pid = created.json()["id"]
+    device = client.post(
+        "/api/v1/inventory/devices",
+        json={"product_id": pid, "asset_tag": "DD-001", "status": "available", "condition": "good"},
+    )
+    assert device.status_code == 200
+    did = device.json()["id"]
+
+    deleted = client.delete(f"/api/v1/inventory/devices/{did}")
+    assert deleted.status_code == 204
+    assert client.get(f"/api/v1/inventory/devices/{did}").status_code == 404
+
+
+def test_delete_device_returns_404_for_missing_source(client):
+    resp = client.delete("/api/v1/inventory/devices/999999")
+    assert resp.status_code == 404
+
