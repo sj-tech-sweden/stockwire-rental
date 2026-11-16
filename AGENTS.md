@@ -110,10 +110,15 @@ clients when a change lands on the server.
   never dropped. In a store action, branch on `isOnline()` (from
   `frontend/src/services/offline/orbitSync.js`): when offline, call
   `queueMutation({ method, url, data, params, conflictPolicy })`, update the
-  local Pinia state optimistically, persist with `persistFetchAllSnapshot()`,
-  and return. The queue is replayed automatically when connectivity returns
-  (see `frontend/src/boot/orbit-sync.js`, which calls `flushQueuedMutations`
-  over `orbitSync.js`). Model new actions on the existing offline branches in
+  local Pinia state optimistically, persist the store's collections with its
+  own `persistFetchAllSnapshot()` helper, and return. `persistFetchAllSnapshot`
+  is **not** a shared export — each store defines one that calls the shared
+  `cacheSnapshot(key, state)` / `readSnapshot(key)` from `orbitSync.js` (see
+  `frontend/src/stores/inventory.js`, which snapshots its collections under
+  `'inventory.fetchAll'` and restores them when a live fetch fails). The queue
+  is replayed automatically when connectivity returns (see
+  `frontend/src/boot/orbit-sync.js`, which calls `flushQueuedMutations` over
+  `orbitSync.js`). Model new actions on the existing offline branches in
   `frontend/src/stores/inventory.js` (e.g. `createProduct`, `deleteProduct`).
   - `conflictPolicy` is `lww` (last-write-wins), `guarded` (block conflicting
     writes), or `merge` (e.g. custom-field values); it is inferred from the
