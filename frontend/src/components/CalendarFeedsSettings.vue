@@ -7,7 +7,7 @@
     <div class="text-caption ec-text-muted q-mb-md">{{ t('settings.calendarFeeds.description') }}</div>
 
     <q-table
-      :rows="feeds"
+      :rows="calendarFeedsStore.feeds"
       :columns="columns"
       row-key="id"
       flat
@@ -88,14 +88,14 @@
 import { ref, onMounted } from 'vue'
 import { useQuasar } from 'quasar'
 import { useI18n } from 'vue-i18n'
-import { api } from '../boot/axios'
 import { getApiBaseUrl } from '../utils/runtime-config'
+import { useCalendarFeedsStore } from '../stores/calendarFeeds'
 
 const $q = useQuasar()
 const { t } = useI18n()
 const apiBaseUrl = getApiBaseUrl()
 
-const feeds = ref([])
+const calendarFeedsStore = useCalendarFeedsStore()
 const loading = ref(false)
 const saving = ref(false)
 const dialogOpen = ref(false)
@@ -149,9 +149,9 @@ async function saveFeed() {
   saving.value = true
   try {
     if (editingFeed.value) {
-      await api.put(`/api/v1/calendar/feeds/${editingFeed.value.id}`, form.value)
+      await calendarFeedsStore.updateFeed(editingFeed.value.id, form.value)
     } else {
-      await api.post('/api/v1/calendar/feeds', form.value)
+      await calendarFeedsStore.createFeed(form.value)
     }
     dialogOpen.value = false
     await fetchFeeds()
@@ -172,7 +172,7 @@ function confirmDelete(feed) {
     persistent: true,
   }).onOk(async () => {
     try {
-      await api.delete(`/api/v1/calendar/feeds/${feed.id}`)
+      await calendarFeedsStore.deleteFeed(feed.id)
       await fetchFeeds()
       $q.notify({ type: 'positive', message: t('settings.calendarFeeds.deleted') })
     } catch (error) {
@@ -190,7 +190,7 @@ function confirmRegenerateToken(feed) {
     persistent: true,
   }).onOk(async () => {
     try {
-      await api.post(`/api/v1/calendar/feeds/${feed.id}/regenerate-token`)
+      await calendarFeedsStore.regenerateToken(feed.id)
       await fetchFeeds()
       $q.notify({ type: 'positive', message: t('settings.calendarFeeds.tokenRegenerated') })
     } catch (error) {
@@ -202,10 +202,9 @@ function confirmRegenerateToken(feed) {
 async function fetchFeeds() {
   loading.value = true
   try {
-    const { data } = await api.get('/api/v1/calendar/feeds')
-    feeds.value = data
+    await calendarFeedsStore.fetchFeeds()
   } catch {
-    feeds.value = []
+    // store keeps cached/empty feeds on failure
   } finally {
     loading.value = false
   }

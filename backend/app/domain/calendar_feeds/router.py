@@ -1,5 +1,5 @@
 import secrets
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from icalendar import Calendar, Event
@@ -10,10 +10,14 @@ from app.db.session import get_db
 from app.domain.auth.deps import get_current_user, require_admin
 from app.domain.auth.models import User
 from app.domain.calendar_feeds.models import CalendarFeed
-from app.domain.calendar_feeds.schemas import CalendarFeedCreate, CalendarFeedRead, CalendarFeedUpdate
+from app.domain.calendar_feeds.schemas import (
+    CalendarFeedCreate,
+    CalendarFeedRead,
+    CalendarFeedUpdate,
+)
 from app.domain.crew.models import CrewMember, JobCrewAssignment, JobCrewRequirement
 from app.domain.jobs.models import Job
-
+from app.domain.realtime.events import emit_realtime_event
 
 router = APIRouter(prefix="/calendar", tags=["calendar"])
 
@@ -42,7 +46,7 @@ def _add_job_event(cal: Calendar, job: Job) -> None:
         event.add("dtend", job.end_date + timedelta(days=1))
     if job.venue_name:
         event.add("location", job.venue_name)
-    event.add("dtstamp", datetime.now(timezone.utc))
+    event.add("dtstamp", datetime.now(UTC))
     cal.add_component(event)
 
 
@@ -63,7 +67,7 @@ def _add_crew_event(cal: Calendar, assignment: JobCrewAssignment, crew_name: str
         event.add("dtend", job.end_date + timedelta(days=1))
     if job.venue_name:
         event.add("location", job.venue_name)
-    event.add("dtstamp", datetime.now(timezone.utc))
+    event.add("dtstamp", datetime.now(UTC))
     cal.add_component(event)
 
 
@@ -140,6 +144,7 @@ def get_my_feed(
     )
     db.add(feed)
     db.commit()
+    emit_realtime_event("calendar_feeds.updated", {"entity": "feed", "action": "create", "id": feed.id})
     db.refresh(feed)
     return CalendarFeedRead.model_validate(feed)
 
@@ -177,6 +182,7 @@ def create_feed(
     )
     db.add(feed)
     db.commit()
+    emit_realtime_event("calendar_feeds.updated", {"entity": "feed", "action": "create", "id": feed.id})
     db.refresh(feed)
     return CalendarFeedRead.model_validate(feed)
 
@@ -205,6 +211,7 @@ def update_feed(
     if payload.is_active is not None:
         feed.is_active = payload.is_active
     db.commit()
+    emit_realtime_event("calendar_feeds.updated", {"entity": "feed", "action": "update", "id": feed_id})
     db.refresh(feed)
     return CalendarFeedRead.model_validate(feed)
 
@@ -220,6 +227,7 @@ def delete_feed(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Feed not found")
     db.delete(feed)
     db.commit()
+    emit_realtime_event("calendar_feeds.updated", {"entity": "feed", "action": "delete", "id": feed_id})
 
 
 @router.post("/feeds/{feed_id}/regenerate-token", response_model=CalendarFeedRead)
@@ -233,6 +241,7 @@ def regenerate_token(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Feed not found")
     feed.token = _generate_token()
     db.commit()
+    emit_realtime_event("calendar_feeds.updated", {"entity": "feed", "action": "update", "id": feed_id})
     db.refresh(feed)
     return CalendarFeedRead.model_validate(feed)
 
@@ -259,5 +268,6 @@ def get_or_create_crew_feed(
     )
     db.add(feed)
     db.commit()
+    emit_realtime_event("calendar_feeds.updated", {"entity": "feed", "action": "create", "id": feed.id})
     db.refresh(feed)
     return CalendarFeedRead.model_validate(feed)

@@ -3,6 +3,7 @@ import { ref } from 'vue'
 
 import { api } from '../boot/axios'
 import { cacheSnapshot, isOnline, queueMutation, readSnapshot } from '../services/offline/orbitSync'
+import { useCalendarFeedsStore } from './calendarFeeds'
 
 export const DEFAULT_LOCATION_TYPES = ['rack', 'shelf', 'bin', 'pallet', 'stage', 'truck', 'warehouse', 'workshop']
 export const DEFAULT_CATEGORY_PREFILL_PATHS = [
@@ -840,9 +841,13 @@ export const useSettingsStore = defineStore('settings', () => {
   }
 
   async function fetchCalendarFeeds() {
+    // Delegate to the canonical calendar-feeds store so JobsPage/SettingsPage
+    // share one source of truth (and benefit from offline snapshot restore +
+    // realtime refresh wired there). Keep this store's ref in sync for consumers.
+    const calendarFeedsStore = useCalendarFeedsStore()
     try {
-      const { data } = await api.get('/api/v1/calendar/feeds')
-      calendarFeeds.value = Array.isArray(data) ? data : []
+      await calendarFeedsStore.fetchFeeds()
+      calendarFeeds.value = calendarFeedsStore.feeds
     } catch {
       calendarFeeds.value = []
     }
