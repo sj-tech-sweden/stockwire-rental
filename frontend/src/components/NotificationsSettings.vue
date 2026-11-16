@@ -271,10 +271,11 @@
 import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useQuasar } from 'quasar'
-import { api } from '../boot/axios'
+import { useNotificationsStore } from '../stores/notifications'
 
 const { t } = useI18n()
 const $q = useQuasar()
+const notificationsStore = useNotificationsStore()
 
 const loadingPrefs = ref(false)
 const loadingTemplates = ref(false)
@@ -386,8 +387,7 @@ function localeLabel(locale) {
 async function loadPreferences() {
   loadingPrefs.value = true
   try {
-    const { data } = await api.get('/api/v1/notifications/preferences')
-    preferences.value = data
+    preferences.value = await notificationsStore.fetchPreferences()
   } catch (error) {
     console.error('Failed to load preferences:', error)
   } finally {
@@ -398,8 +398,7 @@ async function loadPreferences() {
 async function loadTemplates() {
   loadingTemplates.value = true
   try {
-    const { data } = await api.get('/api/v1/notifications/templates')
-    templates.value = data
+    templates.value = await notificationsStore.fetchTemplates()
   } catch (error) {
     console.error('Failed to load templates:', error)
   } finally {
@@ -417,7 +416,7 @@ async function seedDefaults() {
   }).onOk(async () => {
     seedingDefaults.value = true
     try {
-      const { data } = await api.post('/api/v1/notifications/seed-defaults')
+      const data = await notificationsStore.seedDefaults()
       $q.notify({
         type: 'positive',
         message: `Loaded ${data.templates_added} templates and ${data.preferences_added} preferences`,
@@ -434,7 +433,7 @@ async function seedDefaults() {
 async function sendTestNotification() {
   sendingTest.value = true
   try {
-    await api.post('/api/v1/notifications/test')
+    await notificationsStore.testNotification()
     $q.notify({
       type: 'positive',
       message: 'Test notification sent! Check your email and browser notifications.',
@@ -449,7 +448,7 @@ async function sendTestNotification() {
 async function sendTestForTemplate(templateId) {
   testingTemplateId.value = templateId
   try {
-    await api.post(`/api/v1/notifications/test?template_id=${templateId}`)
+    await notificationsStore.testNotification(templateId)
     $q.notify({
       type: 'positive',
       message: 'Test notification sent! Check your email and browser notifications.',
@@ -463,7 +462,7 @@ async function sendTestForTemplate(templateId) {
 
 async function togglePref(pref, field, value) {
   try {
-    await api.put(`/api/v1/notifications/preferences/${pref.id}`, { [field]: value })
+    await notificationsStore.updatePreference(pref.id, { [field]: value })
     pref[field] = value
   } catch (error) {
     console.error('Failed to update preference:', error)
@@ -472,7 +471,7 @@ async function togglePref(pref, field, value) {
 
 async function toggleTemplateEnabled(tpl, value) {
   try {
-    await api.put(`/api/v1/notifications/templates/${tpl.id}`, { is_enabled: value })
+    await notificationsStore.updateTemplate(tpl.id, { is_enabled: value })
     tpl.is_enabled = value
   } catch (error) {
     console.error('Failed to update template:', error)
@@ -511,7 +510,7 @@ async function saveTemplate() {
   savingTemplate.value = true
   try {
     if (editingTemplate.value) {
-      await api.put(`/api/v1/notifications/templates/${editingTemplate.value.id}`, {
+      await notificationsStore.updateTemplate(editingTemplate.value.id, {
         recipient_type: templateForm.value.recipient_type,
         subject_template: templateForm.value.subject_template || null,
         text_template: templateForm.value.text_template || null,
@@ -519,7 +518,7 @@ async function saveTemplate() {
         is_enabled: templateForm.value.is_enabled,
       })
     } else {
-      await api.post('/api/v1/notifications/templates', templateForm.value)
+      await notificationsStore.createTemplate(templateForm.value)
     }
     await loadTemplates()
     templateDialogOpen.value = false
@@ -540,7 +539,7 @@ function confirmDeleteTemplate(tpl) {
     persistent: true,
   }).onOk(async () => {
     try {
-      await api.delete(`/api/v1/notifications/templates/${tpl.id}`)
+      await notificationsStore.deleteTemplate(tpl.id)
       await loadTemplates()
       $q.notify({ type: 'positive', message: t('settings.notifications.templateDeleted') })
     } catch (error) {

@@ -235,6 +235,7 @@ import { useQuasar } from 'quasar'
 import { useI18n } from 'vue-i18n'
 
 import { useAuthStore } from '../stores/auth'
+import { useNotificationsStore } from '../stores/notifications'
 import { api } from '../boot/axios'
 import { getApiBaseUrl } from '../utils/runtime-config'
 import { resolveAppLocale, setLocale, setUserLocalePreference } from '../i18n'
@@ -244,6 +245,7 @@ import { useCompactGrid } from '../composables/useCompactGrid'
 
 const $q = useQuasar()
 const authStore = useAuthStore()
+const notificationsStore = useNotificationsStore()
 const { t } = useI18n()
 const compactGrid = useCompactGrid(1024)
 
@@ -297,8 +299,7 @@ function translateEventType(key) {
 async function loadMyPrefs() {
   loadingMyPrefs.value = true
   try {
-    const { data } = await api.get('/api/v1/notifications/my-preferences')
-    myPrefs.value = data
+    myPrefs.value = await notificationsStore.fetchMyPreferences()
   } catch (error) {
     console.error('Failed to load notification preferences:', error)
   } finally {
@@ -310,7 +311,7 @@ async function toggleMyPref(row, field, value) {
   row[field] = value
   row.is_override = true
   try {
-    await api.put(`/api/v1/notifications/my-preferences/${row.event_type}`, {
+    await notificationsStore.updateMyPreference(row.event_type, {
       email_enabled: row.email_enabled,
       web_push_enabled: row.web_push_enabled,
     })
@@ -323,7 +324,7 @@ async function toggleMyPref(row, field, value) {
 
 async function resetMyPref(row) {
   try {
-    await api.delete(`/api/v1/notifications/my-preferences/${row.event_type}`)
+    await notificationsStore.resetMyPreference(row.event_type)
     await loadMyPrefs()
     $q.notify({ type: 'positive', message: t('profile.myPrefUpdated') })
   } catch (error) {
@@ -395,7 +396,7 @@ async function enableWebNotifications() {
     return
   }
   const [{ data: vapid }, registration] = await Promise.all([
-    api.get('/api/v1/notifications/vapid-public-key'),
+    notificationsStore.fetchVapidPublicKey(),
     navigator.serviceWorker.ready,
   ])
   if (!vapid?.public_key) {
@@ -406,7 +407,7 @@ async function enableWebNotifications() {
     userVisibleOnly: true,
     applicationServerKey: urlBase64ToUint8Array(vapid.public_key),
   })
-  await api.post('/api/v1/notifications/subscriptions', {
+  await notificationsStore.createSubscription({
     endpoint: subscription.endpoint,
     keys: subscription.toJSON().keys,
     user_agent: navigator.userAgent,
