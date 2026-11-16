@@ -13,6 +13,8 @@ import { useUsersStore } from '../stores/users'
 import { useAuthStore } from '../stores/auth'
 import { useReportsStore } from '../stores/reports'
 import { useQuotesStore } from '../stores/quotes'
+import { useCalendarFeedsStore } from '../stores/calendarFeeds'
+import { useSettingsStore } from '../stores/settings'
 import { startRealtime, subscribeRealtime } from '../services/realtime/client'
 import { getApiBaseUrl } from '../utils/runtime-config'
 
@@ -49,6 +51,8 @@ export default ({ store }) => {
   const authStore = useAuthStore(store)
   const reportsStore = useReportsStore(store)
   const quotesStore = useQuotesStore(store)
+  const calendarFeedsStore = useCalendarFeedsStore(store)
+  const settingsStore = useSettingsStore(store)
   const activityStore = useActivityStore(store)
 
   const refreshCrew = debounce(async () => {
@@ -111,6 +115,15 @@ export default ({ store }) => {
     ])
   })
 
+  // Calendar feeds: keep both the canonical feed store and the settings store's
+  // mirrored calendarFeeds ref (consumed by JobsPage/SettingsPage) in sync.
+  const refreshCalendarFeeds = debounce(async () => {
+    await Promise.allSettled([
+      calendarFeedsStore.fetchFeeds(),
+      settingsStore.fetchCalendarFeeds(),
+    ])
+  })
+
   const refreshInventory = debounce(async () => {
     await Promise.allSettled([
       inventoryStore.fetchAll(),
@@ -163,6 +176,7 @@ export default ({ store }) => {
     if (topic.startsWith('auth.')) refreshAuth()
     if (topic.startsWith('reports.')) refreshReports()
     if (topic.startsWith('quotes.')) refreshQuotes()
+    if (topic.startsWith('calendar_feeds.')) refreshCalendarFeeds()
     if (
       topic.startsWith('activity.')
       || topic.startsWith('inventory.')
