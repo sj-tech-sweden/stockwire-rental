@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { api } from '../boot/axios'
-import { isOnline, queueMutation, persistFetchAllSnapshot } from '../services/offline/orbitSync'
+import { isOnline, queueMutation, cacheSnapshot, readSnapshot } from '../services/offline/orbitSync'
 
 export const useCrewStore = defineStore('crew', () => {
   const roles = ref([])
@@ -15,14 +15,41 @@ export const useCrewStore = defineStore('crew', () => {
   // refresh without a full page reload.
   const crewRevision = ref(0)
 
+  // Mirror inventory's offline snapshot pattern: each store persists its own
+  // collections to IndexedDB via the shared cacheSnapshot helper so they can be
+  // restored when a live fetch fails (e.g. offline on reload).
+  async function persistFetchAllSnapshot() {
+    await cacheSnapshot('crew.fetchAll', {
+      roles: roles.value,
+      members: members.value,
+      skills: skills.value,
+      certifications: certifications.value,
+    })
+  }
+
+  async function restoreFetchAllSnapshot() {
+    const cached = await readSnapshot('crew.fetchAll')
+    if (!cached || typeof cached !== 'object') {
+      return false
+    }
+    roles.value = Array.isArray(cached.roles) ? cached.roles : roles.value
+    members.value = Array.isArray(cached.members) ? cached.members : members.value
+    skills.value = Array.isArray(cached.skills) ? cached.skills : skills.value
+    certifications.value = Array.isArray(cached.certifications) ? cached.certifications : certifications.value
+    return true
+  }
+
   async function fetchRoles() {
     loadingRoles.value = true
     try {
       const { data } = await api.get('/api/v1/crew/roles')
       roles.value = data
     } catch (error) {
-      console.error('Failed to fetch crew roles:', error)
-      throw error
+      const restored = await restoreFetchAllSnapshot()
+      if (!restored) {
+        console.error('Failed to fetch crew roles:', error)
+        throw error
+      }
     } finally {
       loadingRoles.value = false
     }
@@ -383,6 +410,8 @@ export const useCrewStore = defineStore('crew', () => {
     deleteJobCrewRequirement,
     bulkUpsertJobCrewRequirements,
     crewRevision,
+    persistFetchAllSnapshot,
+    restoreFetchAllSnapshot,
     fetchJobCrewAssignments,
     createCrewAssignment,
     updateCrewAssignment,
