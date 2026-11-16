@@ -6,36 +6,37 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session, joinedload
 
-from app.db.session import get_db
 from app.config import settings
+from app.db.session import get_db
 from app.domain.auth.deps import get_current_user, require_editor
 from app.domain.auth.models import User
 from app.domain.inventory.models import Device, Product, Zone
 from app.domain.jobs.models import Job, JobRequirement
-from app.domain.route_planner.models import DeliveryRoute, RouteStop, RouteVehicle, Vehicle
+from app.domain.realtime.events import emit_realtime_event
 from app.domain.route_planner import routing
+from app.domain.route_planner.models import DeliveryRoute, RouteStop, RouteVehicle, Vehicle
 from app.domain.route_planner.routing import StopAddress, compute_drive_times, geocode
 from app.domain.route_planner.schemas import (
+    DriveTimeResponse,
     GoogleMapsExportRequest,
     GoogleMapsExportResponse,
     JobStopRead,
     PackingListProduct,
     PackingListResponse,
     PackingListStop,
-    DriveTimeResponse,
     RouteCreate,
+    RouteLocation,
+    RouteLocationsResponse,
+    RoutePickupZone,
     RouteRead,
     RouteStopCreate,
     RouteStopRead,
     RouteStopReorder,
     RouteUpdate,
-    RouteLocation,
-    RouteLocationsResponse,
-    RoutePickupZone,
-    StopDriveTime,
     RouteVehicleAssign,
     RouteVehicleRead,
     RouteVehicleReorder,
+    StopDriveTime,
     SuggestVehiclesRequest,
     VehicleCreate,
     VehicleRead,
@@ -78,7 +79,7 @@ def _vehicle_effective_volume(v: Vehicle) -> Decimal | None:
             Decimal(str(v.interior_length_cm))
             * Decimal(str(v.interior_width_cm))
             * Decimal(str(v.interior_height_cm))
-            / Decimal("1000000")
+            / Decimal(1000000)
         )
     return None
 
@@ -86,7 +87,7 @@ def _vehicle_effective_volume(v: Vehicle) -> Decimal | None:
 def _route_volume_cm3(product: Product) -> Decimal:
     if product.height_cm and product.width_cm and product.depth_cm:
         return Decimal(str(product.height_cm)) * Decimal(str(product.width_cm)) * Decimal(str(product.depth_cm))
-    return Decimal("0")
+    return Decimal(0)
 
 
 def _build_job_stop_read(job: Job) -> dict:
@@ -120,7 +121,7 @@ def _build_route_read(db: Session, route: DeliveryRoute) -> RouteRead:
     for s in route.stops:
         job_read = _build_job_stop_read(s.job) if s.job else None
         vehicle_read = VehicleStopRead(id=s.vehicle.id, name=s.vehicle.name, vehicle_type=s.vehicle.vehicle_type) if s.vehicle else None
-        cargo_w, cargo_v = (Decimal("0"), Decimal("0"))
+        cargo_w, cargo_v = (Decimal(0), Decimal(0))
         if s.job_id:
             cargo_w, cargo_v = _calc_cargo(db, [s.job_id])
         stops.append(RouteStopRead(
@@ -182,6 +183,7 @@ def create_vehicle(payload: VehicleCreate, db: Session = Depends(get_db), _user:
     vehicle = Vehicle(**payload.model_dump())
     db.add(vehicle)
     db.commit()
+    emit_realtime_event("route_planner.updated", {"entity": "vehicle", "action": "create", "id": vehicle.id})
     db.refresh(vehicle)
     return vehicle
 
@@ -197,6 +199,7 @@ def update_vehicle(vehicle_id: int, payload: VehicleUpdate, db: Session = Depend
     for k, v in data.items():
         setattr(vehicle, k, v)
     db.commit()
+    emit_realtime_event("route_planner.updated", {"entity": "vehicle", "action": "update", "id": vehicle_id})
     db.refresh(vehicle)
     return vehicle
 
@@ -206,6 +209,7 @@ def delete_vehicle(vehicle_id: int, db: Session = Depends(get_db), _user: User =
     vehicle = _get_vehicle_or_404(vehicle_id, db)
     vehicle.is_active = False
     db.commit()
+    emit_realtime_event("route_planner.updated", {"entity": "vehicle", "action": "delete", "id": vehicle_id})
 
 
 # ---------------------------------------------------------------------------
@@ -264,6 +268,7 @@ def create_route(payload: RouteCreate, db: Session = Depends(get_db), user: User
         _get_vehicle_or_404(vid, db)
         db.add(RouteVehicle(route_id=route.id, vehicle_id=vid, load_order=i))
     db.commit()
+    emit_realtime_event("route_planner.updated", {"entity": "route", "action": "create", "id": route.id})
     db.refresh(route)
     loaded = _load_route_with_joins(route.id, db)
     return _build_route_read(db, loaded)
@@ -276,6 +281,7 @@ def update_route(route_id: int, payload: RouteUpdate, db: Session = Depends(get_
     for k, v in data.items():
         setattr(route, k, v)
     db.commit()
+    emit_realtime_event("route_planner.updated", {"entity": "route", "action": "update", "id": route_id})
     loaded = _load_route_with_joins(route_id, db)
     return _build_route_read(db, loaded)
 
@@ -285,6 +291,7 @@ def delete_route(route_id: int, db: Session = Depends(get_db), _user: User = Dep
     route = _get_route_or_404(route_id, db)
     db.delete(route)
     db.commit()
+    emit_realtime_event("route_planner.updated", {"entity": "route", "action": "delete", "id": route_id})
 
 
 # ---------------------------------------------------------------------------
@@ -302,6 +309,7 @@ def assign_vehicle(route_id: int, payload: RouteVehicleAssign, db: Session = Dep
         raise HTTPException(status_code=409, detail="Vehicle already assigned to this route")
     db.add(RouteVehicle(route_id=route_id, vehicle_id=payload.vehicle_id, load_order=payload.load_order, notes=payload.notes))
     db.commit()
+    emit_realtime_event("route_planner.updated", {"entity": "route", "action": "update", "id": route_id})
     loaded = _load_route_with_joins(route_id, db)
     return _build_route_read(db, loaded)
 
@@ -318,6 +326,7 @@ def reorder_vehicles(route_id: int, payload: RouteVehicleReorder, db: Session = 
             raise HTTPException(status_code=400, detail=f"Vehicle {vid} not assigned to route")
         assign_map[vid].load_order = idx
     db.commit()
+    emit_realtime_event("route_planner.updated", {"entity": "route", "action": "update", "id": route_id})
     loaded = _load_route_with_joins(route_id, db)
     return _build_route_read(db, loaded)
 
@@ -331,6 +340,7 @@ def remove_vehicle(route_id: int, vehicle_id: int, db: Session = Depends(get_db)
         raise HTTPException(status_code=404, detail="Vehicle not assigned to this route")
     db.delete(assignment)
     db.commit()
+    emit_realtime_event("route_planner.updated", {"entity": "route", "action": "update", "id": route_id})
 
 
 # ---------------------------------------------------------------------------
@@ -353,6 +363,7 @@ def add_stop(route_id: int, payload: RouteStopCreate, db: Session = Depends(get_
     ).scalar() or 0
     db.add(RouteStop(route_id=route_id, job_id=payload.job_id, vehicle_id=payload.vehicle_id, stop_order=max_order + 1, notes=payload.notes))
     db.commit()
+    emit_realtime_event("route_planner.updated", {"entity": "route", "action": "update", "id": route_id})
     loaded = _load_route_with_joins(route_id, db)
     return _build_route_read(db, loaded)
 
@@ -369,6 +380,7 @@ def reorder_stops(route_id: int, payload: RouteStopReorder, db: Session = Depend
             raise HTTPException(status_code=400, detail=f"Stop {stop_id} not in route")
         stop_map[stop_id].stop_order = idx
     db.commit()
+    emit_realtime_event("route_planner.updated", {"entity": "route", "action": "update", "id": route_id})
     loaded = _load_route_with_joins(route_id, db)
     return _build_route_read(db, loaded)
 
@@ -388,6 +400,7 @@ def remove_stop(route_id: int, stop_id: int, db: Session = Depends(get_db), _use
     for idx, s in enumerate(remaining, 1):
         s.stop_order = idx
     db.commit()
+    emit_realtime_event("route_planner.updated", {"entity": "route", "action": "update", "id": route_id})
 
 
 @router.put("/routes/{route_id}/stops/{stop_id}/vehicle", response_model=RouteRead)
@@ -399,6 +412,7 @@ def assign_stop_vehicle(route_id: int, stop_id: int, vehicle_id: int | None = No
         raise HTTPException(status_code=404, detail="Stop not found")
     stop.vehicle_id = vehicle_id
     db.commit()
+    emit_realtime_event("route_planner.updated", {"entity": "route", "action": "update", "id": route_id})
     loaded = _load_route_with_joins(route_id, db)
     return _build_route_read(db, loaded)
 
@@ -409,8 +423,8 @@ def assign_stop_vehicle(route_id: int, stop_id: int, vehicle_id: int | None = No
 
 def _calc_cargo(db: Session, job_ids: list[int]) -> tuple[Decimal, Decimal]:
     """Calculate total weight and volume for a set of jobs."""
-    total_weight = Decimal("0")
-    total_volume = Decimal("0")
+    total_weight = Decimal(0)
+    total_volume = Decimal(0)
     for jid in job_ids:
         job = db.get(Job, jid)
         if not job:
@@ -427,7 +441,7 @@ def _calc_cargo(db: Session, job_ids: list[int]) -> tuple[Decimal, Decimal]:
                 total_weight += Decimal(str(product.weight_kg)) * qty
             v = _route_volume_cm3(product)
             if v > 0:
-                total_volume += v * qty / Decimal("1000000")
+                total_volume += v * qty / Decimal(1000000)
     return total_weight, total_volume
 
 
@@ -441,7 +455,7 @@ def _make_suggestion(
 ) -> VehicleSuggestion:
     """Build a VehicleSuggestion from a list of 1+ vehicles."""
     # For trailers use max_payload_kg (actual load capacity); for others use max_weight_kg
-    combined_max_weight = Decimal("0")
+    combined_max_weight = Decimal(0)
     for v in vehicles:
         if v.vehicle_type == "trailer" and v.max_payload_kg:
             combined_max_weight += Decimal(str(v.max_payload_kg))
@@ -571,8 +585,8 @@ def get_packing_list(route_id: int, db: Session = Depends(get_db), _user: User =
     if not route:
         raise HTTPException(status_code=404, detail="Route not found")
     sorted_stops = sorted(route.stops, key=lambda s: s.stop_order)
-    total_weight = Decimal("0")
-    total_volume = Decimal("0")
+    total_weight = Decimal(0)
+    total_volume = Decimal(0)
     packing_stops: list[PackingListStop] = []
     for idx, stop in enumerate(reversed(sorted_stops), 1):
         job = stop.job
@@ -581,15 +595,15 @@ def get_packing_list(route_id: int, db: Session = Depends(get_db), _user: User =
         venue = job.venue if hasattr(job, "venue") and job.venue else None
         customer = job.company if hasattr(job, "company") and job.company else None
         products: list[PackingListProduct] = []
-        stop_weight = Decimal("0")
-        stop_volume = Decimal("0")
+        stop_weight = Decimal(0)
+        stop_volume = Decimal(0)
         for req in job.requirements:
             product = req.product
             if not product:
                 continue
             qty = Decimal(str(req.quantity_required))
-            pw = Decimal(str(product.weight_kg)) * qty if product.weight_kg else Decimal("0")
-            pv = _route_volume_cm3(product) * qty / Decimal("1000000") if _route_volume_cm3(product) > 0 else Decimal("0")
+            pw = Decimal(str(product.weight_kg)) * qty if product.weight_kg else Decimal(0)
+            pv = _route_volume_cm3(product) * qty / Decimal(1000000) if _route_volume_cm3(product) > 0 else Decimal(0)
             products.append(PackingListProduct(
                 product_id=product.id, product_name=product.name,
                 quantity=req.quantity_required, weight_kg=pw, volume_m3=pv,
@@ -848,5 +862,6 @@ def optimize_route(
             raise HTTPException(status_code=400, detail=f"Stop {sid} not part of this route.")
         stop_map[sid].stop_order = idx
     db.commit()
+    emit_realtime_event("route_planner.updated", {"entity": "route", "action": "update", "id": route_id})
     loaded = _load_route_with_joins(route_id, db)
     return _build_route_read(db, loaded)
