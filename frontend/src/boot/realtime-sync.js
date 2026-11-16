@@ -1,5 +1,6 @@
 import { useActivityStore } from '../stores/activity'
 import { useCompaniesStore } from '../stores/companies'
+import { useCrewStore } from '../stores/crew'
 import { useInventoryStore } from '../stores/inventory'
 import { useJobsStore } from '../stores/jobs'
 import { useVenuesStore } from '../stores/venues'
@@ -29,7 +30,21 @@ export default ({ store }) => {
   const jobsStore = useJobsStore(store)
   const companiesStore = useCompaniesStore(store)
   const venuesStore = useVenuesStore(store)
+  const crewStore = useCrewStore(store)
   const activityStore = useActivityStore(store)
+
+  const refreshCrew = debounce(async () => {
+    // Crew has no single fetchAll(); re-fetch every collection that the
+    // `crew.updated` event may have changed, then bump the revision so
+    // dependent views (quote builder, job crew panels) refresh too.
+    await Promise.allSettled([
+      crewStore.fetchRoles(),
+      crewStore.fetchMembers(),
+      crewStore.fetchSkills(),
+      crewStore.fetchCertifications(),
+    ])
+    crewStore.crewRevision++
+  })
 
   const refreshInventory = debounce(async () => {
     await Promise.allSettled([
@@ -62,6 +77,7 @@ export default ({ store }) => {
     if (topic.startsWith('jobs.')) refreshJobs()
     if (topic.startsWith('companies.')) refreshCompanies()
     if (topic.startsWith('venues.')) refreshVenues()
+    if (topic.startsWith('crew.')) refreshCrew()
     if (
       topic.startsWith('activity.')
       || topic.startsWith('inventory.')

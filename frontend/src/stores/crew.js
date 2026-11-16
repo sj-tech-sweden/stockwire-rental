@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { api } from '../boot/axios'
+import { isOnline, queueMutation, cacheSnapshot, readSnapshot } from '../services/offline/orbitSync'
 
 export const useCrewStore = defineStore('crew', () => {
   const roles = ref([])
@@ -14,26 +15,63 @@ export const useCrewStore = defineStore('crew', () => {
   // refresh without a full page reload.
   const crewRevision = ref(0)
 
+  // Mirror inventory's offline snapshot pattern: each store persists its own
+  // collections to IndexedDB via the shared cacheSnapshot helper so they can be
+  // restored when a live fetch fails (e.g. offline on reload).
+  async function persistFetchAllSnapshot() {
+    await cacheSnapshot('crew.fetchAll', {
+      roles: roles.value,
+      members: members.value,
+      skills: skills.value,
+      certifications: certifications.value,
+    })
+  }
+
+  async function restoreFetchAllSnapshot() {
+    const cached = await readSnapshot('crew.fetchAll')
+    if (!cached || typeof cached !== 'object') {
+      return false
+    }
+    roles.value = Array.isArray(cached.roles) ? cached.roles : roles.value
+    members.value = Array.isArray(cached.members) ? cached.members : members.value
+    skills.value = Array.isArray(cached.skills) ? cached.skills : skills.value
+    certifications.value = Array.isArray(cached.certifications) ? cached.certifications : certifications.value
+    return true
+  }
+
   async function fetchRoles() {
     loadingRoles.value = true
     try {
       const { data } = await api.get('/api/v1/crew/roles')
       roles.value = data
     } catch (error) {
-      console.error('Failed to fetch crew roles:', error)
-      throw error
+      const restored = await restoreFetchAllSnapshot()
+      if (!restored) {
+        console.error('Failed to fetch crew roles:', error)
+        throw error
+      }
     } finally {
       loadingRoles.value = false
     }
   }
 
   async function createRole(payload) {
+    if (!isOnline()) {
+      await queueMutation({ method: 'post', url: '/api/v1/crew/roles', data: payload })
+      await persistFetchAllSnapshot()
+      return
+    }
     const { data } = await api.post('/api/v1/crew/roles', payload)
     roles.value = [data, ...roles.value.filter(r => r.id !== data.id)]
     return data
   }
 
   async function updateRole(id, payload) {
+    if (!isOnline()) {
+      await queueMutation({ method: 'put', url: `/api/v1/crew/roles/${id}`, data: payload })
+      await persistFetchAllSnapshot()
+      return
+    }
     const { data } = await api.put(`/api/v1/crew/roles/${id}`, payload)
     const idx = roles.value.findIndex(r => r.id === id)
     if (idx >= 0) roles.value[idx] = data
@@ -41,6 +79,11 @@ export const useCrewStore = defineStore('crew', () => {
   }
 
   async function deleteRole(id) {
+    if (!isOnline()) {
+      await queueMutation({ method: 'delete', url: `/api/v1/crew/roles/${id}` })
+      await persistFetchAllSnapshot()
+      return
+    }
     await api.delete(`/api/v1/crew/roles/${id}`)
     roles.value = roles.value.filter(r => r.id !== id)
   }
@@ -64,12 +107,22 @@ export const useCrewStore = defineStore('crew', () => {
   }
 
   async function createMember(payload) {
+    if (!isOnline()) {
+      await queueMutation({ method: 'post', url: '/api/v1/crew/members', data: payload })
+      await persistFetchAllSnapshot()
+      return
+    }
     const { data } = await api.post('/api/v1/crew/members', payload)
     members.value = [data, ...members.value.filter(m => m.id !== data.id)]
     return data
   }
 
   async function updateMember(id, payload) {
+    if (!isOnline()) {
+      await queueMutation({ method: 'put', url: `/api/v1/crew/members/${id}`, data: payload })
+      await persistFetchAllSnapshot()
+      return
+    }
     const { data } = await api.put(`/api/v1/crew/members/${id}`, payload)
     const idx = members.value.findIndex(m => m.id === id)
     if (idx >= 0) members.value[idx] = data
@@ -77,6 +130,11 @@ export const useCrewStore = defineStore('crew', () => {
   }
 
   async function deleteMember(id) {
+    if (!isOnline()) {
+      await queueMutation({ method: 'delete', url: `/api/v1/crew/members/${id}` })
+      await persistFetchAllSnapshot()
+      return
+    }
     await api.delete(`/api/v1/crew/members/${id}`)
     members.value = members.value.filter(m => m.id !== id)
   }
@@ -88,12 +146,22 @@ export const useCrewStore = defineStore('crew', () => {
   }
 
   async function createSkill(payload) {
+    if (!isOnline()) {
+      await queueMutation({ method: 'post', url: '/api/v1/crew/skills', data: payload })
+      await persistFetchAllSnapshot()
+      return
+    }
     const { data } = await api.post('/api/v1/crew/skills', payload)
     skills.value = [data, ...skills.value.filter(s => s.id !== data.id)]
     return data
   }
 
   async function deleteSkill(id) {
+    if (!isOnline()) {
+      await queueMutation({ method: 'delete', url: `/api/v1/crew/skills/${id}` })
+      await persistFetchAllSnapshot()
+      return
+    }
     await api.delete(`/api/v1/crew/skills/${id}`)
     skills.value = skills.value.filter(s => s.id !== id)
   }
@@ -105,12 +173,22 @@ export const useCrewStore = defineStore('crew', () => {
   }
 
   async function createCertification(payload) {
+    if (!isOnline()) {
+      await queueMutation({ method: 'post', url: '/api/v1/crew/certifications', data: payload })
+      await persistFetchAllSnapshot()
+      return
+    }
     const { data } = await api.post('/api/v1/crew/certifications', payload)
     certifications.value = [data, ...certifications.value.filter(c => c.id !== data.id)]
     return data
   }
 
   async function deleteCertification(id) {
+    if (!isOnline()) {
+      await queueMutation({ method: 'delete', url: `/api/v1/crew/certifications/${id}` })
+      await persistFetchAllSnapshot()
+      return
+    }
     await api.delete(`/api/v1/crew/certifications/${id}`)
     certifications.value = certifications.value.filter(c => c.id !== id)
   }
@@ -121,23 +199,43 @@ export const useCrewStore = defineStore('crew', () => {
   }
 
   async function createJobCrewRequirement(jobId, payload) {
+    if (!isOnline()) {
+      await queueMutation({ method: 'post', url: `/api/v1/crew/jobs/${jobId}/crew-requirements`, data: payload })
+      await persistFetchAllSnapshot()
+      return
+    }
     const { data } = await api.post(`/api/v1/crew/jobs/${jobId}/crew-requirements`, payload)
     crewRevision.value++
     return data
   }
 
   async function updateJobCrewRequirement(jobId, reqId, payload) {
+    if (!isOnline()) {
+      await queueMutation({ method: 'put', url: `/api/v1/crew/jobs/${jobId}/crew-requirements/${reqId}`, data: payload })
+      await persistFetchAllSnapshot()
+      return
+    }
     const { data } = await api.put(`/api/v1/crew/jobs/${jobId}/crew-requirements/${reqId}`, payload)
     crewRevision.value++
     return data
   }
 
   async function deleteJobCrewRequirement(jobId, reqId) {
+    if (!isOnline()) {
+      await queueMutation({ method: 'delete', url: `/api/v1/crew/jobs/${jobId}/crew-requirements/${reqId}` })
+      await persistFetchAllSnapshot()
+      return
+    }
     await api.delete(`/api/v1/crew/jobs/${jobId}/crew-requirements/${reqId}`)
     crewRevision.value++
   }
 
   async function bulkUpsertJobCrewRequirements(jobId, items) {
+    if (!isOnline()) {
+      await queueMutation({ method: 'put', url: `/api/v1/crew/jobs/${jobId}/crew-requirements/bulk`, data: { items } })
+      await persistFetchAllSnapshot()
+      return
+    }
     const { data } = await api.put(`/api/v1/crew/jobs/${jobId}/crew-requirements/bulk`, { items })
     crewRevision.value++
     return data
@@ -149,16 +247,31 @@ export const useCrewStore = defineStore('crew', () => {
   }
 
   async function createCrewAssignment(payload) {
+    if (!isOnline()) {
+      await queueMutation({ method: 'post', url: '/api/v1/crew/assignments', data: payload })
+      await persistFetchAllSnapshot()
+      return
+    }
     const { data } = await api.post('/api/v1/crew/assignments', payload)
     return data
   }
 
   async function updateCrewAssignment(id, payload) {
+    if (!isOnline()) {
+      await queueMutation({ method: 'put', url: `/api/v1/crew/assignments/${id}`, data: payload })
+      await persistFetchAllSnapshot()
+      return
+    }
     const { data } = await api.put(`/api/v1/crew/assignments/${id}`, payload)
     return data
   }
 
   async function deleteCrewAssignment(id) {
+    if (!isOnline()) {
+      await queueMutation({ method: 'delete', url: `/api/v1/crew/assignments/${id}` })
+      await persistFetchAllSnapshot()
+      return
+    }
     await api.delete(`/api/v1/crew/assignments/${id}`)
   }
 
@@ -177,11 +290,21 @@ export const useCrewStore = defineStore('crew', () => {
   }
 
   async function addMySkill(skillId) {
+    if (!isOnline()) {
+      await queueMutation({ method: 'post', url: '/api/v1/crew/users/me/skills', data: { skill_id: skillId } })
+      await persistFetchAllSnapshot()
+      return
+    }
     const { data } = await api.post('/api/v1/crew/users/me/skills', { skill_id: skillId })
     return data
   }
 
   async function removeMySkill(skillId) {
+    if (!isOnline()) {
+      await queueMutation({ method: 'delete', url: `/api/v1/crew/users/me/skills/${skillId}` })
+      await persistFetchAllSnapshot()
+      return
+    }
     const { data } = await api.delete(`/api/v1/crew/users/me/skills/${skillId}`)
     return data
   }
@@ -192,16 +315,31 @@ export const useCrewStore = defineStore('crew', () => {
   }
 
   async function addMyCertification(payload) {
+    if (!isOnline()) {
+      await queueMutation({ method: 'post', url: '/api/v1/crew/users/me/certifications', data: payload })
+      await persistFetchAllSnapshot()
+      return
+    }
     const { data } = await api.post('/api/v1/crew/users/me/certifications', payload)
     return data
   }
 
   async function updateMyCertification(certId, payload) {
+    if (!isOnline()) {
+      await queueMutation({ method: 'patch', url: `/api/v1/crew/users/me/certifications/${certId}`, data: payload })
+      await persistFetchAllSnapshot()
+      return
+    }
     const { data } = await api.patch(`/api/v1/crew/users/me/certifications/${certId}`, payload)
     return data
   }
 
   async function removeMyCertification(certId) {
+    if (!isOnline()) {
+      await queueMutation({ method: 'delete', url: `/api/v1/crew/users/me/certifications/${certId}` })
+      await persistFetchAllSnapshot()
+      return
+    }
     await api.delete(`/api/v1/crew/users/me/certifications/${certId}`)
   }
 
@@ -220,6 +358,11 @@ export const useCrewStore = defineStore('crew', () => {
   }
 
   async function setEquipmentRequiredCerts(productId, certIds) {
+    if (!isOnline()) {
+      await queueMutation({ method: 'put', url: `/api/v1/crew/equipment/${productId}/required-certifications`, data: { cert_ids: certIds } })
+      await persistFetchAllSnapshot()
+      return
+    }
     const { data } = await api.put(`/api/v1/crew/equipment/${productId}/required-certifications`, { cert_ids: certIds })
     return data
   }
@@ -230,6 +373,11 @@ export const useCrewStore = defineStore('crew', () => {
   }
 
   async function setRoleRequiredCerts(roleId, certIds) {
+    if (!isOnline()) {
+      await queueMutation({ method: 'put', url: `/api/v1/crew/roles/${roleId}/required-certifications`, data: { cert_ids: certIds } })
+      await persistFetchAllSnapshot()
+      return
+    }
     const { data } = await api.put(`/api/v1/crew/roles/${roleId}/required-certifications`, { cert_ids: certIds })
     return data
   }
@@ -262,6 +410,8 @@ export const useCrewStore = defineStore('crew', () => {
     deleteJobCrewRequirement,
     bulkUpsertJobCrewRequirements,
     crewRevision,
+    persistFetchAllSnapshot,
+    restoreFetchAllSnapshot,
     fetchJobCrewAssignments,
     createCrewAssignment,
     updateCrewAssignment,
