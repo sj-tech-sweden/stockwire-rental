@@ -9,6 +9,8 @@ import { useVenuesStore } from '../stores/venues'
 import { useWarehouseLedsStore } from '../stores/warehouseLeds'
 import { useNotificationsStore } from '../stores/notifications'
 import { useFinanceStore } from '../stores/finance'
+import { useUsersStore } from '../stores/users'
+import { useAuthStore } from '../stores/auth'
 import { startRealtime, subscribeRealtime } from '../services/realtime/client'
 import { getApiBaseUrl } from '../utils/runtime-config'
 
@@ -41,6 +43,8 @@ export default ({ store }) => {
   const warehouseLedsStore = useWarehouseLedsStore(store)
   const notificationsStore = useNotificationsStore(store)
   const financeStore = useFinanceStore(store)
+  const usersStore = useUsersStore(store)
+  const authStore = useAuthStore(store)
   const activityStore = useActivityStore(store)
 
   const refreshCrew = debounce(async () => {
@@ -90,6 +94,19 @@ export default ({ store }) => {
     ])
   })
 
+  // User-management mutations are emitted under the "auth.updated" topic.
+  // Both the auth store and the users store hold user/role/api-key lists used
+  // by different parts of the UI, so refresh both.
+  const refreshAuth = debounce(async () => {
+    await Promise.allSettled([
+      authStore.fetchUsers(),
+      authStore.fetchApiKeys(),
+      usersStore.fetchUsers(),
+      usersStore.listRoles(),
+      usersStore.listApiKeys(),
+    ])
+  })
+
   const refreshInventory = debounce(async () => {
     await Promise.allSettled([
       inventoryStore.fetchAll(),
@@ -127,6 +144,7 @@ export default ({ store }) => {
     if (topic.startsWith('warehouse_leds.')) refreshWarehouseLeds()
     if (topic.startsWith('notifications.')) refreshNotifications()
     if (topic.startsWith('finance.')) refreshFinance()
+    if (topic.startsWith('auth.')) refreshAuth()
     if (
       topic.startsWith('activity.')
       || topic.startsWith('inventory.')

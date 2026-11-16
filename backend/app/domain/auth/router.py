@@ -5,9 +5,9 @@ from datetime import UTC, datetime, timedelta
 from typing import Any
 from urllib.parse import urlparse
 
+import jwt
 from fastapi import APIRouter, Depends, Form, HTTPException, Request, Response, status
 from fastapi.responses import RedirectResponse
-import jwt
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 from sqlalchemy import func, select
@@ -55,6 +55,7 @@ from app.domain.auth.sso import (
     upsert_external_user,
     verify_oidc_state,
 )
+from app.domain.realtime.events import emit_realtime_event
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -606,6 +607,7 @@ def update_me(
 
     db.add(current_user)
     db.commit()
+    emit_realtime_event("auth.updated", {"entity": "user", "action": "update", "id": current_user.id})
     db.refresh(current_user)
     return current_user
 
@@ -647,6 +649,7 @@ def create_user(
     )
     db.add(user)
     db.commit()
+    emit_realtime_event("auth.updated", {"entity": "user", "action": "create", "id": user.id})
     db.refresh(user)
     return user
 
@@ -692,6 +695,7 @@ def update_user(
     user.is_admin = payload.role == "admin"
     db.add(user)
     db.commit()
+    emit_realtime_event("auth.updated", {"entity": "user", "action": "update", "id": user_id})
     db.refresh(user)
     return user
 
@@ -703,6 +707,7 @@ def delete_user(user_id: int, db: Session = Depends(get_db), _: User = Depends(r
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
     db.delete(user)
     db.commit()
+    emit_realtime_event("auth.updated", {"entity": "user", "action": "delete", "id": user_id})
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
@@ -733,6 +738,7 @@ def create_api_key(payload: APIKeyCreate, db: Session = Depends(get_db), _: User
     ak = APIKey(name=payload.name, api_key_lookup=api_lookup, api_key_hash=api_hash, is_active=True, is_admin=payload.is_admin)
     db.add(ak)
     db.commit()
+    emit_realtime_event("auth.updated", {"entity": "api_key", "action": "create", "id": ak.id})
     db.refresh(ak)
     return ak
 
@@ -745,6 +751,7 @@ def delete_api_key(key_id: int, db: Session = Depends(get_db), _: User = Depends
     ak.is_active = False
     db.add(ak)
     db.commit()
+    emit_realtime_event("auth.updated", {"entity": "api_key", "action": "delete", "id": key_id})
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
@@ -768,6 +775,7 @@ def create_role(payload: RoleCreate, db: Session = Depends(get_db), _: User = De
     role = Role(name=payload.name, display_name=payload.display_name, permissions=payload.permissions or [])
     db.add(role)
     db.commit()
+    emit_realtime_event("auth.updated", {"entity": "role", "action": "create", "id": role.id})
     db.refresh(role)
     return role
 
@@ -796,6 +804,7 @@ def assign_role_to_user(user_id: int, payload: RoleAssign, db: Session = Depends
     ur = UserRole(user_id=user_id, role_id=role.id, is_active=True)
     db.add(ur)
     db.commit()
+    emit_realtime_event("auth.updated", {"entity": "user", "action": "update", "id": user_id})
     return role
 
 
@@ -806,4 +815,5 @@ def remove_role_from_user(user_id: int, role_id: int, db: Session = Depends(get_
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Role assignment not found")
     db.delete(ur)
     db.commit()
+    emit_realtime_event("auth.updated", {"entity": "user", "action": "update", "id": user_id})
     return Response(status_code=status.HTTP_204_NO_CONTENT)
