@@ -275,13 +275,21 @@
 
       <q-card-actions :align="isPhone ? 'stretch' : 'right'" :class="isPhone ? 'q-pa-md bg-grey-2' : ''">
         <q-btn
+          color="negative"
+          outline
+          icon="delete"
+          :label="t('app.actions.delete')"
+          :class="isPhone ? 'full-width q-mb-sm' : ''"
+          @click="confirmDeleteProduct"
+        />
+        <q-space />
+        <q-btn
           color="primary"
           icon="picture_as_pdf"
           :label="t('reports.generate')"
           :class="isPhone ? 'full-width' : ''"
           @click="openReportExport('product', product?.id)"
         />
-        <q-space />
         <q-btn flat :class="isPhone ? 'full-width' : ''" :label="t('app.actions.close')" @click="emit('update:modelValue', false)" />
       </q-card-actions>
 
@@ -331,6 +339,7 @@ const emit = defineEmits([
   'view-device',
   'edit-device',
   'open-job',
+  'delete-product',
 ])
 
 const $q = useQuasar()
@@ -393,6 +402,34 @@ function openReportExport(entityType, entityId) {
   reportExportType.value = entityType
   reportExportId.value = entityId
   reportExportOpen.value = true
+}
+
+// Delete the product shown in this info dialog. When it still has linked devices
+// the server rejects the request unless those devices are also deleted, so we
+// confirm that case explicitly.
+function confirmDeleteProduct() {
+  const id = props.product?.id
+  if (!id) return
+  const deviceCount = props.product?.total_devices || 0
+  const message = deviceCount > 0
+    ? t('inventory.deleteProductWithDevicesConfirm', { name: props.product?.name || '', count: deviceCount })
+    : t('inventory.deleteProductConfirm', { name: props.product?.name || '' })
+  $q.dialog({
+    title: t('inventory.deleteProduct'),
+    message,
+    cancel: t('app.actions.cancel'),
+    ok: { label: t('app.actions.delete'), color: 'negative' },
+    persistent: true,
+  }).onOk(async () => {
+    try {
+      await store.deleteProduct(id, { deleteLinkedDevices: deviceCount > 0 })
+      $q.notify({ type: 'positive', message: t('inventory.productDeleted') })
+      emit('update:modelValue', false)
+      emit('delete-product', id)
+    } catch (err) {
+      $q.notify({ type: 'negative', message: err?.response?.data?.detail || t('app.actions.deleteFailed') })
+    }
+  })
 }
 
 async function locateDeviceLed(deviceId) {

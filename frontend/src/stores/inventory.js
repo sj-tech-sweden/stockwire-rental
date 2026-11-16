@@ -269,6 +269,22 @@ export const useInventoryStore = defineStore('inventory', () => {
     return data
   }
 
+  // Delete a single product. When the product still has linked devices the server
+  // rejects the request (409) unless `deleteLinkedDevices` is set; callers should
+  // confirm with the user before passing it.
+  async function deleteProduct(id, options = {}) {
+    if (!isOnline()) {
+      await queueMutation({ method: 'delete', url: `/api/v1/inventory/products/${id}` })
+      products.value = products.value.filter(p => p.id !== id)
+      await persistFetchAllSnapshot()
+      return
+    }
+    await api.delete(`/api/v1/inventory/products/${id}`, {
+      params: { delete_linked_devices: !!options.deleteLinkedDevices },
+    })
+    await fetchAll()
+  }
+
   async function fetchProductAccessories(productId) {
     const { data } = await api.get(`/api/v1/inventory/products/${productId}/accessories`)
     return Array.isArray(data) ? data : []
@@ -417,6 +433,17 @@ export const useInventoryStore = defineStore('inventory', () => {
     const { data } = await api.post('/api/v1/inventory/devices/bulk-delete', { ids })
     await fetchAll()
     return data
+  }
+
+  async function deleteDevice(id) {
+    if (!isOnline()) {
+      await queueMutation({ method: 'delete', url: `/api/v1/inventory/devices/${id}` })
+      devices.value = (devices.value || []).filter(d => d.id !== id)
+      await persistFetchAllSnapshot()
+      return
+    }
+    await api.delete(`/api/v1/inventory/devices/${id}`)
+    await fetchAll()
   }
 
   async function fetchZones() {
@@ -887,6 +914,7 @@ export const useInventoryStore = defineStore('inventory', () => {
     cloneProduct,
     bulkUpdateProducts,
     bulkDeleteProducts,
+    deleteProduct,
     fetchProductAccessories,
     updateProductAccessories,
     fetchProductComponents,
@@ -896,6 +924,7 @@ export const useInventoryStore = defineStore('inventory', () => {
     updateDevice,
     bulkUpdateDevices,
     bulkDeleteDevices,
+    deleteDevice,
     fetchZones,
     fetchMaintenance,
     fetchMaintenanceSchedules,

@@ -502,6 +502,14 @@
       </q-card-section>
 
       <q-card-actions :align="effectiveIsPhone ? 'stretch' : 'right'" :class="effectiveIsPhone ? 'q-pa-md bg-grey-2' : ''">
+        <q-btn
+          color="negative"
+          outline
+          icon="delete"
+          :label="t('app.actions.delete')"
+          :class="effectiveIsPhone ? 'full-width q-mb-sm' : ''"
+          @click="confirmDeleteDevice"
+        />
         <q-space />
         <q-btn flat :class="effectiveIsPhone ? 'full-width' : ''" :label="t('app.actions.close')" @click="emit('update:modelValue', false)" />
       </q-card-actions>
@@ -544,7 +552,7 @@ const props = defineProps({
   device: { type: Object, default: null },
   isPhone: { type: Boolean, default: false },
 })
-const emit = defineEmits(['update:modelValue', 'edit-device', 'edit-product', 'view-device', 'open-job', 'report-defect', 'create-maintenance', 'edit-maintenance', 'complete-maintenance'])
+const emit = defineEmits(['update:modelValue', 'edit-device', 'edit-product', 'view-device', 'open-job', 'report-defect', 'create-maintenance', 'edit-maintenance', 'complete-maintenance', 'delete-device'])
 
 const $q = useQuasar()
 const { t } = useI18n()
@@ -806,6 +814,27 @@ function maintenanceStatusColor(status) {
 
 function openJobFromLink(jobId) {
   emit('open-job', jobId)
+}
+
+function confirmDeleteDevice() {
+  const id = props.device?.id
+  if (!id) return
+  $q.dialog({
+    title: t('inventory.deleteDevice'),
+    message: t('inventory.deleteDeviceConfirm', { name: props.device?.asset_tag || props.device?.serial_number || '' }),
+    cancel: t('app.actions.cancel'),
+    ok: { label: t('app.actions.delete'), color: 'negative' },
+    persistent: true,
+  }).onOk(async () => {
+    try {
+      await store.deleteDevice(id)
+      $q.notify({ type: 'positive', message: t('inventory.deviceDeleted') })
+      emit('update:modelValue', false)
+      emit('delete-device', id)
+    } catch (err) {
+      $q.notify({ type: 'negative', message: err?.response?.data?.detail || t('app.actions.deleteFailed') })
+    }
+  })
 }
 
 async function loadDeviceData(device) {
