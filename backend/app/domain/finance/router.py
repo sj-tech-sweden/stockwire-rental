@@ -19,10 +19,9 @@ from app.domain.finance.schemas import (
     FinancialTransactionRead,
     FinancialTransactionUpdate,
 )
-from app.domain.inventory.models import Device
-from app.domain.inventory.models import Product
-from app.domain.jobs.models import Job
-from app.domain.jobs.models import JobRequirement
+from app.domain.inventory.models import Device, Product
+from app.domain.jobs.models import Job, JobRequirement
+from app.domain.realtime.events import emit_realtime_event
 
 router = APIRouter(prefix="/finance", tags=["finance"], dependencies=[Depends(get_current_user)])
 
@@ -333,6 +332,7 @@ def create_transaction(
     tx = FinancialTransaction(**data)
     db.add(tx)
     db.commit()
+    emit_realtime_event("finance.updated", {"entity": "transaction", "action": "create", "id": tx.id})
     db.refresh(tx)
     job = db.get(Job, tx.job_id) if tx.job_id else None
     return _to_financial_transaction_read(tx, job.job_code if job else None, job.company_name if job else None)
@@ -362,6 +362,7 @@ def update_transaction(
         setattr(tx, key, value)
 
     db.commit()
+    emit_realtime_event("finance.updated", {"entity": "transaction", "action": "update", "id": transaction_id})
     db.refresh(tx)
     job = db.get(Job, tx.job_id) if tx.job_id else None
     return _to_financial_transaction_read(tx, job.job_code if job else None, job.company_name if job else None)
@@ -380,6 +381,7 @@ def settle_transaction(
     tx.status = "completed"
     tx.transaction_date = datetime.now(UTC)
     db.commit()
+    emit_realtime_event("finance.updated", {"entity": "transaction", "action": "settle", "id": transaction_id})
     db.refresh(tx)
 
     job = db.get(Job, tx.job_id) if tx.job_id else None
@@ -397,6 +399,7 @@ def delete_transaction(
         raise HTTPException(status_code=404, detail="Transaction not found")
     db.delete(tx)
     db.commit()
+    emit_realtime_event("finance.updated", {"entity": "transaction", "action": "delete", "id": transaction_id})
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 

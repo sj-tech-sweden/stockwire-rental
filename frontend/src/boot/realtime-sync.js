@@ -8,6 +8,7 @@ import { useRoutePlannerStore } from '../stores/routePlanner'
 import { useVenuesStore } from '../stores/venues'
 import { useWarehouseLedsStore } from '../stores/warehouseLeds'
 import { useNotificationsStore } from '../stores/notifications'
+import { useFinanceStore } from '../stores/finance'
 import { startRealtime, subscribeRealtime } from '../services/realtime/client'
 import { getApiBaseUrl } from '../utils/runtime-config'
 
@@ -39,6 +40,7 @@ export default ({ store }) => {
   const routePlannerStore = useRoutePlannerStore(store)
   const warehouseLedsStore = useWarehouseLedsStore(store)
   const notificationsStore = useNotificationsStore(store)
+  const financeStore = useFinanceStore(store)
   const activityStore = useActivityStore(store)
 
   const refreshCrew = debounce(async () => {
@@ -80,6 +82,14 @@ export default ({ store }) => {
     ])
   })
 
+  const refreshFinance = debounce(async () => {
+    await Promise.allSettled([
+      financeStore.fetchTransactions(),
+      financeStore.fetchSummary(),
+      financeStore.fetchJobInsights(),
+    ])
+  })
+
   const refreshInventory = debounce(async () => {
     await Promise.allSettled([
       inventoryStore.fetchAll(),
@@ -116,6 +126,7 @@ export default ({ store }) => {
     if (topic.startsWith('route_planner.')) refreshRoutePlanner()
     if (topic.startsWith('warehouse_leds.')) refreshWarehouseLeds()
     if (topic.startsWith('notifications.')) refreshNotifications()
+    if (topic.startsWith('finance.')) refreshFinance()
     if (
       topic.startsWith('activity.')
       || topic.startsWith('inventory.')

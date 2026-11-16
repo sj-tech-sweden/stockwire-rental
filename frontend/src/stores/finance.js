@@ -2,7 +2,12 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 
 import { api } from '../boot/axios'
-import { cacheSnapshot, isOnline, readSnapshot } from '../services/offline/orbitSync'
+import {
+  cacheSnapshot,
+  isOnline,
+  queueMutation,
+  readSnapshot,
+} from '../services/offline/orbitSync'
 
 export const useFinanceStore = defineStore('finance', () => {
   const transactions = ref([])
@@ -39,6 +44,25 @@ export const useFinanceStore = defineStore('finance', () => {
   const loading = ref(false)
   const summaryLoading = ref(false)
   const jobInsightsLoading = ref(false)
+
+  // Mirror stores/inventory.js: persist/restore this store's collections so
+  // they survive an offline reload (cacheSnapshot/readSnapshot from orbitSync).
+  async function persistFetchAllSnapshot() {
+    await cacheSnapshot('finance.fetchAll', {
+      transactions: transactions.value,
+      summary: summary.value,
+      jobInsights: jobInsights.value,
+    })
+  }
+
+  async function restoreFetchAllSnapshot() {
+    const cached = await readSnapshot('finance.fetchAll')
+    if (!cached || typeof cached !== 'object') return false
+    transactions.value = Array.isArray(cached.transactions) ? cached.transactions : transactions.value
+    summary.value = cached.summary && typeof cached.summary === 'object' ? cached.summary : summary.value
+    jobInsights.value = cached.jobInsights && typeof cached.jobInsights === 'object' ? cached.jobInsights : jobInsights.value
+    return true
+  }
 
   async function fetchTransactions(filters = {}) {
     loading.value = true
@@ -110,22 +134,46 @@ export const useFinanceStore = defineStore('finance', () => {
   }
 
   async function createTransaction(payload) {
+    if (!isOnline()) {
+      await queueMutation({ method: 'post', url: '/api/v1/finance/transactions', data: payload })
+      await persistFetchAllSnapshot()
+      return
+    }
     const { data } = await api.post('/api/v1/finance/transactions', payload)
+    await persistFetchAllSnapshot()
     return data
   }
 
   async function updateTransaction(id, payload) {
+    if (!isOnline()) {
+      await queueMutation({ method: 'put', url: `/api/v1/finance/transactions/${id}`, data: payload })
+      await persistFetchAllSnapshot()
+      return
+    }
     const { data } = await api.put(`/api/v1/finance/transactions/${id}`, payload)
+    await persistFetchAllSnapshot()
     return data
   }
 
   async function settleTransaction(id) {
+    if (!isOnline()) {
+      await queueMutation({ method: 'post', url: `/api/v1/finance/transactions/${id}/settle` })
+      await persistFetchAllSnapshot()
+      return
+    }
     const { data } = await api.post(`/api/v1/finance/transactions/${id}/settle`)
+    await persistFetchAllSnapshot()
     return data
   }
 
   async function deleteTransaction(id) {
+    if (!isOnline()) {
+      await queueMutation({ method: 'delete', url: `/api/v1/finance/transactions/${id}` })
+      await persistFetchAllSnapshot()
+      return
+    }
     await api.delete(`/api/v1/finance/transactions/${id}`)
+    await persistFetchAllSnapshot()
   }
 
   return {
@@ -142,5 +190,7 @@ export const useFinanceStore = defineStore('finance', () => {
     updateTransaction,
     settleTransaction,
     deleteTransaction,
+    persistFetchAllSnapshot,
+    restoreFetchAllSnapshot,
   }
 })
