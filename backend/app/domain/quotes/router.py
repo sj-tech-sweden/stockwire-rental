@@ -10,10 +10,11 @@ from sqlalchemy.orm import Session
 
 from app.db.session import get_db
 from app.domain.auth.deps import get_current_user
-from app.domain.jobs.models import Job
 from app.domain.customers.models import Company
-from app.domain.quotes.settings import QUOTES_KEY, DEFAULT_QUOTES, get_quotes_settings
+from app.domain.jobs.models import Job
+from app.domain.quotes.settings import DEFAULT_QUOTES, QUOTES_KEY, get_quotes_settings
 from app.domain.quotes.templates import ensure_default_quote_template
+from app.domain.realtime.events import emit_realtime_event
 from app.domain.settings.accessors import get_company_profile_default_language
 from app.domain.settings.models import AppSetting
 from app.services.pdf_service import PDFService
@@ -41,6 +42,7 @@ def update_quotes_settings_endpoint(payload: dict, db: Session = Depends(get_db)
     else:
         setting.value_json = json.dumps(data)
     db.commit()
+    emit_realtime_event("quotes.updated", {"entity": "setting", "action": "update", "id": QUOTES_KEY})
     return data
 
 
@@ -79,6 +81,7 @@ def generate_quote(job_id: int, db: Session = Depends(get_db)) -> Response:
 
     job.status = "quotation"
     db.commit()
+    emit_realtime_event("jobs.updated", {"entity": "job", "action": "update", "id": job_id})
 
     return Response(
         content=pdf_bytes,
