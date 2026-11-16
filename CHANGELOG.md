@@ -1,5 +1,36 @@
 # Changelog
 
+## [0.31.0](https://github.com/sj-tech-sweden/stockwire-rental/compare/0.30.0...0.31.0) (2026-11-16)
+
+
+### Features
+
+* **auth:** wire offline queueing and realtime sync for user-management ([#817](https://github.com/sj-tech-sweden/stockwire-rental/issues/817)) ([0c347b9](https://github.com/sj-tech-sweden/stockwire-rental/commit/0c347b93a56240fbba91719cb77b45fc60569603))
+* **calendar_feeds:** wire offline queueing and realtime sync ([#808](https://github.com/sj-tech-sweden/stockwire-rental/issues/808)) ([#820](https://github.com/sj-tech-sweden/stockwire-rental/issues/820)) ([a004b81](https://github.com/sj-tech-sweden/stockwire-rental/commit/a004b81e55c423c63e60b166be8174c90c6291c2))
+* **crew:** create skill and certification types inline from profile page ([#792](https://github.com/sj-tech-sweden/stockwire-rental/issues/792)) ([7401d84](https://github.com/sj-tech-sweden/stockwire-rental/commit/7401d84f48a982fcb36778879cb87a9071e57b92))
+* **crew:** wire offline queueing and realtime sync ([#810](https://github.com/sj-tech-sweden/stockwire-rental/issues/810)) ([02e8086](https://github.com/sj-tech-sweden/stockwire-rental/commit/02e80864e10cec9ec884978e256193e4905b184e))
+* **finance:** wire offline queueing and realtime sync ([#816](https://github.com/sj-tech-sweden/stockwire-rental/issues/816)) ([712b462](https://github.com/sj-tech-sweden/stockwire-rental/commit/712b4620e05e9e44b7839a9192c16a0e85f7de2c))
+* **inventory:** single product/device delete from edit and info dialogs ([#795](https://github.com/sj-tech-sweden/stockwire-rental/issues/795)) ([4d699d8](https://github.com/sj-tech-sweden/stockwire-rental/commit/4d699d8139aa27902823895ab8c4c690687f63e2))
+* **notifications:** wire offline queueing and realtime sync ([#815](https://github.com/sj-tech-sweden/stockwire-rental/issues/815)) ([f9364ca](https://github.com/sj-tech-sweden/stockwire-rental/commit/f9364caf48e721f6ef4ae677734e54074c381f64))
+* **purchasing:** wire offline queueing and realtime sync for purchasing domain ([#811](https://github.com/sj-tech-sweden/stockwire-rental/issues/811)) ([0a259a4](https://github.com/sj-tech-sweden/stockwire-rental/commit/0a259a49f3f3ce3b40bbf14bdb2d9c857f8a429a))
+* **quotes:** wire offline queueing and realtime sync ([#818](https://github.com/sj-tech-sweden/stockwire-rental/issues/818)) ([6350802](https://github.com/sj-tech-sweden/stockwire-rental/commit/635080284162f4fbb3f6ac43ef809eeb0c8d5867))
+* **reports:** wire offline queueing and realtime sync ([#819](https://github.com/sj-tech-sweden/stockwire-rental/issues/819)) ([6e5756c](https://github.com/sj-tech-sweden/stockwire-rental/commit/6e5756c927eede76ec1e0f76d335ceabfceab243))
+* **route_planner:** wire offline queueing and realtime sync ([#812](https://github.com/sj-tech-sweden/stockwire-rental/issues/812)) ([83d7b56](https://github.com/sj-tech-sweden/stockwire-rental/commit/83d7b5670e4672b76f59f8b0ebdcb1557574b096))
+* **storage:** wire offline queueing and realtime sync ([#809](https://github.com/sj-tech-sweden/stockwire-rental/issues/809)) ([#821](https://github.com/sj-tech-sweden/stockwire-rental/issues/821)) ([ca67684](https://github.com/sj-tech-sweden/stockwire-rental/commit/ca67684b6692a4ab7779dcf6a0a60d29e29339c9))
+* **warehouse_leds:** wire offline queueing and realtime sync ([#814](https://github.com/sj-tech-sweden/stockwire-rental/issues/814)) ([5cfc3cc](https://github.com/sj-tech-sweden/stockwire-rental/commit/5cfc3ccca7b8fd67cf2e797b30f526a886480cae))
+
+
+### Bug Fixes
+
+* **ci:** link PR screenshots to workflow run instead of 404 artifact path ([#794](https://github.com/sj-tech-sweden/stockwire-rental/issues/794)) ([21c5d25](https://github.com/sj-tech-sweden/stockwire-rental/commit/21c5d255f42346be401d67fe7e914671b0523b55))
+* **deps:** update dependency python-multipart to v0.0.34 ([#798](https://github.com/sj-tech-sweden/stockwire-rental/issues/798)) ([9a5b97a](https://github.com/sj-tech-sweden/stockwire-rental/commit/9a5b97a322a109b2e659db59ce3d14b42ea53bc0))
+* **renovate:** correct invalid matchManagers value (pyproject -&gt; pep621) ([#822](https://github.com/sj-tech-sweden/stockwire-rental/issues/822)) ([83a352c](https://github.com/sj-tech-sweden/stockwire-rental/commit/83a352c0a327383c99b11e82ee6f972313b53722))
+
+
+### Documentation
+
+* **guidelines:** add Offline mode and realtime sync section to AGENTS.md ([#796](https://github.com/sj-tech-sweden/stockwire-rental/issues/796)) ([8d901d3](https://github.com/sj-tech-sweden/stockwire-rental/commit/8d901d3a20103262d511e9bad2f34722756536a3))
+
 ## [0.30.0](https://github.com/sj-tech-sweden/stockwire-rental/compare/0.29.0...0.30.0) (2026-11-15)
 
 
