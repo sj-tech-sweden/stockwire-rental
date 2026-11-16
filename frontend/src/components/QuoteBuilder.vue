@@ -294,6 +294,7 @@ import { useJobsStore } from '../stores/jobs'
 import { useInventoryStore } from '../stores/inventory'
 import { useCrewStore } from '../stores/crew'
 import { useAuthStore } from '../stores/auth'
+import { useQuotesStore } from '../stores/quotes'
 import VendorProductPicker from './VendorProductPicker.vue'
 import { Notify } from 'quasar'
 
@@ -307,6 +308,7 @@ const jobsStore = useJobsStore()
 const inventoryStore = useInventoryStore()
 const crewStore = useCrewStore()
 const authStore = useAuthStore()
+const quotesStore = useQuotesStore()
 
 const loading = ref(false)
 const generating = ref(false)
@@ -444,11 +446,11 @@ async function load() {
   loading.value = true
   try {
     const [qsRes, crewRes, jobRes] = await Promise.all([
-      api.get('/api/v1/quotes/settings'),
+      quotesStore.fetchSettings(),
       crewStore.fetchJobCrewRequirements(props.jobId),
       api.get(`/api/v1/jobs/${props.jobId}`).catch(() => null),
     ])
-    if (qsRes.data) quotesSettings.value = qsRes.data
+    if (qsRes) quotesSettings.value = qsRes
     crewRows.value = crewRes || []
     job.value = jobRes?.data || null
     await loadReferencedVendorProducts()
@@ -606,7 +608,7 @@ function filterAddOptions(val, update, abort) {
 async function generateQuote() {
   generating.value = true
   try {
-    const resp = await api.post(`/api/v1/quotes/jobs/${props.jobId}/generate`, {}, { responseType: 'blob' })
+    const resp = await quotesStore.generateQuote(props.jobId)
     const blobUrl = URL.createObjectURL(new Blob([resp.data], { type: 'application/pdf' }))
     const a = document.createElement('a')
     a.href = blobUrl

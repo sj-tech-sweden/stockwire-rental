@@ -12,6 +12,7 @@ import { useFinanceStore } from '../stores/finance'
 import { useUsersStore } from '../stores/users'
 import { useAuthStore } from '../stores/auth'
 import { useReportsStore } from '../stores/reports'
+import { useQuotesStore } from '../stores/quotes'
 import { startRealtime, subscribeRealtime } from '../services/realtime/client'
 import { getApiBaseUrl } from '../utils/runtime-config'
 
@@ -47,6 +48,7 @@ export default ({ store }) => {
   const usersStore = useUsersStore(store)
   const authStore = useAuthStore(store)
   const reportsStore = useReportsStore(store)
+  const quotesStore = useQuotesStore(store)
   const activityStore = useActivityStore(store)
 
   const refreshCrew = debounce(async () => {
@@ -124,6 +126,10 @@ export default ({ store }) => {
     await Promise.allSettled([activityStore.fetchLogs(120)])
   })
 
+  const refreshQuotes = debounce(async () => {
+    await Promise.allSettled([quotesStore.fetchSettings()])
+  })
+
   const refreshCompanies = debounce(async () => {
     await Promise.allSettled([companiesStore.fetchAll()])
   })
@@ -156,6 +162,7 @@ export default ({ store }) => {
     if (topic.startsWith('finance.')) refreshFinance()
     if (topic.startsWith('auth.')) refreshAuth()
     if (topic.startsWith('reports.')) refreshReports()
+    if (topic.startsWith('quotes.')) refreshQuotes()
     if (
       topic.startsWith('activity.')
       || topic.startsWith('inventory.')
