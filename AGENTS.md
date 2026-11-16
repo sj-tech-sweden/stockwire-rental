@@ -98,3 +98,44 @@ files) and `docs/I18N_GUIDE.md`. The non-negotiables:
   `gtin13/14/8`/`ean`), not entered by hand; it auto-fills onto the linked
   warehouse product. Receiving lookup matches `Product.barcode` OR
   `Product.sku`.
+
+## Offline mode and realtime sync
+
+The web app is a PWA used on phones and in venues with unreliable
+connectivity, and several people can have the same screen open at once. Any new
+frontend feature must keep working offline **and** stay in sync with other open
+clients when a change lands on the server.
+
+- **Offline-first mutations.** When the app is offline, writes must be queued,
+  never dropped. In a store action, branch on `isOnline()` (from
+  `frontend/src/services/offline/orbitSync.js`): when offline, call
+  `queueMutation({ method, url, data, params, conflictPolicy })`, update the
+  local Pinia state optimistically, persist with `persistFetchAllSnapshot()`,
+  and return. The queue is replayed automatically when connectivity returns
+  (see `frontend/src/boot/orbit-sync.js`, which calls `flushQueuedMutations`
+  over `orbitSync.js`). Model new actions on the existing offline branches in
+  `frontend/src/stores/inventory.js` (e.g. `createProduct`, `deleteProduct`).
+  - `conflictPolicy` is `lww` (last-write-wins), `guarded` (block conflicting
+    writes), or `merge` (e.g. custom-field values); it is inferred from the
+    URL/method when omitted.
+  - Never surface an offline save as a hard error — reflect the queued or
+    optimistic state in the UI instead.
+- **Emit a realtime event on every server-side change.** The backend broadcasts
+  a realtime event for each create/update/delete so other online browsers update
+  immediately without a manual refresh. Call
+  `emit_realtime_event(topic, payload)` (from
+  `backend/app/domain/realtime/events.py`) at the end of each mutation endpoint.
+  Use a stable, namespaced topic — `inventory.updated`, `jobs.updated`,
+  `companies.updated`, `venues.updated`, … — and include the affected
+  `entity`, `action`, and `id` in the payload.
+  - Events are pushed over a WebSocket (`/api/v1/realtime/ws`, see
+    `frontend/src/services/realtime/client.js`) and reconnect automatically.
+  - The frontend subscribes in `frontend/src/boot/realtime-sync.js`
+    (`startRealtime` + `subscribeRealtime`) and, per topic, debounce-refreshes
+    the relevant store's `fetchAll()`. **Add a branch there for any new topic**
+    so those changes propagate live; do not add polling that an event already
+    covers.
+- **Wire both sides for any new entity/action.** A feature is only correct if it
+  (a) queues its writes when offline and (b) emits a realtime event when it
+  writes on the server. Skipping either leaves some clients stale or unable to
+  act without connectivity.
