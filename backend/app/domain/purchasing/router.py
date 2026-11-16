@@ -31,8 +31,6 @@ from app.domain.purchasing.models import (
     PurchaseOrderLine,
 )
 from app.domain.purchasing.pdf import generate_purchase_order_pdf
-from app.domain.reports.models import ReportTemplate
-from app.services.pdf_service import PDFService
 from app.domain.purchasing.schemas import (
     AddToPORequest,
     BestPurchaseRequest,
@@ -49,6 +47,9 @@ from app.domain.purchasing.schemas import (
     ReceivingLineRead,
     ReceivingLookupRead,
 )
+from app.domain.realtime.events import emit_realtime_event
+from app.domain.reports.models import ReportTemplate
+from app.services.pdf_service import PDFService
 
 router = APIRouter(prefix="/purchasing", tags=["purchasing"])
 
@@ -127,6 +128,7 @@ def delete_purchase_draft(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Purchase draft not found")
     db.delete(draft)
     db.commit()
+    emit_realtime_event("purchasing.updated", {"entity": "draft", "action": "delete", "id": draft_id})
 
 
 # --------------------------------------------------------------------------- #
@@ -145,9 +147,12 @@ def create_pos_from_draft(
 ) -> list[PurchaseOrder]:
     """Turn a purchase draft into one purchase order per supplier."""
     try:
-        return purchasing.create_pos_from_draft(db, draft_id)
+        pos = purchasing.create_pos_from_draft(db, draft_id)
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+    for po in pos:
+        emit_realtime_event("purchasing.updated", {"entity": "po", "action": "create", "id": po.id})
+    return pos
 
 
 @router.post(
@@ -161,7 +166,7 @@ def create_combined_pos(
 ) -> list[PurchaseOrder]:
     """Create one PO per supplier from multiple jobs, optional restock and manual items."""
     try:
-        return purchasing.create_combined_pos(
+        pos = purchasing.create_combined_pos(
             db,
             job_ids=req.job_ids,
             include_restock=req.include_restock,
@@ -169,6 +174,9 @@ def create_combined_pos(
         )
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+    for po in pos:
+        emit_realtime_event("purchasing.updated", {"entity": "po", "action": "create", "id": po.id})
+    return pos
 
 
 @router.get(
@@ -211,7 +219,7 @@ def build_purchase_orders(
 ) -> list[PurchaseOrder]:
     """Create POs (one per supplier) from explicit per-line supplier selections."""
     try:
-        return purchasing.build_purchase_orders(
+        pos = purchasing.build_purchase_orders(
             db,
             [s.model_dump() for s in req.lines],
             extra_items=req.extra_items,
@@ -220,6 +228,9 @@ def build_purchase_orders(
         )
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+    for po in pos:
+        emit_realtime_event("purchasing.updated", {"entity": "po", "action": "create", "id": po.id})
+    return pos
 
 
 @router.post(
@@ -234,9 +245,12 @@ def create_pos_from_job(
 ) -> list[PurchaseOrder]:
     """Create PO(s) directly from a job's vendor-linked requirements."""
     try:
-        return purchasing.create_pos_from_job(db, job_id, selections=selections)
+        pos = purchasing.create_pos_from_job(db, job_id, selections=selections)
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+    for po in pos:
+        emit_realtime_event("purchasing.updated", {"entity": "po", "action": "create", "id": po.id})
+    return pos
 
 
 @router.post(
@@ -251,7 +265,7 @@ def add_lines_to_po(
 ) -> PurchaseOrder:
     """Append lines (and manual items) to an existing draft/partial PO."""
     try:
-        return purchasing.add_lines_to_po(
+        po = purchasing.add_lines_to_po(
             db,
             po_id,
             [s.model_dump() for s in req.lines],
@@ -260,6 +274,8 @@ def add_lines_to_po(
         )
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+    emit_realtime_event("purchasing.updated", {"entity": "po", "action": "update", "id": po_id})
+    return po
 
 
 @router.get(
@@ -302,6 +318,7 @@ def update_purchase_order(
     if req.supplier_company_id is not None:
         po.supplier_company_id = req.supplier_company_id
     db.commit()
+    emit_realtime_event("purchasing.updated", {"entity": "po", "action": "update", "id": po_id})
     db.refresh(po)
     return po
 
@@ -318,9 +335,11 @@ def receive_purchase_order(
 ) -> PurchaseOrder:
     """Receive ordered items: increments stock and creates device records."""
     try:
-        return purchasing.receive_po(db, po_id, req.lines)
+        po = purchasing.receive_po(db, po_id, req.lines)
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+    emit_realtime_event("purchasing.updated", {"entity": "po", "action": "update", "id": po_id})
+    return po
 
 
 @router.get(
@@ -393,6 +412,7 @@ def delete_purchase_order(
         )
     db.delete(po)
     db.commit()
+    emit_realtime_event("purchasing.updated", {"entity": "po", "action": "delete", "id": po_id})
 
 
 @router.put(
@@ -413,9 +433,11 @@ def update_purchase_order_line(
     if line is None or line.po_id != po.id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Purchase order line not found")
     try:
-        return purchasing.update_po_line(db, po_id, line_id, req)
+        line = purchasing.update_po_line(db, po_id, line_id, req)
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+    emit_realtime_event("purchasing.updated", {"entity": "po_line", "action": "update", "id": line_id})
+    return line
 
 
 @router.delete(
@@ -436,6 +458,7 @@ def delete_purchase_order_line(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Purchase order line not found")
     try:
         purchasing.delete_po_line(db, po_id, line_id)
+        emit_realtime_event("purchasing.updated", {"entity": "po_line", "action": "delete", "id": line_id})
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
 

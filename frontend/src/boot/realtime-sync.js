@@ -3,6 +3,7 @@ import { useCompaniesStore } from '../stores/companies'
 import { useCrewStore } from '../stores/crew'
 import { useInventoryStore } from '../stores/inventory'
 import { useJobsStore } from '../stores/jobs'
+import { usePurchasingStore } from '../stores/purchasing'
 import { useVenuesStore } from '../stores/venues'
 import { startRealtime, subscribeRealtime } from '../services/realtime/client'
 import { getApiBaseUrl } from '../utils/runtime-config'
@@ -31,6 +32,7 @@ export default ({ store }) => {
   const companiesStore = useCompaniesStore(store)
   const venuesStore = useVenuesStore(store)
   const crewStore = useCrewStore(store)
+  const purchasingStore = usePurchasingStore(store)
   const activityStore = useActivityStore(store)
 
   const refreshCrew = debounce(async () => {
@@ -44,6 +46,10 @@ export default ({ store }) => {
       crewStore.fetchCertifications(),
     ])
     crewStore.crewRevision++
+  })
+
+  const refreshPurchasing = debounce(async () => {
+    await Promise.allSettled([purchasingStore.fetchPurchaseOrders()])
   })
 
   const refreshInventory = debounce(async () => {
@@ -78,6 +84,7 @@ export default ({ store }) => {
     if (topic.startsWith('companies.')) refreshCompanies()
     if (topic.startsWith('venues.')) refreshVenues()
     if (topic.startsWith('crew.')) refreshCrew()
+    if (topic.startsWith('purchasing.')) refreshPurchasing()
     if (
       topic.startsWith('activity.')
       || topic.startsWith('inventory.')

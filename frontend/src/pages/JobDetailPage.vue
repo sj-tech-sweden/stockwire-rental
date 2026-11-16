@@ -693,6 +693,7 @@ import { useProjectsStore } from '../stores/projects'
 import { useAuthStore } from '../stores/auth'
 import { useSettingsStore } from '../stores/settings'
 import { useCrewStore } from '../stores/crew'
+import { usePurchasingStore } from '../stores/purchasing'
 import { normalizeCurrencyCode } from '../constants/currencies'
 import { isRentalProduct } from '../utils/job-requirements'
 import { buildScanJobLink } from '../utils/scan-workflow'
@@ -732,6 +733,7 @@ const authStore = useAuthStore()
 const settingsStore = useSettingsStore()
 const customFieldsStore = useCustomFieldsStore()
 const crewStore = useCrewStore()
+const purchasingStore = usePurchasingStore()
 
 const pageLoading = ref(false)
 const saving = ref(false)
@@ -1628,10 +1630,10 @@ function openJobPo() {
 function openAddToPo() {
   pickedPo.value = []
   poListLoading.value = true
-  api
-    .get('/api/v1/purchasing/purchase-orders')
-    .then(({ data }) => {
-      poList.value = Array.isArray(data) ? data : data.items || []
+  purchasingStore
+    .fetchPurchaseOrders()
+    .then(() => {
+      poList.value = purchasingStore.purchaseOrders
     })
     .catch(() => {
       poList.value = []

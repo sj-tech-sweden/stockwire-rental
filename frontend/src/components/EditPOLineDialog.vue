@@ -52,10 +52,11 @@
 import { ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useQuasar } from 'quasar'
-import { api } from '../boot/axios'
+import { usePurchasingStore } from '../stores/purchasing'
 
 const { t } = useI18n()
 const $q = useQuasar()
+const purchasingStore = usePurchasingStore()
 
 const props = defineProps({
   modelValue: { type: Boolean, default: false },
@@ -93,16 +94,13 @@ function close() {
 async function save() {
   saving.value = true
   try {
-    await api.put(
-      `/api/v1/purchasing/purchase-orders/${props.poId}/lines/${props.line.id}`,
-      {
-        name: form.value.name,
-        sku: form.value.sku,
-        qty: form.value.qty,
-        unit_cost: form.value.unit_cost,
-        currency: form.value.currency,
-      },
-    )
+    await purchasingStore.updatePurchaseOrderLine(props.poId, props.line.id, {
+      name: form.value.name,
+      sku: form.value.sku,
+      qty: form.value.qty,
+      unit_cost: form.value.unit_cost,
+      currency: form.value.currency,
+    })
     $q.notify({ type: 'positive', message: t('purchasing.lineSaved') })
     emit('saved')
     close()
@@ -115,9 +113,7 @@ async function save() {
 
 async function remove() {
   try {
-    await api.delete(
-      `/api/v1/purchasing/purchase-orders/${props.poId}/lines/${props.line.id}`,
-    )
+    await purchasingStore.deletePurchaseOrderLine(props.poId, props.line.id)
     $q.notify({ type: 'positive', message: t('purchasing.lineDeleted') })
     emit('deleted')
     close()

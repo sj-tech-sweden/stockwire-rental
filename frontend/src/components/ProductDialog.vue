@@ -1113,6 +1113,7 @@ import { useInventoryStore } from '../stores/inventory'
 import { useCompaniesStore } from '../stores/companies'
 import { useSettingsStore } from '../stores/settings'
 import { useCustomFieldsStore } from '../stores/customFields'
+import { usePurchasingStore } from '../stores/purchasing'
 import { translateMaybePrefillCustomFieldLabel, translateMaybePrefillCustomFieldOption } from '../i18n/prefillContent'
 import { normalizeCurrencyCode } from '../constants/currencies'
 import { translateCategory } from '../utils/translate-helpers'
@@ -1187,6 +1188,7 @@ const store = useInventoryStore()
 const companiesStore = useCompaniesStore()
 const settingsStore = useSettingsStore()
 const customFieldsStore = useCustomFieldsStore()
+const purchasingStore = usePurchasingStore()
 
 function customFieldLabel(label) {
   return translateMaybePrefillCustomFieldLabel(label, t)
@@ -1730,8 +1732,8 @@ async function reorderSupplier(row) {
   reorderExistingPo.value = null
   reorderPoOptions.value = []
   try {
-    const { data } = await api.get('/api/v1/purchasing/purchase-orders')
-    const pos = Array.isArray(data) ? data : (data.items || [])
+    await purchasingStore.fetchPurchaseOrders()
+    const pos = purchasingStore.purchaseOrders
     const companyId = row.supplier_company_id
     reorderPoOptions.value = pos
       .filter(
