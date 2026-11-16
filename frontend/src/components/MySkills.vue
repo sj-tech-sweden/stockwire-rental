@@ -35,12 +35,16 @@
         @filter="filterSkills"
         @update:model-value="addSkill"
       >
+        <template #after>
+          <q-btn flat round dense icon="add" color="primary" size="sm" @click="skillCreateDialogOpen = true" />
+        </template>
         <template #no-option>
           <q-item>
             <q-item-section class="text-grey">{{ t('crew.noMatchingSkills') }}</q-item-section>
           </q-item>
         </template>
       </q-select>
+      <SkillCreateDialog v-model="skillCreateDialogOpen" @saved="onSkillCreated" />
     </div>
   </div>
 </template>
@@ -50,6 +54,7 @@ import { ref, onMounted, computed } from 'vue'
 import { useQuasar } from 'quasar'
 import { useI18n } from 'vue-i18n'
 import { useCrewStore } from '../stores/crew'
+import SkillCreateDialog from './SkillCreateDialog.vue'
 
 const props = defineProps({
   modelValue: { type: Array, default: () => [] },
@@ -67,6 +72,13 @@ const allSkills = ref([])
 const selectedSkill = ref(null)
 const filterText = ref('')
 const noProfile = ref(false)
+const skillCreateDialogOpen = ref(false)
+
+async function onSkillCreated(skill) {
+  allSkills.value = [skill, ...allSkills.value.filter(s => s.id !== skill.id)]
+  // Auto-assign the newly created skill to the profile.
+  await addSkill(skill.id)
+}
 
 const availableSkills = computed(() => {
   const myIds = new Set(mySkills.value.map(s => s.id))

@@ -2874,8 +2874,15 @@ def register_stagewire_instance(
 
 
 @public_router.get("/integrations/stagewire/open")
-def open_stagewire_deeplink(token: str = Query(...), db: Session = Depends(get_db)):
-    """Browser entry point for a Stagewire deeplink: verify the token, redirect to the job."""
+def open_stagewire_deeplink(
+    token: str = Query(...), db: Session = Depends(get_db)
+):
+    """Browser entry point for a Stagewire deeplink: verify the token, redirect to the job.
+
+    The Stagewire deeplink opens this rental *backend* URL directly in the browser. After
+    verifying the signed token we 302-redirect to the rental frontend job page (using the
+    backend's configured frontend base URL), so no separate frontend route is needed.
+    """
     instance_id = peek_deeplink_instance_id(token)
     if not instance_id:
         raise HTTPException(status_code=400, detail="Malformed deeplink token")
@@ -2892,9 +2899,8 @@ def open_stagewire_deeplink(token: str = Query(...), db: Session = Depends(get_d
     job_id = int(payload.get("job_id") or 0)
     if not job_id:
         raise HTTPException(status_code=400, detail="Deeplink has no job")
-    return RedirectResponse(
-        url=f"{settings.effective_frontend_base_url}/jobs/{job_id}", status_code=302
-    )
+    redirect_url = f"{settings.effective_frontend_base_url}/jobs/{job_id}"
+    return RedirectResponse(url=redirect_url, status_code=302)
 
 
 def _get_stagewire_instance_config(db: Session, instance_id: str) -> dict[str, object]:

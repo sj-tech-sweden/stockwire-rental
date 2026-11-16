@@ -1,5 +1,52 @@
 # Changelog
 
+## [0.30.0](https://github.com/sj-tech-sweden/stockwire-rental/compare/0.29.0...0.30.0) (2026-11-15)
+
+
+### Features
+
+* **deps:** update dependency email-validator to v2.4.0 ([#786](https://github.com/sj-tech-sweden/stockwire-rental/issues/786)) ([54a52d9](https://github.com/sj-tech-sweden/stockwire-rental/commit/54a52d99fe209cd80852afdc635233f0c2fad621))
+* **jobs:** auto-generate job code and avoid quote load errors on new jobs ([#789](https://github.com/sj-tech-sweden/stockwire-rental/issues/789)) ([2f3149d](https://github.com/sj-tech-sweden/stockwire-rental/commit/2f3149d837bf91e7c619019961e6bcefa3926548))
+* **mixer-spec:** fixed_buses for fixed-aux digital consoles (Qu-16, ...) ([#790](https://github.com/sj-tech-sweden/stockwire-rental/issues/790)) ([3c9c5ec](https://github.com/sj-tech-sweden/stockwire-rental/commit/3c9c5ec5a6b2cbb77d8ae4875e7654e102604a5c))
+
+
+### Bug Fixes
+
+* **deps:** update dependency fastapi to v0.163.1 ([#788](https://github.com/sj-tech-sweden/stockwire-rental/issues/788)) ([07d664b](https://github.com/sj-tech-sweden/stockwire-rental/commit/07d664b81f73f7369bcdb3d276fb0b708d2857e3))
+* **jobs:** keep job code on one line in detail header ([#785](https://github.com/sj-tech-sweden/stockwire-rental/issues/785)) ([58456d0](https://github.com/sj-tech-sweden/stockwire-rental/commit/58456d0f35aa2d9a06d4523444aebe4d653293cf))
+
+## [0.29.0](https://github.com/sj-tech-sweden/stockwire-rental/compare/0.28.0...0.29.0) (2026-11-14)
+
+
+### Features
+
+* **deps:** update dependency fastapi to v0.163.0 ([#783](https://github.com/sj-tech-sweden/stockwire-rental/issues/783)) ([40feae9](https://github.com/sj-tech-sweden/stockwire-rental/commit/40feae931287869c99c6d7b472485c5942de6b65))
+
+
+### Bug Fixes
+
+* **settings:** document stagewire deeplink backend 302 behaviour ([#782](https://github.com/sj-tech-sweden/stockwire-rental/issues/782)) ([fe940d3](https://github.com/sj-tech-sweden/stockwire-rental/commit/fe940d3fdb0afa6d1ce1422b57832a5388c259f5))
+
+## [0.28.0](https://github.com/sj-tech-sweden/stockwire-rental/compare/0.27.0...0.28.0) (2026-11-14)
+
+
+### Features
+
+* **deps:** update dependency openai to &gt;=3.51.0,&lt;3.52.0 ([#779](https://github.com/sj-tech-sweden/stockwire-rental/issues/779)) ([72f4a94](https://github.com/sj-tech-sweden/stockwire-rental/commit/72f4a944015dbe99b2fdf6985755635a65f17cc1))
+* **deps:** update dependency pypdf to &gt;=7,&lt;7.2 ([#771](https://github.com/sj-tech-sweden/stockwire-rental/issues/771)) ([627061e](https://github.com/sj-tech-sweden/stockwire-rental/commit/627061ed022926738dc84993fec0bb10ca502c12))
+* **inventory:** clone a product as a starting point ([#774](https://github.com/sj-tech-sweden/stockwire-rental/issues/774)) ([00658cc](https://github.com/sj-tech-sweden/stockwire-rental/commit/00658cc9c794d468bd89b127c8d401a766facf67))
+* **jobs:** allow inline venue creation when creating a job ([#781](https://github.com/sj-tech-sweden/stockwire-rental/issues/781)) ([1e70f08](https://github.com/sj-tech-sweden/stockwire-rental/commit/1e70f082ebf1f67915c4d3f4bd6472d026a51db2))
+
+
+### Bug Fixes
+
+* **deps:** update dependency boto3 to v1.44.3 ([#777](https://github.com/sj-tech-sweden/stockwire-rental/issues/777)) ([fa0d141](https://github.com/sj-tech-sweden/stockwire-rental/commit/fa0d1414dd399cd28d7f8f2e9447d21061eaf089))
+* **deps:** update dependency fastapi to v0.162.6 ([#773](https://github.com/sj-tech-sweden/stockwire-rental/issues/773)) ([402330e](https://github.com/sj-tech-sweden/stockwire-rental/commit/402330eff2f97400392295a3cedcac2dcef99ef3))
+* **deps:** update dependency fastapi to v0.162.7 ([#775](https://github.com/sj-tech-sweden/stockwire-rental/issues/775)) ([3cb6bb8](https://github.com/sj-tech-sweden/stockwire-rental/commit/3cb6bb8134121ab1a400293b502015eaadc64afc))
+* **deps:** update dependency pydantic-settings to v2.16.3 ([#770](https://github.com/sj-tech-sweden/stockwire-rental/issues/770)) ([c238b08](https://github.com/sj-tech-sweden/stockwire-rental/commit/c238b081f83b53349b416f944772cb67fb8267b8))
+* **deps:** update dependency vue-router to v5.5.1 ([#776](https://github.com/sj-tech-sweden/stockwire-rental/issues/776)) ([140106f](https://github.com/sj-tech-sweden/stockwire-rental/commit/140106f7a212d938dd9921c444aaadc87da3a081))
+* **deps:** update frontend dependencies ([#778](https://github.com/sj-tech-sweden/stockwire-rental/issues/778)) ([a419fa3](https://github.com/sj-tech-sweden/stockwire-rental/commit/a419fa325f76fb68e75903766b1691357326de65))
+
 ## [0.27.0](https://github.com/sj-tech-sweden/stockwire-rental/compare/0.26.0...0.27.0) (2026-11-13)
 
 

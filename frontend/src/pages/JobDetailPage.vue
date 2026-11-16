@@ -1,13 +1,13 @@
 <template>
   <q-page class="q-pa-md ec-page">
-    <div class="row items-center justify-between q-col-gutter-sm q-mb-md">
+    <div class="row items-center q-col-gutter-sm q-mb-md">
       <div class="col-auto">
         <q-btn flat icon="arrow_back" :label="isPhone ? undefined : t('jobs.backToJobs')" @click="goBack" />
       </div>
-      <div class="col">
-        <div class="ec-page-title text-break">{{ isNewJob ? t('jobs.newJob') : (currentJob?.job_code || t('jobs.viewJob')) }}</div>
+      <div class="col" style="min-width: auto;">
+        <div class="ec-page-title text-no-wrap">{{ isNewJob ? t('jobs.newJob') : (currentJob?.job_code || t('jobs.viewJob')) }}</div>
       </div>
-      <div class="col-auto" v-if="authStore.canEdit && !isNewJob">
+      <div class="col-auto" style="margin-left: auto;" v-if="authStore.canEdit && !isNewJob">
         <q-btn
           color="secondary"
           outline
@@ -51,7 +51,7 @@
           @click="saveChanges()"
         />
       </div>
-      <div class="col-auto" v-if="authStore.canEdit && isNewJob">
+      <div class="col-auto" style="margin-left: auto;" v-if="authStore.canEdit && isNewJob">
         <q-btn
           ref="headerSaveBtn"
           color="primary"
@@ -163,7 +163,11 @@
                   dense
                   :disable="!authStore.canEdit"
                   :rules="[v => !!v || t('common.required')]"
-                />
+                >
+                  <template #append>
+                    <q-btn flat dense no-caps color="primary" icon="autorenew" :loading="generatingJobCode" @click="generateJobCode(true)" />
+                  </template>
+                </q-input>
               </div>
               <div class="col-12 col-md-6">
                 <q-select
@@ -251,7 +255,11 @@
                   map-options
                   :disable="!authStore.canEdit"
                   @filter="filterVenueOptions"
-                />
+                >
+                  <template #after>
+                    <q-btn flat round dense icon="add" color="primary" size="sm" @click="venueCreateDialogOpen = true" />
+                  </template>
+                </q-select>
               </div>
             </div>
 
@@ -597,7 +605,7 @@
         </q-card-section>
       </q-card>
 
-      <QuoteBuilder :job-id="currentJob?.id || 0" :job-code="currentJob?.job_code || ''" />
+      <QuoteBuilder v-if="!isNewJob" :job-id="currentJob?.id || 0" :job-code="currentJob?.job_code || ''" />
     </div>
 
     <!-- Floating save button on mobile -->
@@ -625,6 +633,7 @@
     <CompanyCreateDialog v-model="companyCreateDialogOpen" @saved="onCompanyCreated" />
     <PersonCreateDialog v-model="personCreateDialogOpen" :company-id="form.company_id" @saved="onPersonCreated" />
     <VenuePickerDialog v-model="venuePickerOpen" :venues="venuesStore.venues" :selected-id="form.venue_id" @select="onVenueSelected" />
+    <VenueDialog v-model="venueCreateDialogOpen" @saved="onVenueCreated" />
     <JobCustomFieldsDialog v-model="customFieldsDialogOpen" :job-id="currentJob?.id || null" @saved="reloadFieldRows" />
     <CrewRequirementDialog v-model="crewRequirementDialogOpen" :job-id="currentJob?.id || null" @saved="loadCrewData" />
     <CrewAssignmentDialog v-model="crewAssignmentDialogOpen" :job-id="currentJob?.id || null" :requirement-id="selectedCrewRequirementId" @saved="onCrewAssignmentSaved" />
@@ -701,6 +710,7 @@ import CompanyPickerDialog from '../components/CompanyPickerDialog.vue'
 import CompanyCreateDialog from '../components/CompanyCreateDialog.vue'
 import PersonCreateDialog from '../components/PersonCreateDialog.vue'
 import VenuePickerDialog from '../components/VenuePickerDialog.vue'
+import VenueDialog from '../components/VenueDialog.vue'
 import JobCustomFieldsDialog from '../components/JobCustomFieldsDialog.vue'
 import QuoteBuilder from '../components/QuoteBuilder.vue'
 import ReportExportDialog from '../components/ReportExportDialog.vue'
@@ -733,6 +743,8 @@ const companyPickerOpen = ref(false)
 const companyCreateDialogOpen = ref(false)
 const personCreateDialogOpen = ref(false)
 const venuePickerOpen = ref(false)
+const venueCreateDialogOpen = ref(false)
+const generatingJobCode = ref(false)
 const customFieldsDialogOpen = ref(false)
 const crewRequirementDialogOpen = ref(false)
 const crewAssignmentDialogOpen = ref(false)
@@ -1291,6 +1303,22 @@ function onVenueSelected(venue) {
   form.value.venue_name = venue.name
 }
 
+function onVenueCreated(venue) {
+  form.value.venue_id = venue.id
+  form.value.venue_name = venue.name
+}
+
+async function generateJobCode(force = false) {
+  if (!force && form.value.job_code) return
+  generatingJobCode.value = true
+  try {
+    const code = await jobsStore.generateJobCode('JOB-')
+    if (code) form.value.job_code = code
+  } finally {
+    generatingJobCode.value = false
+  }
+}
+
 function syncFromJob(job) {
   if (!job) {
     form.value = emptyForm()
@@ -1392,6 +1420,7 @@ async function loadData() {
       const company = companyId > 0 ? companiesStore.companies.find(c => c.id === companyId) : null
       const venue = venueId > 0 ? venuesStore.venues.find(v => v.id === venueId) : null
       form.value = emptyForm()
+      generateJobCode()
       if (company) {
         form.value.company_id = company.id
         form.value.company_name = company.name
