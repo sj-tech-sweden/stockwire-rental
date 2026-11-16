@@ -5,7 +5,7 @@ import logging
 from datetime import date
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from fastapi.responses import Response
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -13,19 +13,20 @@ from sqlalchemy.orm import Session
 from app.db.session import get_db
 from app.domain.auth.deps import get_current_user, require_editor
 from app.domain.auth.models import User
-from app.domain.reports.models import Letterhead, ReportTemplate, GeneratedReportLog
+from app.domain.realtime.events import emit_realtime_event
+from app.domain.reports.models import GeneratedReportLog, Letterhead, ReportTemplate
 from app.domain.reports.schemas import (
+    DataSourceField,
+    DataSourceSchemaResponse,
+    GeneratedReportLogRead,
     LetterheadCreate,
     LetterheadRead,
     LetterheadUpdate,
+    ReportGenerateRequest,
     ReportTemplateCreate,
     ReportTemplateListRead,
     ReportTemplateRead,
     ReportTemplateUpdate,
-    ReportGenerateRequest,
-    GeneratedReportLogRead,
-    DataSourceSchemaResponse,
-    DataSourceField,
 )
 from app.domain.storage.models import AssetFile
 from app.domain.storage.service import StorageService
@@ -87,6 +88,7 @@ def create_letterhead(
     )
     db.add(letterhead)
     db.commit()
+    emit_realtime_event("reports.updated", {"entity": "letterhead", "action": "create", "id": letterhead.id})
     db.refresh(letterhead)
     return LetterheadRead.model_validate(letterhead)
 
@@ -120,6 +122,7 @@ def update_letterhead(
     if payload.margin_right_mm is not None:
         letterhead.margin_right_mm = payload.margin_right_mm
     db.commit()
+    emit_realtime_event("reports.updated", {"entity": "letterhead", "action": "update", "id": letterhead_id})
     db.refresh(letterhead)
     return LetterheadRead.model_validate(letterhead)
 
@@ -140,6 +143,7 @@ def delete_letterhead(
         raise HTTPException(status_code=409, detail="Letterhead is used by templates. Unlink first.")
     db.delete(letterhead)
     db.commit()
+    emit_realtime_event("reports.updated", {"entity": "letterhead", "action": "delete", "id": letterhead_id})
     return {"status": "ok"}
 
 
@@ -170,8 +174,9 @@ async def upload_letterhead_pdf(
 
     page_count = 1
     try:
-        from pypdf import PdfReader
         import io
+
+        from pypdf import PdfReader
         reader = PdfReader(io.BytesIO(payload))
         page_count = len(reader.pages)
     except Exception as exc:
@@ -209,6 +214,7 @@ async def upload_letterhead_pdf(
     )
     db.add(letterhead)
     db.commit()
+    emit_realtime_event("reports.updated", {"entity": "letterhead", "action": "create", "id": letterhead.id})
     db.refresh(letterhead)
     return LetterheadRead.model_validate(letterhead)
 
@@ -257,6 +263,7 @@ def create_template(
     )
     db.add(template)
     db.commit()
+    emit_realtime_event("reports.updated", {"entity": "template", "action": "create", "id": template.id})
     db.refresh(template)
     return ReportTemplateRead.model_validate(template)
 
@@ -305,6 +312,7 @@ def update_template(
     if payload.is_enabled is not None:
         template.is_enabled = payload.is_enabled
     db.commit()
+    emit_realtime_event("reports.updated", {"entity": "template", "action": "update", "id": template_id})
     db.refresh(template)
     logger.info("Template %d saved, body_json length=%d", template_id, len(template.body_json or ""))
     return ReportTemplateRead.model_validate(template)
@@ -323,6 +331,7 @@ def delete_template(
         raise HTTPException(status_code=403, detail="Cannot delete built-in templates")
     db.delete(template)
     db.commit()
+    emit_realtime_event("reports.updated", {"entity": "template", "action": "delete", "id": template_id})
     return {"status": "ok"}
 
 
@@ -347,6 +356,7 @@ def duplicate_template(
     )
     db.add(new_template)
     db.commit()
+    emit_realtime_event("reports.updated", {"entity": "template", "action": "create", "id": new_template.id})
     db.refresh(new_template)
     return ReportTemplateRead.model_validate(new_template)
 

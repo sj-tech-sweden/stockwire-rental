@@ -11,6 +11,7 @@ import { useNotificationsStore } from '../stores/notifications'
 import { useFinanceStore } from '../stores/finance'
 import { useUsersStore } from '../stores/users'
 import { useAuthStore } from '../stores/auth'
+import { useReportsStore } from '../stores/reports'
 import { startRealtime, subscribeRealtime } from '../services/realtime/client'
 import { getApiBaseUrl } from '../utils/runtime-config'
 
@@ -45,6 +46,7 @@ export default ({ store }) => {
   const financeStore = useFinanceStore(store)
   const usersStore = useUsersStore(store)
   const authStore = useAuthStore(store)
+  const reportsStore = useReportsStore(store)
   const activityStore = useActivityStore(store)
 
   const refreshCrew = debounce(async () => {
@@ -130,6 +132,14 @@ export default ({ store }) => {
     await Promise.allSettled([venuesStore.fetchAll()])
   })
 
+  const refreshReports = debounce(async () => {
+    await Promise.allSettled([
+      reportsStore.fetchLetterheads(),
+      reportsStore.fetchTemplates(),
+      reportsStore.fetchReportLogs(),
+    ])
+  })
+
   subscribeRealtime((event) => {
     const topic = String(event?.topic || '')
     if (!topic) return
@@ -145,6 +155,7 @@ export default ({ store }) => {
     if (topic.startsWith('notifications.')) refreshNotifications()
     if (topic.startsWith('finance.')) refreshFinance()
     if (topic.startsWith('auth.')) refreshAuth()
+    if (topic.startsWith('reports.')) refreshReports()
     if (
       topic.startsWith('activity.')
       || topic.startsWith('inventory.')
