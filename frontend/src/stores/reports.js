@@ -1,6 +1,12 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { api } from '../boot/axios'
+import {
+  cacheSnapshot,
+  isOnline,
+  queueMutation,
+  readSnapshot,
+} from '../services/offline/orbitSync'
 
 export const useReportsStore = defineStore('reports', () => {
   const letterheads = ref([])
@@ -9,6 +15,25 @@ export const useReportsStore = defineStore('reports', () => {
   const loadingLetterheads = ref(false)
   const loadingTemplates = ref(false)
 
+  // Mirror stores/inventory.js: persist/restore this store's collections so
+  // they survive an offline reload (cacheSnapshot/readSnapshot from orbitSync).
+  async function persistFetchAllSnapshot() {
+    await cacheSnapshot('reports.fetchAll', {
+      letterheads: letterheads.value,
+      templates: templates.value,
+      reportLogs: reportLogs.value,
+    })
+  }
+
+  async function restoreFetchAllSnapshot() {
+    const cached = await readSnapshot('reports.fetchAll')
+    if (!cached || typeof cached !== 'object') return false
+    letterheads.value = Array.isArray(cached.letterheads) ? cached.letterheads : letterheads.value
+    templates.value = Array.isArray(cached.templates) ? cached.templates : templates.value
+    reportLogs.value = Array.isArray(cached.reportLogs) ? cached.reportLogs : reportLogs.value
+    return true
+  }
+
   // ── Letterheads ────────────────────────────────────────────────────────────
 
   async function fetchLetterheads() {
@@ -16,8 +41,13 @@ export const useReportsStore = defineStore('reports', () => {
     try {
       const { data } = await api.get('/api/v1/reports/letterheads')
       letterheads.value = data
+      await persistFetchAllSnapshot()
       return data
     } catch (error) {
+      if (!isOnline()) {
+        const restored = await restoreFetchAllSnapshot()
+        if (restored) return letterheads.value
+      }
       console.error('Failed to fetch letterheads:', error)
       throw error
     } finally {
@@ -26,11 +56,20 @@ export const useReportsStore = defineStore('reports', () => {
   }
 
   async function createLetterhead(payload) {
+    if (!isOnline()) {
+      await queueMutation({ method: 'post', url: '/api/v1/reports/letterheads', data: payload })
+      await persistFetchAllSnapshot()
+      return
+    }
     const { data } = await api.post('/api/v1/reports/letterheads', payload)
     letterheads.value = [data, ...letterheads.value.filter(l => l.id !== data.id)]
+    await persistFetchAllSnapshot()
     return data
   }
 
+  // uploadLetterhead carries a binary multipart payload that cannot be queued
+  // through queueMutation (JSON), so it stays online-only (like generate/preview
+  // below, which are server-side render actions).
   async function uploadLetterhead(file, meta = {}) {
     const formData = new FormData()
     formData.append('file', file)
@@ -49,15 +88,27 @@ export const useReportsStore = defineStore('reports', () => {
   }
 
   async function updateLetterhead(id, payload) {
+    if (!isOnline()) {
+      await queueMutation({ method: 'put', url: `/api/v1/reports/letterheads/${id}`, data: payload })
+      await persistFetchAllSnapshot()
+      return
+    }
     const { data } = await api.put(`/api/v1/reports/letterheads/${id}`, payload)
     const idx = letterheads.value.findIndex(l => l.id === id)
     if (idx >= 0) letterheads.value[idx] = data
+    await persistFetchAllSnapshot()
     return data
   }
 
   async function deleteLetterhead(id) {
+    if (!isOnline()) {
+      await queueMutation({ method: 'delete', url: `/api/v1/reports/letterheads/${id}` })
+      await persistFetchAllSnapshot()
+      return
+    }
     await api.delete(`/api/v1/reports/letterheads/${id}`)
     letterheads.value = letterheads.value.filter(l => l.id !== id)
+    await persistFetchAllSnapshot()
   }
 
   // ── Templates ──────────────────────────────────────────────────────────────
@@ -67,8 +118,13 @@ export const useReportsStore = defineStore('reports', () => {
     try {
       const { data } = await api.get('/api/v1/reports/templates', { params })
       templates.value = data
+      await persistFetchAllSnapshot()
       return data
     } catch (error) {
+      if (!isOnline()) {
+        const restored = await restoreFetchAllSnapshot()
+        if (restored) return templates.value
+      }
       console.error('Failed to fetch templates:', error)
       throw error
     } finally {
@@ -82,26 +138,50 @@ export const useReportsStore = defineStore('reports', () => {
   }
 
   async function createTemplate(payload) {
+    if (!isOnline()) {
+      await queueMutation({ method: 'post', url: '/api/v1/reports/templates', data: payload })
+      await persistFetchAllSnapshot()
+      return
+    }
     const { data } = await api.post('/api/v1/reports/templates', payload)
     templates.value = [data, ...templates.value.filter(t => t.id !== data.id)]
+    await persistFetchAllSnapshot()
     return data
   }
 
   async function updateTemplate(id, payload) {
+    if (!isOnline()) {
+      await queueMutation({ method: 'put', url: `/api/v1/reports/templates/${id}`, data: payload })
+      await persistFetchAllSnapshot()
+      return
+    }
     const { data } = await api.put(`/api/v1/reports/templates/${id}`, payload)
     const idx = templates.value.findIndex(t => t.id === id)
     if (idx >= 0) templates.value[idx] = data
+    await persistFetchAllSnapshot()
     return data
   }
 
   async function deleteTemplate(id) {
+    if (!isOnline()) {
+      await queueMutation({ method: 'delete', url: `/api/v1/reports/templates/${id}` })
+      await persistFetchAllSnapshot()
+      return
+    }
     await api.delete(`/api/v1/reports/templates/${id}`)
     templates.value = templates.value.filter(t => t.id !== id)
+    await persistFetchAllSnapshot()
   }
 
   async function duplicateTemplate(id) {
+    if (!isOnline()) {
+      await queueMutation({ method: 'post', url: `/api/v1/reports/templates/${id}/duplicate` })
+      await persistFetchAllSnapshot()
+      return
+    }
     const { data } = await api.post(`/api/v1/reports/templates/${id}/duplicate`)
     templates.value = [data, ...templates.value]
+    await persistFetchAllSnapshot()
     return data
   }
 
@@ -127,9 +207,18 @@ export const useReportsStore = defineStore('reports', () => {
   }
 
   async function fetchReportLogs(params = {}) {
-    const { data } = await api.get('/api/v1/reports/logs', { params })
-    reportLogs.value = data
-    return data
+    try {
+      const { data } = await api.get('/api/v1/reports/logs', { params })
+      reportLogs.value = data
+      await persistFetchAllSnapshot()
+      return data
+    } catch (error) {
+      if (!isOnline()) {
+        const restored = await restoreFetchAllSnapshot()
+        if (restored) return reportLogs.value
+      }
+      throw error
+    }
   }
 
   // ── Data Source Schema ─────────────────────────────────────────────────────
@@ -161,5 +250,7 @@ export const useReportsStore = defineStore('reports', () => {
     previewReport,
     fetchReportLogs,
     fetchDataSourceSchema,
+    persistFetchAllSnapshot,
+    restoreFetchAllSnapshot,
   }
 })
