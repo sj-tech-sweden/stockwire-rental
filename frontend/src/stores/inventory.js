@@ -869,7 +869,17 @@ export const useInventoryStore = defineStore('inventory', () => {
   }
 
   async function receivePurchaseOrder(poId, lines) {
+    if (!isOnline()) {
+      await queueMutation({
+        method: 'post',
+        url: `/api/v1/purchasing/purchase-orders/${poId}/receive`,
+        data: { lines },
+      })
+      await persistFetchAllSnapshot()
+      return
+    }
     const { data } = await api.post(`/api/v1/purchasing/purchase-orders/${poId}/receive`, { lines })
+    await persistFetchAllSnapshot()
     return data
   }
 

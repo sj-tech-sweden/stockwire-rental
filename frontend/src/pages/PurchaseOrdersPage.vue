@@ -214,18 +214,22 @@ import { useQuasar } from 'quasar'
 import { useRouter } from 'vue-router'
 import { api } from '../boot/axios'
 import { date as qdate } from 'quasar'
+import { usePurchasingStore } from '../stores/purchasing'
 import PurchaseOrderBuilderDialog from '../components/PurchaseOrderBuilderDialog.vue'
 import EditPOLineDialog from '../components/EditPOLineDialog.vue'
 
 const { t, locale } = useI18n()
 const $q = useQuasar()
 const router = useRouter()
+const purchasingStore = usePurchasingStore()
 
 function goReceive(poId) {
   router.push({ path: '/receive', query: { po: String(poId) } })
 }
 
-const orders = ref([])
+// `orders` is the purchasing store's reactive list so realtime events
+// (purchasing.updated) refresh the table without a manual reload.
+const orders = purchasingStore.purchaseOrders
 const jobs = ref([])
 const loading = ref(false)
 
@@ -335,8 +339,7 @@ function statusLabel(status) {
 async function loadOrders() {
   loading.value = true
   try {
-    const { data } = await api.get('/api/v1/purchasing/purchase-orders')
-    orders.value = asList(data)
+    await purchasingStore.fetchPurchaseOrders()
   } finally {
     loading.value = false
   }
@@ -392,7 +395,7 @@ function openDetail(po) {
 
 async function reloadPo(id) {
   try {
-    const { data } = await api.get(`/api/v1/purchasing/purchase-orders/${id}`)
+    const data = await purchasingStore.fetchPurchaseOrder(id)
     selectedPo.value = data
     statusDraft.value = data.status
   } catch {
@@ -404,10 +407,9 @@ async function saveStatus() {
   if (!selectedPo.value || statusDraft.value === selectedPo.value.status) return
   statusSaving.value = true
   try {
-    const { data } = await api.patch(
-      `/api/v1/purchasing/purchase-orders/${selectedPo.value.id}`,
-      { status: statusDraft.value }
-    )
+    const data = await purchasingStore.updatePurchaseOrder(selectedPo.value.id, {
+      status: statusDraft.value,
+    })
     selectedPo.value = data
     const idx = orders.value.findIndex((o) => o.id === data.id)
     if (idx !== -1) orders.value[idx] = data
@@ -427,8 +429,7 @@ function confirmDelete(po) {
     persistent: true,
   }).onOk(async () => {
     try {
-      await api.delete(`/api/v1/purchasing/purchase-orders/${po.id}`)
-      orders.value = orders.value.filter((o) => o.id !== po.id)
+      await purchasingStore.deletePurchaseOrder(po.id)
       if (selectedPo.value && selectedPo.value.id === po.id) detailOpen.value = false
       $q.notify({ type: 'positive', message: t('purchasing.delete') })
     } catch (e) {
@@ -439,10 +440,10 @@ function confirmDelete(po) {
 
 async function downloadPdf(po) {
   try {
-    const resp = await api.get(`/api/v1/purchasing/purchase-orders/${po.id}/pdf`, {
-      params: { language: String(locale.value || 'en').split(/[-_]/)[0] },
-      responseType: 'blob',
-    })
+    const resp = await purchasingStore.fetchPurchaseOrderPdf(
+      po.id,
+      String(locale.value || 'en').split(/[-_]/)[0]
+    )
     const url = URL.createObjectURL(resp.data)
     window.open(url, '_blank')
     setTimeout(() => URL.revokeObjectURL(url), 60000)

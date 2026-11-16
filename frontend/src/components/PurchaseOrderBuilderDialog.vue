@@ -310,6 +310,7 @@ import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useQuasar } from 'quasar'
 import { api } from '../boot/axios'
+import { usePurchasingStore } from '../stores/purchasing'
 import CatalogPickerDialog from './CatalogPickerDialog.vue'
 import FxRatesManager from './FxRatesManager.vue'
 
@@ -323,6 +324,7 @@ const emit = defineEmits(['update:modelValue', 'done'])
 
 const { t } = useI18n()
 const $q = useQuasar()
+const purchasingStore = usePurchasingStore()
 
 const rows = ref([])
 const manualItems = ref([])
@@ -799,7 +801,7 @@ function asList(resp) {
 
 async function loadPreview() {
   try {
-    const { data } = await api.post('/api/v1/purchasing/purchase-orders/preview', {
+    const data = await purchasingStore.previewPurchaseOrders({
       job_ids: props.jobIds || [],
       include_restock: includeRestock.value,
     })
@@ -966,19 +968,14 @@ async function submit() {
 
     let result
     if (props.poId) {
-      const { data } = await api.post(
-        `/api/v1/purchasing/purchase-orders/${props.poId}/add-lines`,
-        { lines, extra_items, freight }
-      )
-      result = data
+      result = await purchasingStore.addLinesToPo(props.poId, { lines, extra_items, freight })
     } else {
-      const { data } = await api.post('/api/v1/purchasing/purchase-orders/build', {
+      result = await purchasingStore.buildPurchaseOrders({
         lines,
         extra_items,
         include_restock: false,
         freight,
       })
-      result = data
     }
     const count = Array.isArray(result) ? result.length : 1
     $q.notify({
