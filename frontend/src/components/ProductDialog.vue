@@ -1052,7 +1052,7 @@
       />
       <q-card-actions :align="isPhone ? 'stretch' : 'right'" :class="isPhone ? 'q-pa-md bg-grey-2' : ''">
         <template v-if="productEditing">
-          <q-btn flat color="negative" icon="delete" :label="t('app.actions.delete')" :class="isPhone ? 'full-width q-mb-sm' : ''" @click="confirmDeleteProduct" />
+          <q-btn flat color="negative" icon="delete" :label="t('app.actions.delete')" data-tour="product-delete" :class="isPhone ? 'full-width q-mb-sm' : ''" @click="confirmDeleteProduct" />
           <q-space />
         </template>
         <q-btn flat :class="isPhone ? 'full-width q-mb-sm' : ''" :label="t('app.actions.cancel')" @click="closeProductDialog" />

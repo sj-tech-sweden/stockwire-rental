@@ -4297,6 +4297,12 @@ export default {
               'När alla förväntade serienummer eller antalet är inne, avsluta mottagningen för att stänga raden och skapa enheterna i Lagret.',
             ],
           },
+          {
+            heading: 'Städa bort träningsordern',
+            body: [
+              'Att följa den här genomgången från början till slut skapar riktig data. När du tränat klart, ta bort inköpsordern från listan Inköpsordrar (tryck på dess papperskorg/ta bort och bekräfta). Lager du tagit emot ligger kvar i Lagret och kan tas bort där vid behov. Om du bara läste med dig behövs ingen städning.',
+            ],
+          },
         ],
       },
       walkthroughRunJob: {
@@ -4391,6 +4397,12 @@ export default {
               'För serienummerutrustning, skapa en Enhet per exemplar med Serienummer och Tillgångsetikett, och tilldela en Plats.',
             ],
           },
+          {
+            heading: 'Städa bort träningsprodukten',
+            body: [
+              'Att följa den här genomgången från början till slut skapar en riktig produkt. När du tränat klart, öppna produkten från Lager och ta bort den i dess dialog (det tar också bort eventuella enheter du lagt till). Om du bara läste med dig behövs ingen städning.',
+            ],
+          },
         ],
       },
       walkthroughDeliveryRoute: {
@@ -4435,6 +4447,12 @@ export default {
               'Förhandsgranska rutten på kartan, packa i omvänd ordning (första leveransen överst), och ge föraren packlistan och adresserna.',
             ],
           },
+          {
+            heading: 'Städa bort träningsrutten',
+            body: [
+              'Att följa den här genomgången från början till slut skapar en riktig rutt. När du tränat klart, ta bort den från ruttschemaläggarens lista (tryck på dess papperskorg/ta bort). Om du bara läste med dig behövs ingen städning.',
+            ],
+          },
         ],
       },
       walkthroughPrintLabels: {
@@ -4471,6 +4489,12 @@ export default {
             heading: 'Steg 4 — Skriv ut',
             body: [
               'Anslut en Brother QL-skrivare för direktutskrift, eller exportera till en systemskrivare för andra mediastorlekar.',
+            ],
+          },
+          {
+            heading: 'Städa bort träningsmallen',
+            body: [
+              'Om du sparade en etikettmall medan du följde med, ta bort den: öppna mallen och tryck på dess papperskorg/ta bort. Om du bara läste med dig eller skrev ut utan att spara, behövs ingen städning.',
             ],
           },
         ],
@@ -4517,6 +4541,12 @@ export default {
               'Använd appens SSO-knapp för att logga in; en lyckad omdirigering tillbaka bekräftar att det fungerar. Om inloggningen misslyckas, kontrollera att omdirigerings-URI eller ACS-URL och enhets-ID matchar exakt.',
             ],
           },
+          {
+            heading: 'Ångra SSO-inställningen',
+            body: [
+              'Om du aktiverade SSO eller lade till en leverantör när du tränade, ångra det här: stäng av SSO och ta bort den leverantör du skapade så att det inte påverkar verkliga inloggningar. Om du bara läste med dig gjordes ingen ändring.',
+            ],
+          },
         ],
       },
       walkthroughOnboardCrew: {
@@ -4559,6 +4589,12 @@ export default {
             heading: 'Steg 5 — Dela kalendern',
             body: [
               'De kan kopiera sin personliga kalenderfeed (Min kalender) för att se sina tilldelningar.',
+            ],
+          },
+          {
+            heading: 'Städa bort träningspersonen',
+            body: [
+              'Att följa den här genomgången från början till slut skapar en riktig person. När du tränat klart, ta bort dem från listan Personer (tryck på deras papperskorg/ta bort och bekräfta). Om du bara läste med dig behövs ingen städning.',
             ],
           },
         ],
@@ -4980,6 +5016,7 @@ export default {
           { title: 'Skicka eller godkänn ordern', text: 'Flytta inköpsordern till Skickad, sedan Godkänd eller Beställd så att teamet vet att den är på väg.' },
           { title: 'Ta emot varorna', text: 'När leveransen anländer, öppna inköpsordern och använd Ta emot (eller Skanna) för att checka in dem. Skanna varje serienummer, eller ange ett antal för artiklar utan serienummer.' },
           { title: 'Avsluta mottagningen', text: 'När allt förväntat är inne, avsluta mottagningen för att stänga raden och skapa enheterna i Lagret.' },
+          { title: 'Städa bort träningsordern', text: 'Att följa med här skapade en riktig inköpsorder. För att hålla det rent, ta bort den: i listan Inköpsordrar, tryck på papperskorgen/ta bort på ordern du skapade och bekräfta. (Om du bara läste med dig, kan du hoppa över detta.)' },
         ],
       },
       walkthroughRunJob: {
@@ -5003,6 +5040,7 @@ export default {
           { title: 'Koppla leverantörsposten', text: 'I produktens Leverantörssektion, klicka på Koppla leverantörspost och välj den matchande posten från Leverantörskatalogen — dess pris, streckkod och lager fylls i automatiskt.' },
           { title: 'Sätt pris och trösklar', text: 'Ange dygnspris, ersättningskostnad och de minsta lager- och orderkvantiteterna som utlöser påminnelser om ombeställning.' },
           { title: 'Lägg till de fysiska enheterna', text: 'För serienummerutrustning, skapa en enhet per exemplar med serienummer och tillgångsetikett, och tilldela en plats så att du alltid vet var den är.' },
+          { title: 'Städa bort träningsprodukten', text: 'Att följa med här skapade en riktig produkt. Öppna produkten du skapade från Lager, och tryck på Ta bort i dess dialog för att ta bort den (och eventuella enheter du lade till). (Om du bara läste med dig, kan du hoppa över detta.)' },
         ],
       },
       walkthroughDeliveryRoute: {
@@ -5012,6 +5050,7 @@ export default {
           { title: 'Tilldela fordon', text: 'Välj det/de fordon som rymmer totalvikten och volymen. Planeraren varnar om kapaciteten överskrids.' },
           { title: 'Optimera', text: 'Klicka på Optimera rutt för att ordna stoppen efter körtid, eller dra för att ordna om dem manuellt.' },
           { title: 'Förhandsgranska och skicka', text: 'Förhandsgranska rutten på kartan, packa i omvänd ordning (första leveransen överst), och ge föraren packlistan och adresserna.' },
+          { title: 'Städa bort träningsrutten', text: 'Att följa med här skapade en riktig rutt. För att hålla det rent, ta bort den: i ruttschemaläggarens lista, tryck på papperskorgen/ta bort på rutten du skapade. (Om du bara läste med dig, kan du hoppa över detta.)' },
         ],
       },
       walkthroughPrintLabels: {
@@ -5020,6 +5059,7 @@ export default {
           { title: 'Välj vad som ska skrivas ut', text: 'Markera många enheter, produkter, platser eller väskor på en gång för att inkludera dem i batchen.' },
           { title: 'Sätt synlighet och roller', text: 'Bestäm vem som kan se och redigera mallen: alla användare, endast admins eller endast ägare.' },
           { title: 'Skriv ut', text: 'Anslut en Brother QL-skrivare för direktutskrift, eller exportera till en systemskrivare för andra mediastorlekar.' },
+          { title: 'Städa bort träningsmallen', text: 'Om du sparade en etikettmall medan du följde med, ta bort den: öppna mallen och tryck på papperskorgen/ta bort. (Om du bara läste med dig eller skrev ut utan att spara, kan du hoppa över detta.)' },
         ],
       },
       walkthroughEntraSso: {
@@ -5029,6 +5069,7 @@ export default {
           { title: 'OIDC: konfigurera Entra ID', text: 'I Entra, registrera en app och lägg till omdirigerings-URI som visas i appen. Skapa en klienthemlighet och bevilja openid, email och profile.' },
           { title: 'SAML: konfigurera Entra ID', text: 'I Entra, ställ in ACS-URL och SP-enhets-ID från appen, och tillhandahåll IdP-enhets-ID, SSO-URL och signeringscertifikat.' },
           { title: 'Verifiera', text: 'Använd appens SSO-knapp för att logga in. En lyckad omdirigering tillbaka bekräftar att det fungerar. Om det misslyckas, kontrollera att omdirigerings-URI (eller ACS-URL) och enhets-ID matchar exakt.' },
+          { title: 'Ångra SSO-inställningen', text: 'Om du aktiverade SSO eller lade till en leverantör när du tränade, ångra det här: stäng av SSO och ta bort den leverantör du skapade så att det inte påverkar verkliga inloggningar. (Om du bara läste med dig gjordes ingen ändring.)' },
         ],
       },
       walkthroughOnboardCrew: {
@@ -5038,6 +5079,7 @@ export default {
           { title: 'Lägg till kompetenser och roller', text: 'Registrera deras föredragna roller, kompetenser, certifieringar (med utgångsdatum) och pris.' },
           { title: 'Tilldela till ett jobb', text: 'Öppna jobbet, lägg till roll och antal som behövs, och tilldela personen. Bekräfta dem så att de får en avisering.' },
           { title: 'Dela kalendern', text: 'De kan kopiera sin personliga kalenderfeed (Min kalender) för att se sina tilldelningar i sin egen kalenderapp.' },
+          { title: 'Städa bort träningspersonen', text: 'Att följa med här skapade en riktig person. För att hålla det rent, ta bort dem: i listan Personer, tryck på papperskorgen/ta bort på personen du skapade och bekräfta. (Om du bara läste med dig, kan du hoppa över detta.)' },
         ],
       },
     },

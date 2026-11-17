@@ -4308,6 +4308,12 @@ export default {
               'Once all expected serials or the quantity are in, finish receiving to close the line and create the Devices in Inventory.',
             ],
           },
+          {
+            heading: 'Clean up the practice PO',
+            body: [
+              'Following this walkthrough end-to-end creates real data. When you are done practising, delete the purchase order from the Purchase Orders list (tap its trash/delete action and confirm). Stock you received stays in Inventory and can be removed there if needed. If you only read along, no cleanup is needed.',
+            ],
+          },
         ],
       },
       walkthroughRunJob: {
@@ -4402,6 +4408,12 @@ export default {
               'For serialised gear, create a Device per unit with a Serial number and an Asset tag, and assign a Location.',
             ],
           },
+          {
+            heading: 'Clean up the practice product',
+            body: [
+              'Following this walkthrough end-to-end creates a real product. When you are done practising, open the product from Inventory and delete it in its dialog (this also removes any devices you added). If you only read along, no cleanup is needed.',
+            ],
+          },
         ],
       },
       walkthroughDeliveryRoute: {
@@ -4446,6 +4458,12 @@ export default {
               'Preview the route on the map, pack in reverse order (first drop on top), and hand the driver the packing list and addresses.',
             ],
           },
+          {
+            heading: 'Clean up the practice route',
+            body: [
+              'Following this walkthrough end-to-end creates a real route. When you are done practising, delete it from the Route Planner list (tap its trash/delete action). If you only read along, no cleanup is needed.',
+            ],
+          },
         ],
       },
       walkthroughPrintLabels: {
@@ -4482,6 +4500,12 @@ export default {
             heading: 'Step 4 — Print',
             body: [
               'Connect a Brother QL printer for direct printing, or export to a system printer for other media sizes.',
+            ],
+          },
+          {
+            heading: 'Clean up the practice template',
+            body: [
+              'If you saved a label template while following along, delete it: open the template and tap its trash/delete action. If you only read along or printed without saving, no cleanup is needed.',
             ],
           },
         ],
@@ -4528,6 +4552,12 @@ export default {
               'Use the app SSO button to sign in; a successful redirect back confirms it works. If login fails, check that the redirect URI or ACS URL and entity ID match exactly.',
             ],
           },
+          {
+            heading: 'Revert the SSO setup',
+            body: [
+              'If you enabled SSO or added a provider while practising, revert it here: turn SSO off and delete the provider you created so it does not affect real sign-ins. If you only read along, no change was made.',
+            ],
+          },
         ],
       },
       walkthroughOnboardCrew: {
@@ -4570,6 +4600,12 @@ export default {
             heading: 'Step 5 — Share the calendar',
             body: [
               'They can copy their personal calendar feed (My Calendar) to see their assignments.',
+            ],
+          },
+          {
+            heading: 'Clean up the practice person',
+            body: [
+              'Following this walkthrough end-to-end creates a real person. When you are done practising, delete them from the Persons list (tap their trash/delete action and confirm). If you only read along, no cleanup is needed.',
             ],
           },
         ],
@@ -4991,6 +5027,7 @@ export default {
           { title: 'Send or approve the order', text: 'Move the PO to Sent, then Approved or Ordered so the team knows it is on its way.' },
           { title: 'Receive the goods', text: 'When the delivery arrives, open the PO and use Receive (or Scan) to check items in. Scan each serial number, or enter a quantity for non-serialised items.' },
           { title: 'Finish receiving', text: 'Once everything expected is in, finish receiving to close the line and create the Devices in Inventory.' },
+          { title: 'Clean up the practice PO', text: 'Following along created a real purchase order. To keep things tidy, delete it: on the Purchase Orders list, tap the trash/delete action on the order you made and confirm. (If you only read along, you can skip this.)' },
         ],
       },
       walkthroughRunJob: {
@@ -5014,6 +5051,7 @@ export default {
           { title: 'Link the vendor item', text: 'In the product’s Suppliers section, click Link vendor item and pick the matching item from the Vendor catalog — its price, barcode and stock are filled in automatically.' },
           { title: 'Set pricing and thresholds', text: 'Enter the daily rate, replacement cost, and the minimum stock and order quantities that trigger reorder reminders.' },
           { title: 'Add the physical units', text: 'For serialised gear, create a Device per unit with a serial number and asset tag, and assign a location so you always know where it is.' },
+          { title: 'Clean up the practice product', text: 'Following along created a real product. Open the product you made from Inventory, and in its dialog tap Delete to remove it (and any devices you added). (If you only read along, you can skip this.)' },
         ],
       },
       walkthroughDeliveryRoute: {
@@ -5023,6 +5061,7 @@ export default {
           { title: 'Assign vehicles', text: 'Choose the vehicle(s) that fit the total weight and volume. The planner warns if capacity is exceeded.' },
           { title: 'Optimise', text: 'Click Optimise route to order the stops by drive time, or drag to reorder them manually.' },
           { title: 'Preview and dispatch', text: 'Preview the route on the map, pack in reverse order (first drop on top), and hand the driver the packing list and addresses.' },
+          { title: 'Clean up the practice route', text: 'Following along created a real route. To keep things tidy, delete it: in the Route Planner list, tap the trash/delete action on the route you made. (If you only read along, you can skip this.)' },
         ],
       },
       walkthroughPrintLabels: {
@@ -5031,6 +5070,7 @@ export default {
           { title: 'Select what to print', text: 'Tick many devices, products, locations or cases at once to include them in the batch.' },
           { title: 'Set visibility and roles', text: 'Decide who can see and edit the template: all users, admins only, or the owner only.' },
           { title: 'Print', text: 'Connect a Brother QL printer for direct printing, or export to a system printer for other media sizes.' },
+          { title: 'Clean up the practice template', text: 'If you saved a label template while following along, delete it: open the template and tap the trash/delete action. (If you only read along or printed without saving, you can skip this.)' },
         ],
       },
       walkthroughEntraSso: {
@@ -5040,6 +5080,7 @@ export default {
           { title: 'OIDC: configure Entra ID', text: 'In Entra, register an app and add the redirect URI shown in the app. Create a client secret and grant openid, email and profile.' },
           { title: 'SAML: configure Entra ID', text: 'In Entra, set the ACS URL and SP entity ID from the app, and provide the IdP entity ID, SSO URL and signing certificate.' },
           { title: 'Verify', text: 'Use the app’s SSO button to sign in. A successful redirect back confirms it works. If it fails, check that the redirect URI (or ACS URL) and entity ID match exactly.' },
+          { title: 'Revert the SSO setup', text: 'If you enabled SSO or added a provider while practising, revert it here: turn SSO off and delete the provider you created so it does not affect real sign-ins. (If you only read along, no change was made.)' },
         ],
       },
       walkthroughOnboardCrew: {
@@ -5049,6 +5090,7 @@ export default {
           { title: 'Add skills and roles', text: 'Record their preferred roles, skills, certifications (with expiry) and rate.' },
           { title: 'Assign to a job', text: 'Open the job, add the role and count needed, and assign the person. Confirm them so they are notified.' },
           { title: 'Share the calendar', text: 'They can copy their personal calendar feed (My Calendar) to see their assignments in their own calendar app.' },
+          { title: 'Clean up the practice person', text: 'Following along created a real person. To keep things tidy, delete them: on the Persons list, tap the trash/delete action on the person you made and confirm. (If you only read along, you can skip this.)' },
         ],
       },
     },

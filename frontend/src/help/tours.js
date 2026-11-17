@@ -27,6 +27,7 @@ export const TOURS = {
     { route: '/purchase-orders', target: '[data-tour="po-save-status"]' },
     { route: '/receive', target: '[data-tour="receive-lookup"]' },
     { route: '/inventory', target: '[data-tour="inventory-list"]' },
+    { route: '/purchase-orders', target: '[data-tour="po-delete"]' },
   ],
   walkthroughRunJob: [
     { route: '/jobs', target: '[data-tour="jobs-new"]' },
@@ -46,6 +47,7 @@ export const TOURS = {
     { route: '/vendor-catalog', target: '[data-tour="vendor-list"]' },
     { route: '/inventory', target: '[data-tour="inventory-list"]' },
     { route: '/inventory', target: '[data-tour="inventory-list"]' },
+    { route: '/inventory', target: '[data-tour="product-delete"]' },
   ],
   walkthroughDeliveryRoute: [
     { route: '/route-planner', target: '[data-tour="route-new"]' },
@@ -53,12 +55,14 @@ export const TOURS = {
     { route: '/route-planner', target: '[data-tour="route-vehicle"]' },
     { route: '/route-planner', target: '[data-tour="route-optimize"]' },
     { route: '/route-planner', target: '[data-tour="route-preview"]' },
+    { route: '/route-planner', target: '[data-tour="route-delete"]' },
   ],
   walkthroughPrintLabels: [
     { route: '/labels', target: '[data-tour="labels-template"]' },
     { route: '/labels', target: '[data-tour="labels-select"]' },
     { route: '/labels', target: '[data-tour="labels-visibility"]' },
     { route: '/labels', target: '[data-tour="labels-print"]' },
+    { route: '/labels', target: '[data-tour="labels-delete-template"]' },
   ],
   walkthroughEntraSso: [
     { route: '/settings?tab=auth', target: '[data-tour="settings-sso-enable"]' },
@@ -66,6 +70,7 @@ export const TOURS = {
     { route: '/settings?tab=auth', target: '[data-tour="settings-sso-card"]' },
     { route: '/settings?tab=auth', target: '[data-tour="settings-sso-add-saml"]' },
     { route: '/settings?tab=auth', target: '[data-tour="settings-sso-card"]' },
+    { route: '/settings?tab=auth', target: '[data-tour="settings-sso-enable"]' },
   ],
   walkthroughOnboardCrew: [
     { route: '/persons', target: '[data-tour="persons-new"]' },
@@ -73,6 +78,7 @@ export const TOURS = {
     { route: '/persons', target: '[data-tour="persons-list"]' },
     { route: '/jobs', target: '[data-tour="jobs-list"]' },
     { route: '/persons', target: '[data-tour="persons-list"]' },
+    { route: '/persons', target: '[data-tour="person-delete"]' },
   ],
 }
 

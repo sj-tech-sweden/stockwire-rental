@@ -36,7 +36,7 @@
         <q-btn color="secondary" icon="auto_awesome" :label="t('labels.loadPreset')" unelevated @click="presetDialogOpen = true" />
       </div>
       <div class="col-auto" v-if="selectedTemplateId && canEditSelectedTemplate">
-        <q-btn color="negative" icon="delete" :label="t('labels.delete')" flat @click="deleteTemplate" />
+        <q-btn color="negative" icon="delete" :label="t('labels.delete')" data-tour="labels-delete-template" flat @click="deleteTemplate" />
       </div>
       <div class="col-auto">
         <q-btn color="positive" icon="print" :label="t('labels.print')" data-tour="labels-print" unelevated :disable="!selectedRows.length" @click="printLabels" />

@@ -95,7 +95,7 @@
                     <q-badge :color="statusColor(route.status)" :label="t(`routePlanner.${route.status}`)" />
                     <q-btn flat dense round icon="map" size="sm" color="grey-7" @click.stop="quickOpenMaps(route.id)" />
                     <q-btn flat dense round icon="inventory_2" size="sm" color="grey-7" @click.stop="quickOpenPackList(route)" />
-                    <q-btn flat dense round icon="delete" size="sm" color="negative" @click.stop="quickDeleteRoute(route)" />
+                    <q-btn flat dense round icon="delete" size="sm" color="negative" data-tour="route-delete" @click.stop="quickDeleteRoute(route)" />
                   </div>
                 </q-item-section>
               </q-item>

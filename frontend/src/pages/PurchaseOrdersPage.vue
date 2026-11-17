@@ -39,7 +39,7 @@
           <q-btn flat dense icon="visibility" :label="t('purchasing.open')" @click="openDetail(props.row)" />
           <q-btn flat dense icon="local_shipping" color="primary" :label="t('purchasing.receive')" @click="goReceive(props.row.id)" />
           <q-btn flat dense icon="picture_as_pdf" :label="t('purchasing.downloadPdf')" @click="downloadPdf(props.row)" />
-          <q-btn flat dense icon="delete" color="negative" :label="t('purchasing.delete')" @click="confirmDelete(props.row)" />
+          <q-btn flat dense icon="delete" color="negative" :label="t('purchasing.delete')" data-tour="po-delete" @click="confirmDelete(props.row)" />
         </q-td>
       </template>
     </q-table>
