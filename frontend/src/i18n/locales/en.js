@@ -4343,7 +4343,7 @@ export default {
           {
             heading: 'Step 4 — Prepare and scan on site',
             body: [
-              'Use Scan to check items out as they leave and back in on return. Keep each unit’s Status honest (Reserved or In use).',
+              'From the job, tap Scan out (or Scan in to receive gear back) to open the scanner with the job pre-selected. Set the action to Job out to check items out, or Job in to check them back in, then scan each device’s barcode, QR or NFC and Submit. Keep each unit’s Status honest (Reserved or In use).',
             ],
           },
           {
@@ -4995,7 +4995,8 @@ export default {
           { title: 'Add the contact person', text: 'Pick the Contact person for the job, or tap the + to add a new person (ideally linked to the company you just chose).' },
           { title: 'Add what you need', text: 'Under Product requirements, add the products and quantities this job needs.' },
           { title: 'Confirm the job', text: 'Reserve the stock by setting the status (here) from Draft to Confirmed. The required products are then reserved automatically and availability updates across the app — there is no separate “pull stock” action.' },
-          { title: 'Prepare and scan on site', text: 'Use Scan to check items out as they leave and back in on return. Keep each unit’s status honest (Reserved or In use).' },
+          { title: 'Scan items out', text: 'Open the scanner (from a job’s Scan out button, which pre-selects the job and sets the action to Job out). Scan each device’s barcode, QR or NFC into this field and Submit to check it out.' },
+          { title: 'Scan items back in', text: 'When the gear returns, switch the action to Job in — or tap Scan in on the job — and scan each unit back into this same field to release the reservation.' },
           { title: 'Complete the job', text: 'When everything is back, set the status to Completed so availability is restored and the rental period closes.' },
         ],
       },

@@ -4332,7 +4332,7 @@ export default {
           {
             heading: 'Steg 4 — Förbered och skanna på plats',
             body: [
-              'Använd Skanna för att checka ut saker när de lämnar och in igen vid retur. Håll varje enhets Status ärlig (Reserverad eller I bruk).',
+              'Från jobbet, tryck på Skanna ut (eller Skanna in för att ta emot utrustning tillbaka) för att öppna skannern med jobbet förvalt. Ställ åtgärden på Jobb ut för att checka ut saker, eller Jobb in för att checka in dem igen, och skanna sedan varje enhets streckkod, QR eller NFC och tryck Skicka. Håll varje enhets Status ärlig (Reserverad eller I bruk).',
             ],
           },
           {
@@ -4984,7 +4984,8 @@ export default {
           { title: 'Lägg till kontaktperson', text: 'Välj Kontaktperson för jobbet, eller tryck på + för att lägga till en ny person (helst kopplad till företaget du just valde).' },
           { title: 'Lägg till vad du behöver', text: 'Under Produktbehov, lägg till de produkter och kvantiteter jobbet behöver.' },
           { title: 'Bekräfta jobbet', text: 'Reservera lagret genom att ändra status (här) från Utkast till Bekräftad. De efterfrågade produkterna reserveras då automatiskt och tillgängligheten uppdateras i hela appen — det finns ingen separat åtgärd för att plocka lager.' },
-          { title: 'Förbered och skanna på plats', text: 'Använd Skanna för att checka ut saker när de lämnar och in igen vid retur. Håll varje enhets status ärlig (Reserverad eller I bruk).' },
+          { title: 'Skanna ut utrustning', text: 'Öppna skannern (från jobbets Skanna ut-knapp, som förväljer jobbet och ställer åtgärden på Jobb ut). Skanna varje enhets streckkod, QR eller NFC i det här fältet och tryck Skicka för att checka ut den.' },
+          { title: 'Skanna in utrustning igen', text: 'När utrustningen kommer tillbaka, byt åtgärd till Jobb in — eller tryck på Skanna in på jobbet — och skanna varje enhet i samma fält för att frigöra reservationen.' },
           { title: 'Slutför jobbet', text: 'När allt är tillbaka, ställ in status på Slutfört så att tillgängligheten återställs och hyresperioden stängs.' },
         ],
       },

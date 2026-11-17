@@ -233,6 +233,7 @@
                 ref="scanCodeInputRef"
                 v-model="scanCode"
                 :label="t('scan.scanCode')"
+                data-tour="scan-code"
                 outlined
                 dense
                 :placeholder="scanCodePlaceholder"

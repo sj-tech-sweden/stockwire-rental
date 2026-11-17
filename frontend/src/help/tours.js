@@ -35,7 +35,8 @@ export const TOURS = {
     { route: '/jobs/new', target: '[data-tour="job-person"]' },
     { route: '/jobs/new', target: '[data-tour="job-requirements"]' },
     { route: '/jobs/new', target: '[data-tour="job-status"]' },
-    { route: '/jobs/new', target: '[data-tour="job-scan"]' },
+    { route: '/scan?action=job_out', target: '[data-tour="scan-code"]' },
+    { route: '/scan?action=job_in', target: '[data-tour="scan-code"]' },
     { route: '/jobs/new', target: '[data-tour="job-status"]' },
   ],
   walkthroughProductVendor: [
