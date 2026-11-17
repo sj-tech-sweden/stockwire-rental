@@ -30,10 +30,13 @@ export const TOURS = {
   ],
   walkthroughRunJob: [
     { route: '/jobs', target: '[data-tour="jobs-new"]' },
-    { route: '/jobs', target: '[data-tour="job-requirements"]' },
-    { route: '/jobs', target: '[data-tour="job-status"]' },
-    { route: '/jobs', target: '[data-tour="job-scan"]' },
-    { route: '/jobs', target: '[data-tour="job-status"]' },
+    { route: '/jobs/new', target: '[data-tour="job-description"]' },
+    { route: '/jobs/new', target: '[data-tour="job-company"]' },
+    { route: '/jobs/new', target: '[data-tour="job-person"]' },
+    { route: '/jobs/new', target: '[data-tour="job-requirements"]' },
+    { route: '/jobs/new', target: '[data-tour="job-status"]' },
+    { route: '/jobs/new', target: '[data-tour="job-scan"]' },
+    { route: '/jobs/new', target: '[data-tour="job-status"]' },
   ],
   walkthroughProductVendor: [
     { route: '/inventory', target: '[data-tour="inventory-new"]' },

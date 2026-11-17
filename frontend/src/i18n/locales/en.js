@@ -4319,13 +4319,13 @@ export default {
           {
             heading: 'Overview',
             body: [
-              'This walkthrough follows a job from creation through to completion, including pulling stock and scanning on site.',
+              'This walkthrough follows a job from creation through to completion, including reserving stock and scanning on site.',
             ],
           },
           {
             heading: 'Step 1 — Create the job',
             body: [
-              'Open Jobs and click New. Enter a Job code, pick the Customer (company) and Venue, and set the Start and End dates.',
+              'Open Jobs and click New. A Job code is generated for you — keep it or change it, it is not required. Fill in the Description (it is worth the effort), then pick the Company, Contact person and Venue. Each dropdown has a + to create one if it is missing.',
             ],
           },
           {
@@ -4989,7 +4989,10 @@ export default {
       },
       walkthroughRunJob: {
         steps: [
-          { title: 'Create the job', text: 'Open Jobs and create a new job. Give it a code, pick the customer and venue, and set the start and end dates.' },
+          { title: 'Create the job', text: 'Open Jobs and tap New job. A job code is generated for you — you can keep it or change it, but that is not required.' },
+          { title: 'Describe the job', text: 'Fill in the Description so the crew and customer know what this job is about.' },
+          { title: 'Add the customer', text: 'Select the Company this job belongs to. If it is not in the list yet, tap the + to create it.' },
+          { title: 'Add the contact person', text: 'Pick the Contact person for the job, or tap the + to add a new person (ideally linked to the company you just chose).' },
           { title: 'Add what you need', text: 'Under Product requirements, add the products and quantities this job needs.' },
           { title: 'Confirm the job', text: 'Reserve the stock by setting the status (here) from Draft to Confirmed. The required products are then reserved automatically and availability updates across the app — there is no separate “pull stock” action.' },
           { title: 'Prepare and scan on site', text: 'Use Scan to check items out as they leave and back in on return. Keep each unit’s status honest (Reserved or In use).' },

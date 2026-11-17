@@ -188,6 +188,7 @@
             <q-input
               v-model="form.description"
               :label="t('jobs.description')"
+              data-tour="job-description"
               type="textarea"
               autogrow
               outlined
@@ -201,6 +202,7 @@
                 <q-select
                   v-model="form.company_id"
                   :options="filteredCompanyOptions"
+                  data-tour="job-company"
                   :label="t('jobs.company')"
                   outlined
                   dense
@@ -222,6 +224,7 @@
                 <q-select
                   v-model="form.contact_person_id"
                   :options="filteredPersonOptions"
+                  data-tour="job-person"
                   :label="t('jobs.contactPerson')"
                   outlined
                   dense

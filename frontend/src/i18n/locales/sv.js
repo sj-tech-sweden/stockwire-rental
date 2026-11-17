@@ -4308,13 +4308,13 @@ export default {
           {
             heading: 'Översikt',
             body: [
-              'Den här genomgången följer ett jobb från skapande till slutförande, inklusive plock av lager och skanning på plats.',
+              'Den här genomgången följer ett jobb från skapande till slutförande, inklusive att reservera lager och skanning på plats.',
             ],
           },
           {
             heading: 'Steg 1 — Skapa jobbet',
             body: [
-              'Öppna Jobb och klicka på Ny. Ange en Jobbkod, välj Kund (företag) och Plats, och ange Startdatum och Slutdatum.',
+              'Öppna Jobb och klicka på Ny. En Jobbkod genereras åt dig — behåll den eller ändra den, det behövs inte. Fyll i Beskrivning (det är värt mödan), och välj sedan Företag, Kontaktperson och Plats. Varje rullista har en + för att skapa en om den saknas.',
             ],
           },
           {
@@ -4978,7 +4978,10 @@ export default {
       },
       walkthroughRunJob: {
         steps: [
-          { title: 'Skapa jobbet', text: 'Öppna Jobb och skapa ett nytt jobb. Ge det en kod, välj kund och plats, och ange start- och slutdatum.' },
+          { title: 'Skapa jobbet', text: 'Öppna Jobb och tryck på Nytt jobb. En jobbkod genereras åt dig — du kan behålla den eller ändra den, men det behövs inte.' },
+          { title: 'Beskriv jobbet', text: 'Fyll i Beskrivning så att personalen och kunden vet vad jobbet handlar om.' },
+          { title: 'Lägg till kunden', text: 'Välj det Företag som jobbet tillhör. Om det inte finns i listan än, tryck på + för att skapa det.' },
+          { title: 'Lägg till kontaktperson', text: 'Välj Kontaktperson för jobbet, eller tryck på + för att lägga till en ny person (helst kopplad till företaget du just valde).' },
           { title: 'Lägg till vad du behöver', text: 'Under Produktbehov, lägg till de produkter och kvantiteter jobbet behöver.' },
           { title: 'Bekräfta jobbet', text: 'Reservera lagret genom att ändra status (här) från Utkast till Bekräftad. De efterfrågade produkterna reserveras då automatiskt och tillgängligheten uppdateras i hela appen — det finns ingen separat åtgärd för att plocka lager.' },
           { title: 'Förbered och skanna på plats', text: 'Använd Skanna för att checka ut saker när de lämnar och in igen vid retur. Håll varje enhets status ärlig (Reserverad eller I bruk).' },
