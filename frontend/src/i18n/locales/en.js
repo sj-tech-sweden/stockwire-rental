@@ -4349,7 +4349,7 @@ export default {
           {
             heading: 'Step 4 — Prepare and scan on site',
             body: [
-              'From the job, tap Scan out (or Scan in to receive gear back) to open the scanner with the job pre-selected. Set the action to Job out to check items out, or Job in to check them back in, then scan each device’s barcode, QR or NFC and Submit. Keep each unit’s Status honest (Reserved or In use).',
+              'From the job, tap Scan out (or Scan in to receive gear back) to open the scanner with the job pre-selected. If you open the scanner directly, use the job picker dropdown (labelled Select job) to choose the job — it filters as you type, so you never have to memorise the exact code. Set the action to Job out to check items out, or Job in to check them back in, then scan each device’s barcode, QR or NFC and Submit. Keep each unit’s Status honest (Reserved or In use).',
             ],
           },
           {
@@ -5038,7 +5038,8 @@ export default {
           { title: 'Add the contact person', text: 'Pick the Contact person for the job, or tap the + to add a new person (ideally linked to the company you just chose).' },
           { title: 'Add what you need', text: 'Under Product requirements, add the products and quantities this job needs.' },
           { title: 'Confirm the job', text: 'Reserve the stock by setting the status (here) from Draft to Confirmed. The required products are then reserved automatically and availability updates across the app — there is no separate “pull stock” action.' },
-          { title: 'Scan items out', text: 'Open the scanner (from a job’s Scan out button, which pre-selects the job and sets the action to Job out). Scan each device’s barcode, QR or NFC into this field and Submit to check it out.' },
+          { title: 'Pick the job to scan', text: 'Open the scanner set to Job out. You do not need to know the exact job code — use the job picker dropdown (labelled Select job) to choose it. It filters as you type, so you can find the job by name, code or customer without memorising anything.' },
+          { title: 'Scan items out', text: 'With the job selected, scan each device’s barcode, QR or NFC into the field and Submit to check it out. (You can also get here from a job’s Scan out button, which pre-selects the job for you.)' },
           { title: 'Scan items back in', text: 'When the gear returns, switch the action to Job in — or tap Scan in on the job — and scan each unit back into this same field to release the reservation.' },
           { title: 'Complete the job', text: 'When everything is back, set the status to Completed so availability is restored and the rental period closes.' },
           { title: 'Clean up the practice job', text: 'Following along created real data. To keep things tidy, delete the job you made: on the Jobs list, tap the trash/delete action on that job and confirm. Deleting also removes its product requirements. (If you only read along, you can skip this.)' },
