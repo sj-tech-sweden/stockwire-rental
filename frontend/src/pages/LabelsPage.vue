@@ -3,7 +3,7 @@
     <div class="ec-page-title q-mb-md">{{ t('app.nav.labels') }}</div>
     <div class="row items-center q-col-gutter-sm q-mb-md">
       <div class="col-12 col-md-3">
-        <q-select v-model="selectedTemplateId" :options="templateOptions" :label="t('labels.template')" outlined dense emit-value map-options clearable @update:model-value="loadTemplate" />
+        <q-select v-model="selectedTemplateId" :options="templateOptions" :label="t('labels.template')" data-tour="labels-template" outlined dense emit-value map-options clearable @update:model-value="loadTemplate" />
       </div>
       <div class="col-12 col-md-2">
         <q-input v-model="templateName" :label="t('labels.templateName')" outlined dense />
@@ -24,7 +24,7 @@
         <q-select v-model="printerProfile" :options="printerProfileOptions" :label="t('labels.printer')" outlined dense emit-value map-options />
       </div>
       <div class="col-12 col-md-2">
-        <q-select v-model="templateVisibility" :options="visibilityOptions" :label="t('labels.visibility')" outlined dense emit-value map-options />
+        <q-select v-model="templateVisibility" :options="visibilityOptions" :label="t('labels.visibility')" data-tour="labels-visibility" outlined dense emit-value map-options />
       </div>
       <div class="col-auto">
         <q-btn color="primary" icon="save" :label="t('labels.save')" unelevated @click="saveTemplate" />
@@ -39,7 +39,7 @@
         <q-btn color="negative" icon="delete" :label="t('labels.delete')" flat @click="deleteTemplate" />
       </div>
       <div class="col-auto">
-        <q-btn color="positive" icon="print" :label="t('labels.print')" unelevated :disable="!selectedRows.length" @click="printLabels" />
+        <q-btn color="positive" icon="print" :label="t('labels.print')" data-tour="labels-print" unelevated :disable="!selectedRows.length" @click="printLabels" />
       </div>
       <div class="col-auto">
         <q-btn
@@ -115,6 +115,7 @@
             <q-select v-model="entityType" :options="entityTypeOptions" :label="t('labels.entity')" outlined dense emit-value map-options class="q-mb-sm" />
             <q-select
               v-model="selectedEntityIds"
+              data-tour="labels-select"
               :options="entityOptions"
               :label="t('labels.selectOneOrMany')"
               outlined

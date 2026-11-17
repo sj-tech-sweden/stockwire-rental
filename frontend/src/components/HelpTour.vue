@@ -10,7 +10,13 @@
     <div v-else class="tour-dim" />
 
     <!-- Coach card (kept interactive; the layer itself ignores pointer events) -->
-    <q-card class="tour-card" :class="cardPositionClass" :style="cardStyle" flat bordered>
+    <q-card
+      ref="cardEl"
+      class="tour-card"
+      :style="cardStyle"
+      flat
+      bordered
+    >
       <q-card-section class="q-pb-none">
         <div class="row items-center justify-between no-wrap">
           <div class="text-overline text-primary q-mb-none">
@@ -60,24 +66,43 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useTour } from '../help/useTour'
 
 const { t } = useI18n()
 const router = useRouter()
-const { isActive, isFirst, isLast, currentIndex, totalSteps, title, text, currentStepMeta, next, prev, stop } =
-  useTour()
+const {
+  isActive,
+  isFirst,
+  isLast,
+  currentIndex,
+  totalSteps,
+  title,
+  text,
+  currentStepMeta,
+  next,
+  prev,
+  stop,
+} = useTour()
 
+const cardEl = ref(null)
 const highlightRect = ref(null)
+const positionTick = ref(0) // bumped after the card renders so its real height is used
+const scrolledForStep = ref(false)
 let retryTimers = []
+let moTimer = null
+let mo = null
 
 function clearRetries() {
   retryTimers.forEach((id) => clearTimeout(id))
   retryTimers = []
 }
 
+// Find the target element and record its on-screen rect. Falls back to null
+// (centered card) when the selector is absent — e.g. an anchor that only exists
+// inside a dialog the user has not opened yet.
 function measureTarget() {
   const target = currentStepMeta.value?.target
   if (!target) {
@@ -90,7 +115,6 @@ function measureTarget() {
     return
   }
   const r = el.getBoundingClientRect()
-  // Add a margin so the highlighted element is not flush against the dim.
   const pad = 6
   highlightRect.value = {
     top: Math.max(0, r.top - pad),
@@ -98,14 +122,22 @@ function measureTarget() {
     width: r.width + pad * 2,
     height: r.height + pad * 2,
   }
+  // Bring the element into view once per step so off-screen anchors are visible.
+  if (!scrolledForStep.value) {
+    const vh = window.innerHeight
+    if (r.top < 12 || r.bottom > vh - 12) {
+      el.scrollIntoView({ block: 'center', behavior: 'smooth' })
+      scrolledForStep.value = true
+    }
+  }
 }
 
-// Re-measure with a few retries because the target page may still be mounting
-// (lazy-loaded route components) when the step becomes active.
+// The target page (and its DOM) may still be mounting after a route change, so
+// probe for it a few times over the first few seconds.
 function scheduleMeasure() {
   clearRetries()
   measureTarget()
-  ;[120, 300, 600].forEach((ms) => {
+  ;[150, 400, 800, 1500, 3000].forEach((ms) => {
     retryTimers.push(setTimeout(measureTarget, ms))
   })
 }
@@ -121,43 +153,80 @@ const spotlightStyle = computed(() => {
   }
 })
 
+// Position the coach card near the spotlight, clamped within the viewport, or
+// centered when there is no target.
 const cardStyle = computed(() => {
+  void positionTick.value
   const r = highlightRect.value
-  if (!r) return { top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }
-  // Place the card below the target if there is room, otherwise above.
-  const cardW = 380
-  const cardH = 240
-  const below = r.top + r.height + 16
-  const above = r.top - cardH - 16
-  const top = below + cardH < window.innerHeight ? below : Math.max(12, above)
-  let left = r.left + r.width / 2 - cardW / 2
-  left = Math.min(Math.max(12, left), window.innerWidth - cardW - 12)
-  return { top: `${top}px`, left: `${left}px` }
+  const vw = window.innerWidth
+  const vh = window.innerHeight
+  const cw = Math.min(380, vw - 24)
+  if (!r) {
+    return {
+      top: '50%',
+      left: '50%',
+      transform: 'translate(-50%, -50%)',
+      width: `${cw}px`,
+    }
+  }
+  const ch = cardEl.value?.offsetHeight || 260
+  const below = r.bottom + 12
+  const above = r.top - ch - 12
+  let top
+  if (below + ch <= vh - 12) top = below
+  else if (above >= 12) top = above
+  else top = Math.max(12, Math.min(vh - ch - 12, r.top))
+  let left = r.left + r.width / 2 - cw / 2
+  left = Math.max(12, Math.min(vw - cw - 12, left))
+  return { top: `${top}px`, left: `${left}px`, width: `${cw}px` }
 })
-
-const cardPositionClass = computed(() => (highlightRect.value ? '' : 'tour-card--centered'))
 
 function onResize() {
   measureTarget()
 }
 
+function onScroll() {
+  measureTarget()
+}
+
+// Re-measure when the DOM changes (covers lazy component mount + dialog open).
+function onMutations() {
+  clearTimeout(moTimer)
+  moTimer = setTimeout(measureTarget, 120)
+}
+
+watch(highlightRect, async () => {
+  await nextTick()
+  positionTick.value++
+})
+
 watch(
   () => [isActive.value, currentIndex.value, router.currentRoute.value.fullPath],
   () => {
-    if (isActive.value) scheduleMeasure()
+    if (isActive.value) {
+      scrolledForStep.value = false
+      scheduleMeasure()
+    }
   },
 )
 
 onMounted(() => {
   window.addEventListener('resize', onResize)
-  window.addEventListener('scroll', measureTarget, true)
-  if (isActive.value) scheduleMeasure()
+  window.addEventListener('scroll', onScroll, true)
+  mo = new MutationObserver(onMutations)
+  mo.observe(document.body, { childList: true, subtree: true })
+  if (isActive.value) {
+    scrolledForStep.value = false
+    scheduleMeasure()
+  }
 })
 
 onBeforeUnmount(() => {
   window.removeEventListener('resize', onResize)
-  window.removeEventListener('scroll', measureTarget, true)
+  window.removeEventListener('scroll', onScroll, true)
+  if (mo) mo.disconnect()
   clearRetries()
+  clearTimeout(moTimer)
 })
 </script>
 
@@ -178,18 +247,20 @@ onBeforeUnmount(() => {
 .tour-spotlight {
   position: absolute;
   border-radius: 10px;
+  border: 2px solid var(--q-primary);
   /* The huge spread shadow dims everything except the highlighted element. */
   box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.5);
   pointer-events: none;
   transition: top 0.18s ease, left 0.18s ease, width 0.18s ease, height 0.18s ease;
+  animation: tour-pulse 1.6s ease-in-out infinite;
+}
+@keyframes tour-pulse {
+  0%, 100% { border-color: var(--q-primary); }
+  50% { border-color: rgba(255, 255, 255, 0.85); }
 }
 .tour-card {
   position: absolute;
-  width: 380px;
-  max-width: calc(100vw - 24px);
   pointer-events: auto; /* the card itself stays interactive */
-}
-.tour-card--centered {
-  /* centered positioning is applied via inline style; this is a no-op hook */
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.35);
 }
 </style>

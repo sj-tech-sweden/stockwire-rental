@@ -51,7 +51,9 @@ export function useTour() {
 
   async function navigateTo(route) {
     if (!route) return
-    if (router.currentRoute.value.path !== route) {
+    // Compare full path (includes query, e.g. /settings?tab=auth) so re-pushing
+    // a route with a different tab actually navigates.
+    if (router.currentRoute.value.fullPath !== route) {
       try {
         await router.push(route)
       } catch {

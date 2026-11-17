@@ -70,7 +70,7 @@
               <q-icon name="qr_code_scanner" />
             </template>
           </q-input>
-          <q-btn color="primary" :label="t('receiving.lookup')" :loading="loading" @click="doLookup" />
+          <q-btn color="primary" :label="t('receiving.lookup')" data-tour="receive-lookup" :loading="loading" @click="doLookup" />
         </div>
       </q-card>
 

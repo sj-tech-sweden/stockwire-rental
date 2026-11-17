@@ -11,6 +11,7 @@
         icon="add"
         :label="t('routePlanner.newRoute')"
         class="q-mr-sm"
+        data-tour="route-new"
         @click="showCreateRoute = true"
       />
       <q-btn
@@ -169,6 +170,7 @@
                     <q-space />
                     <q-select
                       v-model="vehicleToAdd"
+                      data-tour="route-vehicle"
                       :options="availableVehicles"
                       emit-value
                       map-options
@@ -210,6 +212,7 @@
                   color="primary"
                   size="md"
                   class="q-mr-sm"
+                  data-tour="route-add-jobs"
                   @click="showJobPicker = true"
                 />
                 <q-btn
@@ -278,6 +281,7 @@
                   :label="t('routePlanner.optimizeRoute')"
                   color="deep-purple-7"
                   size="md"
+                  data-tour="route-optimize"
                   :loading="optimizing"
                   @click="onOptimizeRoute"
                 />
@@ -287,6 +291,7 @@
                   :label="t('routePlanner.previewRoute')"
                   color="primary"
                   size="md"
+                  data-tour="route-preview"
                   :loading="previewLoading"
                   @click="loadPreview"
                 />

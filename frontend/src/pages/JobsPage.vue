@@ -14,7 +14,7 @@
         ]"
       />
       <q-btn v-if="jobsFeedUrl" flat dense icon="calendar_month" :label="t('jobs.calendarFeed')" :title="t('jobs.calendarFeedTitle')" class="q-mr-sm" @click="copyToClipboard(jobsFeedUrl)" />
-      <q-btn v-if="authStore.canEdit" color="primary" icon="add" :label="t('jobs.newJob')" unelevated @click="openCreate" />
+      <q-btn v-if="authStore.canEdit" color="primary" icon="add" :label="t('jobs.newJob')" data-tour="jobs-new" unelevated @click="openCreate" />
     </div>
 
     <q-banner
@@ -114,6 +114,7 @@
       :rows="visibleJobs"
       :columns="columns"
       row-key="id"
+      data-tour="jobs-list"
       :grid="compactGrid"
       :hide-header="compactGrid"
       flat
