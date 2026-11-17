@@ -153,8 +153,10 @@ const spotlightStyle = computed(() => {
   }
 })
 
-// Position the coach card near the spotlight, clamped within the viewport, or
-// centered when there is no target.
+// Position the coach card near the spotlight without ever covering the
+// highlighted element. Try below, above, right, then left; if none fit fully in
+// the viewport, fall back to the top or bottom edge that does not overlap the
+// target. Centered only when there is no target at all.
 const cardStyle = computed(() => {
   void positionTick.value
   const r = highlightRect.value
@@ -170,15 +172,26 @@ const cardStyle = computed(() => {
     }
   }
   const ch = cardEl.value?.offsetHeight || 260
-  const below = r.bottom + 12
-  const above = r.top - ch - 12
-  let top
-  if (below + ch <= vh - 12) top = below
-  else if (above >= 12) top = above
-  else top = Math.max(12, Math.min(vh - ch - 12, r.top))
-  let left = r.left + r.width / 2 - cw / 2
-  left = Math.max(12, Math.min(vw - cw - 12, left))
-  return { top: `${top}px`, left: `${left}px`, width: `${cw}px` }
+  const gap = 12
+  const fits = (c) => c.top >= 12 && c.top + ch <= vh - 12 && c.left >= 12 && c.left + cw <= vw - 12
+  const overlaps = (c) =>
+    !(c.left + cw <= r.left || c.left >= r.right || c.top + ch <= r.top || c.top >= r.bottom)
+  const candidates = [
+    { top: r.bottom + gap, left: r.left + r.width / 2 - cw / 2 }, // below
+    { top: r.top - ch - gap, left: r.left + r.width / 2 - cw / 2 }, // above
+    { top: r.top + r.height / 2 - ch / 2, left: r.right + gap }, // right
+    { top: r.top + r.height / 2 - ch / 2, left: r.left - cw - gap }, // left
+  ]
+  let pos = candidates.find(fits)
+  if (!pos) {
+    // No candidate fully fits: clamp to an edge that does not overlap the target.
+    const atBottom = { top: vh - ch - 12, left: Math.min(Math.max(r.left + r.width / 2 - cw / 2, 12), vw - cw - 12) }
+    const atTop = { top: 12, left: atBottom.left }
+    pos = overlaps(atBottom) ? atTop : atBottom
+  }
+  pos.top = Math.min(Math.max(pos.top, 12), Math.max(12, vh - ch - 12))
+  pos.left = Math.min(Math.max(pos.left, 12), Math.max(12, vw - cw - 12))
+  return { top: `${pos.top}px`, left: `${pos.left}px`, width: `${cw}px` }
 })
 
 function onResize() {
