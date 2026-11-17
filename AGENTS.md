@@ -74,6 +74,33 @@ files) and `docs/I18N_GUIDE.md`. The non-negotiables:
 4. Use camelCase, descriptive, domain-grouped keys (`reports.letterheadPdfOnly`),
    not abbreviations.
 
+### In-app help documentation
+
+The app ships a localized **Help center** (`frontend/src/pages/HelpPage.vue`,
+reached from the nav entry `app.nav.help`). Its articles live in the i18n locale
+files under the `help` namespace (`help.title`, `help.intro`, `help.back`,
+`help.comingSoon`, `help.groups`, `help.articles`). Because this is user-facing
+help, it must be kept in sync with the UI:
+
+- Every article uses the **same terminology as the app**: reuse the exact
+  `app.nav.*` labels (e.g. `Inventory`, `Vendor catalog`, `Jobs`, `Receive`,
+  `Scan`, `Defects`, `Maintenance`) rather than inventing synonyms, and keep the
+  EN and SV wording consistent with the existing `en.js`/`sv.js` strings.
+- When you add, rename, or meaningfully change a feature, update the relevant
+  help article (or add one) in **both** `en.js` and `sv.js`. The two files must
+  stay structurally identical — same `help.*` keys and same `help.articles` ids —
+  or the i18n parity check and the help index break.
+- Stubbed articles (empty `sections`) are intentional placeholders for areas not
+  yet documented; fill them in as part of the work that completes that feature.
+- Articles can be nested under a parent via the `parent` field (the parent
+  article id). The Help center renders children indented beneath their parent
+  (e.g. the Settings sub-articles sit under the Settings overview, and the
+  integration setup guides sit under the Integrations article). Keep `parent`
+  references pointing to an existing article in the **same group**, in both
+  `en.js` and `sv.js`, or the nesting breaks.
+- Do not hardcode help prose outside the `help` namespace; route it through i18n
+  like any other user-facing string.
+
 ## General
 
 - Match existing code style and frameworks; don't introduce new libraries

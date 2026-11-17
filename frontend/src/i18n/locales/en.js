@@ -25,6 +25,7 @@ export default {
       finance: 'Finance',
       reports: 'Reports',
       settings: 'Settings',
+      help: 'Help',
       routePlanner: 'Route Planner',
       purchaseOrders: 'Purchase orders',
       receive: 'Receive',
@@ -3566,5 +3567,1089 @@ export default {
     capturedSerials: 'Captured serials',
     qtyToReceive: 'Quantity to receive',
     receiveWithoutSerialsHint: 'Set the quantity even without scanning serials; units get generated asset tags.',
+  },
+  help: {
+    title: 'Help',
+    intro: 'Guides and explanations for using Stockwire Rental. Choose a topic to get started.',
+    back: 'Back to Help',
+    backTo: 'Back to {name}',
+    inThisSection: 'In this section',
+    comingSoon: 'This article is being written.',
+    groups: {
+      gettingStarted: 'Getting started',
+      inventory: 'Inventory & products',
+      operations: 'Operations',
+      people: 'People & companies',
+      financeReports: 'Finance & reports',
+      settings: 'Settings',
+      more: 'More',
+    },
+    articles: {
+      gettingStarted: {
+        title: 'Getting started',
+        summary: 'What Stockwire Rental is for and how to find your way around.',
+        group: 'gettingStarted',
+        sections: [
+          {
+            heading: 'What is Stockwire Rental?',
+            body: [
+              'Stockwire Rental is a tool for rental companies to track inventory, jobs, and the equipment that moves between venues and customers.',
+              'It is built as a web app you can install on a phone or tablet and use on site, even with a poor connection.',
+            ],
+          },
+          {
+            heading: 'The main areas',
+            body: [
+              'Inventory holds your stock and the products in your Vendor catalog.',
+              'Jobs describe the work for a customer and the products that are pulled for it.',
+              'Operations groups Jobs, Projects, Finance, and the Route Planner.',
+              'People and companies covers Customers, Companies, Persons, Crew, and Venues.',
+              'Reports and Settings let you review activity and configure the system.',
+            ],
+          },
+          {
+            heading: 'Working offline',
+            body: [
+              'The app keeps working without a connection. Changes you make are saved on the device and synced when you are back online.',
+              'Other people using the app see updates through realtime sync as soon as they reconnect.',
+            ],
+          },
+          {
+            heading: 'Need more help?',
+            body: [
+              'This Help section explains each area. Use the menu to open it again at any time.',
+            ],
+          },
+        ],
+      },
+      gettingStartedQuickStart: {
+        title: 'Quick start for new users',
+        summary: 'The first things to set up and the daily habits that keep Stockwire Rental accurate.',
+        group: 'gettingStarted',
+        parent: 'gettingStarted',
+        sections: [
+          {
+            heading: 'Set up the basics',
+            body: [
+              'On your first day, open Settings and fill in your Company profile (name, logo, currency, tax number) so documents and invoices look right.',
+              'Ask an Admin to add your account and assign the right role — Admin, Manager, or Viewer — and, if you use Microsoft Entra ID, sign in with SSO.',
+            ],
+          },
+          {
+            heading: 'Build your inventory',
+            body: [
+              'Add the things you rent out as Products, and pull details from the Vendor catalog so prices and barcodes are filled in for you.',
+              'For serialised gear, create a Device for each unit with a serial number and an asset tag, and give every unit a Location so you always know where it is.',
+            ],
+          },
+          {
+            heading: 'Run your first job',
+            body: [
+              'Create a Job for the customer and venue, add the products you need, and Pull stock so the app shows what is reserved and what is still missing.',
+              'On site, use Scan to check items in and out, and mark the job Completed when the gear is back so availability stays correct.',
+            ],
+          },
+          {
+            heading: 'Adopt the daily habits',
+            body: [
+              'Scan rather than type: it is faster and prevents mistakes. Keep a unit moving through its statuses (Available, Reserved, In use, Maintenance) so the counts stay honest.',
+              'Work offline without worry — changes save on your device and sync when you reconnect. The Activity log records who changed what, which is your safety net.',
+            ],
+          },
+        ],
+      },
+      gettingStartedFields: {
+        title: 'Key fields explained',
+        summary: 'What the important fields on products, devices, jobs, and more actually mean.',
+        group: 'gettingStarted',
+        parent: 'gettingStarted',
+        sections: [
+          {
+            heading: 'Product fields',
+            body: [
+              'SKU is the product’s unique stock code; Name and Type (Equipment, Accessory, Consumable, Case, Rental) say what it is.',
+              'Daily rate is what you charge per day, and Replacement cost is what it costs to replace if lost. Min stock level and Min order quantity trigger reorder reminders.',
+              'Under Suppliers you link the product to a Vendor catalog item, which brings in the supplier’s price, barcode, and stock automatically.',
+            ],
+          },
+          {
+            heading: 'Device (inventory unit) fields',
+            body: [
+              'A Device is one physical unit of a Product. Product links it to the item you rent out, and Asset tag is its unique physical label.',
+              'Serial number, Barcode, QR code, and RFID are scannable identifiers used to look the unit up. Status (Available, Reserved, In use, Maintenance) and Condition track its state.',
+              'Location says where the unit is stored, and Purchase date, Purchase price, Warranty end, and Retire date cover its ownership life.',
+            ],
+          },
+          {
+            heading: 'Job fields',
+            body: [
+              'Job code is the job’s unique reference. Status (Draft, Confirmed, In progress, Completed, Cancelled) moves it through its lifecycle.',
+              'Customer, Venue, and Project connect the job to the right people and place, while Start date and End date set the rental period.',
+              'Sales price is what you charge, and Invoice paid marks whether the customer has settled. Product requirements list what must be pulled.',
+            ],
+          },
+          {
+            heading: 'Company fields',
+            body: [
+              'Name is required and identifies the organisation. Address, City, Postal code, Country, and Notes capture where they are and details.',
+              'Supplier types (Customer, Product supplier, Rental supplier, Crew supplier) decide where the company appears in the app and what it can be used for.',
+            ],
+          },
+          {
+            heading: 'Person fields',
+            body: [
+              'First name and Last name are required to identify the person. Email and Phone let the app and your team reach them.',
+              'Company links the person to an organisation, or you can leave them standalone for one-off contacts.',
+            ],
+          },
+          {
+            heading: 'Venue fields',
+            body: [
+              'Name is required for the site where work happens. Address, City, and Country place it; Latitude and Longitude let the Route Planner calculate drive times.',
+              'Contact person, Phone, and Email give the driver or crew someone to reach on the day, and Notes can hold parking or access instructions.',
+            ],
+          },
+          {
+            heading: 'Purchase order fields',
+            body: [
+              'PO number is the order’s unique reference, and Supplier is the company you are buying from. Status (Draft, Sent, Approved, Ordered, Partially received, Received) tracks fulfilment.',
+              'Order date and Expected delivery set timing, and the lines list each Item, its SKU, Qty, Unit price, and Currency.',
+              'When goods arrive, use Receive to check them in against the PO so each unit is tied to the right line and price.',
+            ],
+          },
+        ],
+      },
+      inventory: {
+        title: 'Inventory',
+        summary: 'How stock, locations, and quantities are managed.',
+        group: 'inventory',
+        sections: [
+          {
+            heading: 'What is Inventory?',
+            body: [
+              'Inventory is the list of physical units you own, where they are stored, and whether they are available, rented, in service, or written off.',
+            ],
+          },
+          {
+            heading: 'Locations',
+            body: [
+              'Each unit lives in a location such as a rack, a shelf, a bin, a truck, or a venue. Use Locations to keep track of where everything is.',
+            ],
+          },
+          {
+            heading: 'Stock status',
+            body: [
+              'Units move through statuses like available, rented, in maintenance, and written off. The Inventory list shows the current status and lets you filter.',
+            ],
+          },
+          {
+            heading: 'Adding and moving units',
+            body: [
+              'Create units from a product (or by receiving a purchase order) and assign each one a location and, for serialised gear, a serial number and asset tag.',
+              'Move a unit between locations when it is picked, delivered, or returned; the location history is part of its record.',
+            ],
+          },
+        ],
+      },
+      products: {
+        title: 'Products & Vendor catalog',
+        summary: 'Defining what you rent and linking it to vendor catalog items.',
+        group: 'inventory',
+        sections: [
+          {
+            heading: 'Products vs Vendor catalog',
+            body: [
+              'A Product is the item you rent out. The Vendor catalog holds the supplier catalog data, prices, and barcodes.',
+              'Linking a product to a Vendor catalog item keeps barcodes and supplier details in sync.',
+            ],
+          },
+          {
+            heading: 'Specs and categories',
+            body: [
+              'Add technical specs and a category to each product so it is easy to find and compare. Accessories and components let you build bundles.',
+            ],
+          },
+          {
+            heading: 'Working with the vendor catalog',
+            body: [
+              'Pull items from the Vendor catalog into your products so prices, barcodes, and supplier data arrive already filled in.',
+              'Keep one product per rentable item and link it to the correct catalog item, rather than duplicating supplier data across products.',
+            ],
+          },
+        ],
+      },
+      jobs: {
+        title: 'Jobs',
+        summary: 'Plan customer work and the products pulled for it.',
+        group: 'operations',
+        sections: [
+          {
+            heading: 'What is a Job?',
+            body: [
+              'A Job represents work for a customer over a date range, at one or more venues. It lists the products and quantities needed.',
+            ],
+          },
+          {
+            heading: 'Requirements and pulls',
+            body: [
+              'Add rental requirements to a job, then pull the matching stock. The job view shows what is reserved and what is still missing.',
+            ],
+          },
+          {
+            heading: 'Status and timeline',
+            body: [
+              'Track a job through its lifecycle from draft to completed. The timeline shows when items are pulled, delivered, and returned.',
+            ],
+          },
+          {
+            heading: 'Working a job from start to finish',
+            body: [
+              'Open the job, add the products you need, and pull stock so the app can show what is reserved and what is still missing.',
+              'As the event approaches, use the timeline to see pulls, deliveries, and returns, and scan items in and out on site to keep the stock status honest.',
+            ],
+          },
+        ],
+      },
+      scan: {
+        title: 'Scan',
+        summary: 'Use the scanner to capture barcodes, QR codes, and NFC tags.',
+        group: 'operations',
+        sections: [
+          {
+            heading: 'Scanning basics',
+            body: [
+              'Open Scan to read a product barcode, a device serial QR code, or an NFC tag. The captured value is used to look up the matching record.',
+            ],
+          },
+          {
+            heading: 'Where scanning is used',
+            body: [
+              'Scanning is used when receiving goods, pulling stock for a job, and checking items in or out on site.',
+            ],
+          },
+          {
+            heading: 'Scanning workflow and shortcuts',
+            body: [
+              'On a phone, open Scan and point the camera at the code; the matching product, device, or person record opens automatically.',
+              'Use the keyboard shortcut (see the in-app shortcut help) to open the scanner from anywhere without leaving the page you are on.',
+            ],
+          },
+        ],
+      },
+      receive: {
+        title: 'Receive',
+        summary: 'Receive products from a purchase order into inventory.',
+        group: 'operations',
+        sections: [
+          {
+            heading: 'Receiving from a purchase order',
+            body: [
+              'Start from a Purchase order and choose which rows and quantities to receive. Scan or enter serials, and the units are added to Inventory.',
+            ],
+          },
+          {
+            heading: 'Receiving without serials',
+            body: [
+              'If items do not have serials, set the quantity and the app generates asset tags for each unit.',
+            ],
+          },
+          {
+            heading: 'Receive workflow tips',
+            body: [
+              'Aim to receive against the purchase order so each unit is tied to the right line, price, and supplier.',
+              'If a serial cannot be scanned, you can type it in; once all expected serials (or the quantity) are in, finish receiving to close the line.',
+            ],
+          },
+        ],
+      },
+      defectsMaintenance: {
+        title: 'Defects & Maintenance',
+        summary: 'Log faults and track service work on equipment.',
+        group: 'operations',
+        sections: [
+          {
+            heading: 'Logging a defect',
+            body: [
+              'Record a defect against a unit with a description, a severity, and a due date. Defects help you decide what can be rented and what needs service.',
+            ],
+          },
+          {
+            heading: 'Maintenance',
+            body: [
+              'Maintenance groups service work. Move a unit into maintenance to take it out of available stock until it is fixed.',
+            ],
+          },
+          {
+            heading: 'From defect to back in service',
+            body: [
+              'Log a defect the moment you notice a fault, set a severity, and note a due date so it is on the radar before the next rental.',
+              'When the unit goes to service, switch it to maintenance; when it is fixed, return it to available so it can be rented again.',
+            ],
+          },
+        ],
+      },
+      purchaseOrders: {
+        title: 'Purchase orders',
+        summary: 'Order stock from suppliers and track what arrives.',
+        group: 'operations',
+        sections: [
+          {
+            heading: 'Creating a purchase order',
+            body: [
+              'A purchase order (PO) tells a supplier what to send: items, quantities, and unit prices.',
+              'Create a PO from a draft, combine several into one, or include items that have dropped below their reorder level.',
+            ],
+          },
+          {
+            heading: 'Status and receiving',
+            body: [
+              'A PO moves through Draft, Sent, Approved, Ordered, Partially received, and Received.',
+              'When goods arrive, use Receive to check them in — see the Receive help article for details.',
+            ],
+          },
+          {
+            heading: 'Ordering and receiving together',
+            body: [
+              'Keep the PO open and track it through to Received so finance and inventory stay aligned with what was actually ordered and delivered.',
+              'Use the consolidate option to merge lines from the same supplier and save on freight when you are ordering for several jobs at once.',
+            ],
+          },
+        ],
+      },
+      labels: {
+        title: 'Labels',
+        summary: 'Design and print barcode, QR, and text labels for your items.',
+        group: 'inventory',
+        sections: [
+          {
+            heading: 'Label templates',
+            body: [
+              'A label template defines what prints on a label: text fields, barcodes, QR codes, and your business logo.',
+              'Build templates in the drag-and-drop editor, choosing which entity fields (devices, products, locations, cases) to show.',
+            ],
+          },
+          {
+            heading: 'Printing',
+            body: [
+              'Connect a Brother QL-series label printer over USB for direct printing, or use a system printer.',
+              'Set visibility (all users, admins only, owner only) and which roles may edit each template.',
+            ],
+          },
+          {
+            heading: 'Printing a batch of labels',
+            body: [
+              'Select many devices, products, locations, or cases at once and print a batch using a saved template — useful when stock arrives or gear is re-organised.',
+              'Connect the Brother printer for direct printing on location, or export to a system printer when you need a different media size.',
+            ],
+          },
+        ],
+      },
+      projects: {
+        title: 'Projects',
+        summary: 'Group related jobs under one customer engagement.',
+        group: 'operations',
+        sections: [
+          {
+            heading: 'What is a Project?',
+            body: [
+              'A project groups multiple jobs that belong to the same customer engagement, with a shared name, dates, and notes.',
+              'Projects help you see the full scope of work for a client across several jobs.',
+            ],
+          },
+          {
+            heading: 'Status and jobs',
+            body: [
+              'Track a project as Active, Completed, or Cancelled. Each project lists the jobs linked to it.',
+              'Projects can be synced to an external ProductionPlanner if that integration is configured.',
+            ],
+          },
+          {
+            heading: 'When to use a project',
+            body: [
+              'Use a project when one customer engagement spans several jobs at different dates or venues, so you can see the whole scope in one place.',
+              'Keep small, one-off jobs as standalone jobs; only group them when the shared customer, dates, or billing make it useful.',
+            ],
+          },
+        ],
+      },
+      companies: {
+        title: 'Companies',
+        summary: 'Customers, suppliers, and other organisations you work with.',
+        group: 'people',
+        sections: [
+          {
+            heading: 'What is a Company?',
+            body: [
+              'Companies are the organisations you do business with: customers who rent your gear, and suppliers you buy from.',
+              'A company can be tagged with one or more supplier types so the same record can serve several roles.',
+            ],
+          },
+          {
+            heading: 'Supplier types',
+            body: [
+              'Mark a company as a Customer, Product supplier, Rental supplier, or Crew supplier to control where it appears in the app.',
+              'These types drive the supplier picker on purchase orders and crew sourcing, so keep them up to date.',
+            ],
+          },
+          {
+            heading: 'Custom fields',
+            body: [
+              'Add custom fields to capture extra company details that your workflow needs, beyond the standard name, address, and notes.',
+            ],
+          },
+          {
+            heading: 'Keeping the address book useful',
+            body: [
+              'Set the right supplier types on every company so purchase orders and crew sourcing offer the correct choices automatically.',
+              'Merge duplicate companies rather than leaving several versions of the same customer, and keep the address and VAT number current for invoicing.',
+            ],
+          },
+        ],
+      },
+      persons: {
+        title: 'Persons',
+        summary: 'Individual contacts, with or without a linked company.',
+        group: 'people',
+        sections: [
+          {
+            heading: 'What is a Person?',
+            body: [
+              'Persons are individual people — contacts at a customer, freelancers, or anyone you need to reach.',
+              'A person can be linked to a company or kept standalone.',
+            ],
+          },
+          {
+            heading: 'Linking and notifications',
+            body: [
+              'Linking a person to a company keeps your address book tidy and lets you see everyone at one organisation.',
+              'Email notifications can be enabled per person so they receive the messages your workflow sends.',
+            ],
+          },
+          {
+            heading: 'Standalone vs linked',
+            body: [
+              'Link a person to a company when they represent that organisation, so the contact sits with the rest of the account.',
+              'Keep freelancers or one-off contacts standalone if they do not belong to a customer or supplier you track.',
+            ],
+          },
+        ],
+      },
+      crew: {
+        title: 'Crew',
+        summary: 'Manage people, roles, skills, and job assignments.',
+        group: 'people',
+        sections: [
+          {
+            heading: 'Members and roles',
+            body: [
+              'Crew members are the people you assign to jobs. Each member can have preferred roles, skills, certifications, and hourly or daily rates.',
+              'Roles group members by function (for example Rigging, Audio, Lighting) and can be internal or external.',
+            ],
+          },
+          {
+            heading: 'Requirements and assignments',
+            body: [
+              'On a job, add crew requirements (role, quantity, required skills). The planner suggests matching members and you assign them manually.',
+              'Track each assignment through statuses: Assigned, Confirmed, Completed, Cancelled.',
+            ],
+          },
+          {
+            heading: 'Compliance and calendar',
+            body: [
+              'Certifications have expiry dates; the app flags when a certification is valid, expiring soon, or expired so you stay compliant.',
+              'Each member can copy a personal calendar feed (My Calendar) to see their assignments.',
+            ],
+          },
+          {
+            heading: 'Planning a crew for a job',
+            body: [
+              'On the job, add the roles and counts you need, list any required skills, and let the planner suggest members who match.',
+              'Assign people manually, confirm them so they get notified, and check certification status before the job so no one is assigned on an expired certificate.',
+            ],
+          },
+        ],
+      },
+      venues: {
+        title: 'Venues',
+        summary: 'Sites and locations where work happens.',
+        group: 'people',
+        sections: [
+          {
+            heading: 'What is a Venue?',
+            body: [
+              'Venues are the physical sites where jobs take place — a festival ground, a theatre, a conference hall, or a client location.',
+              'Each venue stores an address, contact person, and notes.',
+            ],
+          },
+          {
+            heading: 'Coordinates and maps',
+            body: [
+              'Set a venue latitude and longitude (or a geocodable address) so the Route Planner can compute drive times and optimise stops.',
+              'Use Open map to preview the venue location.',
+            ],
+          },
+          {
+            heading: 'Preparing a venue for routing',
+            body: [
+              'Enter a precise address or coordinates for every venue you deliver to, so drive times and route order are accurate.',
+              'Add a contact person and notes (parking, loading dock, access codes) that the driver will need on the day.',
+            ],
+          },
+        ],
+      },
+      finance: {
+        title: 'Finance',
+        summary: 'Track transactions, payments, and the value of your stock and jobs.',
+        group: 'financeReports',
+        sections: [
+          {
+            heading: 'Transactions',
+            body: [
+              'Finance records money movements as transactions: rentals, deposits, payments, refunds, fees, and discounts.',
+              'Each transaction has a status (Pending, Completed, Failed, Cancelled, Refunded) and can be settled when paid.',
+            ],
+          },
+          {
+            heading: 'Overview and filters',
+            body: [
+              'The overview shows pending, overdue, and completed amounts, plus the projected value of active jobs and the value of your warehouse stock.',
+              'Filter transactions by customer, date range, status, or overdue only to chase what is owed.',
+            ],
+          },
+          {
+            heading: 'Reconciling payments',
+            body: [
+              'Use the overview to see pending, overdue, and completed amounts at a glance, and settle a transaction once the money has landed.',
+              'Filter to overdue only to build a call list, and use the customer filter to review a single account before sending a reminder.',
+            ],
+          },
+        ],
+      },
+      reports: {
+        title: 'Reports',
+        summary: 'Generate PDF and HTML documents from templates.',
+        group: 'financeReports',
+        sections: [
+          {
+            heading: 'Report templates',
+            body: [
+              'Reports are built from templates you design with a visual block editor (headings, paragraphs, tables, key/value, barcodes, QR codes).',
+              'Templates are grouped by category (Warehouse, Asset, Logistics, Purchasing, Custom) and can target a job, device, product, inventory, or purchase order.',
+            ],
+          },
+          {
+            heading: 'Letterheads and output',
+            body: [
+              'Upload PDF letterheads and set one as the system default; templates can use the default or a specific letterhead for branded output.',
+              'Generate a report as PDF or HTML, preview it live, and download or export it.',
+            ],
+          },
+          {
+            heading: 'Building a report template',
+            body: [
+              'Start from a category that matches the document (for example Logistics for a pick list), then add blocks such as tables, barcodes, or QR codes.',
+              'Use the available variables to pull live data from the chosen entity, preview the result, and save the template so it can be reused for every job.',
+            ],
+          },
+        ],
+      },
+      routePlanner: {
+        title: 'Route Planner',
+        summary: 'Plan deliveries and pickups, assign vehicles, and optimise stops.',
+        group: 'operations',
+        sections: [
+          {
+            heading: 'Routes and stops',
+            body: [
+              'A route groups jobs that need to be delivered or picked up together. Each job becomes a stop.',
+              'Add jobs to a route, then assign one or more vehicles and reorder or optimise the stops.',
+            ],
+          },
+          {
+            heading: 'Vehicles and capacity',
+            body: [
+              'Define vehicles with a type (truck, van, trailer, car), max weight, max volume, and cargo dimensions.',
+              'The planner warns when cargo exceeds a vehicle weight or volume capacity, including combined capacity across several vehicles.',
+            ],
+          },
+          {
+            heading: 'Optimising and mapping',
+            body: [
+              'Use Optimize route to order stops by drive time, and Open in Google Maps or Preview route to see the plan on a map.',
+              'Set a start address (defaults to your company address) so drive times are accurate.',
+            ],
+          },
+          {
+            heading: 'Planning a delivery run',
+            body: [
+              'Add the jobs to deliver or collect, assign the vehicle(s) that fit the total weight and volume, then optimise to order the stops by drive time.',
+              'Preview the route on the map, pack in reverse order so the first drop is on top, and hand the driver the packing list and addresses.',
+            ],
+          },
+        ],
+      },
+      warehouseLeds: {
+        title: 'Warehouse LEDs',
+        summary: 'Light up bins to locate devices and guide picks.',
+        group: 'settings',
+        parent: 'settings',
+        sections: [
+          {
+            heading: 'Controllers and mappings',
+            body: [
+              'Warehouse LEDs uses ESP controllers wired to LED strips along your shelves. Each controller is mapped to bins or shelves (pixel ranges) and to warehouse zones.',
+              'Register controllers with their MAC address and LED count, then assign the zones they cover.',
+            ],
+          },
+          {
+            heading: 'Locate and highlight',
+            body: [
+              'Use Locate Device to light the bin where a specific device is stored, or Show Return to light where items should go back.',
+              'Highlight Job Bins lights every bin holding devices a job needs, and Locate all on LED shows every located device at once.',
+            ],
+          },
+          {
+            heading: 'ESPHome',
+            body: [
+              'Generate a ready-to-flash ESPHome YAML for a controller, and download the secrets template, so hardware setup stays consistent.',
+            ],
+          },
+          {
+            heading: 'A picking workflow with LEDs',
+            body: [
+              'When picking for a job, highlight its bins so the shelf shows exactly where to go, then locate each device to confirm the right bin.',
+              'At return, use Show Return to light where each item belongs, which speeds up put-away and prevents mis-shelving.',
+            ],
+          },
+        ],
+      },
+      activity: {
+        title: 'Activity',
+        summary: 'A searchable log of everything that changed in the system.',
+        group: 'more',
+        sections: [
+          {
+            heading: 'What is the Activity log?',
+            body: [
+              'The Activity log records every create, update, delete, scan, and job in or out across the system.',
+              'It is the audit trail for who did what and when.',
+            ],
+          },
+          {
+            heading: 'Reading the log',
+            body: [
+              'Each entry shows the entity, the action, the user, and the time. Filter or search to find a specific change.',
+              'Action types include Lookup, Scan, Create, Update, Delete, Job in, Job out, and Move.',
+            ],
+          },
+          {
+            heading: 'Using the log to audit a change',
+            body: [
+              'If something looks wrong — a unit in the wrong place, a job edited — search the log by entity or time to see exactly who changed it and when.',
+              'The log is read-only and covers the whole system, so it is the first place to look when reconciling a discrepancy.',
+            ],
+          },
+        ],
+      },
+      settings: {
+        title: 'Settings',
+        summary: 'Configure the system, users, and business options.',
+        group: 'settings',
+        sections: [
+          {
+            heading: 'What is in Settings?',
+            body: [
+              'Settings is the admin area where you configure users, company details, integrations, and how the app behaves.',
+              'It is organised into tabs. The articles below explain each tab in detail; open one from the Help index under Settings.',
+            ],
+          },
+          {
+            heading: 'Who can use Settings?',
+            body: [
+              'Only users with the Admin role see the Settings entry in the navigation.',
+              'Some tabs, like the Offline Queue, are also useful for managers troubleshooting sync on site.',
+            ],
+          },
+        ],
+      },
+      settingsUsers: {
+        title: 'Users & access',
+        summary: 'Manage user accounts, roles, API keys, and single sign-on.',
+        group: 'settings',
+        parent: 'settings',
+        sections: [
+          {
+            heading: 'Users and roles',
+            body: [
+              'Create user accounts and assign a role: Admin, Manager, or Viewer. The role controls what each person can see and change.',
+              'Admins manage the system; Managers run day-to-day operations; Viewers can browse but not edit.',
+            ],
+          },
+          {
+            heading: 'Service API keys',
+            body: [
+              'API keys let other systems authenticate to Stockwire Rental without a user login.',
+              'An Admin key has full access; a Scoped key is limited to specific operations. Copy the raw key when it is created — it cannot be shown again.',
+            ],
+          },
+          {
+            heading: 'Single sign-on (SSO)',
+            body: [
+              'Connect identity providers using OpenID Connect (OIDC) or SAML so users log in through your existing system.',
+              'Map external groups to app roles, enable auto-create users, and sync roles on login to keep access in step with your directory.',
+            ],
+          },
+        ],
+      },
+      settingsCompany: {
+        title: 'Company profile',
+        summary: 'Branding, contact details, and default company information.',
+        group: 'settings',
+        parent: 'settings',
+        sections: [
+          {
+            heading: 'Branding and logos',
+            body: [
+              'Set your company name, default currency, VAT number, and default platform language.',
+              'Upload logos for light and dark themes and for different sizes; labels and documents prefer the dark variants, the login page prefers light ones.',
+            ],
+          },
+          {
+            heading: 'Address and contact',
+            body: [
+              'Keep your business address, phone, contact email, and website up to date.',
+              'These details appear on documents and finance screens, so accuracy matters for invoicing and branding.',
+            ],
+          },
+        ],
+      },
+      settingsCustomFields: {
+        title: 'Custom fields',
+        summary: 'Add your own fields to products, jobs, customers, and venues.',
+        group: 'settings',
+        parent: 'settings',
+        sections: [
+          {
+            heading: 'Defining fields',
+            body: [
+              'Custom fields let you capture information the standard forms do not cover, for products, jobs, customers, or venues.',
+              'Each field has a label, a key (auto-normalised to snake_case), a value type (text, number, boolean, date, or select), and whether it is required.',
+            ],
+          },
+          {
+            heading: 'Using custom fields',
+            body: [
+              'Once defined, the field appears on the relevant entity so staff can fill it in.',
+              'Select-type fields use a comma-separated list of options. Custom fields surface in filters, reports, and labels where supported.',
+            ],
+          },
+        ],
+      },
+      settingsInventory: {
+        title: 'Inventory defaults',
+        summary: 'Default brands, manufacturers, locations, and categories for inventory.',
+        group: 'settings',
+        parent: 'settings',
+        sections: [
+          {
+            heading: 'Brands and manufacturers',
+            body: [
+              'Manage the selectable brand and manufacturer lists used when creating products, and choose the defaults applied to new products.',
+              'You can also link a brand to a preferred manufacturer and add website links for quick reference.',
+            ],
+          },
+          {
+            heading: 'Locations and categories',
+            body: [
+              'Define the location types available when creating storage locations, so your warehouse structure stays consistent.',
+              'Category prefill paths (for example Audio > Cables > XLR) speed up product categorisation with a known, localised hierarchy.',
+            ],
+          },
+        ],
+      },
+      settingsIntegrations: {
+        title: 'Integrations',
+        summary: 'Connect Stockwire Rental to external systems.',
+        group: 'settings',
+        parent: 'settings',
+        sections: [
+          {
+            heading: 'Rental and planning integrations',
+            body: [
+              'Connect Eventory to sync rental products and create jobs, and ProductionPlanner to turn jobs and projects into production plans.',
+              'Stagewire links its stage plots and patch sheets to your stock, and Stockwire instances let you rent equipment from partner installations.',
+            ],
+          },
+          {
+            heading: 'Twenty CRM',
+            body: [
+              'Two-way sync keeps Jobs in Stockwire matched to Opportunities in Twenty CRM, and Customers matched to Companies and People.',
+              'Configure the API key, sync interval, and a webhook secret so changes flow in both directions.',
+            ],
+          },
+          {
+            heading: 'Testing connections',
+            body: [
+              'Each integration offers a Test connection button so you can verify the URL and key before relying on it.',
+              'Eventory and Twenty also show sync status and let you trigger a sync manually.',
+            ],
+          },
+        ],
+      },
+      settingsIntegrationsEntra: {
+        title: 'Microsoft Entra ID (SSO)',
+        summary: 'Connect Stockwire Rental to Microsoft Entra ID for single sign-on.',
+        group: 'settings',
+        parent: 'settingsIntegrations',
+        sections: [
+          {
+            heading: 'Before you start',
+            body: [
+              'Enable SSO in Stockwire Rental (Settings > Users & access > Single sign-on) and decide whether to auto-create users and sync roles on login.',
+              'Add an OIDC or SAML provider in the app. The provider key you enter appears in the login redirect URL, so note it down.',
+            ],
+          },
+          {
+            heading: 'OIDC: configure Entra ID',
+            body: [
+              'In the Microsoft Entra admin center, register an application (App registrations > New registration) and note the Application (client) ID and Directory (tenant) ID.',
+              'Under Authentication, add a Web redirect URI exactly: https://<your-domain>/login?oidc_provider=<providerKey> (use the provider key from the app).',
+              'Under Certificates & secrets create a client secret, and under API permissions grant openid, email, and profile (plus GroupMember.Read.All if you map groups to roles).',
+            ],
+          },
+          {
+            heading: 'OIDC: configure the app',
+            body: [
+              'In the app provider, set Issuer to https://login.microsoftonline.com/<tenantId>/v2.0, Authorization endpoint to .../oauth2/v2.0/authorize, Token endpoint to .../oauth2/v2.0/token, and JWKS URI to .../discovery/v2.0/keys.',
+              'Enter the client ID and client secret from Entra, set Scopes to "openid email profile", and map the group claim if you use group-to-role mapping.',
+            ],
+          },
+          {
+            heading: 'SAML: configure Entra ID',
+            body: [
+              'In Entra, create an Enterprise application and set its ACS URL and SP entity ID to the values shown in the app (Settings > Users & access > SSO), or fetch them from the app SAML metadata endpoint.',
+              'Upload the app metadata (or enter the ACS URL and entity ID manually) so Entra knows where to post assertions, and provide the IdP entity ID, SSO URL, and signing certificate.',
+              'The app ACS URL is typically https://<your-domain>/api/v1/auth/sso/saml/acs.',
+            ],
+          },
+          {
+            heading: 'SAML: configure the app',
+            body: [
+              'In the app SAML provider, enter the IdP entity ID, IdP SSO URL, and x509 signing certificate from Entra.',
+              'Set the SP entity ID and ACS URL to match what you registered in Entra, then test the login from the app SSO button.',
+            ],
+          },
+          {
+            heading: 'Group to role mapping',
+            body: [
+              'Map Entra groups to app roles (Admin, Manager, Viewer) so access stays in step with your directory.',
+              'Enable Sync roles on login to keep role changes in Entra reflected in Stockwire Rental.',
+            ],
+          },
+          {
+            heading: 'Verifying and troubleshooting',
+            body: [
+              'After saving, use the app SSO button to sign in; a successful redirect back into Stockwire confirms the provider is correct.',
+              'If login fails, check that the redirect URI (OIDC) or ACS URL and entity ID (SAML) match exactly what is registered in Entra, and that the signing certificate is current.',
+            ],
+          },
+        ],
+      },
+      settingsIntegrationsEventory: {
+        title: 'Eventory',
+        summary: 'Sync rental products and jobs with Eventory.',
+        group: 'settings',
+        parent: 'settingsIntegrations',
+        sections: [
+          {
+            heading: 'In Eventory',
+            body: [
+              'In your Eventory account, generate API credentials (API URL, token endpoint, API key, username, and password) for the instance you want to connect.',
+              'Note the supplier name and rental customer ID used for synced rental products and bookings.',
+            ],
+          },
+          {
+            heading: 'In Stockwire Rental',
+            body: [
+              'Open Settings > Integrations > Eventory and add an instance with the API URL (https://api.eventory.se), token endpoint, API key, username, and password.',
+              'Set the price margin %, choose whether to create Eventory jobs for rentals, and map rental products to this instance. Use Test connection, then Sync now.',
+            ],
+          },
+        ],
+      },
+      settingsIntegrationsProductionPlanner: {
+        title: 'ProductionPlanner',
+        summary: 'Turn jobs and projects into production plans in ProductionPlanner.io.',
+        group: 'settings',
+        parent: 'settingsIntegrations',
+        sections: [
+          {
+            heading: 'In ProductionPlanner',
+            body: [
+              'In ProductionPlanner.io, open Integrations and copy your API key (starts with pp_). The default API base URL is https://api.productionplanner.io/v1.',
+            ],
+          },
+          {
+            heading: 'In Stockwire Rental',
+            body: [
+              'Open Settings > Integrations > ProductionPlanner, enable it, and paste the API key and base URL.',
+              'Use Test connection to verify, then save. Projects can be synced to ProductionPlanner from the project view.',
+            ],
+          },
+        ],
+      },
+      settingsIntegrationsTwenty: {
+        title: 'Twenty CRM',
+        summary: 'Two-way sync of jobs, customers, and people with Twenty CRM.',
+        group: 'settings',
+        parent: 'settingsIntegrations',
+        sections: [
+          {
+            heading: 'In Twenty CRM',
+            body: [
+              'In Twenty CRM, open Settings > APIs & Webhooks and create an API key (starts with twenty_). The default API base URL is https://api.twenty.com.',
+              'If you want changes in Twenty to flow back into Stockwire, configure a webhook pointing at this backend public URL.',
+            ],
+          },
+          {
+            heading: 'In Stockwire Rental',
+            body: [
+              'Open Settings > Integrations > Twenty CRM, enable it, and enter the API key, base URL, and sync interval.',
+              'Set the webhook secret and webhook base URL (or rely on the server API_BASE_URL). Use Test connection and Sync now; sync status and logs are shown in the tab.',
+            ],
+          },
+        ],
+      },
+      settingsIntegrationsStagewire: {
+        title: 'Stagewire',
+        summary: 'Link Stagewire stage plots and patch sheets to your stock.',
+        group: 'settings',
+        parent: 'settingsIntegrations',
+        sections: [
+          {
+            heading: 'In Stagewire',
+            body: [
+              'In Stagewire, open Settings > Stockwire integration and copy the shared key used to link the two systems.',
+            ],
+          },
+          {
+            heading: 'In Stockwire Rental',
+            body: [
+              'Open Settings > Integrations > Stagewire and add an instance with the Stagewire base URL (HTTPS is required when a key is set) and the shared key.',
+              'Use Test connection to verify the link before relying on it.',
+            ],
+          },
+        ],
+      },
+      settingsIntegrationsStockwire: {
+        title: 'Partner Stockwire instances',
+        summary: 'Rent equipment from and connect to other Stockwire Rental instances.',
+        group: 'settings',
+        parent: 'settingsIntegrations',
+        sections: [
+          {
+            heading: 'On the remote instance',
+            body: [
+              'On the partner Stockwire Rental instance, create an API key for authenticating the connection and note its API URL.',
+            ],
+          },
+          {
+            heading: 'In your instance',
+            body: [
+              'Open Settings > Integrations > Stockwire Instances and add a connection with the remote API URL and API key.',
+              'Set the local supplier customer that represents this rental supplier and your customer ID on the remote instance. Use Test connection to verify.',
+            ],
+          },
+        ],
+      },
+      settingsNotifications: {
+        title: 'Email & notifications',
+        summary: 'Configure email delivery and notification templates.',
+        group: 'settings',
+        parent: 'settings',
+        sections: [
+          {
+            heading: 'Email / SMTP',
+            body: [
+              'Set how the system sends email for password resets and notifications, via SMTP or the Resend API.',
+              'If SMTP is managed by environment variables on the server, those values are shown but cannot be edited here.',
+            ],
+          },
+          {
+            heading: 'Notification preferences and templates',
+            body: [
+              'Choose which events send email or web push, and to whom (customer, staff, or both).',
+              'Notification templates use variables (for example job_code, customer_name) so each message is filled in automatically. Load defaults or write your own.',
+            ],
+          },
+        ],
+      },
+      settingsOffline: {
+        title: 'Offline sync queue',
+        summary: 'See and manage changes queued while offline.',
+        group: 'settings',
+        parent: 'settings',
+        sections: [
+          {
+            heading: 'What the queue does',
+            body: [
+              'When the app is offline, your changes are stored in a queue and sent to the server automatically when you reconnect.',
+              'The queue shows whether you are online or offline and how many operations are waiting.',
+            ],
+          },
+          {
+            heading: 'Managing the queue',
+            body: [
+              'Flush now sends queued operations; Retry failed re-attempts operations that errored; Clear blocked removes operations that cannot be resolved.',
+              'Conflict policies (merge, last-write-wins, guarded) decide how overlapping edits are combined when they reach the server.',
+            ],
+          },
+        ],
+      },
+      settingsAiAssistant: {
+        title: 'AI Assistant',
+        summary: 'Configure the AI Assistant backend (LLM).',
+        group: 'settings',
+        parent: 'settings',
+        sections: [
+          {
+            heading: 'Choosing a backend',
+            body: [
+              'The AI Assistant can use a local Ollama model, Google Gemini, OpenAI, or OpenCode.',
+              'Enter the API base URL, an API key where needed, and the model name, then fetch the available models.',
+            ],
+          },
+          {
+            heading: 'Testing and saving',
+            body: [
+              'Use Test Connection to confirm the backend is reachable before saving.',
+              'Quick presets help you start with a known-good configuration for each provider.',
+            ],
+          },
+        ],
+      },
+      settingsCalendarFx: {
+        title: 'Calendar feeds & FX rates',
+        summary: 'Public calendar feeds and currency exchange rates.',
+        group: 'settings',
+        parent: 'settings',
+        sections: [
+          {
+            heading: 'Calendar feeds',
+            body: [
+              'Create public iCal feeds (for example a crew schedule) that anyone can add to Google Calendar or another calendar app without logging in.',
+              'Each feed has a token in its URL; regenerate the token if a feed should no longer be accessible at its old link.',
+            ],
+          },
+          {
+            heading: 'FX rates',
+            body: [
+              'Set the base currency and exchange rates so purchase orders and finance in other currencies convert correctly.',
+              'Refresh the rates to update converted totals; missing rates are shown in their original currency.',
+            ],
+          },
+        ],
+      },
+    },
   },
 }

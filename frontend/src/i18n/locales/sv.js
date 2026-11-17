@@ -27,6 +27,7 @@ export default {
       finance: 'Ekonomi',
       reports: 'Rapporter',
       settings: 'Inställningar',
+      help: 'Hjälp',
       routePlanner: 'Ruttschemaläggare',
       group: {
         inventory: 'Lager',
@@ -3555,5 +3556,1089 @@ export default {
     capturedSerials: 'Inlästa serienummer',
     qtyToReceive: 'Antal att ta emot',
     receiveWithoutSerialsHint: 'Ange antal även utan att skanna serienummer; enheterna får genererade asset-taggar.',
+  },
+  help: {
+    title: 'Hjälp',
+    intro: 'Guider och förklaringar för att använda Stockwire Rental. Välj ett ämne för att komma igång.',
+    back: 'Tillbaka till Hjälp',
+    backTo: 'Tillbaka till {name}',
+    inThisSection: 'I detta avsnitt',
+    comingSoon: 'Den här artikeln skrivs.',
+    groups: {
+      gettingStarted: 'Kom igång',
+      inventory: 'Lager och produkter',
+      operations: 'Drift',
+      people: 'Personer och företag',
+      financeReports: 'Ekonomi och rapporter',
+      settings: 'Inställningar',
+      more: 'Mer',
+    },
+    articles: {
+      gettingStarted: {
+        title: 'Kom igång',
+        summary: 'Vad Stockwire Rental används för och hur du hittar i appen.',
+        group: 'gettingStarted',
+        sections: [
+          {
+            heading: 'Vad är Stockwire Rental?',
+            body: [
+              'Stockwire Rental är ett verktyg för uthyrningsföretag för att hålla reda på lager, jobb och den utrustning som flyttas mellan platser och kunder.',
+              'Det är en webbapp som du kan installera på en telefon eller surfplatta och använda på plats, även med dålig uppkoppling.',
+            ],
+          },
+          {
+            heading: 'Huvudområdena',
+            body: [
+              'Lager innehåller ditt lagersaldo och produkterna i din Leverantörskatalog.',
+              'Jobb beskriver arbetet för en kund och de produkter som plockas till det.',
+              'Drift samlar Jobb, Projekt, Ekonomi och Ruttschemaläggaren.',
+              'Personer och företag omfattar Kunder, Företag, Personer, Personal och Platser.',
+              'Rapporter och Inställningar låter dig granska aktivitet och konfigurera systemet.',
+            ],
+          },
+          {
+            heading: 'Arbeta offline',
+            body: [
+              'Appen fungerar även utan uppkoppling. Ändringar du gör sparas på enheten och synkroniseras när du är online igen.',
+              'Andra som använder appen ser uppdateringar via realtidssynkronisering så fort de återansluter.',
+            ],
+          },
+          {
+            heading: 'Behöver du mer hjälp?',
+            body: [
+              'Den här Hjälp-sektionen förklarar varje område. Öppna den från menyn när du vill.',
+            ],
+          },
+        ],
+      },
+      gettingStartedQuickStart: {
+        title: 'Snabbstart för nya användare',
+        summary: 'Det första du ska ställa in och de dagliga vanor som håller Stockwire Rental korrekt.',
+        group: 'gettingStarted',
+        parent: 'gettingStarted',
+        sections: [
+          {
+            heading: 'Ställ in grunderna',
+            body: [
+              'Första dagen, öppna Inställningar och fyll i din företagsprofil (namn, logotyp, valuta, momsnummer) så att dokument och fakturor ser rätt ut.',
+              'Be en Admin lägga till ditt konto och tilldela rätt roll — Admin, Manager eller Viewer — och, om du använder Microsoft Entra ID, logga in med SSO.',
+            ],
+          },
+          {
+            heading: 'Bygg ditt lager',
+            body: [
+              'Lägg till det du hyr ut som Produkter, och hämta detaljer från Leverantörskatalogen så att priser och streckkoder fylls i åt dig.',
+              'För serienummerutrustning, skapa en Enhet för varje exemplar med serienummer och tillgångsetikett, och ge varje enhet en Plats så att du alltid vet var den är.',
+            ],
+          },
+          {
+            heading: 'Kör ditt första jobb',
+            body: [
+              'Skapa ett Jobb för kunden och platsen, lägg till de produkter du behöver och Plocka lager så att appen visar vad som är reserverat och vad som saknas.',
+              'På plats, använd Skanna för att checka in och ut saker, och markera jobbet som Slutfört när utrustningen är tillbaka så att tillgängligheten stämmer.',
+            ],
+          },
+          {
+            heading: 'Ta till dig de dagliga vanorna',
+            body: [
+              'Skanna i stället för att skriva: det går snabbare och förhindrar fel. Håll en enhet i rörelse genom sina statusar (Tillgänglig, Reserverad, I bruk, Underhåll) så att siffrorna är ärliga.',
+              'Arbeta offline utan oro — ändringar sparas på din enhet och synkroniseras när du återansluter. Aktivitetsloggen registrerar vem som ändrade vad, vilket är din säkerhetsvara.',
+            ],
+          },
+        ],
+      },
+      gettingStartedFields: {
+        title: 'Viktiga fält förklarade',
+        summary: 'Vad de viktiga fälten på produkter, enheter, jobb och mer faktiskt betyder.',
+        group: 'gettingStarted',
+        parent: 'gettingStarted',
+        sections: [
+          {
+            heading: 'Produktfält',
+            body: [
+              'Artikelnummer är produktens unika lagerkod; Namn och Typ (Utrustning, Tillbehör, Förbrukningsvara, Väska, Hyra) säger vad den är.',
+              'Dygnspris är vad du tar per dag, och Ersättningskostnad är vad det kostar att ersätta om den försvinner. Minsta lager och Minsta orderkvantitet utlöser påminnelser om ombeställning.',
+              'Under Leverantörer kopplar du produkten till en Leverantörskatalogpost, vilket hämtar leverantörens pris, streckkod och lager automatiskt.',
+            ],
+          },
+          {
+            heading: 'Enhetsfält (lager)',
+            body: [
+              'En Enhet är ett fysiskt exemplar av en Produkt. Produkt kopplar den till det du hyr ut, och Tillgångsetikett är dess unika fysiska märkning.',
+              'Serienummer, Streckkod, QR-kod och RFID är skanningsbara identifierare som används för att slå upp enheten. Status (Tillgänglig, Reserverad, I bruk, Underhåll) och Skick visar dess tillstånd.',
+              'Plats anger var enheten förvaras, och Inköpsdatum, Inköpspris, Garantislut och Utfasningsdatum täcker dess ägardeliv.',
+            ],
+          },
+          {
+            heading: 'Jobbfält',
+            body: [
+              'Jobbkod är jobbets unika referens. Status (Utkast, Bekräftad, Pågående, Slutfört, Avbruten) för det genom livscykeln.',
+              'Kund, Plats och Projekt kopplar jobbet till rätt personer och plats, medan Startdatum och Slutdatum sätter hyresperioden.',
+              'Försäljningspris är vad du tar betalt, och Faktura betald markerar om kunden har reglerat. Produktbehov listar vad som måste plockas.',
+            ],
+          },
+          {
+            heading: 'Företagsfält',
+            body: [
+              'Namn är obligatoriskt och identifierar organisationen. Adress, Stad, Postnummer, Land och Anteckningar fångar var de finns och detaljer.',
+              'Leverantörstyper (Kund, Produktleverantör, Hyresleverantör, Personalleverantör) avgör var företaget visas i appen och vad det kan användas till.',
+            ],
+          },
+          {
+            heading: 'Personfält',
+            body: [
+              'Förnamn och Efternamn är obligatoriska för att identifiera personen. E-post och Telefon låter appen och ditt team nå dem.',
+              'Företag kopplar personen till en organisation, eller så kan du låta dem vara fristående för engångskontakter.',
+            ],
+          },
+          {
+            heading: 'Platsfält',
+            body: [
+              'Namn är obligatoriskt för platsen där arbetet sker. Adress, Stad och Land placerar den; Latitud och Longitud låter Ruttschemaläggaren beräkna körtider.',
+              'Kontaktperson, Telefon och E-post ger föraren eller teamet någon att nå på dagen, och Anteckningar kan hålla parkerings- eller åtkomstinstruktioner.',
+            ],
+          },
+          {
+            heading: 'Inköpsorderfält',
+            body: [
+              'Ordernummer är orderns unika referens, och Leverantör är företaget du köper från. Status (Utkast, Skickad, Godkänd, Beställd, Delvis mottagen, Mottagen) följer uppfyllnaden.',
+              'Orderdatum och Förväntad leverans sätter tidpunkten, och raderna listar varje Artikel, dess Artikelnummer, Antal, Styckpris och Valuta.',
+              'När varorna anländer, använd Ta emot för att checka in dem mot inköpsordern så att varje enhet kopplas till rätt rad och pris.',
+            ],
+          },
+        ],
+      },
+      inventory: {
+        title: 'Lager',
+        summary: 'Hur lagersaldo, platser och kvantiteter hanteras.',
+        group: 'inventory',
+        sections: [
+          {
+            heading: 'Vad är Lager?',
+            body: [
+              'Lager är listan över fysiska enheter du äger, var de förvaras, och om de är tillgängliga, uthyrda, på service eller avskrivna.',
+            ],
+          },
+          {
+            heading: 'Platser',
+            body: [
+              'Varje enhet finns på en plats, till exempel ett rack, en hylla, en back, en bil eller en plats. Använd Platser för att hålla reda på var allt finns.',
+            ],
+          },
+          {
+            heading: 'Lagerstatus',
+            body: [
+              'Enheter går genom statusar som tillgänglig, uthyrd, i underhåll och avskriven. Lagerlistan visar aktuell status och låter dig filtrera.',
+            ],
+          },
+          {
+            heading: 'Lägga till och flytta enheter',
+            body: [
+              'Skapa enheter från en produkt (eller genom att ta emot en inköpsorder) och tilldela varje enhet en plats och, för serienummerutrustning, ett serienummer och en tillgångsetikett.',
+              'Flytta en enhet mellan platser när den plockas, levereras eller lämnas tillbaka; platshistoriken är en del av dess post.',
+            ],
+          },
+        ],
+      },
+      products: {
+        title: 'Produkter och Leverantörskatalog',
+        summary: 'Definiera vad du hyr ut och koppla det till leverantörskatalogposter.',
+        group: 'inventory',
+        sections: [
+          {
+            heading: 'Produkter jämfört med Leverantörskatalog',
+            body: [
+              'En Produkt är artikeln du hyr ut. Leverantörskatalogen innehåller leverantörens katalogdata, priser och streckkoder.',
+              'Att koppla en produkt till en Leverantörskatalogpost håller streckkoder och leverantörsuppgifter synkroniserade.',
+            ],
+          },
+          {
+            heading: 'Specifikationer och kategorier',
+            body: [
+              'Lägg till tekniska specifikationer och en kategori på varje produkt så att den är lätt att hitta och jämföra. Tillbehör och komponenter låter dig bygga paket.',
+            ],
+          },
+          {
+            heading: 'Arbeta med leverantörskatalogen',
+            body: [
+              'Hämta artiklar från Leverantörskatalogen in i dina produkter så att priser, streckkoder och leverantörsdata redan är ifyllda.',
+              'Håll en produkt per hyrbar artikel och koppla den till rätt katalogpost, i stället för att duplicera leverantörsdata över produkter.',
+            ],
+          },
+        ],
+      },
+      jobs: {
+        title: 'Jobb',
+        summary: 'Planera kundarbete och de produkter som plockas till det.',
+        group: 'operations',
+        sections: [
+          {
+            heading: 'Vad är ett Jobb?',
+            body: [
+              'Ett Jobb representerar arbete för en kund under en tidsperiod, på en eller flera platser. Det listar de produkter och kvantiteter som behövs.',
+            ],
+          },
+          {
+            heading: 'Behov och plock',
+            body: [
+              'Lägg till uthyrningsbehov på ett jobb och plocka sedan matchande lager. Jobbvyn visar vad som är reserverat och vad som saknas.',
+            ],
+          },
+          {
+            heading: 'Status och tidslinje',
+            body: [
+              'Följ ett jobb genom dess livscykel från utkast till slutfört. Tidslinjen visar när saker plockas, levereras och lämnas tillbaka.',
+            ],
+          },
+          {
+            heading: 'Arbeta ett jobb från början till slut',
+            body: [
+              'Öppna jobbet, lägg till de produkter du behöver och plocka lager så att appen kan visa vad som är reserverat och vad som fortfarande saknas.',
+              'När evenemanget närmar sig, använd tidslinjen för att se plock, leveranser och returer, och skanna in och ut saker på plats för att hålla lagerstatusen ärlig.',
+            ],
+          },
+        ],
+      },
+      scan: {
+        title: 'Skanna',
+        summary: 'Använd skannern för att läsa streckkoder, QR-koder och NFC-taggar.',
+        group: 'operations',
+        sections: [
+          {
+            heading: 'Skanna grunderna',
+            body: [
+              'Öppna Skanna för att läsa en produktstreckkod, en enhetsseriens QR-kod eller en NFC-tagg. Det inlästa värdet används för att slå upp motsvarande post.',
+            ],
+          },
+          {
+            heading: 'Var skanning används',
+            body: [
+              'Skanning används vid mottagning av varor, vid plock av lager till ett jobb, och när du checkar in eller ut saker på plats.',
+            ],
+          },
+          {
+            heading: 'Skanningens arbetsflöde och genvägar',
+            body: [
+              'I en telefon, öppna Skanna och rikta kameran mot koden; motsvarande produkt-, enhets- eller personpost öppnas automatiskt.',
+              'Använd tangentbordsgenvägen (se hjälpen för genvägar i appen) för att öppna skannern var som helst utan att lämna sidan du är på.',
+            ],
+          },
+        ],
+      },
+      receive: {
+        title: 'Ta emot',
+        summary: 'Ta emot produkter från en inköpsorder till lagret.',
+        group: 'operations',
+        sections: [
+          {
+            heading: 'Ta emot från inköpsorder',
+            body: [
+              'Börja från en Inköpsorder och välj vilka rader och kvantiteter som ska tas emot. Skanna eller ange serienummer, och enheterna läggs till i Lager.',
+            ],
+          },
+          {
+            heading: 'Ta emot utan serienummer',
+            body: [
+              'Om artiklarna saknar serienummer, ange antalet så skapar appen tillgångsetiketter för varje enhet.',
+            ],
+          },
+          {
+            heading: 'Tips för mottagningsarbetsflöde',
+            body: [
+              'Sikta på att ta emot mot inköpsordern så att varje enhet kopplas till rätt rad, pris och leverantör.',
+              'Om ett serienummer inte går att skanna kan du skriva in det; när alla förväntade serienummer (eller antalet) är inne, avsluta mottagningen för att stänga raden.',
+            ],
+          },
+        ],
+      },
+      defectsMaintenance: {
+        title: 'Defekter och underhåll',
+        summary: 'Registrera fel och följ servicearbete på utrustning.',
+        group: 'operations',
+        sections: [
+          {
+            heading: 'Registrera en defekt',
+            body: [
+              'Registrera en defekt på en enhet med en beskrivning, en allvarlighetsgrad och ett förfallodatum. Defekter hjälper dig avgöra vad som kan hyras ut och vad som behöver service.',
+            ],
+          },
+          {
+            heading: 'Underhåll',
+            body: [
+              'Underhåll samlar servicearbete. Flytta en enhet till underhåll för att ta den ur tillgängligt lager tills den är reparerad.',
+            ],
+          },
+          {
+            heading: 'Från defekt till tillbaka i drift',
+            body: [
+              'Registrera en defekt så snart du märker ett fel, ange en allvarlighetsgrad och notera ett förfallodatum så att den finns med i planeringen före nästa uthyrning.',
+              'När enheten går till service, byt till underhåll; när den är reparerad, sätt tillbaka den som tillgänglig så att den kan hyras igen.',
+            ],
+          },
+        ],
+      },
+      purchaseOrders: {
+        title: 'Inköpsordrar',
+        summary: 'Beställ lager från leverantörer och följ upp vad som anländer.',
+        group: 'operations',
+        sections: [
+          {
+            heading: 'Skapa en inköpsorder',
+            body: [
+              'En inköpsorder (PO) talar om för en leverantör vad som ska skickas: artiklar, kvantiteter och styckpriser.',
+              'Skapa en PO från ett utkast, slå ihop flera till en, eller ta med artiklar som hamnat under sin beställningsnivå.',
+            ],
+          },
+          {
+            heading: 'Status och mottagning',
+            body: [
+              'En PO går genom Utkast, Skickad, Godkänd, Beställd, Delvis mottagen och Mottagen.',
+              'När varorna anländer använder du Ta emot för att checka in dem — se hjälpavsnittet Ta emot för detaljer.',
+            ],
+          },
+          {
+            heading: 'Beställa och ta emot tillsammans',
+            body: [
+              'Håll PO öppen och följ den till Mottagen så att ekonomi och lager stämmer med vad som faktiskt beställdes och levererades.',
+              'Använd sammanslagningsalternativet för att slå ihop rader från samma leverantör och spara frakt när du beställer för flera jobb samtidigt.',
+            ],
+          },
+        ],
+      },
+      labels: {
+        title: 'Etiketter',
+        summary: 'Skapa och skriv ut streckkods-, QR- och textetiketter för dina artiklar.',
+        group: 'inventory',
+        sections: [
+          {
+            heading: 'Etikettmallar',
+            body: [
+              'En etikettmall definierar vad som skrivs ut på en etikett: textfält, streckkoder, QR-koder och din företagslogotyp.',
+              'Bygg mallar i redigeraren med dra-och-släpp och välj vilka entitetsfält (enheter, produkter, platser, väskor) som ska visas.',
+            ],
+          },
+          {
+            heading: 'Utskrift',
+            body: [
+              'Anslut en Brother QL-seriens etikettskrivare via USB för direktutskrift, eller använd en systemskrivare.',
+              'Ställ in synlighet (alla användare, endast admins, endast ägare) och vilka roller som får redigera varje mall.',
+            ],
+          },
+          {
+            heading: 'Skriva ut en batch etiketter',
+            body: [
+              'Markera många enheter, produkter, platser eller väskor på en gång och skriv ut en batch med en sparad mall — användbart när lager anländer eller utrustning organiseras om.',
+              'Anslut Brother-skrivaren för direktutskrift på plats, eller exportera till en systemskrivare när du behöver en annan mediastorlek.',
+            ],
+          },
+        ],
+      },
+      projects: {
+        title: 'Projekt',
+        summary: 'Samla relaterade jobb under en kunduppdrag.',
+        group: 'operations',
+        sections: [
+          {
+            heading: 'Vad är ett projekt?',
+            body: [
+              'Ett projekt samlar flera jobb som hör till samma kunduppdrag, med ett gemensamt namn, datum och anteckningar.',
+              'Projekt hjälper dig att se hela arbetsomfånget för en kund över flera jobb.',
+            ],
+          },
+          {
+            heading: 'Status och jobb',
+            body: [
+              'Följ ett projekt som Aktivt, Slutfört eller Avbrutet. Varje projekt listar de jobb som är kopplade till det.',
+              'Projekt kan synkroniseras till en extern ProductionPlanner om den integrationen är konfigurerad.',
+            ],
+          },
+          {
+            heading: 'När du ska använda ett projekt',
+            body: [
+              'Använd ett projekt när en kunduppdrag sträcker sig över flera jobb vid olika datum eller platser, så att du ser hela omfånget på ett ställe.',
+              'Håll små, engångsjobb som fristående jobb; gruppera dem bara när den gemensamma kunden, datumen eller faktureringen gör det användbart.',
+            ],
+          },
+        ],
+      },
+      companies: {
+        title: 'Företag',
+        summary: 'Kunder, leverantörer och andra organisationer du samarbetar med.',
+        group: 'people',
+        sections: [
+          {
+            heading: 'Vad är ett företag?',
+            body: [
+              'Företag är organisationerna du gör affärer med: kunder som hyr din utrustning, och leverantörer du köper från.',
+              'Ett företag kan märkas med en eller flera leverantörstyper så att samma post kan fylla flera roller.',
+            ],
+          },
+          {
+            heading: 'Leverantörstyper',
+            body: [
+              'Markera ett företag som Kund, Produktleverantör, Hyresleverantör eller Personalleverantör för att styra var det visas i appen.',
+              'Dessa typer styr leverantörsväljaren på inköpsordrar och personalupphandling, så håll dem uppdaterade.',
+            ],
+          },
+          {
+            heading: 'Anpassade fält',
+            body: [
+              'Lägg till anpassade fält för att fånga extra företagsuppgifter som ditt arbetsflöde behöver, utöver standardnamn, adress och anteckningar.',
+            ],
+          },
+          {
+            heading: 'Håll adressboken användbar',
+            body: [
+              'Ställ in rätt leverantörstyper på varje företag så att inköpsordrar och personalupphandling erbjuder rätt val automatiskt.',
+              'Slå samman dubblettföretag i stället för att lämna flera versioner av samma kund, och håll adress och momsnummer aktuella för fakturering.',
+            ],
+          },
+        ],
+      },
+      persons: {
+        title: 'Personer',
+        summary: 'Individuella kontakter, med eller utan kopplat företag.',
+        group: 'people',
+        sections: [
+          {
+            heading: 'Vad är en person?',
+            body: [
+              'Personer är individer — kontakter hos en kund, frilansare eller vem som helst du behöver nå.',
+              'En person kan kopplas till ett företag eller hållas fristående.',
+            ],
+          },
+          {
+            heading: 'Koppling och aviseringar',
+            body: [
+              'Att koppla en person till ett företag håller adressboken ordnad och låter dig se alla på en organisation.',
+              'E-postaviseringar kan aktiveras per person så att de får de meddelanden ditt arbetsflöde skickar.',
+            ],
+          },
+          {
+            heading: 'Fristående kontra kopplad',
+            body: [
+              'Koppla en person till ett företag när de representerar den organisationen, så att kontakten hör till resten av kontot.',
+              'Håll frilansare eller engångskontakter fristående om de inte tillhör en kund eller leverantör du spårar.',
+            ],
+          },
+        ],
+      },
+      crew: {
+        title: 'Personal',
+        summary: 'Hantera personer, roller, kompetenser och jobbtilldelningar.',
+        group: 'people',
+        sections: [
+          {
+            heading: 'Medlemmar och roller',
+            body: [
+              'Personalmedlemmar är de personer du tilldelar jobb. Varje medlem kan ha föredragna roller, kompetenser, certifieringar och tim- eller dagpris.',
+              'Roller grupperar medlemmar efter funktion (till exempel Rigging, Ljud, Ljus) och kan vara interna eller externa.',
+            ],
+          },
+          {
+            heading: 'Behov och tilldelningar',
+            body: [
+              'På ett jobb lägger du till personalbehov (roll, antal, erforderliga kompetenser). Planeraren föreslår matchande medlemmar och du tilldelar dem manuellt.',
+              'Följ varje tilldelning genom statusar: Tilldelad, Bekräftad, Slutförd, Avbruten.',
+            ],
+          },
+          {
+            heading: 'Efterlevnad och kalender',
+            body: [
+              'Certifieringar har utgångsdatum; appen flaggar när en certifiering är giltig, snart utgående eller utgången så att du följer reglerna.',
+              'Varje medlem kan kopiera en personlig kalenderfeed (Min kalender) för att se sina tilldelningar.',
+            ],
+          },
+          {
+            heading: 'Planera personal för ett jobb',
+            body: [
+              'På jobbet, lägg till de roller och antal du behöver, lista eventuella erforderliga kompetenser, och låt planeraren föreslå matchande medlemmar.',
+              'Tilldela personer manuellt, bekräfta dem så att de får avisering, och kontrollera certifieringsstatus före jobbet så att ingen tilldelas på ett utgånget certifikat.',
+            ],
+          },
+        ],
+      },
+      venues: {
+        title: 'Platser',
+        summary: 'Platser och lokaler där arbetet utförs.',
+        group: 'people',
+        sections: [
+          {
+            heading: 'Vad är en plats?',
+            body: [
+              'Platser är de fysiska ställen där jobb äger rum — en festivaläng, en teater, en konferenshall eller en kundplats.',
+              'Varje plats lagrar en adress, en kontaktperson och anteckningar.',
+            ],
+          },
+          {
+            heading: 'Koordinater och kartor',
+            body: [
+              'Ange en plats latitud och longitud (eller en geokodbar adress) så att Ruttschemaläggaren kan beräkna körtider och optimera stopp.',
+              'Använd Öppna karta för att förhandsgranska platsens läge.',
+            ],
+          },
+          {
+            heading: 'Förbereda en plats för ruttplanering',
+            body: [
+              'Ange en exakt adress eller koordinater för varje plats du levererar till, så att körtider och ruttordning blir korrekta.',
+              'Lägg till en kontaktperson och anteckningar (parkering, lastkaj, åtkomstkoder) som föraren behöver den dagen.',
+            ],
+          },
+        ],
+      },
+      finance: {
+        title: 'Ekonomi',
+        summary: 'Följ transaktioner, betalningar och värdet på ditt lager och dina jobb.',
+        group: 'financeReports',
+        sections: [
+          {
+            heading: 'Transaktioner',
+            body: [
+              'Ekonomi registrerar penningrörelser som transaktioner: hyror, depositioner, betalningar, återbetalningar, avgifter och rabatter.',
+              'Varje transaktion har en status (Väntande, Slutförd, Misslyckad, Avbruten, Återbetald) och kan kvittas när den är betald.',
+            ],
+          },
+          {
+            heading: 'Översikt och filter',
+            body: [
+              'Översikten visar väntande, försenade och slutförda belopp, plus det beräknade värdet av aktiva jobb och värdet av ditt lager.',
+              'Filtrera transaktioner efter kund, tidsintervall, status eller endast försenade för att jaga det som är obetalt.',
+            ],
+          },
+          {
+            heading: 'Stämma av betalningar',
+            body: [
+              'Använd översikten för att se väntande, försenade och slutförda belopp på ett ögonblick, och kvitta en transaktion när pengarna har landat.',
+              'Filtrera till endast försenade för att bygga en ringlista, och använd kundfiltret för att granska ett enda konto innan du skickar en påminnelse.',
+            ],
+          },
+        ],
+      },
+      reports: {
+        title: 'Rapporter',
+        summary: 'Skapa PDF- och HTML-dokument från mallar.',
+        group: 'financeReports',
+        sections: [
+          {
+            heading: 'Rapportmallar',
+            body: [
+              'Rapporter byggs från mallar du utformar med en visuell blockredigerare (rubriker, stycken, tabeller, nyckel/värde, streckkoder, QR-koder).',
+              'Mallar grupperas efter kategori (Lager, Tillgångshantering, Logistik, Inköp, Anpassad) och kan rikta sig mot ett jobb, en enhet, en produkt, lager eller en inköpsorder.',
+            ],
+          },
+          {
+            heading: 'Brevhuvuden och utdata',
+            body: [
+              'Ladda upp PDF-brevhuvuden och ställ in ett som systemstandard; mallar kan använda standarden eller ett specifikt brevhuvud för varumärkt utdata.',
+              'Generera en rapport som PDF eller HTML, förhandsgranska den live och ladda ner eller exportera den.',
+            ],
+          },
+          {
+            heading: 'Bygga en rapportmall',
+            body: [
+              'Börja från en kategori som matchar dokumentet (till exempel Logistik för en plocklista), och lägg sedan till block som tabeller, streckkoder eller QR-koder.',
+              'Använd de tillgängliga variablerna för att hämta live-data från den valda entiteten, förhandsgranska resultatet och spara mallen så att den kan återanvändas för varje jobb.',
+            ],
+          },
+        ],
+      },
+      routePlanner: {
+        title: 'Ruttschemaläggare',
+        summary: 'Planera leveranser och upphämtningar, tilldela fordon och optimera stopp.',
+        group: 'operations',
+        sections: [
+          {
+            heading: 'Rutter och stopp',
+            body: [
+              'En rutt grupperar jobb som ska levereras eller hämtas tillsammans. Varje jobb blir ett stopp.',
+              'Lägg till jobb i en rutt, tilldela sedan ett eller flera fordon och sortera om eller optimera stoppen.',
+            ],
+          },
+          {
+            heading: 'Fordon och kapacitet',
+            body: [
+              'Definiera fordon med en typ (lastbil, skåpbil, släp, bil), maxvikt, maxvolym och lastutrymmesmått.',
+              'Planeraren varnar när lasten överskrider ett fordons vikt- eller volymkapacitet, inklusive kombinerad kapacitet över flera fordon.',
+            ],
+          },
+          {
+            heading: 'Optimering och kartor',
+            body: [
+              'Använd Optimera rutt för att ordna stopp efter körtid, och Öppna i Google Maps eller Förhandsgranska rutt för att se planen på en karta.',
+              'Ange en startadress (standard är ditt företags adress) så att körtiderna blir korrekta.',
+            ],
+          },
+          {
+            heading: 'Planera en leveransrunda',
+            body: [
+              'Lägg till jobben att leverera eller hämta, tilldela det/de fordon som rymmer totalvikten och volymen, och optimera sedan för att ordna stoppen efter körtid.',
+              'Förhandsgranska rutten på kartan, packa i omvänd ordning så att första leveransen ligger överst, och ge föraren packlistan och adresserna.',
+            ],
+          },
+        ],
+      },
+      warehouseLeds: {
+        title: 'Lager-LED',
+        summary: 'Tänd bin för att lokalisera enheter och guida plock.',
+        group: 'settings',
+        parent: 'settings',
+        sections: [
+          {
+            heading: 'Styrenheter och mappningar',
+            body: [
+              'Lager-LED använder ESP-styrenheter kopplade till LED-remsor längs dina hyllor. Varje styrenhet mappas till bin eller hyllor (pixelintervall) och till lagerzoner.',
+              'Registrera styrenheter med deras MAC-adress och antal LED, och tilldela sedan de zoner de täcker.',
+            ],
+          },
+          {
+            heading: 'Lokalisera och markera',
+            body: [
+              'Använd Lokalisera enhet för att tända bin där en specifik enhet förvaras, eller Visa retur för att tända var saker ska tillbaka.',
+              'Markera jobb-bin tänder varje bin som innehåller enheter ett jobb behöver, och Lokalisera alla på LED visar alla lokaliserade enheter på en gång.',
+            ],
+          },
+          {
+            heading: 'ESPHome',
+            body: [
+              'Generera en färdig ESPHome-YAML för en styrenhet, och ladda ner hemlighetsmallen, så att hårdvaruinstallationen förblir konsekvent.',
+            ],
+          },
+          {
+            heading: 'Ett plockningsarbetsflöde med LED',
+            body: [
+              'Vid plock för ett jobb, markera dess bin så att hyllan visar exakt vart du ska gå, och lokalisera sedan varje enhet för att bekräfta rätt bin.',
+              'Vid retur, använd Visa retur för att tända var varje sak hör hemma, vilket snabbar upp uppställningen och förhindrar felplacering.',
+            ],
+          },
+        ],
+      },
+      activity: {
+        title: 'Aktivitet',
+        summary: 'En sökbar logg över allt som ändrats i systemet.',
+        group: 'more',
+        sections: [
+          {
+            heading: 'Vad är aktivitetsloggen?',
+            body: [
+              'Aktivitetsloggen registrerar varje skapande, uppdatering, borttagning, scanning och jobb in eller ut i hela systemet.',
+              'Den är revisionsspåret för vem som gjorde vad och när.',
+            ],
+          },
+          {
+            heading: 'Läsa loggen',
+            body: [
+              'Varje post visar entiteten, åtgärden, användaren och tiden. Filtrera eller sök för att hitta en specifik ändring.',
+              'Åtgärdstyper inkluderar Uppslag, Skanna, Skapa, Uppdatera, Ta bort, Jobb in, Jobb ut och Flytta.',
+            ],
+          },
+          {
+            heading: 'Använd loggen för att granska en ändring',
+            body: [
+              'Om något ser fel ut — en enhet på fel plats, ett jobb redigerat — sök i loggen efter entitet eller tid för att se exakt vem som ändrade det och när.',
+              'Loggen är skrivskyddad och täcker hela systemet, så den är första stället att titta när du stämmer av en avvikelse.',
+            ],
+          },
+        ],
+      },
+      settings: {
+        title: 'Inställningar',
+        summary: 'Konfigurera systemet, användare och affärsalternativ.',
+        group: 'settings',
+        sections: [
+          {
+            heading: 'Vad finns i Inställningar?',
+            body: [
+              'Inställningar är adminområdet där du konfigurerar användare, företagsuppgifter, integrationer och hur appen beter sig.',
+              'Det är ordnat i flikar. Artiklarna nedan förklarar varje flik i detalj; öppna en från Hjälp-indexet under Inställningar.',
+            ],
+          },
+          {
+            heading: 'Vem kan använda Inställningar?',
+            body: [
+              'Endast användare med rollen Admin ser Inställningar i navigeringen.',
+              'Vissa flikar, som Offline-kön, är också användbara för chefer som felsöker synkronisering på plats.',
+            ],
+          },
+        ],
+      },
+      settingsUsers: {
+        title: 'Användare och åtkomst',
+        summary: 'Hantera användarkonton, roller, API-nycklar och enkel inloggning.',
+        group: 'settings',
+        parent: 'settings',
+        sections: [
+          {
+            heading: 'Användare och roller',
+            body: [
+              'Skapa användarkonton och tilldela en roll: Admin, Manager eller Viewer. Rollen styr vad varje person kan se och ändra.',
+              'Admins hanterar systemet; Managers sköter den dagliga driften; Viewers kan bläddra men inte redigera.',
+            ],
+          },
+          {
+            heading: 'Tjänst-API-nycklar',
+            body: [
+              'API-nycklar låter andra system autentisera mot Stockwire Rental utan en användarinloggning.',
+              'En Admin-nyckel har full åtkomst; en begränsad nyckel är begränsad till specifika operationer. Kopiera den råa nyckeln när den skapas — den kan inte visas igen.',
+            ],
+          },
+          {
+            heading: 'Enkel inloggning (SSO)',
+            body: [
+              'Anslut identitetsleverantörer med OpenID Connect (OIDC) eller SAML så att användare loggar in via ditt befintliga system.',
+              'Mappa externa grupper till approller, aktivera automatisk skapning av användare och synkronisera roller vid inloggning för att hålla åtkomsten i fas med din katalog.',
+            ],
+          },
+        ],
+      },
+      settingsCompany: {
+        title: 'Företagsprofil',
+        summary: 'Varumärke, kontaktuppgifter och standardföretagsinformation.',
+        group: 'settings',
+        parent: 'settings',
+        sections: [
+          {
+            heading: 'Varumärke och logotyper',
+            body: [
+              'Ange företagsnamn, standardvaluta, momsnummer och standardspråk för plattformen.',
+              'Ladda upp logotyper för ljusa och mörka teman och för olika storlekar; etiketter och dokument föredrar de mörka varianterna, inloggningssidan föredrar ljusa.',
+            ],
+          },
+          {
+            heading: 'Adress och kontakt',
+            body: [
+              'Håll din företagsadress, telefon, kontakt-e-post och webbplats uppdaterade.',
+              'Dessa uppgifter visas på dokument och ekonomiskappar, så noggrannhet är viktigt för fakturering och varumärke.',
+            ],
+          },
+        ],
+      },
+      settingsCustomFields: {
+        title: 'Anpassade fält',
+        summary: 'Lägg till egna fält på produkter, jobb, kunder och platser.',
+        group: 'settings',
+        parent: 'settings',
+        sections: [
+          {
+            heading: 'Definiera fält',
+            body: [
+              'Anpassade fält låter dig fånga information som standardformulären inte täcker, för produkter, jobb, kunder eller platser.',
+              'Varje fält har en etikett, en nyckel (auto-normaliserad till snake_case), en värdetyp (text, nummer, boolean, datum eller urval) och om det är obligatoriskt.',
+            ],
+          },
+          {
+            heading: 'Använda anpassade fält',
+            body: [
+              'När de är definierade visas fältet på den aktuella entiteten så att personal kan fylla i det.',
+              'Urvalsfält använder en kommaseparerad lista med alternativ. Anpassade fält syns i filter, rapporter och etiketter där det stöds.',
+            ],
+          },
+        ],
+      },
+      settingsInventory: {
+        title: 'Lagerstandardvärden',
+        summary: 'Standardvarumärken, tillverkare, platser och kategorier för lager.',
+        group: 'settings',
+        parent: 'settings',
+        sections: [
+          {
+            heading: 'Varumärken och tillverkare',
+            body: [
+              'Hantera de valbara varumärkes- och tillverkarlistorna som används när du skapar produkter, och välj standardvärdena som tillämpas på nya produkter.',
+              'Du kan också koppla ett varumärke till en föredragen tillverkare och lägga till webbplatslänkar för snabb referens.',
+            ],
+          },
+          {
+            heading: 'Platser och kategorier',
+            body: [
+              'Definiera platstyperna som är tillgängliga när du skapar lagringsplatser, så att din lagerstruktur förblir konsekvent.',
+              'Kategorifyllvägar (till exempel Ljud > Kablar > XLR) snabbar upp produktkategorisering med en känd, lokaliserad hierarki.',
+            ],
+          },
+        ],
+      },
+      settingsIntegrations: {
+        title: 'Integrationer',
+        summary: 'Anslut Stockwire Rental till externa system.',
+        group: 'settings',
+        parent: 'settings',
+        sections: [
+          {
+            heading: 'Hyres- och planeringsintegrationer',
+            body: [
+              'Anslut Eventory för att synkronisera hyresprodukter och skapa jobb, och ProductionPlanner för att omvandla jobb och projekt till produktionsplaner.',
+              'Stagewire kopplar dess scenritningar och patch-ark till ditt lager, och Stockwire-instanser låter dig hyra utrustning från partnerinstallationer.',
+            ],
+          },
+          {
+            heading: 'Twenty CRM',
+            body: [
+              'Tvåvägssynkronisering håller Jobb i Stockwire matchade mot Opportunities i Twenty CRM, och Kunder matchade mot Företag och Personer.',
+              'Konfigurera API-nyckeln, synkroniseringsintervall och en webhook-hemlighet så att ändringar flödar i båda riktningarna.',
+            ],
+          },
+          {
+            heading: 'Testa anslutningar',
+            body: [
+              'Varje integration har en Testa anslutning-knapp så att du kan verifiera URL och nyckel innan du förlitar dig på den.',
+              'Eventory och Twenty visar också synkroniseringsstatus och låter dig utlösa en synkronisering manuellt.',
+            ],
+          },
+        ],
+      },
+      settingsIntegrationsEntra: {
+        title: 'Microsoft Entra ID (SSO)',
+        summary: 'Anslut Stockwire Rental till Microsoft Entra ID för enkel inloggning.',
+        group: 'settings',
+        parent: 'settingsIntegrations',
+        sections: [
+          {
+            heading: 'Innan du börjar',
+            body: [
+              'Aktivera SSO i Stockwire Rental (Inställningar > Användare och åtkomst > Enkel inloggning) och bestäm om användare ska skapas automatiskt och om roller ska synkroniseras vid inloggning.',
+              'Lägg till en OIDC- eller SAML-leverantör i appen. Den leverantörsnyckel du anger visas i inloggnings-omdirigeringens URL, så anteckna den.',
+            ],
+          },
+          {
+            heading: 'OIDC: konfigurera Entra ID',
+            body: [
+              'I Microsoft Entra-admincentret registrerar du ett program (Appregistreringar > Ny registrering) och noterar programmets (klient-) ID och katalogens (klient-) ID.',
+              'Under Autentisering lägger du till en webb-omdirigerings-URI exakt: https://<din-domän>/login?oidc_provider=<leverantörsnyckel> (använd leverantörsnyckeln från appen).',
+              'Under Certifikat och hemligheter skapar du en klienthemlighet, och under API-behörigheter beviljar du openid, email och profile (samt GroupMember.Read.All om du mappar grupper till roller).',
+            ],
+          },
+          {
+            heading: 'OIDC: konfigurera appen',
+            body: [
+              'I appens leverantör ställer du in Issuer till https://login.microsoftonline.com/<klientId>/v2.0, auktoriseringsslutpunkt till .../oauth2/v2.0/authorize, token-slutpunkt till .../oauth2/v2.0/token och JWKS-URI till .../discovery/v2.0/keys.',
+              'Ange klient-ID och klienthemlighet från Entra, ställ in Scopes till "openid email profile" och mappa gruppanspråket om du använder grupp-till-roll-mappning.',
+            ],
+          },
+          {
+            heading: 'SAML: konfigurera Entra ID',
+            body: [
+              'I Entra skapar du ett företagsprogram och ställer in dess ACS-URL och SP-enhets-ID till de värden som visas i appen (Inställningar > Användare och åtkomst > Enkel inloggning), eller hämtar dem från appens SAML-metadata-slutpunkt.',
+              'Ladda upp appens metadata (eller ange ACS-URL och enhets-ID manuellt) så att Entra vet var den ska posta försäkringar, och tillhandahåll IdP-enhets-ID, SSO-URL och signeringscertifikat.',
+              'Appens ACS-URL är vanligtvis https://<din-domän>/api/v1/auth/sso/saml/acs.',
+            ],
+          },
+          {
+            heading: 'SAML: konfigurera appen',
+            body: [
+              'I appens SAML-leverantör anger du IdP-enhets-ID, IdP-SSO-URL och x509-signeringscertifikat från Entra.',
+              'Ställ in SP-enhets-ID och ACS-URL så att de matchar det du registrerade i Entra, och testa sedan inloggningen från appens SSO-knapp.',
+            ],
+          },
+          {
+            heading: 'Grupp-till-roll-mappning',
+            body: [
+              'Mappa Entra-grupper till approller (Admin, Manager, Viewer) så att åtkomsten hålls i fas med din katalog.',
+              'Aktivera Synkronisera roller vid inloggning för att hålla rolländringar i Entra återspegterade i Stockwire Rental.',
+            ],
+          },
+          {
+            heading: 'Verifiera och felsök',
+            body: [
+              'Efter att ha sparat, använd appens SSO-knapp för att logga in; en lyckad omdirigering tillbaka till Stockwire bekräftar att leverantören är korrekt.',
+              'Om inloggningen misslyckas, kontrollera att omdirigerings-URI (OIDC) eller ACS-URL och enhets-ID (SAML) matchar exakt det som är registrerat i Entra, och att signeringscertifikatet är aktuellt.',
+            ],
+          },
+        ],
+      },
+      settingsIntegrationsEventory: {
+        title: 'Eventory',
+        summary: 'Synkronisera hyresprodukter och jobb med Eventory.',
+        group: 'settings',
+        parent: 'settingsIntegrations',
+        sections: [
+          {
+            heading: 'I Eventory',
+            body: [
+              'I ditt Eventory-konto genererar du API-uppgifter (API-URL, token-slutpunkt, API-nyckel, användarnamn och lösenord) för den instans du vill ansluta.',
+              'Anteckna leverantörsnamnet och hyreskund-ID som används för synkroniserade hyresprodukter och bokningar.',
+            ],
+          },
+          {
+            heading: 'I Stockwire Rental',
+            body: [
+              'Öppna Inställningar > Integrationer > Eventory och lägg till en instans med API-URL (https://api.eventory.se), token-slutpunkt, API-nyckel, användarnamn och lösenord.',
+              'Ställ in pris marginal %, välj om Eventory-jobb ska skapas för hyror, och mappa hyresprodukter till denna instans. Använd Testa anslutning och sedan Synkronisera nu.',
+            ],
+          },
+        ],
+      },
+      settingsIntegrationsProductionPlanner: {
+        title: 'ProductionPlanner',
+        summary: 'Omvandla jobb och projekt till produktionsplaner i ProductionPlanner.io.',
+        group: 'settings',
+        parent: 'settingsIntegrations',
+        sections: [
+          {
+            heading: 'I ProductionPlanner',
+            body: [
+              'I ProductionPlanner.io öppnar du Integrationer och kopierar din API-nyckel (börjar med pp_). Standard API-bas-URL är https://api.productionplanner.io/v1.',
+            ],
+          },
+          {
+            heading: 'I Stockwire Rental',
+            body: [
+              'Öppna Inställningar > Integrationer > ProductionPlanner, aktivera den och klistra in API-nyckel och bas-URL.',
+              'Använd Testa anslutning för att verifiera och spara sedan. Projekt kan synkroniseras till ProductionPlanner från projektvyn.',
+            ],
+          },
+        ],
+      },
+      settingsIntegrationsTwenty: {
+        title: 'Twenty CRM',
+        summary: 'Tvåvägssynkronisering av jobb, kunder och personer med Twenty CRM.',
+        group: 'settings',
+        parent: 'settingsIntegrations',
+        sections: [
+          {
+            heading: 'I Twenty CRM',
+            body: [
+              'I Twenty CRM öppnar du Inställningar > API:er och webhooks och skapar en API-nyckel (börjar med twenty_). Standard API-bas-URL är https://api.twenty.com.',
+              'Om du vill att ändringar i Twenty ska flöda tillbaka till Stockwire konfigurerar du en webhook som pekar på denna backends publika URL.',
+            ],
+          },
+          {
+            heading: 'I Stockwire Rental',
+            body: [
+              'Öppna Inställningar > Integrationer > Twenty CRM, aktivera den och ange API-nyckel, bas-URL och synkroniseringsintervall.',
+              'Ställ in webhook-hemlighet och webhook-bas-URL (eller förlita dig på serverns API_BASE_URL). Använd Testa anslutning och Synkronisera nu; synkroniseringsstatus och loggar visas i fliken.',
+            ],
+          },
+        ],
+      },
+      settingsIntegrationsStagewire: {
+        title: 'Stagewire',
+        summary: 'Koppla Stagewires scenritningar och patch-ark till ditt lager.',
+        group: 'settings',
+        parent: 'settingsIntegrations',
+        sections: [
+          {
+            heading: 'I Stagewire',
+            body: [
+              'I Stagewire öppnar du Inställningar > Stockwire-integration och kopierar den delade nyckeln som används för att länka de två systemen.',
+            ],
+          },
+          {
+            heading: 'I Stockwire Rental',
+            body: [
+              'Öppna Inställningar > Integrationer > Stagewire och lägg till en instans med Stagewire-bas-URL (HTTPS krävs när en nyckel är satt) och den delade nyckeln.',
+              'Använd Testa anslutning för att verifiera länken innan du förlitar dig på den.',
+            ],
+          },
+        ],
+      },
+      settingsIntegrationsStockwire: {
+        title: 'Partner Stockwire-instanser',
+        summary: 'Hyra utrustning från och anslut till andra Stockwire Rental-instanser.',
+        group: 'settings',
+        parent: 'settingsIntegrations',
+        sections: [
+          {
+            heading: 'På fjärrinstansen',
+            body: [
+              'På partnerns Stockwire Rental-instans skapar du en API-nyckel för att autentisera anslutningen och noterar dess API-URL.',
+            ],
+          },
+          {
+            heading: 'I din instans',
+            body: [
+              'Öppna Inställningar > Integrationer > Stockwire-instanser och lägg till en anslutning med fjärr-API-URL och API-nyckel.',
+              'Ställ in den lokala leverantörskunden som representerar denna hyresleverantör och ditt kund-ID på fjärrinstansen. Använd Testa anslutning för att verifiera.',
+            ],
+          },
+        ],
+      },
+      settingsNotifications: {
+        title: 'E-post och aviseringar',
+        summary: 'Konfigurera e-postleverans och aviseringsmallar.',
+        group: 'settings',
+        parent: 'settings',
+        sections: [
+          {
+            heading: 'E-post / SMTP',
+            body: [
+              'Ställ in hur systemet skickar e-post för lösenordsåterställningar och aviseringar, via SMTP eller Resend-API.',
+              'Om SMTP hanteras av miljövariabler på servern visas dessa värden men kan inte redigeras här.',
+            ],
+          },
+          {
+            heading: 'Aviseringsinställningar och mallar',
+            body: [
+              'Välj vilka händelser som skickar e-post eller webbpush, och till vem (kund, personal eller båda).',
+              'Aviseringsmallar använder variabler (till exempel job_code, customer_name) så att varje meddelande fylls i automatiskt. Ladda standarder eller skriv egna.',
+            ],
+          },
+        ],
+      },
+      settingsOffline: {
+        title: 'Offline-synkkö',
+        summary: 'Se och hantera ändringar som köats medan du var offline.',
+        group: 'settings',
+        parent: 'settings',
+        sections: [
+          {
+            heading: 'Vad kön gör',
+            body: [
+              'När appen är offline lagras dina ändringar i en kö och skickas till servern automatiskt när du återansluter.',
+              'Kön visar om du är online eller offline och hur många operationer som väntar.',
+            ],
+          },
+          {
+            heading: 'Hantera kön',
+            body: [
+              'Töm nu skickar köade operationer; Försök igen gör om operationer som misslyckades; Rensa blockerade tar bort operationer som inte kan lösas.',
+              'Konfliktpolicyer (sammanfoga, senaste skriver vinner, skyddad) avgör hur överlappande redigeringar kombineras när de når servern.',
+            ],
+          },
+        ],
+      },
+      settingsAiAssistant: {
+        title: 'AI-assistent',
+        summary: 'Konfigurera AI-assistentens backend (LLM).',
+        group: 'settings',
+        parent: 'settings',
+        sections: [
+          {
+            heading: 'Välja en backend',
+            body: [
+              'AI-assistenten kan använda en lokal Ollama-modell, Google Gemini, OpenAI eller OpenCode.',
+              'Ange API-bas-URL, en API-nyckel där det behövs och modellnamnet, och hämta sedan tillgängliga modeller.',
+            ],
+          },
+          {
+            heading: 'Testa och spara',
+            body: [
+              'Använd Testa anslutning för att bekräfta att backend är nåbar innan du sparar.',
+              'Snabbval hjälper dig att komma igång med en känd fungerande konfiguration för varje leverantör.',
+            ],
+          },
+        ],
+      },
+      settingsCalendarFx: {
+        title: 'Kalenderflöden och valutakurser',
+        summary: 'Publika kalenderflöden och valutakurser.',
+        group: 'settings',
+        parent: 'settings',
+        sections: [
+          {
+            heading: 'Kalenderflöden',
+            body: [
+              'Skapa publika iCal-flöden (till exempel ett personalschema) som vem som helst kan lägga till i Google Calendar eller en annan kalenderapp utan att logga in.',
+              'Varje flöde har en token i sin URL; återskapa token om ett flöde inte längre ska vara tillgängligt via sin gamla länk.',
+            ],
+          },
+          {
+            heading: 'Valutakurser',
+            body: [
+              'Ställ in basvaluta och växelkurser så att inköpsordrar och ekonomi i andra valutor konverteras korrekt.',
+              'Uppdatera kurserna för att uppdatera konverterade summor; saknade kurser visas i sin ursprungliga valuta.',
+            ],
+          },
+        ],
+      },
+    },
   },
 }
