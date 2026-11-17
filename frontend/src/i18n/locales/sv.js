@@ -4957,5 +4957,78 @@ export default {
         ],
       },
     },
+    tour: {
+      startClickThrough: 'Starta genomgång',
+      next: 'Nästa',
+      back: 'Tillbaka',
+      exit: 'Avsluta',
+      skip: 'Hoppa över',
+      finish: 'Klar',
+      stepOf: 'Steg {current} av {total}',
+    },
+    tours: {
+      walkthroughReceivePo: {
+        steps: [
+          { title: 'Skapa inköpsordern', text: 'Öppna Inköpsordrar och skapa en ny order. Välj leverantör och spara den som Utkast så att du kan fortsätta bygga den.' },
+          { title: 'Lägg till det du beställde', text: 'På varje rad, välj produkt, dess artikelnummer, antal, styckpris och valuta. Använd Sammanläggning för att slå ihop rader från samma leverantör.' },
+          { title: 'Skicka eller godkänn ordern', text: 'Flytta inköpsordern till Skickad, sedan Godkänd eller Beställd så att teamet vet att den är på väg.' },
+          { title: 'Ta emot varorna', text: 'När leveransen anländer, öppna inköpsordern och använd Ta emot (eller Skanna) för att checka in dem. Skanna varje serienummer, eller ange ett antal för artiklar utan serienummer.' },
+          { title: 'Avsluta mottagningen', text: 'När allt förväntat är inne, avsluta mottagningen för att stänga raden och skapa enheterna i Lagret.' },
+        ],
+      },
+      walkthroughRunJob: {
+        steps: [
+          { title: 'Skapa jobbet', text: 'Öppna Jobb och skapa ett nytt jobb. Ge det en kod, välj kund och plats, och ange start- och slutdatum.' },
+          { title: 'Lägg till vad du behöver', text: 'Under Produktbehov, lägg till de produkter och kvantiteter jobbet behöver.' },
+          { title: 'Plocka lager', text: 'Klicka på Plocka lager så att appen reserverar enheter och visar vad som är tillgängligt jämfört med vad som fortfarande saknas.' },
+          { title: 'Förbered och skanna på plats', text: 'Använd Skanna för att checka ut saker när de lämnar och in igen vid retur. Håll varje enhets status ärlig (Reserverad eller I bruk).' },
+          { title: 'Slutför jobbet', text: 'När allt är tillbaka, markera jobbet som Slutfört så att tillgängligheten återställs och hyresperioden stängs.' },
+        ],
+      },
+      walkthroughProductVendor: {
+        steps: [
+          { title: 'Skapa produkten', text: 'Öppna Produkter (Lager) och skapa en ny produkt.' },
+          { title: 'Fyll i grunderna', text: 'Lägg till namn, artikelnummer, typ och kategori. Artikelnumret är den unika lagerkod du söker på.' },
+          { title: 'Koppla leverantörsposten', text: 'Öppna Leverantörskatalogen för att hitta den matchande posten. Att koppla den fyller i leverantörens pris, streckkod och lager automatiskt.' },
+          { title: 'Sätt pris och trösklar', text: 'Ange dygnspris, ersättningskostnad och de minsta lager- och orderkvantiteterna som utlöser påminnelser om ombeställning.' },
+          { title: 'Lägg till de fysiska enheterna', text: 'För serienummerutrustning, skapa en enhet per exemplar med serienummer och tillgångsetikett, och tilldela en plats så att du alltid vet var den är.' },
+        ],
+      },
+      walkthroughDeliveryRoute: {
+        steps: [
+          { title: 'Skapa rutten', text: 'Öppna Ruttschemaläggaren och skapa en ny rutt.' },
+          { title: 'Lägg till jobb', text: 'Lägg till jobben att leverera eller hämta. Varje jobb blir ett stopp på rutten.' },
+          { title: 'Tilldela fordon', text: 'Välj det/de fordon som rymmer totalvikten och volymen. Planeraren varnar om kapaciteten överskrids.' },
+          { title: 'Optimera', text: 'Klicka på Optimera rutt för att ordna stoppen efter körtid, eller dra för att ordna om dem manuellt.' },
+          { title: 'Förhandsgranska och skicka', text: 'Förhandsgranska rutten på kartan, packa i omvänd ordning (första leveransen överst), och ge föraren packlistan och adresserna.' },
+        ],
+      },
+      walkthroughPrintLabels: {
+        steps: [
+          { title: 'Välj eller skapa en mall', text: 'Öppna Etiketter och välj en befintlig mall, eller bygg en med text, streckkoder, QR-koder och din logotyp.' },
+          { title: 'Välj vad som ska skrivas ut', text: 'Markera många enheter, produkter, platser eller väskor på en gång för att inkludera dem i batchen.' },
+          { title: 'Sätt synlighet och roller', text: 'Bestäm vem som kan se och redigera mallen: alla användare, endast admins eller endast ägare.' },
+          { title: 'Skriv ut', text: 'Anslut en Brother QL-skrivare för direktutskrift, eller exportera till en systemskrivare för andra mediastorlekar.' },
+        ],
+      },
+      walkthroughEntraSso: {
+        steps: [
+          { title: 'Aktivera SSO', text: 'I Inställningar, öppna Användare och åtkomst och panelen Enkel inloggning. Slå på SSO och välj om användare ska skapas automatiskt och om roller ska synkroniseras vid inloggning.' },
+          { title: 'Lägg till en leverantör', text: 'Lägg till en OIDC- eller SAML-leverantör. Anteckna leverantörsnyckeln — den visas i inloggningens omdirigerings-URL.' },
+          { title: 'OIDC: konfigurera Entra ID', text: 'I Entra, registrera en app och lägg till omdirigerings-URI som visas i appen. Skapa en klienthemlighet och bevilja openid, email och profile.' },
+          { title: 'SAML: konfigurera Entra ID', text: 'I Entra, ställ in ACS-URL och SP-enhets-ID från appen, och tillhandahåll IdP-enhets-ID, SSO-URL och signeringscertifikat.' },
+          { title: 'Verifiera', text: 'Använd appens SSO-knapp för att logga in. En lyckad omdirigering tillbaka bekräftar att det fungerar. Om det misslyckas, kontrollera att omdirigerings-URI (eller ACS-URL) och enhets-ID matchar exakt.' },
+        ],
+      },
+      walkthroughOnboardCrew: {
+        steps: [
+          { title: 'Skapa personen', text: 'Öppna Personer och lägg till en ny person. Ange förnamn och efternamn (obligatoriskt), samt e-post och telefon.' },
+          { title: 'Koppla företaget', text: 'Ställ in företaget de representerar, eller låt dem vara fristående för en engångskontakt.' },
+          { title: 'Lägg till kompetenser och roller', text: 'Registrera deras föredragna roller, kompetenser, certifieringar (med utgångsdatum) och pris.' },
+          { title: 'Tilldela till ett jobb', text: 'Öppna jobbet, lägg till roll och antal som behövs, och tilldela personen. Bekräfta dem så att de får en avisering.' },
+          { title: 'Dela kalendern', text: 'De kan kopiera sin personliga kalenderfeed (Min kalender) för att se sina tilldelningar i sin egen kalenderapp.' },
+        ],
+      },
+    },
   },
 }

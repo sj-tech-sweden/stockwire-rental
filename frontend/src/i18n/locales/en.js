@@ -4968,5 +4968,78 @@ export default {
         ],
       },
     },
+    tour: {
+      startClickThrough: 'Start click-through',
+      next: 'Next',
+      back: 'Back',
+      exit: 'Exit',
+      skip: 'Skip tour',
+      finish: 'Finish',
+      stepOf: 'Step {current} of {total}',
+    },
+    tours: {
+      walkthroughReceivePo: {
+        steps: [
+          { title: 'Create the purchase order', text: 'Open Purchase Orders and start a new order. Pick the supplier, then save it as a Draft so you can keep building it.' },
+          { title: 'Add the items you ordered', text: 'On each line, choose the product, its SKU, the quantity, unit price and currency. Use Consolidate to merge lines from the same supplier.' },
+          { title: 'Send or approve the order', text: 'Move the PO to Sent, then Approved or Ordered so the team knows it is on its way.' },
+          { title: 'Receive the goods', text: 'When the delivery arrives, open the PO and use Receive (or Scan) to check items in. Scan each serial number, or enter a quantity for non-serialised items.' },
+          { title: 'Finish receiving', text: 'Once everything expected is in, finish receiving to close the line and create the Devices in Inventory.' },
+        ],
+      },
+      walkthroughRunJob: {
+        steps: [
+          { title: 'Create the job', text: 'Open Jobs and create a new job. Give it a code, pick the customer and venue, and set the start and end dates.' },
+          { title: 'Add what you need', text: 'Under Product requirements, add the products and quantities this job needs.' },
+          { title: 'Pull stock', text: 'Click Pull stock so the app reserves units and shows what is available versus what is still missing.' },
+          { title: 'Prepare and scan on site', text: 'Use Scan to check items out as they leave and back in on return. Keep each unit’s status honest (Reserved or In use).' },
+          { title: 'Complete the job', text: 'When everything is back, mark the job Completed so availability is restored and the rental period closes.' },
+        ],
+      },
+      walkthroughProductVendor: {
+        steps: [
+          { title: 'Create the product', text: 'Open Products (Inventory) and create a new product.' },
+          { title: 'Enter the basics', text: 'Add the name, SKU, type and category. The SKU is the unique stock code you will search by.' },
+          { title: 'Link the vendor item', text: 'Open the Vendor catalog to find the matching item. Linking it fills in the supplier’s price, barcode and stock automatically.' },
+          { title: 'Set pricing and thresholds', text: 'Enter the daily rate, replacement cost, and the minimum stock and order quantities that trigger reorder reminders.' },
+          { title: 'Add the physical units', text: 'For serialised gear, create a Device per unit with a serial number and asset tag, and assign a location so you always know where it is.' },
+        ],
+      },
+      walkthroughDeliveryRoute: {
+        steps: [
+          { title: 'Create the route', text: 'Open the Route Planner and create a new route.' },
+          { title: 'Add jobs', text: 'Add the jobs to deliver or collect. Each job becomes a stop on the route.' },
+          { title: 'Assign vehicles', text: 'Choose the vehicle(s) that fit the total weight and volume. The planner warns if capacity is exceeded.' },
+          { title: 'Optimise', text: 'Click Optimise route to order the stops by drive time, or drag to reorder them manually.' },
+          { title: 'Preview and dispatch', text: 'Preview the route on the map, pack in reverse order (first drop on top), and hand the driver the packing list and addresses.' },
+        ],
+      },
+      walkthroughPrintLabels: {
+        steps: [
+          { title: 'Choose or create a template', text: 'Open Labels and pick an existing template, or build one with text, barcodes, QR codes and your logo.' },
+          { title: 'Select what to print', text: 'Tick many devices, products, locations or cases at once to include them in the batch.' },
+          { title: 'Set visibility and roles', text: 'Decide who can see and edit the template: all users, admins only, or the owner only.' },
+          { title: 'Print', text: 'Connect a Brother QL printer for direct printing, or export to a system printer for other media sizes.' },
+        ],
+      },
+      walkthroughEntraSso: {
+        steps: [
+          { title: 'Enable SSO', text: 'In Settings, open Users & access and the Single sign-on panel. Turn SSO on and choose whether to auto-create users and sync roles on login.' },
+          { title: 'Add a provider', text: 'Add an OIDC or SAML provider. Note the provider key — it appears in the login redirect URL.' },
+          { title: 'OIDC: configure Entra ID', text: 'In Entra, register an app and add the redirect URI shown in the app. Create a client secret and grant openid, email and profile.' },
+          { title: 'SAML: configure Entra ID', text: 'In Entra, set the ACS URL and SP entity ID from the app, and provide the IdP entity ID, SSO URL and signing certificate.' },
+          { title: 'Verify', text: 'Use the app’s SSO button to sign in. A successful redirect back confirms it works. If it fails, check that the redirect URI (or ACS URL) and entity ID match exactly.' },
+        ],
+      },
+      walkthroughOnboardCrew: {
+        steps: [
+          { title: 'Create the person', text: 'Open Persons and add a new person. Enter the first and last name (required), plus email and phone.' },
+          { title: 'Link the company', text: 'Set the company they represent, or leave them standalone for a one-off contact.' },
+          { title: 'Add skills and roles', text: 'Record their preferred roles, skills, certifications (with expiry) and rate.' },
+          { title: 'Assign to a job', text: 'Open the job, add the role and count needed, and assign the person. Confirm them so they are notified.' },
+          { title: 'Share the calendar', text: 'They can copy their personal calendar feed (My Calendar) to see their assignments in their own calendar app.' },
+        ],
+      },
+    },
   },
 }
