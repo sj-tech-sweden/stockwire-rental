@@ -3735,19 +3735,305 @@ export default {
           },
         ],
       },
-      purchaseOrders: { title: 'Inköpsordrar', summary: 'Kommer snart.', group: 'operations', sections: [] },
-      labels: { title: 'Etiketter', summary: 'Kommer snart.', group: 'inventory', sections: [] },
-      projects: { title: 'Projekt', summary: 'Kommer snart.', group: 'operations', sections: [] },
-      companies: { title: 'Företag', summary: 'Kommer snart.', group: 'people', sections: [] },
-      persons: { title: 'Personer', summary: 'Kommer snart.', group: 'people', sections: [] },
-      crew: { title: 'Personal', summary: 'Kommer snart.', group: 'people', sections: [] },
-      venues: { title: 'Platser', summary: 'Kommer snart.', group: 'people', sections: [] },
-      finance: { title: 'Ekonomi', summary: 'Kommer snart.', group: 'financeReports', sections: [] },
-      reports: { title: 'Rapporter', summary: 'Kommer snart.', group: 'financeReports', sections: [] },
-      routePlanner: { title: 'Ruttschemaläggare', summary: 'Kommer snart.', group: 'operations', sections: [] },
-      warehouseLeds: { title: 'Lager-LED', summary: 'Kommer snart.', group: 'more', sections: [] },
-      activity: { title: 'Aktivitet', summary: 'Kommer snart.', group: 'more', sections: [] },
-      settings: { title: 'Inställningar', summary: 'Kommer snart.', group: 'more', sections: [] },
+      purchaseOrders: {
+        title: 'Inköpsordrar',
+        summary: 'Beställ lager från leverantörer och följ upp vad som anländer.',
+        group: 'operations',
+        sections: [
+          {
+            heading: 'Skapa en inköpsorder',
+            body: [
+              'En inköpsorder (PO) talar om för en leverantör vad som ska skickas: artiklar, kvantiteter och styckpriser.',
+              'Skapa en PO från ett utkast, slå ihop flera till en, eller ta med artiklar som hamnat under sin beställningsnivå.',
+            ],
+          },
+          {
+            heading: 'Status och mottagning',
+            body: [
+              'En PO går genom Utkast, Skickad, Godkänd, Beställd, Delvis mottagen och Mottagen.',
+              'När varorna anländer använder du Ta emot för att checka in dem — se hjälpavsnittet Ta emot för detaljer.',
+            ],
+          },
+        ],
+      },
+      labels: {
+        title: 'Etiketter',
+        summary: 'Skapa och skriv ut streckkods-, QR- och textetiketter för dina artiklar.',
+        group: 'inventory',
+        sections: [
+          {
+            heading: 'Etikettmallar',
+            body: [
+              'En etikettmall definierar vad som skrivs ut på en etikett: textfält, streckkoder, QR-koder och din företagslogotyp.',
+              'Bygg mallar i redigeraren med dra-och-släpp och välj vilka entitetsfält (enheter, produkter, platser, väskor) som ska visas.',
+            ],
+          },
+          {
+            heading: 'Utskrift',
+            body: [
+              'Anslut en Brother QL-seriens etikettskrivare via USB för direktutskrift, eller använd en systemskrivare.',
+              'Ställ in synlighet (alla användare, endast admins, endast ägare) och vilka roller som får redigera varje mall.',
+            ],
+          },
+        ],
+      },
+      projects: {
+        title: 'Projekt',
+        summary: 'Samla relaterade jobb under en kunduppdrag.',
+        group: 'operations',
+        sections: [
+          {
+            heading: 'Vad är ett projekt?',
+            body: [
+              'Ett projekt samlar flera jobb som hör till samma kunduppdrag, med ett gemensamt namn, datum och anteckningar.',
+              'Projekt hjälper dig att se hela arbetsomfånget för en kund över flera jobb.',
+            ],
+          },
+          {
+            heading: 'Status och jobb',
+            body: [
+              'Följ ett projekt som Aktivt, Slutfört eller Avbrutet. Varje projekt listar de jobb som är kopplade till det.',
+              'Projekt kan synkroniseras till en extern ProductionPlanner om den integrationen är konfigurerad.',
+            ],
+          },
+        ],
+      },
+      companies: {
+        title: 'Företag',
+        summary: 'Kunder, leverantörer och andra organisationer du samarbetar med.',
+        group: 'people',
+        sections: [
+          {
+            heading: 'Vad är ett företag?',
+            body: [
+              'Företag är organisationerna du gör affärer med: kunder som hyr din utrustning, och leverantörer du köper från.',
+              'Ett företag kan märkas med en eller flera leverantörstyper så att samma post kan fylla flera roller.',
+            ],
+          },
+          {
+            heading: 'Leverantörstyper',
+            body: [
+              'Markera ett företag som Kund, Produktleverantör, Hyresleverantör eller Personalleverantör för att styra var det visas i appen.',
+              'Dessa typer styr leverantörsväljaren på inköpsordrar och personalupphandling, så håll dem uppdaterade.',
+            ],
+          },
+          {
+            heading: 'Anpassade fält',
+            body: [
+              'Lägg till anpassade fält för att fånga extra företagsuppgifter som ditt arbetsflöde behöver, utöver standardnamn, adress och anteckningar.',
+            ],
+          },
+        ],
+      },
+      persons: {
+        title: 'Personer',
+        summary: 'Individuella kontakter, med eller utan kopplat företag.',
+        group: 'people',
+        sections: [
+          {
+            heading: 'Vad är en person?',
+            body: [
+              'Personer är individer — kontakter hos en kund, frilansare eller vem som helst du behöver nå.',
+              'En person kan kopplas till ett företag eller hållas fristående.',
+            ],
+          },
+          {
+            heading: 'Koppling och aviseringar',
+            body: [
+              'Att koppla en person till ett företag håller adressboken ordnad och låter dig se alla på en organisation.',
+              'E-postaviseringar kan aktiveras per person så att de får de meddelanden ditt arbetsflöde skickar.',
+            ],
+          },
+        ],
+      },
+      crew: {
+        title: 'Personal',
+        summary: 'Hantera personer, roller, kompetenser och jobbtilldelningar.',
+        group: 'people',
+        sections: [
+          {
+            heading: 'Medlemmar och roller',
+            body: [
+              'Personalmedlemmar är de personer du tilldelar jobb. Varje medlem kan ha föredragna roller, kompetenser, certifieringar och tim- eller dagpris.',
+              'Roller grupperar medlemmar efter funktion (till exempel Rigging, Ljud, Ljus) och kan vara interna eller externa.',
+            ],
+          },
+          {
+            heading: 'Behov och tilldelningar',
+            body: [
+              'På ett jobb lägger du till personalbehov (roll, antal, erforderliga kompetenser). Planeraren föreslår matchande medlemmar och du tilldelar dem manuellt.',
+              'Följ varje tilldelning genom statusar: Tilldelad, Bekräftad, Slutförd, Avbruten.',
+            ],
+          },
+          {
+            heading: 'Efterlevnad och kalender',
+            body: [
+              'Certifieringar har utgångsdatum; appen flaggar när en certifiering är giltig, snart utgående eller utgången så att du följer reglerna.',
+              'Varje medlem kan kopiera en personlig kalenderfeed (Min kalender) för att se sina tilldelningar.',
+            ],
+          },
+        ],
+      },
+      venues: {
+        title: 'Platser',
+        summary: 'Platser och lokaler där arbetet utförs.',
+        group: 'people',
+        sections: [
+          {
+            heading: 'Vad är en plats?',
+            body: [
+              'Platser är de fysiska ställen där jobb äger rum — en festivaläng, en teater, en konferenshall eller en kundplats.',
+              'Varje plats lagrar en adress, en kontaktperson och anteckningar.',
+            ],
+          },
+          {
+            heading: 'Koordinater och kartor',
+            body: [
+              'Ange en plats latitud och longitud (eller en geokodbar adress) så att Ruttschemaläggaren kan beräkna körtider och optimera stopp.',
+              'Använd Öppna karta för att förhandsgranska platsens läge.',
+            ],
+          },
+        ],
+      },
+      finance: {
+        title: 'Ekonomi',
+        summary: 'Följ transaktioner, betalningar och värdet på ditt lager och dina jobb.',
+        group: 'financeReports',
+        sections: [
+          {
+            heading: 'Transaktioner',
+            body: [
+              'Ekonomi registrerar penningrörelser som transaktioner: hyror, depositioner, betalningar, återbetalningar, avgifter och rabatter.',
+              'Varje transaktion har en status (Väntande, Slutförd, Misslyckad, Avbruten, Återbetald) och kan kvittas när den är betald.',
+            ],
+          },
+          {
+            heading: 'Översikt och filter',
+            body: [
+              'Översikten visar väntande, försenade och slutförda belopp, plus det beräknade värdet av aktiva jobb och värdet av ditt lager.',
+              'Filtrera transaktioner efter kund, tidsintervall, status eller endast försenade för att jaga det som är obetalt.',
+            ],
+          },
+        ],
+      },
+      reports: {
+        title: 'Rapporter',
+        summary: 'Skapa PDF- och HTML-dokument från mallar.',
+        group: 'financeReports',
+        sections: [
+          {
+            heading: 'Rapportmallar',
+            body: [
+              'Rapporter byggs från mallar du utformar med en visuell blockredigerare (rubriker, stycken, tabeller, nyckel/värde, streckkoder, QR-koder).',
+              'Mallar grupperas efter kategori (Lager, Tillgångshantering, Logistik, Inköp, Anpassad) och kan rikta sig mot ett jobb, en enhet, en produkt, lager eller en inköpsorder.',
+            ],
+          },
+          {
+            heading: 'Brevhuvuden och utdata',
+            body: [
+              'Ladda upp PDF-brevhuvuden och ställ in ett som systemstandard; mallar kan använda standarden eller ett specifikt brevhuvud för varumärkt utdata.',
+              'Generera en rapport som PDF eller HTML, förhandsgranska den live och ladda ner eller exportera den.',
+            ],
+          },
+        ],
+      },
+      routePlanner: {
+        title: 'Ruttschemaläggare',
+        summary: 'Planera leveranser och upphämtningar, tilldela fordon och optimera stopp.',
+        group: 'operations',
+        sections: [
+          {
+            heading: 'Rutter och stopp',
+            body: [
+              'En rutt grupperar jobb som ska levereras eller hämtas tillsammans. Varje jobb blir ett stopp.',
+              'Lägg till jobb i en rutt, tilldela sedan ett eller flera fordon och sortera om eller optimera stoppen.',
+            ],
+          },
+          {
+            heading: 'Fordon och kapacitet',
+            body: [
+              'Definiera fordon med en typ (lastbil, skåpbil, släp, bil), maxvikt, maxvolym och lastutrymmesmått.',
+              'Planeraren varnar när lasten överskrider ett fordons vikt- eller volymkapacitet, inklusive kombinerad kapacitet över flera fordon.',
+            ],
+          },
+          {
+            heading: 'Optimering och kartor',
+            body: [
+              'Använd Optimera rutt för att ordna stopp efter körtid, och Öppna i Google Maps eller Förhandsgranska rutt för att se planen på en karta.',
+              'Ange en startadress (standard är ditt företags adress) så att körtiderna blir korrekta.',
+            ],
+          },
+        ],
+      },
+      warehouseLeds: {
+        title: 'Lager-LED',
+        summary: 'Tänd bin för att lokalisera enheter och guida plock.',
+        group: 'more',
+        sections: [
+          {
+            heading: 'Styrenheter och mappningar',
+            body: [
+              'Lager-LED använder ESP-styrenheter kopplade till LED-remsor längs dina hyllor. Varje styrenhet mappas till bin eller hyllor (pixelintervall) och till lagerzoner.',
+              'Registrera styrenheter med deras MAC-adress och antal LED, och tilldela sedan de zoner de täcker.',
+            ],
+          },
+          {
+            heading: 'Lokalisera och markera',
+            body: [
+              'Använd Lokalisera enhet för att tända bin där en specifik enhet förvaras, eller Visa retur för att tända var saker ska tillbaka.',
+              'Markera jobb-bin tänder varje bin som innehåller enheter ett jobb behöver, och Lokalisera alla på LED visar alla lokaliserade enheter på en gång.',
+            ],
+          },
+          {
+            heading: 'ESPHome',
+            body: [
+              'Generera en färdig ESPHome-YAML för en styrenhet, och ladda ner hemlighetsmallen, så att hårdvaruinstallationen förblir konsekvent.',
+            ],
+          },
+        ],
+      },
+      activity: {
+        title: 'Aktivitet',
+        summary: 'En sökbar logg över allt som ändrats i systemet.',
+        group: 'more',
+        sections: [
+          {
+            heading: 'Vad är aktivitetsloggen?',
+            body: [
+              'Aktivitetsloggen registrerar varje skapande, uppdatering, borttagning, scanning och jobb in eller ut i hela systemet.',
+              'Den är revisionsspåret för vem som gjorde vad och när.',
+            ],
+          },
+          {
+            heading: 'Läsa loggen',
+            body: [
+              'Varje post visar entiteten, åtgärden, användaren och tiden. Filtrera eller sök för att hitta en specifik ändring.',
+              'Åtgärdstyper inkluderar Uppslag, Skanna, Skapa, Uppdatera, Ta bort, Jobb in, Jobb ut och Flytta.',
+            ],
+          },
+        ],
+      },
+      settings: {
+        title: 'Inställningar',
+        summary: 'Konfigurera systemet, användare och affärsalternativ.',
+        group: 'more',
+        sections: [
+          {
+            heading: 'Vad finns i Inställningar?',
+            body: [
+              'Inställningar är där administratörer konfigurerar systemet: användare och roller, företagsuppgifter, integrationer och standardvärden.',
+              'Endast användare med rätt behörighet ser Inställningar i navigeringsmenyn.',
+            ],
+          },
+          {
+            heading: 'Håll det aktuellt',
+            body: [
+              'När du ändrar hur verksamheten fungerar — nya användarroller, integrationer eller standardbeteenden — uppdatera Inställningar så att resten av appen speglar det.',
+              'Rapportmallar och brevhuvuden hanteras under Rapporter i stället för Inställningar.',
+            ],
+          },
+        ],
+      },
     },
   },
 }

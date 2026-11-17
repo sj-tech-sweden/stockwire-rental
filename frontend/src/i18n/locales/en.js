@@ -3746,19 +3746,305 @@ export default {
           },
         ],
       },
-      purchaseOrders: { title: 'Purchase orders', summary: 'Coming soon.', group: 'operations', sections: [] },
-      labels: { title: 'Labels', summary: 'Coming soon.', group: 'inventory', sections: [] },
-      projects: { title: 'Projects', summary: 'Coming soon.', group: 'operations', sections: [] },
-      companies: { title: 'Companies', summary: 'Coming soon.', group: 'people', sections: [] },
-      persons: { title: 'Persons', summary: 'Coming soon.', group: 'people', sections: [] },
-      crew: { title: 'Crew', summary: 'Coming soon.', group: 'people', sections: [] },
-      venues: { title: 'Venues', summary: 'Coming soon.', group: 'people', sections: [] },
-      finance: { title: 'Finance', summary: 'Coming soon.', group: 'financeReports', sections: [] },
-      reports: { title: 'Reports', summary: 'Coming soon.', group: 'financeReports', sections: [] },
-      routePlanner: { title: 'Route Planner', summary: 'Coming soon.', group: 'operations', sections: [] },
-      warehouseLeds: { title: 'Warehouse LEDs', summary: 'Coming soon.', group: 'more', sections: [] },
-      activity: { title: 'Activity', summary: 'Coming soon.', group: 'more', sections: [] },
-      settings: { title: 'Settings', summary: 'Coming soon.', group: 'more', sections: [] },
+      purchaseOrders: {
+        title: 'Purchase orders',
+        summary: 'Order stock from suppliers and track what arrives.',
+        group: 'operations',
+        sections: [
+          {
+            heading: 'Creating a purchase order',
+            body: [
+              'A purchase order (PO) tells a supplier what to send: items, quantities, and unit prices.',
+              'Create a PO from a draft, combine several into one, or include items that have dropped below their reorder level.',
+            ],
+          },
+          {
+            heading: 'Status and receiving',
+            body: [
+              'A PO moves through Draft, Sent, Approved, Ordered, Partially received, and Received.',
+              'When goods arrive, use Receive to check them in — see the Receive help article for details.',
+            ],
+          },
+        ],
+      },
+      labels: {
+        title: 'Labels',
+        summary: 'Design and print barcode, QR, and text labels for your items.',
+        group: 'inventory',
+        sections: [
+          {
+            heading: 'Label templates',
+            body: [
+              'A label template defines what prints on a label: text fields, barcodes, QR codes, and your business logo.',
+              'Build templates in the drag-and-drop editor, choosing which entity fields (devices, products, locations, cases) to show.',
+            ],
+          },
+          {
+            heading: 'Printing',
+            body: [
+              'Connect a Brother QL-series label printer over USB for direct printing, or use a system printer.',
+              'Set visibility (all users, admins only, owner only) and which roles may edit each template.',
+            ],
+          },
+        ],
+      },
+      projects: {
+        title: 'Projects',
+        summary: 'Group related jobs under one customer engagement.',
+        group: 'operations',
+        sections: [
+          {
+            heading: 'What is a Project?',
+            body: [
+              'A project groups multiple jobs that belong to the same customer engagement, with a shared name, dates, and notes.',
+              'Projects help you see the full scope of work for a client across several jobs.',
+            ],
+          },
+          {
+            heading: 'Status and jobs',
+            body: [
+              'Track a project as Active, Completed, or Cancelled. Each project lists the jobs linked to it.',
+              'Projects can be synced to an external ProductionPlanner if that integration is configured.',
+            ],
+          },
+        ],
+      },
+      companies: {
+        title: 'Companies',
+        summary: 'Customers, suppliers, and other organisations you work with.',
+        group: 'people',
+        sections: [
+          {
+            heading: 'What is a Company?',
+            body: [
+              'Companies are the organisations you do business with: customers who rent your gear, and suppliers you buy from.',
+              'A company can be tagged with one or more supplier types so the same record can serve several roles.',
+            ],
+          },
+          {
+            heading: 'Supplier types',
+            body: [
+              'Mark a company as a Customer, Product supplier, Rental supplier, or Crew supplier to control where it appears in the app.',
+              'These types drive the supplier picker on purchase orders and crew sourcing, so keep them up to date.',
+            ],
+          },
+          {
+            heading: 'Custom fields',
+            body: [
+              'Add custom fields to capture extra company details that your workflow needs, beyond the standard name, address, and notes.',
+            ],
+          },
+        ],
+      },
+      persons: {
+        title: 'Persons',
+        summary: 'Individual contacts, with or without a linked company.',
+        group: 'people',
+        sections: [
+          {
+            heading: 'What is a Person?',
+            body: [
+              'Persons are individual people — contacts at a customer, freelancers, or anyone you need to reach.',
+              'A person can be linked to a company or kept standalone.',
+            ],
+          },
+          {
+            heading: 'Linking and notifications',
+            body: [
+              'Linking a person to a company keeps your address book tidy and lets you see everyone at one organisation.',
+              'Email notifications can be enabled per person so they receive the messages your workflow sends.',
+            ],
+          },
+        ],
+      },
+      crew: {
+        title: 'Crew',
+        summary: 'Manage people, roles, skills, and job assignments.',
+        group: 'people',
+        sections: [
+          {
+            heading: 'Members and roles',
+            body: [
+              'Crew members are the people you assign to jobs. Each member can have preferred roles, skills, certifications, and hourly or daily rates.',
+              'Roles group members by function (for example Rigging, Audio, Lighting) and can be internal or external.',
+            ],
+          },
+          {
+            heading: 'Requirements and assignments',
+            body: [
+              'On a job, add crew requirements (role, quantity, required skills). The planner suggests matching members and you assign them manually.',
+              'Track each assignment through statuses: Assigned, Confirmed, Completed, Cancelled.',
+            ],
+          },
+          {
+            heading: 'Compliance and calendar',
+            body: [
+              'Certifications have expiry dates; the app flags when a certification is valid, expiring soon, or expired so you stay compliant.',
+              'Each member can copy a personal calendar feed (My Calendar) to see their assignments.',
+            ],
+          },
+        ],
+      },
+      venues: {
+        title: 'Venues',
+        summary: 'Sites and locations where work happens.',
+        group: 'people',
+        sections: [
+          {
+            heading: 'What is a Venue?',
+            body: [
+              'Venues are the physical sites where jobs take place — a festival ground, a theatre, a conference hall, or a client location.',
+              'Each venue stores an address, contact person, and notes.',
+            ],
+          },
+          {
+            heading: 'Coordinates and maps',
+            body: [
+              'Set a venue latitude and longitude (or a geocodable address) so the Route Planner can compute drive times and optimise stops.',
+              'Use Open map to preview the venue location.',
+            ],
+          },
+        ],
+      },
+      finance: {
+        title: 'Finance',
+        summary: 'Track transactions, payments, and the value of your stock and jobs.',
+        group: 'financeReports',
+        sections: [
+          {
+            heading: 'Transactions',
+            body: [
+              'Finance records money movements as transactions: rentals, deposits, payments, refunds, fees, and discounts.',
+              'Each transaction has a status (Pending, Completed, Failed, Cancelled, Refunded) and can be settled when paid.',
+            ],
+          },
+          {
+            heading: 'Overview and filters',
+            body: [
+              'The overview shows pending, overdue, and completed amounts, plus the projected value of active jobs and the value of your warehouse stock.',
+              'Filter transactions by customer, date range, status, or overdue only to chase what is owed.',
+            ],
+          },
+        ],
+      },
+      reports: {
+        title: 'Reports',
+        summary: 'Generate PDF and HTML documents from templates.',
+        group: 'financeReports',
+        sections: [
+          {
+            heading: 'Report templates',
+            body: [
+              'Reports are built from templates you design with a visual block editor (headings, paragraphs, tables, key/value, barcodes, QR codes).',
+              'Templates are grouped by category (Warehouse, Asset, Logistics, Purchasing, Custom) and can target a job, device, product, inventory, or purchase order.',
+            ],
+          },
+          {
+            heading: 'Letterheads and output',
+            body: [
+              'Upload PDF letterheads and set one as the system default; templates can use the default or a specific letterhead for branded output.',
+              'Generate a report as PDF or HTML, preview it live, and download or export it.',
+            ],
+          },
+        ],
+      },
+      routePlanner: {
+        title: 'Route Planner',
+        summary: 'Plan deliveries and pickups, assign vehicles, and optimise stops.',
+        group: 'operations',
+        sections: [
+          {
+            heading: 'Routes and stops',
+            body: [
+              'A route groups jobs that need to be delivered or picked up together. Each job becomes a stop.',
+              'Add jobs to a route, then assign one or more vehicles and reorder or optimise the stops.',
+            ],
+          },
+          {
+            heading: 'Vehicles and capacity',
+            body: [
+              'Define vehicles with a type (truck, van, trailer, car), max weight, max volume, and cargo dimensions.',
+              'The planner warns when cargo exceeds a vehicle weight or volume capacity, including combined capacity across several vehicles.',
+            ],
+          },
+          {
+            heading: 'Optimising and mapping',
+            body: [
+              'Use Optimize route to order stops by drive time, and Open in Google Maps or Preview route to see the plan on a map.',
+              'Set a start address (defaults to your company address) so drive times are accurate.',
+            ],
+          },
+        ],
+      },
+      warehouseLeds: {
+        title: 'Warehouse LEDs',
+        summary: 'Light up bins to locate devices and guide picks.',
+        group: 'more',
+        sections: [
+          {
+            heading: 'Controllers and mappings',
+            body: [
+              'Warehouse LEDs uses ESP controllers wired to LED strips along your shelves. Each controller is mapped to bins or shelves (pixel ranges) and to warehouse zones.',
+              'Register controllers with their MAC address and LED count, then assign the zones they cover.',
+            ],
+          },
+          {
+            heading: 'Locate and highlight',
+            body: [
+              'Use Locate Device to light the bin where a specific device is stored, or Show Return to light where items should go back.',
+              'Highlight Job Bins lights every bin holding devices a job needs, and Locate all on LED shows every located device at once.',
+            ],
+          },
+          {
+            heading: 'ESPHome',
+            body: [
+              'Generate a ready-to-flash ESPHome YAML for a controller, and download the secrets template, so hardware setup stays consistent.',
+            ],
+          },
+        ],
+      },
+      activity: {
+        title: 'Activity',
+        summary: 'A searchable log of everything that changed in the system.',
+        group: 'more',
+        sections: [
+          {
+            heading: 'What is the Activity log?',
+            body: [
+              'The Activity log records every create, update, delete, scan, and job in or out across the system.',
+              'It is the audit trail for who did what and when.',
+            ],
+          },
+          {
+            heading: 'Reading the log',
+            body: [
+              'Each entry shows the entity, the action, the user, and the time. Filter or search to find a specific change.',
+              'Action types include Lookup, Scan, Create, Update, Delete, Job in, Job out, and Move.',
+            ],
+          },
+        ],
+      },
+      settings: {
+        title: 'Settings',
+        summary: 'Configure the system, users, and business options.',
+        group: 'more',
+        sections: [
+          {
+            heading: 'What is in Settings?',
+            body: [
+              'Settings is where administrators configure the system: users and roles, business details, integrations, and defaults.',
+              'Only users with the right permission see the Settings entry in the nav.',
+            ],
+          },
+          {
+            heading: 'Keep it current',
+            body: [
+              'When you change how the business works — new user roles, integrations, or default behaviours — update Settings so the rest of the app reflects it.',
+              'Report templates and letterheads are managed under Reports rather than Settings.',
+            ],
+          },
+        ],
+      },
     },
   },
 }
