@@ -162,6 +162,19 @@
               </q-item-section>
             </q-item>
             <q-item
+              clickable
+              v-ripple
+              to="/help"
+              @click="onChildNavigate"
+            >
+              <q-item-section avatar>
+                <q-icon name="help" class="text-primary" />
+              </q-item-section>
+              <q-item-section :class="$q.dark.isActive ? 'text-grey-3' : 'text-grey-8'">
+                {{ t('app.nav.help') }}
+              </q-item-section>
+            </q-item>
+            <q-item
               v-if="authStore.canManageSettings"
               clickable
               v-ripple
@@ -386,6 +399,7 @@ const allNavItems = computed(() => {
   items.push({ icon: 'storefront', labelKey: 'app.nav.vendorCatalog', to: '/vendor-catalog' })
   items.push({ icon: 'receipt_long', labelKey: 'app.nav.purchaseOrders', to: '/purchase-orders' })
   items.push({ icon: 'summarize', labelKey: 'app.nav.reports', to: '/reports' })
+  items.push({ icon: 'help', labelKey: 'app.nav.help', to: '/help' })
   if (authStore.canManageSettings) {
     items.push({ icon: 'tune', labelKey: 'app.nav.settings', to: '/settings' })
   }

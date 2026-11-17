@@ -25,6 +25,7 @@ export default {
       finance: 'Finance',
       reports: 'Reports',
       settings: 'Settings',
+      help: 'Help',
       routePlanner: 'Route Planner',
       purchaseOrders: 'Purchase orders',
       receive: 'Receive',
@@ -3566,5 +3567,198 @@ export default {
     capturedSerials: 'Captured serials',
     qtyToReceive: 'Quantity to receive',
     receiveWithoutSerialsHint: 'Set the quantity even without scanning serials; units get generated asset tags.',
+  },
+  help: {
+    title: 'Help',
+    intro: 'Guides and explanations for using Stockwire Rental. Choose a topic to get started.',
+    back: 'Back to Help',
+    comingSoon: 'This article is being written.',
+    groups: {
+      gettingStarted: 'Getting started',
+      inventory: 'Inventory & products',
+      operations: 'Operations',
+      people: 'People & companies',
+      financeReports: 'Finance & reports',
+      more: 'More',
+    },
+    articles: {
+      gettingStarted: {
+        title: 'Getting started',
+        summary: 'What Stockwire Rental is for and how to find your way around.',
+        group: 'gettingStarted',
+        sections: [
+          {
+            heading: 'What is Stockwire Rental?',
+            body: [
+              'Stockwire Rental is a tool for rental companies to track inventory, jobs, and the equipment that moves between venues and customers.',
+              'It is built as a web app you can install on a phone or tablet and use on site, even with a poor connection.',
+            ],
+          },
+          {
+            heading: 'The main areas',
+            body: [
+              'Inventory holds your stock and the products in your Vendor catalog.',
+              'Jobs describe the work for a customer and the products that are pulled for it.',
+              'Operations groups Jobs, Projects, Finance, and the Route Planner.',
+              'People and companies covers Customers, Companies, Persons, Crew, and Venues.',
+              'Reports and Settings let you review activity and configure the system.',
+            ],
+          },
+          {
+            heading: 'Working offline',
+            body: [
+              'The app keeps working without a connection. Changes you make are saved on the device and synced when you are back online.',
+              'Other people using the app see updates through realtime sync as soon as they reconnect.',
+            ],
+          },
+          {
+            heading: 'Need more help?',
+            body: [
+              'This Help section explains each area. Use the menu to open it again at any time.',
+            ],
+          },
+        ],
+      },
+      inventory: {
+        title: 'Inventory',
+        summary: 'How stock, locations, and quantities are managed.',
+        group: 'inventory',
+        sections: [
+          {
+            heading: 'What is Inventory?',
+            body: [
+              'Inventory is the list of physical units you own, where they are stored, and whether they are available, rented, in service, or written off.',
+            ],
+          },
+          {
+            heading: 'Locations',
+            body: [
+              'Each unit lives in a location such as a rack, a shelf, a bin, a truck, or a venue. Use Locations to keep track of where everything is.',
+            ],
+          },
+          {
+            heading: 'Stock status',
+            body: [
+              'Units move through statuses like available, rented, in maintenance, and written off. The Inventory list shows the current status and lets you filter.',
+            ],
+          },
+        ],
+      },
+      products: {
+        title: 'Products & Vendor catalog',
+        summary: 'Defining what you rent and linking it to vendor catalog items.',
+        group: 'inventory',
+        sections: [
+          {
+            heading: 'Products vs Vendor catalog',
+            body: [
+              'A Product is the item you rent out. The Vendor catalog holds the supplier catalog data, prices, and barcodes.',
+              'Linking a product to a Vendor catalog item keeps barcodes and supplier details in sync.',
+            ],
+          },
+          {
+            heading: 'Specs and categories',
+            body: [
+              'Add technical specs and a category to each product so it is easy to find and compare. Accessories and components let you build bundles.',
+            ],
+          },
+        ],
+      },
+      jobs: {
+        title: 'Jobs',
+        summary: 'Plan customer work and the products pulled for it.',
+        group: 'operations',
+        sections: [
+          {
+            heading: 'What is a Job?',
+            body: [
+              'A Job represents work for a customer over a date range, at one or more venues. It lists the products and quantities needed.',
+            ],
+          },
+          {
+            heading: 'Requirements and pulls',
+            body: [
+              'Add rental requirements to a job, then pull the matching stock. The job view shows what is reserved and what is still missing.',
+            ],
+          },
+          {
+            heading: 'Status and timeline',
+            body: [
+              'Track a job through its lifecycle from draft to completed. The timeline shows when items are pulled, delivered, and returned.',
+            ],
+          },
+        ],
+      },
+      scan: {
+        title: 'Scan',
+        summary: 'Use the scanner to capture barcodes, QR codes, and NFC tags.',
+        group: 'operations',
+        sections: [
+          {
+            heading: 'Scanning basics',
+            body: [
+              'Open Scan to read a product barcode, a device serial QR code, or an NFC tag. The captured value is used to look up the matching record.',
+            ],
+          },
+          {
+            heading: 'Where scanning is used',
+            body: [
+              'Scanning is used when receiving goods, pulling stock for a job, and checking items in or out on site.',
+            ],
+          },
+        ],
+      },
+      receive: {
+        title: 'Receive',
+        summary: 'Receive products from a purchase order into inventory.',
+        group: 'operations',
+        sections: [
+          {
+            heading: 'Receiving from a purchase order',
+            body: [
+              'Start from a Purchase order and choose which rows and quantities to receive. Scan or enter serials, and the units are added to Inventory.',
+            ],
+          },
+          {
+            heading: 'Receiving without serials',
+            body: [
+              'If items do not have serials, set the quantity and the app generates asset tags for each unit.',
+            ],
+          },
+        ],
+      },
+      defectsMaintenance: {
+        title: 'Defects & Maintenance',
+        summary: 'Log faults and track service work on equipment.',
+        group: 'operations',
+        sections: [
+          {
+            heading: 'Logging a defect',
+            body: [
+              'Record a defect against a unit with a description, a severity, and a due date. Defects help you decide what can be rented and what needs service.',
+            ],
+          },
+          {
+            heading: 'Maintenance',
+            body: [
+              'Maintenance groups service work. Move a unit into maintenance to take it out of available stock until it is fixed.',
+            ],
+          },
+        ],
+      },
+      purchaseOrders: { title: 'Purchase orders', summary: 'Coming soon.', group: 'operations', sections: [] },
+      labels: { title: 'Labels', summary: 'Coming soon.', group: 'inventory', sections: [] },
+      projects: { title: 'Projects', summary: 'Coming soon.', group: 'operations', sections: [] },
+      companies: { title: 'Companies', summary: 'Coming soon.', group: 'people', sections: [] },
+      persons: { title: 'Persons', summary: 'Coming soon.', group: 'people', sections: [] },
+      crew: { title: 'Crew', summary: 'Coming soon.', group: 'people', sections: [] },
+      venues: { title: 'Venues', summary: 'Coming soon.', group: 'people', sections: [] },
+      finance: { title: 'Finance', summary: 'Coming soon.', group: 'financeReports', sections: [] },
+      reports: { title: 'Reports', summary: 'Coming soon.', group: 'financeReports', sections: [] },
+      routePlanner: { title: 'Route Planner', summary: 'Coming soon.', group: 'operations', sections: [] },
+      warehouseLeds: { title: 'Warehouse LEDs', summary: 'Coming soon.', group: 'more', sections: [] },
+      activity: { title: 'Activity', summary: 'Coming soon.', group: 'more', sections: [] },
+      settings: { title: 'Settings', summary: 'Coming soon.', group: 'more', sections: [] },
+    },
   },
 }

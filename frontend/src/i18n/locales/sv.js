@@ -27,6 +27,7 @@ export default {
       finance: 'Ekonomi',
       reports: 'Rapporter',
       settings: 'Inställningar',
+      help: 'Hjälp',
       routePlanner: 'Ruttschemaläggare',
       group: {
         inventory: 'Lager',
@@ -3555,5 +3556,198 @@ export default {
     capturedSerials: 'Inlästa serienummer',
     qtyToReceive: 'Antal att ta emot',
     receiveWithoutSerialsHint: 'Ange antal även utan att skanna serienummer; enheterna får genererade asset-taggar.',
+  },
+  help: {
+    title: 'Hjälp',
+    intro: 'Guider och förklaringar för att använda Stockwire Rental. Välj ett ämne för att komma igång.',
+    back: 'Tillbaka till Hjälp',
+    comingSoon: 'Den här artikeln skrivs.',
+    groups: {
+      gettingStarted: 'Kom igång',
+      inventory: 'Lager och produkter',
+      operations: 'Drift',
+      people: 'Personer och företag',
+      financeReports: 'Ekonomi och rapporter',
+      more: 'Mer',
+    },
+    articles: {
+      gettingStarted: {
+        title: 'Kom igång',
+        summary: 'Vad Stockwire Rental används för och hur du hittar i appen.',
+        group: 'gettingStarted',
+        sections: [
+          {
+            heading: 'Vad är Stockwire Rental?',
+            body: [
+              'Stockwire Rental är ett verktyg för uthyrningsföretag för att hålla reda på lager, jobb och den utrustning som flyttas mellan platser och kunder.',
+              'Det är en webbapp som du kan installera på en telefon eller surfplatta och använda på plats, även med dålig uppkoppling.',
+            ],
+          },
+          {
+            heading: 'Huvudområdena',
+            body: [
+              'Lager innehåller ditt lagersaldo och produkterna i din Leverantörskatalog.',
+              'Jobb beskriver arbetet för en kund och de produkter som plockas till det.',
+              'Drift samlar Jobb, Projekt, Ekonomi och Ruttschemaläggaren.',
+              'Personer och företag omfattar Kunder, Företag, Personer, Personal och Platser.',
+              'Rapporter och Inställningar låter dig granska aktivitet och konfigurera systemet.',
+            ],
+          },
+          {
+            heading: 'Arbeta offline',
+            body: [
+              'Appen fungerar även utan uppkoppling. Ändringar du gör sparas på enheten och synkroniseras när du är online igen.',
+              'Andra som använder appen ser uppdateringar via realtidssynkronisering så fort de återansluter.',
+            ],
+          },
+          {
+            heading: 'Behöver du mer hjälp?',
+            body: [
+              'Den här Hjälp-sektionen förklarar varje område. Öppna den från menyn när du vill.',
+            ],
+          },
+        ],
+      },
+      inventory: {
+        title: 'Lager',
+        summary: 'Hur lagersaldo, platser och kvantiteter hanteras.',
+        group: 'inventory',
+        sections: [
+          {
+            heading: 'Vad är Lager?',
+            body: [
+              'Lager är listan över fysiska enheter du äger, var de förvaras, och om de är tillgängliga, uthyrda, på service eller avskrivna.',
+            ],
+          },
+          {
+            heading: 'Platser',
+            body: [
+              'Varje enhet finns på en plats, till exempel ett rack, en hylla, en back, en bil eller en plats. Använd Platser för att hålla reda på var allt finns.',
+            ],
+          },
+          {
+            heading: 'Lagerstatus',
+            body: [
+              'Enheter går genom statusar som tillgänglig, uthyrd, i underhåll och avskriven. Lagerlistan visar aktuell status och låter dig filtrera.',
+            ],
+          },
+        ],
+      },
+      products: {
+        title: 'Produkter och Leverantörskatalog',
+        summary: 'Definiera vad du hyr ut och koppla det till leverantörskatalogposter.',
+        group: 'inventory',
+        sections: [
+          {
+            heading: 'Produkter jämfört med Leverantörskatalog',
+            body: [
+              'En Produkt är artikeln du hyr ut. Leverantörskatalogen innehåller leverantörens katalogdata, priser och streckkoder.',
+              'Att koppla en produkt till en Leverantörskatalogpost håller streckkoder och leverantörsuppgifter synkroniserade.',
+            ],
+          },
+          {
+            heading: 'Specifikationer och kategorier',
+            body: [
+              'Lägg till tekniska specifikationer och en kategori på varje produkt så att den är lätt att hitta och jämföra. Tillbehör och komponenter låter dig bygga paket.',
+            ],
+          },
+        ],
+      },
+      jobs: {
+        title: 'Jobb',
+        summary: 'Planera kundarbete och de produkter som plockas till det.',
+        group: 'operations',
+        sections: [
+          {
+            heading: 'Vad är ett Jobb?',
+            body: [
+              'Ett Jobb representerar arbete för en kund under en tidsperiod, på en eller flera platser. Det listar de produkter och kvantiteter som behövs.',
+            ],
+          },
+          {
+            heading: 'Behov och plock',
+            body: [
+              'Lägg till uthyrningsbehov på ett jobb och plocka sedan matchande lager. Jobbvyn visar vad som är reserverat och vad som saknas.',
+            ],
+          },
+          {
+            heading: 'Status och tidslinje',
+            body: [
+              'Följ ett jobb genom dess livscykel från utkast till slutfört. Tidslinjen visar när saker plockas, levereras och lämnas tillbaka.',
+            ],
+          },
+        ],
+      },
+      scan: {
+        title: 'Skanna',
+        summary: 'Använd skannern för att läsa streckkoder, QR-koder och NFC-taggar.',
+        group: 'operations',
+        sections: [
+          {
+            heading: 'Skanna grunderna',
+            body: [
+              'Öppna Skanna för att läsa en produktstreckkod, en enhetsseriens QR-kod eller en NFC-tagg. Det inlästa värdet används för att slå upp motsvarande post.',
+            ],
+          },
+          {
+            heading: 'Var skanning används',
+            body: [
+              'Skanning används vid mottagning av varor, vid plock av lager till ett jobb, och när du checkar in eller ut saker på plats.',
+            ],
+          },
+        ],
+      },
+      receive: {
+        title: 'Ta emot',
+        summary: 'Ta emot produkter från en inköpsorder till lagret.',
+        group: 'operations',
+        sections: [
+          {
+            heading: 'Ta emot från inköpsorder',
+            body: [
+              'Börja från en Inköpsorder och välj vilka rader och kvantiteter som ska tas emot. Skanna eller ange serienummer, och enheterna läggs till i Lager.',
+            ],
+          },
+          {
+            heading: 'Ta emot utan serienummer',
+            body: [
+              'Om artiklarna saknar serienummer, ange antalet så skapar appen tillgångsetiketter för varje enhet.',
+            ],
+          },
+        ],
+      },
+      defectsMaintenance: {
+        title: 'Defekter och underhåll',
+        summary: 'Registrera fel och följ servicearbete på utrustning.',
+        group: 'operations',
+        sections: [
+          {
+            heading: 'Registrera en defekt',
+            body: [
+              'Registrera en defekt på en enhet med en beskrivning, en allvarlighetsgrad och ett förfallodatum. Defekter hjälper dig avgöra vad som kan hyras ut och vad som behöver service.',
+            ],
+          },
+          {
+            heading: 'Underhåll',
+            body: [
+              'Underhåll samlar servicearbete. Flytta en enhet till underhåll för att ta den ur tillgängligt lager tills den är reparerad.',
+            ],
+          },
+        ],
+      },
+      purchaseOrders: { title: 'Inköpsordrar', summary: 'Kommer snart.', group: 'operations', sections: [] },
+      labels: { title: 'Etiketter', summary: 'Kommer snart.', group: 'inventory', sections: [] },
+      projects: { title: 'Projekt', summary: 'Kommer snart.', group: 'operations', sections: [] },
+      companies: { title: 'Företag', summary: 'Kommer snart.', group: 'people', sections: [] },
+      persons: { title: 'Personer', summary: 'Kommer snart.', group: 'people', sections: [] },
+      crew: { title: 'Personal', summary: 'Kommer snart.', group: 'people', sections: [] },
+      venues: { title: 'Platser', summary: 'Kommer snart.', group: 'people', sections: [] },
+      finance: { title: 'Ekonomi', summary: 'Kommer snart.', group: 'financeReports', sections: [] },
+      reports: { title: 'Rapporter', summary: 'Kommer snart.', group: 'financeReports', sections: [] },
+      routePlanner: { title: 'Ruttschemaläggare', summary: 'Kommer snart.', group: 'operations', sections: [] },
+      warehouseLeds: { title: 'Lager-LED', summary: 'Kommer snart.', group: 'more', sections: [] },
+      activity: { title: 'Aktivitet', summary: 'Kommer snart.', group: 'more', sections: [] },
+      settings: { title: 'Inställningar', summary: 'Kommer snart.', group: 'more', sections: [] },
+    },
   },
 }

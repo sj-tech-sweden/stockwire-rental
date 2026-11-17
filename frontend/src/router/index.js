@@ -74,7 +74,9 @@ const routes = [
       { path: 'profile', component: () => import('../pages/ProfilePage.vue') },
       { path: 'settings', component: () => import('../pages/SettingsPage.vue') },
       { path: 'finance', component: () => import('../pages/FinancePage.vue') },
-      { path: 'route-planner', component: () => import('../pages/RoutePlannerPage.vue') }
+      { path: 'route-planner', component: () => import('../pages/RoutePlannerPage.vue') },
+      { path: 'help', component: () => import('../pages/HelpPage.vue') },
+      { path: 'help/:articleId', component: () => import('../pages/HelpPage.vue') }
     ]
   }
 ]
