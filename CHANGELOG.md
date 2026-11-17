@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.32.0](https://github.com/sj-tech-sweden/stockwire-rental/compare/0.31.0...0.32.0) (2026-11-17)
+
+
+### Features
+
+* **deps:** update dependency openai to &gt;=3.52.0,&lt;3.53.0 ([#826](https://github.com/sj-tech-sweden/stockwire-rental/issues/826)) ([da67a16](https://github.com/sj-tech-sweden/stockwire-rental/commit/da67a1689ce3f9f0e048d46dc79fd4356e109931))
+* **help:** add localized in-app Help center (EN/SV) ([#828](https://github.com/sj-tech-sweden/stockwire-rental/issues/828)) ([35a2a5e](https://github.com/sj-tech-sweden/stockwire-rental/commit/35a2a5eb691e5defa6533e566ef927c4b22294e7))
+* **help:** interactive click-through walkthrough tours ([#829](https://github.com/sj-tech-sweden/stockwire-rental/issues/829)) ([8aa6fac](https://github.com/sj-tech-sweden/stockwire-rental/commit/8aa6fac8d1bf1423a5db921eac07b8a16c52e4fa))
+
+
+### Bug Fixes
+
+* **deps:** update dependency boto3 to v1.44.4 ([#823](https://github.com/sj-tech-sweden/stockwire-rental/issues/823)) ([1f9ea8e](https://github.com/sj-tech-sweden/stockwire-rental/commit/1f9ea8ebd7112cc21c5ef9b6582c2b8ea2d3e447))
+* **deps:** update dependency quasar to v2.35.5 ([#830](https://github.com/sj-tech-sweden/stockwire-rental/issues/830)) ([445b822](https://github.com/sj-tech-sweden/stockwire-rental/commit/445b8227dc605d0d450c43f173b4914de15aa0bd))
+* **deps:** update dependency sqlalchemy to v2.1.9 ([#824](https://github.com/sj-tech-sweden/stockwire-rental/issues/824)) ([1a14e58](https://github.com/sj-tech-sweden/stockwire-rental/commit/1a14e5897ae09bfbe99efc8a5caf3bc2f42e4ed5))
+* **deps:** update dependency vue-i18n to v11.4.21 ([#827](https://github.com/sj-tech-sweden/stockwire-rental/issues/827)) ([a971d9e](https://github.com/sj-tech-sweden/stockwire-rental/commit/a971d9ed5fcb1ba99ab66b8bd2e68b339f2ccb7e))
+
 ## [0.31.0](https://github.com/sj-tech-sweden/stockwire-rental/compare/0.30.0...0.31.0) (2026-11-16)
 
 
