@@ -92,6 +92,12 @@ help, it must be kept in sync with the UI:
   or the i18n parity check and the help index break.
 - Stubbed articles (empty `sections`) are intentional placeholders for areas not
   yet documented; fill them in as part of the work that completes that feature.
+- Articles can be nested under a parent via the `parent` field (the parent
+  article id). The Help center renders children indented beneath their parent
+  (e.g. the Settings sub-articles sit under the Settings overview, and the
+  integration setup guides sit under the Integrations article). Keep `parent`
+  references pointing to an existing article in the **same group**, in both
+  `en.js` and `sv.js`, or the nesting breaks.
 - Do not hardcode help prose outside the `help` namespace; route it through i18n
   like any other user-facing string.
 

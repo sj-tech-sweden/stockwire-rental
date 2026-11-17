@@ -3561,6 +3561,8 @@ export default {
     title: 'Hjälp',
     intro: 'Guider och förklaringar för att använda Stockwire Rental. Välj ett ämne för att komma igång.',
     back: 'Tillbaka till Hjälp',
+    backTo: 'Tillbaka till {name}',
+    inThisSection: 'I detta avsnitt',
     comingSoon: 'Den här artikeln skrivs.',
     groups: {
       gettingStarted: 'Kom igång',
@@ -3970,6 +3972,7 @@ export default {
         title: 'Lager-LED',
         summary: 'Tänd bin för att lokalisera enheter och guida plock.',
         group: 'settings',
+        parent: 'settings',
         sections: [
           {
             heading: 'Styrenheter och mappningar',
@@ -4039,6 +4042,7 @@ export default {
         title: 'Användare och åtkomst',
         summary: 'Hantera användarkonton, roller, API-nycklar och enkel inloggning.',
         group: 'settings',
+        parent: 'settings',
         sections: [
           {
             heading: 'Användare och roller',
@@ -4067,6 +4071,7 @@ export default {
         title: 'Företagsprofil',
         summary: 'Varumärke, kontaktuppgifter och standardföretagsinformation.',
         group: 'settings',
+        parent: 'settings',
         sections: [
           {
             heading: 'Varumärke och logotyper',
@@ -4088,6 +4093,7 @@ export default {
         title: 'Anpassade fält',
         summary: 'Lägg till egna fält på produkter, jobb, kunder och platser.',
         group: 'settings',
+        parent: 'settings',
         sections: [
           {
             heading: 'Definiera fält',
@@ -4109,6 +4115,7 @@ export default {
         title: 'Lagerstandardvärden',
         summary: 'Standardvarumärken, tillverkare, platser och kategorier för lager.',
         group: 'settings',
+        parent: 'settings',
         sections: [
           {
             heading: 'Varumärken och tillverkare',
@@ -4130,6 +4137,7 @@ export default {
         title: 'Integrationer',
         summary: 'Anslut Stockwire Rental till externa system.',
         group: 'settings',
+        parent: 'settings',
         sections: [
           {
             heading: 'Hyres- och planeringsintegrationer',
@@ -4154,10 +4162,170 @@ export default {
           },
         ],
       },
+      settingsIntegrationsEntra: {
+        title: 'Microsoft Entra ID (SSO)',
+        summary: 'Anslut Stockwire Rental till Microsoft Entra ID för enkel inloggning.',
+        group: 'settings',
+        parent: 'settingsIntegrations',
+        sections: [
+          {
+            heading: 'Innan du börjar',
+            body: [
+              'Aktivera SSO i Stockwire Rental (Inställningar > Användare och åtkomst > Enkel inloggning) och bestäm om användare ska skapas automatiskt och om roller ska synkroniseras vid inloggning.',
+              'Lägg till en OIDC- eller SAML-leverantör i appen. Den leverantörsnyckel du anger visas i inloggnings-omdirigeringens URL, så anteckna den.',
+            ],
+          },
+          {
+            heading: 'OIDC: konfigurera Entra ID',
+            body: [
+              'I Microsoft Entra-admincentret registrerar du ett program (Appregistreringar > Ny registrering) och noterar programmets (klient-) ID och katalogens (klient-) ID.',
+              'Under Autentisering lägger du till en webb-omdirigerings-URI exakt: https://<din-domän>/login?oidc_provider=<leverantörsnyckel> (använd leverantörsnyckeln från appen).',
+              'Under Certifikat och hemligheter skapar du en klienthemlighet, och under API-behörigheter beviljar du openid, email och profile (samt GroupMember.Read.All om du mappar grupper till roller).',
+            ],
+          },
+          {
+            heading: 'OIDC: konfigurera appen',
+            body: [
+              'I appens leverantör ställer du in Issuer till https://login.microsoftonline.com/<klientId>/v2.0, auktoriseringsslutpunkt till .../oauth2/v2.0/authorize, token-slutpunkt till .../oauth2/v2.0/token och JWKS-URI till .../discovery/v2.0/keys.',
+              'Ange klient-ID och klienthemlighet från Entra, ställ in Scopes till "openid email profile" och mappa gruppanspråket om du använder grupp-till-roll-mappning.',
+            ],
+          },
+          {
+            heading: 'SAML: konfigurera Entra ID',
+            body: [
+              'I Entra skapar du ett företagsprogram och ställer in dess ACS-URL och SP-enhets-ID till de värden som visas i appen (Inställningar > Användare och åtkomst > Enkel inloggning), eller hämtar dem från appens SAML-metadata-slutpunkt.',
+              'Ladda upp appens metadata (eller ange ACS-URL och enhets-ID manuellt) så att Entra vet var den ska posta försäkringar, och tillhandahåll IdP-enhets-ID, SSO-URL och signeringscertifikat.',
+              'Appens ACS-URL är vanligtvis https://<din-domän>/api/v1/auth/sso/saml/acs.',
+            ],
+          },
+          {
+            heading: 'SAML: konfigurera appen',
+            body: [
+              'I appens SAML-leverantör anger du IdP-enhets-ID, IdP-SSO-URL och x509-signeringscertifikat från Entra.',
+              'Ställ in SP-enhets-ID och ACS-URL så att de matchar det du registrerade i Entra, och testa sedan inloggningen från appens SSO-knapp.',
+            ],
+          },
+          {
+            heading: 'Grupp-till-roll-mappning',
+            body: [
+              'Mappa Entra-grupper till approller (Admin, Manager, Viewer) så att åtkomsten hålls i fas med din katalog.',
+              'Aktivera Synkronisera roller vid inloggning för att hålla rolländringar i Entra återspegterade i Stockwire Rental.',
+            ],
+          },
+        ],
+      },
+      settingsIntegrationsEventory: {
+        title: 'Eventory',
+        summary: 'Synkronisera hyresprodukter och jobb med Eventory.',
+        group: 'settings',
+        parent: 'settingsIntegrations',
+        sections: [
+          {
+            heading: 'I Eventory',
+            body: [
+              'I ditt Eventory-konto genererar du API-uppgifter (API-URL, token-slutpunkt, API-nyckel, användarnamn och lösenord) för den instans du vill ansluta.',
+              'Anteckna leverantörsnamnet och hyreskund-ID som används för synkroniserade hyresprodukter och bokningar.',
+            ],
+          },
+          {
+            heading: 'I Stockwire Rental',
+            body: [
+              'Öppna Inställningar > Integrationer > Eventory och lägg till en instans med API-URL (https://api.eventory.se), token-slutpunkt, API-nyckel, användarnamn och lösenord.',
+              'Ställ in pris marginal %, välj om Eventory-jobb ska skapas för hyror, och mappa hyresprodukter till denna instans. Använd Testa anslutning och sedan Synkronisera nu.',
+            ],
+          },
+        ],
+      },
+      settingsIntegrationsProductionPlanner: {
+        title: 'ProductionPlanner',
+        summary: 'Omvandla jobb och projekt till produktionsplaner i ProductionPlanner.io.',
+        group: 'settings',
+        parent: 'settingsIntegrations',
+        sections: [
+          {
+            heading: 'I ProductionPlanner',
+            body: [
+              'I ProductionPlanner.io öppnar du Integrationer och kopierar din API-nyckel (börjar med pp_). Standard API-bas-URL är https://api.productionplanner.io/v1.',
+            ],
+          },
+          {
+            heading: 'I Stockwire Rental',
+            body: [
+              'Öppna Inställningar > Integrationer > ProductionPlanner, aktivera den och klistra in API-nyckel och bas-URL.',
+              'Använd Testa anslutning för att verifiera och spara sedan. Projekt kan synkroniseras till ProductionPlanner från projektvyn.',
+            ],
+          },
+        ],
+      },
+      settingsIntegrationsTwenty: {
+        title: 'Twenty CRM',
+        summary: 'Tvåvägssynkronisering av jobb, kunder och personer med Twenty CRM.',
+        group: 'settings',
+        parent: 'settingsIntegrations',
+        sections: [
+          {
+            heading: 'I Twenty CRM',
+            body: [
+              'I Twenty CRM öppnar du Inställningar > API:er och webhooks och skapar en API-nyckel (börjar med twenty_). Standard API-bas-URL är https://api.twenty.com.',
+              'Om du vill att ändringar i Twenty ska flöda tillbaka till Stockwire konfigurerar du en webhook som pekar på denna backends publika URL.',
+            ],
+          },
+          {
+            heading: 'I Stockwire Rental',
+            body: [
+              'Öppna Inställningar > Integrationer > Twenty CRM, aktivera den och ange API-nyckel, bas-URL och synkroniseringsintervall.',
+              'Ställ in webhook-hemlighet och webhook-bas-URL (eller förlita dig på serverns API_BASE_URL). Använd Testa anslutning och Synkronisera nu; synkroniseringsstatus och loggar visas i fliken.',
+            ],
+          },
+        ],
+      },
+      settingsIntegrationsStagewire: {
+        title: 'Stagewire',
+        summary: 'Koppla Stagewires scenritningar och patch-ark till ditt lager.',
+        group: 'settings',
+        parent: 'settingsIntegrations',
+        sections: [
+          {
+            heading: 'I Stagewire',
+            body: [
+              'I Stagewire öppnar du Inställningar > Stockwire-integration och kopierar den delade nyckeln som används för att länka de två systemen.',
+            ],
+          },
+          {
+            heading: 'I Stockwire Rental',
+            body: [
+              'Öppna Inställningar > Integrationer > Stagewire och lägg till en instans med Stagewire-bas-URL (HTTPS krävs när en nyckel är satt) och den delade nyckeln.',
+              'Använd Testa anslutning för att verifiera länken innan du förlitar dig på den.',
+            ],
+          },
+        ],
+      },
+      settingsIntegrationsStockwire: {
+        title: 'Partner Stockwire-instanser',
+        summary: 'Hyra utrustning från och anslut till andra Stockwire Rental-instanser.',
+        group: 'settings',
+        parent: 'settingsIntegrations',
+        sections: [
+          {
+            heading: 'På fjärrinstansen',
+            body: [
+              'På partnerns Stockwire Rental-instans skapar du en API-nyckel för att autentisera anslutningen och noterar dess API-URL.',
+            ],
+          },
+          {
+            heading: 'I din instans',
+            body: [
+              'Öppna Inställningar > Integrationer > Stockwire-instanser och lägg till en anslutning med fjärr-API-URL och API-nyckel.',
+              'Ställ in den lokala leverantörskunden som representerar denna hyresleverantör och ditt kund-ID på fjärrinstansen. Använd Testa anslutning för att verifiera.',
+            ],
+          },
+        ],
+      },
       settingsNotifications: {
         title: 'E-post och aviseringar',
         summary: 'Konfigurera e-postleverans och aviseringsmallar.',
         group: 'settings',
+        parent: 'settings',
         sections: [
           {
             heading: 'E-post / SMTP',
@@ -4179,6 +4347,7 @@ export default {
         title: 'Offline-synkkö',
         summary: 'Se och hantera ändringar som köats medan du var offline.',
         group: 'settings',
+        parent: 'settings',
         sections: [
           {
             heading: 'Vad kön gör',
@@ -4200,6 +4369,7 @@ export default {
         title: 'AI-assistent',
         summary: 'Konfigurera AI-assistentens backend (LLM).',
         group: 'settings',
+        parent: 'settings',
         sections: [
           {
             heading: 'Välja en backend',
@@ -4221,6 +4391,7 @@ export default {
         title: 'Kalenderflöden och valutakurser',
         summary: 'Publika kalenderflöden och valutakurser.',
         group: 'settings',
+        parent: 'settings',
         sections: [
           {
             heading: 'Kalenderflöden',

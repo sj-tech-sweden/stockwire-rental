@@ -3572,6 +3572,8 @@ export default {
     title: 'Help',
     intro: 'Guides and explanations for using Stockwire Rental. Choose a topic to get started.',
     back: 'Back to Help',
+    backTo: 'Back to {name}',
+    inThisSection: 'In this section',
     comingSoon: 'This article is being written.',
     groups: {
       gettingStarted: 'Getting started',
@@ -3981,6 +3983,7 @@ export default {
         title: 'Warehouse LEDs',
         summary: 'Light up bins to locate devices and guide picks.',
         group: 'settings',
+        parent: 'settings',
         sections: [
           {
             heading: 'Controllers and mappings',
@@ -4050,6 +4053,7 @@ export default {
         title: 'Users & access',
         summary: 'Manage user accounts, roles, API keys, and single sign-on.',
         group: 'settings',
+        parent: 'settings',
         sections: [
           {
             heading: 'Users and roles',
@@ -4078,6 +4082,7 @@ export default {
         title: 'Company profile',
         summary: 'Branding, contact details, and default company information.',
         group: 'settings',
+        parent: 'settings',
         sections: [
           {
             heading: 'Branding and logos',
@@ -4099,6 +4104,7 @@ export default {
         title: 'Custom fields',
         summary: 'Add your own fields to products, jobs, customers, and venues.',
         group: 'settings',
+        parent: 'settings',
         sections: [
           {
             heading: 'Defining fields',
@@ -4120,6 +4126,7 @@ export default {
         title: 'Inventory defaults',
         summary: 'Default brands, manufacturers, locations, and categories for inventory.',
         group: 'settings',
+        parent: 'settings',
         sections: [
           {
             heading: 'Brands and manufacturers',
@@ -4141,6 +4148,7 @@ export default {
         title: 'Integrations',
         summary: 'Connect Stockwire Rental to external systems.',
         group: 'settings',
+        parent: 'settings',
         sections: [
           {
             heading: 'Rental and planning integrations',
@@ -4165,10 +4173,170 @@ export default {
           },
         ],
       },
+      settingsIntegrationsEntra: {
+        title: 'Microsoft Entra ID (SSO)',
+        summary: 'Connect Stockwire Rental to Microsoft Entra ID for single sign-on.',
+        group: 'settings',
+        parent: 'settingsIntegrations',
+        sections: [
+          {
+            heading: 'Before you start',
+            body: [
+              'Enable SSO in Stockwire Rental (Settings > Users & access > Single sign-on) and decide whether to auto-create users and sync roles on login.',
+              'Add an OIDC or SAML provider in the app. The provider key you enter appears in the login redirect URL, so note it down.',
+            ],
+          },
+          {
+            heading: 'OIDC: configure Entra ID',
+            body: [
+              'In the Microsoft Entra admin center, register an application (App registrations > New registration) and note the Application (client) ID and Directory (tenant) ID.',
+              'Under Authentication, add a Web redirect URI exactly: https://<your-domain>/login?oidc_provider=<providerKey> (use the provider key from the app).',
+              'Under Certificates & secrets create a client secret, and under API permissions grant openid, email, and profile (plus GroupMember.Read.All if you map groups to roles).',
+            ],
+          },
+          {
+            heading: 'OIDC: configure the app',
+            body: [
+              'In the app provider, set Issuer to https://login.microsoftonline.com/<tenantId>/v2.0, Authorization endpoint to .../oauth2/v2.0/authorize, Token endpoint to .../oauth2/v2.0/token, and JWKS URI to .../discovery/v2.0/keys.',
+              'Enter the client ID and client secret from Entra, set Scopes to "openid email profile", and map the group claim if you use group-to-role mapping.',
+            ],
+          },
+          {
+            heading: 'SAML: configure Entra ID',
+            body: [
+              'In Entra, create an Enterprise application and set its ACS URL and SP entity ID to the values shown in the app (Settings > Users & access > SSO), or fetch them from the app SAML metadata endpoint.',
+              'Upload the app metadata (or enter the ACS URL and entity ID manually) so Entra knows where to post assertions, and provide the IdP entity ID, SSO URL, and signing certificate.',
+              'The app ACS URL is typically https://<your-domain>/api/v1/auth/sso/saml/acs.',
+            ],
+          },
+          {
+            heading: 'SAML: configure the app',
+            body: [
+              'In the app SAML provider, enter the IdP entity ID, IdP SSO URL, and x509 signing certificate from Entra.',
+              'Set the SP entity ID and ACS URL to match what you registered in Entra, then test the login from the app SSO button.',
+            ],
+          },
+          {
+            heading: 'Group to role mapping',
+            body: [
+              'Map Entra groups to app roles (Admin, Manager, Viewer) so access stays in step with your directory.',
+              'Enable Sync roles on login to keep role changes in Entra reflected in Stockwire Rental.',
+            ],
+          },
+        ],
+      },
+      settingsIntegrationsEventory: {
+        title: 'Eventory',
+        summary: 'Sync rental products and jobs with Eventory.',
+        group: 'settings',
+        parent: 'settingsIntegrations',
+        sections: [
+          {
+            heading: 'In Eventory',
+            body: [
+              'In your Eventory account, generate API credentials (API URL, token endpoint, API key, username, and password) for the instance you want to connect.',
+              'Note the supplier name and rental customer ID used for synced rental products and bookings.',
+            ],
+          },
+          {
+            heading: 'In Stockwire Rental',
+            body: [
+              'Open Settings > Integrations > Eventory and add an instance with the API URL (https://api.eventory.se), token endpoint, API key, username, and password.',
+              'Set the price margin %, choose whether to create Eventory jobs for rentals, and map rental products to this instance. Use Test connection, then Sync now.',
+            ],
+          },
+        ],
+      },
+      settingsIntegrationsProductionPlanner: {
+        title: 'ProductionPlanner',
+        summary: 'Turn jobs and projects into production plans in ProductionPlanner.io.',
+        group: 'settings',
+        parent: 'settingsIntegrations',
+        sections: [
+          {
+            heading: 'In ProductionPlanner',
+            body: [
+              'In ProductionPlanner.io, open Integrations and copy your API key (starts with pp_). The default API base URL is https://api.productionplanner.io/v1.',
+            ],
+          },
+          {
+            heading: 'In Stockwire Rental',
+            body: [
+              'Open Settings > Integrations > ProductionPlanner, enable it, and paste the API key and base URL.',
+              'Use Test connection to verify, then save. Projects can be synced to ProductionPlanner from the project view.',
+            ],
+          },
+        ],
+      },
+      settingsIntegrationsTwenty: {
+        title: 'Twenty CRM',
+        summary: 'Two-way sync of jobs, customers, and people with Twenty CRM.',
+        group: 'settings',
+        parent: 'settingsIntegrations',
+        sections: [
+          {
+            heading: 'In Twenty CRM',
+            body: [
+              'In Twenty CRM, open Settings > APIs & Webhooks and create an API key (starts with twenty_). The default API base URL is https://api.twenty.com.',
+              'If you want changes in Twenty to flow back into Stockwire, configure a webhook pointing at this backend public URL.',
+            ],
+          },
+          {
+            heading: 'In Stockwire Rental',
+            body: [
+              'Open Settings > Integrations > Twenty CRM, enable it, and enter the API key, base URL, and sync interval.',
+              'Set the webhook secret and webhook base URL (or rely on the server API_BASE_URL). Use Test connection and Sync now; sync status and logs are shown in the tab.',
+            ],
+          },
+        ],
+      },
+      settingsIntegrationsStagewire: {
+        title: 'Stagewire',
+        summary: 'Link Stagewire stage plots and patch sheets to your stock.',
+        group: 'settings',
+        parent: 'settingsIntegrations',
+        sections: [
+          {
+            heading: 'In Stagewire',
+            body: [
+              'In Stagewire, open Settings > Stockwire integration and copy the shared key used to link the two systems.',
+            ],
+          },
+          {
+            heading: 'In Stockwire Rental',
+            body: [
+              'Open Settings > Integrations > Stagewire and add an instance with the Stagewire base URL (HTTPS is required when a key is set) and the shared key.',
+              'Use Test connection to verify the link before relying on it.',
+            ],
+          },
+        ],
+      },
+      settingsIntegrationsStockwire: {
+        title: 'Partner Stockwire instances',
+        summary: 'Rent equipment from and connect to other Stockwire Rental instances.',
+        group: 'settings',
+        parent: 'settingsIntegrations',
+        sections: [
+          {
+            heading: 'On the remote instance',
+            body: [
+              'On the partner Stockwire Rental instance, create an API key for authenticating the connection and note its API URL.',
+            ],
+          },
+          {
+            heading: 'In your instance',
+            body: [
+              'Open Settings > Integrations > Stockwire Instances and add a connection with the remote API URL and API key.',
+              'Set the local supplier customer that represents this rental supplier and your customer ID on the remote instance. Use Test connection to verify.',
+            ],
+          },
+        ],
+      },
       settingsNotifications: {
         title: 'Email & notifications',
         summary: 'Configure email delivery and notification templates.',
         group: 'settings',
+        parent: 'settings',
         sections: [
           {
             heading: 'Email / SMTP',
@@ -4190,6 +4358,7 @@ export default {
         title: 'Offline sync queue',
         summary: 'See and manage changes queued while offline.',
         group: 'settings',
+        parent: 'settings',
         sections: [
           {
             heading: 'What the queue does',
@@ -4211,6 +4380,7 @@ export default {
         title: 'AI Assistant',
         summary: 'Configure the AI Assistant backend (LLM).',
         group: 'settings',
+        parent: 'settings',
         sections: [
           {
             heading: 'Choosing a backend',
@@ -4232,6 +4402,7 @@ export default {
         title: 'Calendar feeds & FX rates',
         summary: 'Public calendar feeds and currency exchange rates.',
         group: 'settings',
+        parent: 'settings',
         sections: [
           {
             heading: 'Calendar feeds',
