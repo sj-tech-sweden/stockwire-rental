@@ -3611,6 +3611,103 @@ export default {
           },
         ],
       },
+      gettingStartedQuickStart: {
+        title: 'Snabbstart för nya användare',
+        summary: 'Det första du ska ställa in och de dagliga vanor som håller Stockwire Rental korrekt.',
+        group: 'gettingStarted',
+        parent: 'gettingStarted',
+        sections: [
+          {
+            heading: 'Ställ in grunderna',
+            body: [
+              'Första dagen, öppna Inställningar och fyll i din företagsprofil (namn, logotyp, valuta, momsnummer) så att dokument och fakturor ser rätt ut.',
+              'Be en Admin lägga till ditt konto och tilldela rätt roll — Admin, Manager eller Viewer — och, om du använder Microsoft Entra ID, logga in med SSO.',
+            ],
+          },
+          {
+            heading: 'Bygg ditt lager',
+            body: [
+              'Lägg till det du hyr ut som Produkter, och hämta detaljer från Leverantörskatalogen så att priser och streckkoder fylls i åt dig.',
+              'För serienummerutrustning, skapa en Enhet för varje exemplar med serienummer och tillgångsetikett, och ge varje enhet en Plats så att du alltid vet var den är.',
+            ],
+          },
+          {
+            heading: 'Kör ditt första jobb',
+            body: [
+              'Skapa ett Jobb för kunden och platsen, lägg till de produkter du behöver och Plocka lager så att appen visar vad som är reserverat och vad som saknas.',
+              'På plats, använd Skanna för att checka in och ut saker, och markera jobbet som Slutfört när utrustningen är tillbaka så att tillgängligheten stämmer.',
+            ],
+          },
+          {
+            heading: 'Ta till dig de dagliga vanorna',
+            body: [
+              'Skanna i stället för att skriva: det går snabbare och förhindrar fel. Håll en enhet i rörelse genom sina statusar (Tillgänglig, Reserverad, I bruk, Underhåll) så att siffrorna är ärliga.',
+              'Arbeta offline utan oro — ändringar sparas på din enhet och synkroniseras när du återansluter. Aktivitetsloggen registrerar vem som ändrade vad, vilket är din säkerhetsvara.',
+            ],
+          },
+        ],
+      },
+      gettingStartedFields: {
+        title: 'Viktiga fält förklarade',
+        summary: 'Vad de viktiga fälten på produkter, enheter, jobb och mer faktiskt betyder.',
+        group: 'gettingStarted',
+        parent: 'gettingStarted',
+        sections: [
+          {
+            heading: 'Produktfält',
+            body: [
+              'Artikelnummer är produktens unika lagerkod; Namn och Typ (Utrustning, Tillbehör, Förbrukningsvara, Väska, Hyra) säger vad den är.',
+              'Dygnspris är vad du tar per dag, och Ersättningskostnad är vad det kostar att ersätta om den försvinner. Minsta lager och Minsta orderkvantitet utlöser påminnelser om ombeställning.',
+              'Under Leverantörer kopplar du produkten till en Leverantörskatalogpost, vilket hämtar leverantörens pris, streckkod och lager automatiskt.',
+            ],
+          },
+          {
+            heading: 'Enhetsfält (lager)',
+            body: [
+              'En Enhet är ett fysiskt exemplar av en Produkt. Produkt kopplar den till det du hyr ut, och Tillgångsetikett är dess unika fysiska märkning.',
+              'Serienummer, Streckkod, QR-kod och RFID är skanningsbara identifierare som används för att slå upp enheten. Status (Tillgänglig, Reserverad, I bruk, Underhåll) och Skick visar dess tillstånd.',
+              'Plats anger var enheten förvaras, och Inköpsdatum, Inköpspris, Garantislut och Utfasningsdatum täcker dess ägardeliv.',
+            ],
+          },
+          {
+            heading: 'Jobbfält',
+            body: [
+              'Jobbkod är jobbets unika referens. Status (Utkast, Bekräftad, Pågående, Slutfört, Avbruten) för det genom livscykeln.',
+              'Kund, Plats och Projekt kopplar jobbet till rätt personer och plats, medan Startdatum och Slutdatum sätter hyresperioden.',
+              'Försäljningspris är vad du tar betalt, och Faktura betald markerar om kunden har reglerat. Produktbehov listar vad som måste plockas.',
+            ],
+          },
+          {
+            heading: 'Företagsfält',
+            body: [
+              'Namn är obligatoriskt och identifierar organisationen. Adress, Stad, Postnummer, Land och Anteckningar fångar var de finns och detaljer.',
+              'Leverantörstyper (Kund, Produktleverantör, Hyresleverantör, Personalleverantör) avgör var företaget visas i appen och vad det kan användas till.',
+            ],
+          },
+          {
+            heading: 'Personfält',
+            body: [
+              'Förnamn och Efternamn är obligatoriska för att identifiera personen. E-post och Telefon låter appen och ditt team nå dem.',
+              'Företag kopplar personen till en organisation, eller så kan du låta dem vara fristående för engångskontakter.',
+            ],
+          },
+          {
+            heading: 'Platsfält',
+            body: [
+              'Namn är obligatoriskt för platsen där arbetet sker. Adress, Stad och Land placerar den; Latitud och Longitud låter Ruttschemaläggaren beräkna körtider.',
+              'Kontaktperson, Telefon och E-post ger föraren eller teamet någon att nå på dagen, och Anteckningar kan hålla parkerings- eller åtkomstinstruktioner.',
+            ],
+          },
+          {
+            heading: 'Inköpsorderfält',
+            body: [
+              'Ordernummer är orderns unika referens, och Leverantör är företaget du köper från. Status (Utkast, Skickad, Godkänd, Beställd, Delvis mottagen, Mottagen) följer uppfyllnaden.',
+              'Orderdatum och Förväntad leverans sätter tidpunkten, och raderna listar varje Artikel, dess Artikelnummer, Antal, Styckpris och Valuta.',
+              'När varorna anländer, använd Ta emot för att checka in dem mot inköpsordern så att varje enhet kopplas till rätt rad och pris.',
+            ],
+          },
+        ],
+      },
       inventory: {
         title: 'Lager',
         summary: 'Hur lagersaldo, platser och kvantiteter hanteras.',

@@ -3622,6 +3622,103 @@ export default {
           },
         ],
       },
+      gettingStartedQuickStart: {
+        title: 'Quick start for new users',
+        summary: 'The first things to set up and the daily habits that keep Stockwire Rental accurate.',
+        group: 'gettingStarted',
+        parent: 'gettingStarted',
+        sections: [
+          {
+            heading: 'Set up the basics',
+            body: [
+              'On your first day, open Settings and fill in your Company profile (name, logo, currency, tax number) so documents and invoices look right.',
+              'Ask an Admin to add your account and assign the right role — Admin, Manager, or Viewer — and, if you use Microsoft Entra ID, sign in with SSO.',
+            ],
+          },
+          {
+            heading: 'Build your inventory',
+            body: [
+              'Add the things you rent out as Products, and pull details from the Vendor catalog so prices and barcodes are filled in for you.',
+              'For serialised gear, create a Device for each unit with a serial number and an asset tag, and give every unit a Location so you always know where it is.',
+            ],
+          },
+          {
+            heading: 'Run your first job',
+            body: [
+              'Create a Job for the customer and venue, add the products you need, and Pull stock so the app shows what is reserved and what is still missing.',
+              'On site, use Scan to check items in and out, and mark the job Completed when the gear is back so availability stays correct.',
+            ],
+          },
+          {
+            heading: 'Adopt the daily habits',
+            body: [
+              'Scan rather than type: it is faster and prevents mistakes. Keep a unit moving through its statuses (Available, Reserved, In use, Maintenance) so the counts stay honest.',
+              'Work offline without worry — changes save on your device and sync when you reconnect. The Activity log records who changed what, which is your safety net.',
+            ],
+          },
+        ],
+      },
+      gettingStartedFields: {
+        title: 'Key fields explained',
+        summary: 'What the important fields on products, devices, jobs, and more actually mean.',
+        group: 'gettingStarted',
+        parent: 'gettingStarted',
+        sections: [
+          {
+            heading: 'Product fields',
+            body: [
+              'SKU is the product’s unique stock code; Name and Type (Equipment, Accessory, Consumable, Case, Rental) say what it is.',
+              'Daily rate is what you charge per day, and Replacement cost is what it costs to replace if lost. Min stock level and Min order quantity trigger reorder reminders.',
+              'Under Suppliers you link the product to a Vendor catalog item, which brings in the supplier’s price, barcode, and stock automatically.',
+            ],
+          },
+          {
+            heading: 'Device (inventory unit) fields',
+            body: [
+              'A Device is one physical unit of a Product. Product links it to the item you rent out, and Asset tag is its unique physical label.',
+              'Serial number, Barcode, QR code, and RFID are scannable identifiers used to look the unit up. Status (Available, Reserved, In use, Maintenance) and Condition track its state.',
+              'Location says where the unit is stored, and Purchase date, Purchase price, Warranty end, and Retire date cover its ownership life.',
+            ],
+          },
+          {
+            heading: 'Job fields',
+            body: [
+              'Job code is the job’s unique reference. Status (Draft, Confirmed, In progress, Completed, Cancelled) moves it through its lifecycle.',
+              'Customer, Venue, and Project connect the job to the right people and place, while Start date and End date set the rental period.',
+              'Sales price is what you charge, and Invoice paid marks whether the customer has settled. Product requirements list what must be pulled.',
+            ],
+          },
+          {
+            heading: 'Company fields',
+            body: [
+              'Name is required and identifies the organisation. Address, City, Postal code, Country, and Notes capture where they are and details.',
+              'Supplier types (Customer, Product supplier, Rental supplier, Crew supplier) decide where the company appears in the app and what it can be used for.',
+            ],
+          },
+          {
+            heading: 'Person fields',
+            body: [
+              'First name and Last name are required to identify the person. Email and Phone let the app and your team reach them.',
+              'Company links the person to an organisation, or you can leave them standalone for one-off contacts.',
+            ],
+          },
+          {
+            heading: 'Venue fields',
+            body: [
+              'Name is required for the site where work happens. Address, City, and Country place it; Latitude and Longitude let the Route Planner calculate drive times.',
+              'Contact person, Phone, and Email give the driver or crew someone to reach on the day, and Notes can hold parking or access instructions.',
+            ],
+          },
+          {
+            heading: 'Purchase order fields',
+            body: [
+              'PO number is the order’s unique reference, and Supplier is the company you are buying from. Status (Draft, Sent, Approved, Ordered, Partially received, Received) tracks fulfilment.',
+              'Order date and Expected delivery set timing, and the lines list each Item, its SKU, Qty, Unit price, and Currency.',
+              'When goods arrive, use Receive to check them in against the PO so each unit is tied to the right line and price.',
+            ],
+          },
+        ],
+      },
       inventory: {
         title: 'Inventory',
         summary: 'How stock, locations, and quantities are managed.',
