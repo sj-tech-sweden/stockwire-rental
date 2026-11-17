@@ -33,7 +33,7 @@
                   dense
                   bordered
                   separator
-                  class="q-ml-md q-mb-xs bg-grey-2"
+                  :class="$q.dark.isActive ? 'q-ml-md q-mb-xs bg-grey-9' : 'q-ml-md q-mb-xs bg-grey-2'"
                 >
                   <q-item
                     v-for="child in item.children"

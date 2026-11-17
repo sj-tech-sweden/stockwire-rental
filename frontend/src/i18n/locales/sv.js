@@ -3634,6 +3634,13 @@ export default {
               'Enheter går genom statusar som tillgänglig, uthyrd, i underhåll och avskriven. Lagerlistan visar aktuell status och låter dig filtrera.',
             ],
           },
+          {
+            heading: 'Lägga till och flytta enheter',
+            body: [
+              'Skapa enheter från en produkt (eller genom att ta emot en inköpsorder) och tilldela varje enhet en plats och, för serienummerutrustning, ett serienummer och en tillgångsetikett.',
+              'Flytta en enhet mellan platser när den plockas, levereras eller lämnas tillbaka; platshistoriken är en del av dess post.',
+            ],
+          },
         ],
       },
       products: {
@@ -3652,6 +3659,13 @@ export default {
             heading: 'Specifikationer och kategorier',
             body: [
               'Lägg till tekniska specifikationer och en kategori på varje produkt så att den är lätt att hitta och jämföra. Tillbehör och komponenter låter dig bygga paket.',
+            ],
+          },
+          {
+            heading: 'Arbeta med leverantörskatalogen',
+            body: [
+              'Hämta artiklar från Leverantörskatalogen in i dina produkter så att priser, streckkoder och leverantörsdata redan är ifyllda.',
+              'Håll en produkt per hyrbar artikel och koppla den till rätt katalogpost, i stället för att duplicera leverantörsdata över produkter.',
             ],
           },
         ],
@@ -3679,6 +3693,13 @@ export default {
               'Följ ett jobb genom dess livscykel från utkast till slutfört. Tidslinjen visar när saker plockas, levereras och lämnas tillbaka.',
             ],
           },
+          {
+            heading: 'Arbeta ett jobb från början till slut',
+            body: [
+              'Öppna jobbet, lägg till de produkter du behöver och plocka lager så att appen kan visa vad som är reserverat och vad som fortfarande saknas.',
+              'När evenemanget närmar sig, använd tidslinjen för att se plock, leveranser och returer, och skanna in och ut saker på plats för att hålla lagerstatusen ärlig.',
+            ],
+          },
         ],
       },
       scan: {
@@ -3696,6 +3717,13 @@ export default {
             heading: 'Var skanning används',
             body: [
               'Skanning används vid mottagning av varor, vid plock av lager till ett jobb, och när du checkar in eller ut saker på plats.',
+            ],
+          },
+          {
+            heading: 'Skanningens arbetsflöde och genvägar',
+            body: [
+              'I en telefon, öppna Skanna och rikta kameran mot koden; motsvarande produkt-, enhets- eller personpost öppnas automatiskt.',
+              'Använd tangentbordsgenvägen (se hjälpen för genvägar i appen) för att öppna skannern var som helst utan att lämna sidan du är på.',
             ],
           },
         ],
@@ -3717,6 +3745,13 @@ export default {
               'Om artiklarna saknar serienummer, ange antalet så skapar appen tillgångsetiketter för varje enhet.',
             ],
           },
+          {
+            heading: 'Tips för mottagningsarbetsflöde',
+            body: [
+              'Sikta på att ta emot mot inköpsordern så att varje enhet kopplas till rätt rad, pris och leverantör.',
+              'Om ett serienummer inte går att skanna kan du skriva in det; när alla förväntade serienummer (eller antalet) är inne, avsluta mottagningen för att stänga raden.',
+            ],
+          },
         ],
       },
       defectsMaintenance: {
@@ -3734,6 +3769,13 @@ export default {
             heading: 'Underhåll',
             body: [
               'Underhåll samlar servicearbete. Flytta en enhet till underhåll för att ta den ur tillgängligt lager tills den är reparerad.',
+            ],
+          },
+          {
+            heading: 'Från defekt till tillbaka i drift',
+            body: [
+              'Registrera en defekt så snart du märker ett fel, ange en allvarlighetsgrad och notera ett förfallodatum så att den finns med i planeringen före nästa uthyrning.',
+              'När enheten går till service, byt till underhåll; när den är reparerad, sätt tillbaka den som tillgänglig så att den kan hyras igen.',
             ],
           },
         ],
@@ -3757,6 +3799,13 @@ export default {
               'När varorna anländer använder du Ta emot för att checka in dem — se hjälpavsnittet Ta emot för detaljer.',
             ],
           },
+          {
+            heading: 'Beställa och ta emot tillsammans',
+            body: [
+              'Håll PO öppen och följ den till Mottagen så att ekonomi och lager stämmer med vad som faktiskt beställdes och levererades.',
+              'Använd sammanslagningsalternativet för att slå ihop rader från samma leverantör och spara frakt när du beställer för flera jobb samtidigt.',
+            ],
+          },
         ],
       },
       labels: {
@@ -3778,6 +3827,13 @@ export default {
               'Ställ in synlighet (alla användare, endast admins, endast ägare) och vilka roller som får redigera varje mall.',
             ],
           },
+          {
+            heading: 'Skriva ut en batch etiketter',
+            body: [
+              'Markera många enheter, produkter, platser eller väskor på en gång och skriv ut en batch med en sparad mall — användbart när lager anländer eller utrustning organiseras om.',
+              'Anslut Brother-skrivaren för direktutskrift på plats, eller exportera till en systemskrivare när du behöver en annan mediastorlek.',
+            ],
+          },
         ],
       },
       projects: {
@@ -3797,6 +3853,13 @@ export default {
             body: [
               'Följ ett projekt som Aktivt, Slutfört eller Avbrutet. Varje projekt listar de jobb som är kopplade till det.',
               'Projekt kan synkroniseras till en extern ProductionPlanner om den integrationen är konfigurerad.',
+            ],
+          },
+          {
+            heading: 'När du ska använda ett projekt',
+            body: [
+              'Använd ett projekt när en kunduppdrag sträcker sig över flera jobb vid olika datum eller platser, så att du ser hela omfånget på ett ställe.',
+              'Håll små, engångsjobb som fristående jobb; gruppera dem bara när den gemensamma kunden, datumen eller faktureringen gör det användbart.',
             ],
           },
         ],
@@ -3826,6 +3889,13 @@ export default {
               'Lägg till anpassade fält för att fånga extra företagsuppgifter som ditt arbetsflöde behöver, utöver standardnamn, adress och anteckningar.',
             ],
           },
+          {
+            heading: 'Håll adressboken användbar',
+            body: [
+              'Ställ in rätt leverantörstyper på varje företag så att inköpsordrar och personalupphandling erbjuder rätt val automatiskt.',
+              'Slå samman dubblettföretag i stället för att lämna flera versioner av samma kund, och håll adress och momsnummer aktuella för fakturering.',
+            ],
+          },
         ],
       },
       persons: {
@@ -3845,6 +3915,13 @@ export default {
             body: [
               'Att koppla en person till ett företag håller adressboken ordnad och låter dig se alla på en organisation.',
               'E-postaviseringar kan aktiveras per person så att de får de meddelanden ditt arbetsflöde skickar.',
+            ],
+          },
+          {
+            heading: 'Fristående kontra kopplad',
+            body: [
+              'Koppla en person till ett företag när de representerar den organisationen, så att kontakten hör till resten av kontot.',
+              'Håll frilansare eller engångskontakter fristående om de inte tillhör en kund eller leverantör du spårar.',
             ],
           },
         ],
@@ -3875,6 +3952,13 @@ export default {
               'Varje medlem kan kopiera en personlig kalenderfeed (Min kalender) för att se sina tilldelningar.',
             ],
           },
+          {
+            heading: 'Planera personal för ett jobb',
+            body: [
+              'På jobbet, lägg till de roller och antal du behöver, lista eventuella erforderliga kompetenser, och låt planeraren föreslå matchande medlemmar.',
+              'Tilldela personer manuellt, bekräfta dem så att de får avisering, och kontrollera certifieringsstatus före jobbet så att ingen tilldelas på ett utgånget certifikat.',
+            ],
+          },
         ],
       },
       venues: {
@@ -3894,6 +3978,13 @@ export default {
             body: [
               'Ange en plats latitud och longitud (eller en geokodbar adress) så att Ruttschemaläggaren kan beräkna körtider och optimera stopp.',
               'Använd Öppna karta för att förhandsgranska platsens läge.',
+            ],
+          },
+          {
+            heading: 'Förbereda en plats för ruttplanering',
+            body: [
+              'Ange en exakt adress eller koordinater för varje plats du levererar till, så att körtider och ruttordning blir korrekta.',
+              'Lägg till en kontaktperson och anteckningar (parkering, lastkaj, åtkomstkoder) som föraren behöver den dagen.',
             ],
           },
         ],
@@ -3917,6 +4008,13 @@ export default {
               'Filtrera transaktioner efter kund, tidsintervall, status eller endast försenade för att jaga det som är obetalt.',
             ],
           },
+          {
+            heading: 'Stämma av betalningar',
+            body: [
+              'Använd översikten för att se väntande, försenade och slutförda belopp på ett ögonblick, och kvitta en transaktion när pengarna har landat.',
+              'Filtrera till endast försenade för att bygga en ringlista, och använd kundfiltret för att granska ett enda konto innan du skickar en påminnelse.',
+            ],
+          },
         ],
       },
       reports: {
@@ -3936,6 +4034,13 @@ export default {
             body: [
               'Ladda upp PDF-brevhuvuden och ställ in ett som systemstandard; mallar kan använda standarden eller ett specifikt brevhuvud för varumärkt utdata.',
               'Generera en rapport som PDF eller HTML, förhandsgranska den live och ladda ner eller exportera den.',
+            ],
+          },
+          {
+            heading: 'Bygga en rapportmall',
+            body: [
+              'Börja från en kategori som matchar dokumentet (till exempel Logistik för en plocklista), och lägg sedan till block som tabeller, streckkoder eller QR-koder.',
+              'Använd de tillgängliga variablerna för att hämta live-data från den valda entiteten, förhandsgranska resultatet och spara mallen så att den kan återanvändas för varje jobb.',
             ],
           },
         ],
@@ -3966,6 +4071,13 @@ export default {
               'Ange en startadress (standard är ditt företags adress) så att körtiderna blir korrekta.',
             ],
           },
+          {
+            heading: 'Planera en leveransrunda',
+            body: [
+              'Lägg till jobben att leverera eller hämta, tilldela det/de fordon som rymmer totalvikten och volymen, och optimera sedan för att ordna stoppen efter körtid.',
+              'Förhandsgranska rutten på kartan, packa i omvänd ordning så att första leveransen ligger överst, och ge föraren packlistan och adresserna.',
+            ],
+          },
         ],
       },
       warehouseLeds: {
@@ -3994,6 +4106,13 @@ export default {
               'Generera en färdig ESPHome-YAML för en styrenhet, och ladda ner hemlighetsmallen, så att hårdvaruinstallationen förblir konsekvent.',
             ],
           },
+          {
+            heading: 'Ett plockningsarbetsflöde med LED',
+            body: [
+              'Vid plock för ett jobb, markera dess bin så att hyllan visar exakt vart du ska gå, och lokalisera sedan varje enhet för att bekräfta rätt bin.',
+              'Vid retur, använd Visa retur för att tända var varje sak hör hemma, vilket snabbar upp uppställningen och förhindrar felplacering.',
+            ],
+          },
         ],
       },
       activity: {
@@ -4013,6 +4132,13 @@ export default {
             body: [
               'Varje post visar entiteten, åtgärden, användaren och tiden. Filtrera eller sök för att hitta en specifik ändring.',
               'Åtgärdstyper inkluderar Uppslag, Skanna, Skapa, Uppdatera, Ta bort, Jobb in, Jobb ut och Flytta.',
+            ],
+          },
+          {
+            heading: 'Använd loggen för att granska en ändring',
+            body: [
+              'Om något ser fel ut — en enhet på fel plats, ett jobb redigerat — sök i loggen efter entitet eller tid för att se exakt vem som ändrade det och när.',
+              'Loggen är skrivskyddad och täcker hela systemet, så den är första stället att titta när du stämmer av en avvikelse.',
             ],
           },
         ],
@@ -4210,6 +4336,13 @@ export default {
             body: [
               'Mappa Entra-grupper till approller (Admin, Manager, Viewer) så att åtkomsten hålls i fas med din katalog.',
               'Aktivera Synkronisera roller vid inloggning för att hålla rolländringar i Entra återspegterade i Stockwire Rental.',
+            ],
+          },
+          {
+            heading: 'Verifiera och felsök',
+            body: [
+              'Efter att ha sparat, använd appens SSO-knapp för att logga in; en lyckad omdirigering tillbaka till Stockwire bekräftar att leverantören är korrekt.',
+              'Om inloggningen misslyckas, kontrollera att omdirigerings-URI (OIDC) eller ACS-URL och enhets-ID (SAML) matchar exakt det som är registrerat i Entra, och att signeringscertifikatet är aktuellt.',
             ],
           },
         ],

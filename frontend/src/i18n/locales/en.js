@@ -3645,6 +3645,13 @@ export default {
               'Units move through statuses like available, rented, in maintenance, and written off. The Inventory list shows the current status and lets you filter.',
             ],
           },
+          {
+            heading: 'Adding and moving units',
+            body: [
+              'Create units from a product (or by receiving a purchase order) and assign each one a location and, for serialised gear, a serial number and asset tag.',
+              'Move a unit between locations when it is picked, delivered, or returned; the location history is part of its record.',
+            ],
+          },
         ],
       },
       products: {
@@ -3663,6 +3670,13 @@ export default {
             heading: 'Specs and categories',
             body: [
               'Add technical specs and a category to each product so it is easy to find and compare. Accessories and components let you build bundles.',
+            ],
+          },
+          {
+            heading: 'Working with the vendor catalog',
+            body: [
+              'Pull items from the Vendor catalog into your products so prices, barcodes, and supplier data arrive already filled in.',
+              'Keep one product per rentable item and link it to the correct catalog item, rather than duplicating supplier data across products.',
             ],
           },
         ],
@@ -3690,6 +3704,13 @@ export default {
               'Track a job through its lifecycle from draft to completed. The timeline shows when items are pulled, delivered, and returned.',
             ],
           },
+          {
+            heading: 'Working a job from start to finish',
+            body: [
+              'Open the job, add the products you need, and pull stock so the app can show what is reserved and what is still missing.',
+              'As the event approaches, use the timeline to see pulls, deliveries, and returns, and scan items in and out on site to keep the stock status honest.',
+            ],
+          },
         ],
       },
       scan: {
@@ -3707,6 +3728,13 @@ export default {
             heading: 'Where scanning is used',
             body: [
               'Scanning is used when receiving goods, pulling stock for a job, and checking items in or out on site.',
+            ],
+          },
+          {
+            heading: 'Scanning workflow and shortcuts',
+            body: [
+              'On a phone, open Scan and point the camera at the code; the matching product, device, or person record opens automatically.',
+              'Use the keyboard shortcut (see the in-app shortcut help) to open the scanner from anywhere without leaving the page you are on.',
             ],
           },
         ],
@@ -3728,6 +3756,13 @@ export default {
               'If items do not have serials, set the quantity and the app generates asset tags for each unit.',
             ],
           },
+          {
+            heading: 'Receive workflow tips',
+            body: [
+              'Aim to receive against the purchase order so each unit is tied to the right line, price, and supplier.',
+              'If a serial cannot be scanned, you can type it in; once all expected serials (or the quantity) are in, finish receiving to close the line.',
+            ],
+          },
         ],
       },
       defectsMaintenance: {
@@ -3745,6 +3780,13 @@ export default {
             heading: 'Maintenance',
             body: [
               'Maintenance groups service work. Move a unit into maintenance to take it out of available stock until it is fixed.',
+            ],
+          },
+          {
+            heading: 'From defect to back in service',
+            body: [
+              'Log a defect the moment you notice a fault, set a severity, and note a due date so it is on the radar before the next rental.',
+              'When the unit goes to service, switch it to maintenance; when it is fixed, return it to available so it can be rented again.',
             ],
           },
         ],
@@ -3768,6 +3810,13 @@ export default {
               'When goods arrive, use Receive to check them in — see the Receive help article for details.',
             ],
           },
+          {
+            heading: 'Ordering and receiving together',
+            body: [
+              'Keep the PO open and track it through to Received so finance and inventory stay aligned with what was actually ordered and delivered.',
+              'Use the consolidate option to merge lines from the same supplier and save on freight when you are ordering for several jobs at once.',
+            ],
+          },
         ],
       },
       labels: {
@@ -3789,6 +3838,13 @@ export default {
               'Set visibility (all users, admins only, owner only) and which roles may edit each template.',
             ],
           },
+          {
+            heading: 'Printing a batch of labels',
+            body: [
+              'Select many devices, products, locations, or cases at once and print a batch using a saved template — useful when stock arrives or gear is re-organised.',
+              'Connect the Brother printer for direct printing on location, or export to a system printer when you need a different media size.',
+            ],
+          },
         ],
       },
       projects: {
@@ -3808,6 +3864,13 @@ export default {
             body: [
               'Track a project as Active, Completed, or Cancelled. Each project lists the jobs linked to it.',
               'Projects can be synced to an external ProductionPlanner if that integration is configured.',
+            ],
+          },
+          {
+            heading: 'When to use a project',
+            body: [
+              'Use a project when one customer engagement spans several jobs at different dates or venues, so you can see the whole scope in one place.',
+              'Keep small, one-off jobs as standalone jobs; only group them when the shared customer, dates, or billing make it useful.',
             ],
           },
         ],
@@ -3837,6 +3900,13 @@ export default {
               'Add custom fields to capture extra company details that your workflow needs, beyond the standard name, address, and notes.',
             ],
           },
+          {
+            heading: 'Keeping the address book useful',
+            body: [
+              'Set the right supplier types on every company so purchase orders and crew sourcing offer the correct choices automatically.',
+              'Merge duplicate companies rather than leaving several versions of the same customer, and keep the address and VAT number current for invoicing.',
+            ],
+          },
         ],
       },
       persons: {
@@ -3856,6 +3926,13 @@ export default {
             body: [
               'Linking a person to a company keeps your address book tidy and lets you see everyone at one organisation.',
               'Email notifications can be enabled per person so they receive the messages your workflow sends.',
+            ],
+          },
+          {
+            heading: 'Standalone vs linked',
+            body: [
+              'Link a person to a company when they represent that organisation, so the contact sits with the rest of the account.',
+              'Keep freelancers or one-off contacts standalone if they do not belong to a customer or supplier you track.',
             ],
           },
         ],
@@ -3886,6 +3963,13 @@ export default {
               'Each member can copy a personal calendar feed (My Calendar) to see their assignments.',
             ],
           },
+          {
+            heading: 'Planning a crew for a job',
+            body: [
+              'On the job, add the roles and counts you need, list any required skills, and let the planner suggest members who match.',
+              'Assign people manually, confirm them so they get notified, and check certification status before the job so no one is assigned on an expired certificate.',
+            ],
+          },
         ],
       },
       venues: {
@@ -3905,6 +3989,13 @@ export default {
             body: [
               'Set a venue latitude and longitude (or a geocodable address) so the Route Planner can compute drive times and optimise stops.',
               'Use Open map to preview the venue location.',
+            ],
+          },
+          {
+            heading: 'Preparing a venue for routing',
+            body: [
+              'Enter a precise address or coordinates for every venue you deliver to, so drive times and route order are accurate.',
+              'Add a contact person and notes (parking, loading dock, access codes) that the driver will need on the day.',
             ],
           },
         ],
@@ -3928,6 +4019,13 @@ export default {
               'Filter transactions by customer, date range, status, or overdue only to chase what is owed.',
             ],
           },
+          {
+            heading: 'Reconciling payments',
+            body: [
+              'Use the overview to see pending, overdue, and completed amounts at a glance, and settle a transaction once the money has landed.',
+              'Filter to overdue only to build a call list, and use the customer filter to review a single account before sending a reminder.',
+            ],
+          },
         ],
       },
       reports: {
@@ -3947,6 +4045,13 @@ export default {
             body: [
               'Upload PDF letterheads and set one as the system default; templates can use the default or a specific letterhead for branded output.',
               'Generate a report as PDF or HTML, preview it live, and download or export it.',
+            ],
+          },
+          {
+            heading: 'Building a report template',
+            body: [
+              'Start from a category that matches the document (for example Logistics for a pick list), then add blocks such as tables, barcodes, or QR codes.',
+              'Use the available variables to pull live data from the chosen entity, preview the result, and save the template so it can be reused for every job.',
             ],
           },
         ],
@@ -3977,6 +4082,13 @@ export default {
               'Set a start address (defaults to your company address) so drive times are accurate.',
             ],
           },
+          {
+            heading: 'Planning a delivery run',
+            body: [
+              'Add the jobs to deliver or collect, assign the vehicle(s) that fit the total weight and volume, then optimise to order the stops by drive time.',
+              'Preview the route on the map, pack in reverse order so the first drop is on top, and hand the driver the packing list and addresses.',
+            ],
+          },
         ],
       },
       warehouseLeds: {
@@ -4005,6 +4117,13 @@ export default {
               'Generate a ready-to-flash ESPHome YAML for a controller, and download the secrets template, so hardware setup stays consistent.',
             ],
           },
+          {
+            heading: 'A picking workflow with LEDs',
+            body: [
+              'When picking for a job, highlight its bins so the shelf shows exactly where to go, then locate each device to confirm the right bin.',
+              'At return, use Show Return to light where each item belongs, which speeds up put-away and prevents mis-shelving.',
+            ],
+          },
         ],
       },
       activity: {
@@ -4024,6 +4143,13 @@ export default {
             body: [
               'Each entry shows the entity, the action, the user, and the time. Filter or search to find a specific change.',
               'Action types include Lookup, Scan, Create, Update, Delete, Job in, Job out, and Move.',
+            ],
+          },
+          {
+            heading: 'Using the log to audit a change',
+            body: [
+              'If something looks wrong — a unit in the wrong place, a job edited — search the log by entity or time to see exactly who changed it and when.',
+              'The log is read-only and covers the whole system, so it is the first place to look when reconciling a discrepancy.',
             ],
           },
         ],
@@ -4221,6 +4347,13 @@ export default {
             body: [
               'Map Entra groups to app roles (Admin, Manager, Viewer) so access stays in step with your directory.',
               'Enable Sync roles on login to keep role changes in Entra reflected in Stockwire Rental.',
+            ],
+          },
+          {
+            heading: 'Verifying and troubleshooting',
+            body: [
+              'After saving, use the app SSO button to sign in; a successful redirect back into Stockwire confirms the provider is correct.',
+              'If login fails, check that the redirect URI (OIDC) or ACS URL and entity ID (SAML) match exactly what is registered in Entra, and that the signing certificate is current.',
             ],
           },
         ],
