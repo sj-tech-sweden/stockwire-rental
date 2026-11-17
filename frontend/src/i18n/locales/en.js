@@ -4352,6 +4352,12 @@ export default {
               'When everything is back, mark the job Completed so availability is restored and the rental period closes.',
             ],
           },
+          {
+            heading: 'Clean up the practice job',
+            body: [
+              'Following this walkthrough end-to-end creates real data. When you are done practising, delete the job from the Jobs list (tap its trash/delete action and confirm) — that also removes its product requirements. If you only read along, no cleanup is needed.',
+            ],
+          },
         ],
       },
       walkthroughProductVendor: {
@@ -4998,6 +5004,7 @@ export default {
           { title: 'Scan items out', text: 'Open the scanner (from a job’s Scan out button, which pre-selects the job and sets the action to Job out). Scan each device’s barcode, QR or NFC into this field and Submit to check it out.' },
           { title: 'Scan items back in', text: 'When the gear returns, switch the action to Job in — or tap Scan in on the job — and scan each unit back into this same field to release the reservation.' },
           { title: 'Complete the job', text: 'When everything is back, set the status to Completed so availability is restored and the rental period closes.' },
+          { title: 'Clean up the practice job', text: 'Following along created real data. To keep things tidy, delete the job you made: on the Jobs list, tap the trash/delete action on that job and confirm. Deleting also removes its product requirements. (If you only read along, you can skip this.)' },
         ],
       },
       walkthroughProductVendor: {

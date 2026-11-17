@@ -4341,6 +4341,12 @@ export default {
               'När allt är tillbaka, markera jobbet som Slutfört så att tillgängligheten återställs och hyresperioden stängs.',
             ],
           },
+          {
+            heading: 'Städa bort träningsjobbet',
+            body: [
+              'Att följa den här genomgången från början till slut skapar riktig data. När du tränat klart, ta bort jobbet från jobblistan (tryck på dess papperskorg/ta bort och bekräfta) — det tar också bort dess produktbehov. Om du bara läste med dig behövs ingen städning.',
+            ],
+          },
         ],
       },
       walkthroughProductVendor: {
@@ -4987,6 +4993,7 @@ export default {
           { title: 'Skanna ut utrustning', text: 'Öppna skannern (från jobbets Skanna ut-knapp, som förväljer jobbet och ställer åtgärden på Jobb ut). Skanna varje enhets streckkod, QR eller NFC i det här fältet och tryck Skicka för att checka ut den.' },
           { title: 'Skanna in utrustning igen', text: 'När utrustningen kommer tillbaka, byt åtgärd till Jobb in — eller tryck på Skanna in på jobbet — och skanna varje enhet i samma fält för att frigöra reservationen.' },
           { title: 'Slutför jobbet', text: 'När allt är tillbaka, ställ in status på Slutfört så att tillgängligheten återställs och hyresperioden stängs.' },
+          { title: 'Städa bort träningsjobbet', text: 'Att följa med här skapade riktig data. För att hålla det rent, ta bort jobbet du skapade: i jobblistan, tryck på papperskorgen/ta bort på det jobbet och bekräfta. Borttagning tar också bort dess produktbehov. (Om du bara läste med dig, kan du hoppa över detta.)' },
         ],
       },
       walkthroughProductVendor: {

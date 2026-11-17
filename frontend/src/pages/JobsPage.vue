@@ -191,7 +191,7 @@
           <template v-if="authStore.canEdit">
             <q-btn v-if="productionplannerEnabled" flat round dense icon="sync" color="info" class="q-mr-xs" @click="syncToProductionPlanner(props.row)" :label="t('jobs.syncToPP')" :disable="jobsStore.loading" />
             <q-btn v-if="productionplannerEnabled && props.row.productionplanner_project_id" flat round dense icon="open_in_new" color="primary" class="q-mr-xs" @click="openProductionPlanner(props.row.productionplanner_project_id)" :label="t('jobs.openInPP')" />
-            <q-btn flat round dense icon="delete" color="negative" @click="confirmDelete(props.row)" />
+            <q-btn flat round dense icon="delete" color="negative" data-tour="job-delete" @click="confirmDelete(props.row)" />
           </template>
         </q-td>
       </template>
@@ -235,7 +235,7 @@
               <q-btn v-if="productionplannerEnabled && props.row.productionplanner_project_id" flat dense round icon="open_in_new" color="primary" :aria-label="t('jobs.openInProductionPlanner')" @click="openProductionPlanner(props.row.productionplanner_project_id)">
                 <q-tooltip>{{ t('jobs.openInProductionPlanner') }}</q-tooltip>
               </q-btn>
-              <q-btn flat dense icon="delete" color="negative" @click="confirmDelete(props.row)" />
+              <q-btn flat dense icon="delete" color="negative" data-tour="job-delete" @click="confirmDelete(props.row)" />
               </template>
             </q-card-actions>
           </q-card>
