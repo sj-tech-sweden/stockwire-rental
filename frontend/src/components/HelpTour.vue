@@ -89,11 +89,21 @@ const {
 
 const cardEl = ref(null)
 const highlightRect = ref(null)
-const positionTick = ref(0) // bumped after the card renders so its real height is used
+const positionTick = ref(0) // bumped so placement recomputes with the real card height
 const scrolledForStep = ref(false)
 let retryTimers = []
 let moTimer = null
 let mo = null
+let cardRO = null
+
+// The card ref points at a Quasar QCard component instance, whose `.offsetHeight`
+// is undefined — read the underlying DOM node instead so placement uses the real
+// rendered height (wrapped text on narrow viewports can make it much taller than
+// the 260px fallback, which previously let the card overlap its target).
+function cardHeight() {
+  const el = cardEl.value?.$el || cardEl.value
+  return el?.offsetHeight || 260
+}
 
 function clearRetries() {
   retryTimers.forEach((id) => clearTimeout(id))
@@ -171,7 +181,7 @@ const cardStyle = computed(() => {
       width: `${cw}px`,
     }
   }
-  const ch = cardEl.value?.offsetHeight || 260
+  const ch = cardHeight()
   const gap = 12
   const fits = (c) => c.top >= 12 && c.top + ch <= vh - 12 && c.left >= 12 && c.left + cw <= vw - 12
   const overlaps = (c) =>
@@ -182,12 +192,26 @@ const cardStyle = computed(() => {
     { top: r.top + r.height / 2 - ch / 2, left: r.right + gap }, // right
     { top: r.top + r.height / 2 - ch / 2, left: r.left - cw - gap }, // left
   ]
-  let pos = candidates.find(fits)
+  let pos = candidates.find((c) => fits(c) && !overlaps(c))
   if (!pos) {
     // No candidate fully fits: clamp to an edge that does not overlap the target.
     const atBottom = { top: vh - ch - 12, left: Math.min(Math.max(r.left + r.width / 2 - cw / 2, 12), vw - cw - 12) }
     const atTop = { top: 12, left: atBottom.left }
     pos = overlaps(atBottom) ? atTop : atBottom
+  }
+  // Hard guarantee: if the chosen spot still intersects the target, flip to the
+  // opposite vertical side; if that fails too, pin to the non-overlapping edge.
+  if (overlaps(pos)) {
+    const opposite = pos.top < r.top
+      ? { top: r.bottom + gap, left: pos.left } // was above -> go below
+      : { top: r.top - ch - gap, left: pos.left } // was below -> go above
+    if (!overlaps(opposite) && opposite.top >= 12 && opposite.top + ch <= vh - 12) {
+      pos = opposite
+    } else {
+      const atTop = { top: 12, left: pos.left }
+      const atBottom = { top: vh - ch - 12, left: pos.left }
+      pos = overlaps(atTop) ? atBottom : atTop
+    }
   }
   pos.top = Math.min(Math.max(pos.top, 12), Math.max(12, vh - ch - 12))
   pos.left = Math.min(Math.max(pos.left, 12), Math.max(12, vw - cw - 12))
@@ -228,6 +252,15 @@ onMounted(() => {
   window.addEventListener('scroll', onScroll, true)
   mo = new MutationObserver(onMutations)
   mo.observe(document.body, { childList: true, subtree: true })
+  // Re-measure placement whenever the card's rendered size changes (e.g. text
+  // wraps differently after a locale/i18n swap or viewport change).
+  const cardNode = cardEl.value?.$el || cardEl.value
+  if (cardNode && typeof ResizeObserver !== 'undefined') {
+    cardRO = new ResizeObserver(() => {
+      positionTick.value++
+    })
+    cardRO.observe(cardNode)
+  }
   if (isActive.value) {
     scrolledForStep.value = false
     scheduleMeasure()
@@ -238,6 +271,7 @@ onBeforeUnmount(() => {
   window.removeEventListener('resize', onResize)
   window.removeEventListener('scroll', onScroll, true)
   if (mo) mo.disconnect()
+  if (cardRO) cardRO.disconnect()
   clearRetries()
   clearTimeout(moTimer)
 })
