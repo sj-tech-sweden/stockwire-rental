@@ -13,6 +13,7 @@
         color="primary"
         icon="post_add"
         :label="t('purchasing.newPo')"
+        data-tour="po-new"
         @click="openNewPo"
       />
     </div>
@@ -21,6 +22,7 @@
       :rows="orders"
       :columns="columns"
       row-key="id"
+      data-tour="po-list"
       :loading="loading"
       :no-data-label="t('purchasing.noPos')"
       :rows-per-page-options="[25, 50, 100, 0]"
@@ -37,7 +39,7 @@
           <q-btn flat dense icon="visibility" :label="t('purchasing.open')" @click="openDetail(props.row)" />
           <q-btn flat dense icon="local_shipping" color="primary" :label="t('purchasing.receive')" @click="goReceive(props.row.id)" />
           <q-btn flat dense icon="picture_as_pdf" :label="t('purchasing.downloadPdf')" @click="downloadPdf(props.row)" />
-          <q-btn flat dense icon="delete" color="negative" :label="t('purchasing.delete')" @click="confirmDelete(props.row)" />
+          <q-btn flat dense icon="delete" color="negative" :label="t('purchasing.delete')" data-tour="po-delete" @click="confirmDelete(props.row)" />
         </q-td>
       </template>
     </q-table>
@@ -128,6 +130,7 @@
                   icon="save"
                   color="primary"
                   class="q-ml-xs"
+                  data-tour="po-save-status"
                   :loading="statusSaving"
                   @click="saveStatus"
                 >
@@ -190,6 +193,7 @@
             color="secondary"
             icon="playlist_add"
             :label="t('purchasing.addLine')"
+            data-tour="po-add-line"
             @click="addLineToPo"
           />
           <q-btn color="primary" :label="t('purchasing.receive')" @click="goReceive(selectedPo.id)" />

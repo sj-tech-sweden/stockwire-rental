@@ -17,12 +17,14 @@
           color="primary"
           icon="add"
           :label="t('vendorCatalog.addSource')"
+          data-tour="vendor-add"
           @click="openCreate"
         />
       </div>
 
       <q-table
         :rows="sources"
+        data-tour="vendor-list"
         :columns="sourceColumns"
         row-key="id"
         :loading="loadingSources"

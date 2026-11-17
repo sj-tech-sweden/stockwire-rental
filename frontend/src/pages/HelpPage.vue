@@ -71,6 +71,16 @@
           <div class="text-h5 q-mb-xs">{{ selectedArticle.title }}</div>
           <div class="text-body2 text-grey-7 q-mb-md">{{ selectedArticle.summary }}</div>
 
+          <q-btn
+            v-if="tourAvailable"
+            class="q-mb-md"
+            color="primary"
+            icon="play_circle"
+            :label="t('help.tour.startClickThrough')"
+            no-caps
+            @click="startTour(selectedArticle.id)"
+          />
+
           <q-card
             v-for="(sec, i) in selectedArticle.sections"
             :key="i"
@@ -126,9 +136,12 @@
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
+import { useTour } from '../help/useTour'
+import { TOUR_IDS } from '../help/tours'
 
 const { t, tm, locale } = useI18n()
 const route = useRoute()
+const { startTour } = useTour()
 
 // `tm` returns the structured help messages (objects/arrays) for the active
 // locale; referencing `locale` keeps the lists reactive on language switch.
@@ -194,6 +207,16 @@ const selectedArticle = computed(() => {
 
 const parentArticle = computed(() =>
   selectedArticle.value?.parent ? articlesById.value[selectedArticle.value.parent] || null : null,
+)
+
+// Walkthrough guides (articles under the "walkthroughs" group that are not the
+// overview) have an interactive click-through tour keyed by their article id.
+const tourAvailable = computed(
+  () =>
+    selectedArticle.value &&
+    selectedArticle.value.group === 'walkthroughs' &&
+    selectedArticle.value.id !== 'walkthroughs' &&
+    TOUR_IDS.includes(selectedArticle.value.id),
 )
 
 const childArticles = computed(() =>

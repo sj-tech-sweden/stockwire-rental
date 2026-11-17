@@ -112,7 +112,7 @@
               </q-item>
             </q-list>
           </q-btn-dropdown>
-          <q-btn class="q-ml-sm" color="primary" icon="add" :label="isPhone ? undefined : t('inventory.newProduct')" :aria-label="t('inventory.newProduct')" unelevated @click="openCreateProduct" />
+          <q-btn class="q-ml-sm" color="primary" icon="add" :label="isPhone ? undefined : t('inventory.newProduct')" :aria-label="t('inventory.newProduct')" data-tour="inventory-new" unelevated @click="openCreateProduct" />
         </div>
 
         <div v-if="selectedProducts.length" class="row items-center q-gutter-sm q-mb-sm">
@@ -145,6 +145,7 @@
           :rows="filteredProducts"
           :columns="productColumns"
           row-key="id"
+          data-tour="inventory-list"
           selection="multiple"
           v-model:selected="selectedProducts"
           :grid="compactGrid"

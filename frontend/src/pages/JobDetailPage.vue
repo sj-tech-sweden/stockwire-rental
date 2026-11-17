@@ -125,7 +125,7 @@
               </div>
             </div>
             <div class="col-12 col-md-auto">
-              <div class="row q-gutter-sm">
+              <div class="row q-gutter-sm" data-tour="job-scan">
                 <q-btn
                   color="primary"
                   outline
@@ -172,6 +172,7 @@
               <div class="col-12 col-md-6">
                 <q-select
                   v-model="form.status"
+                  data-tour="job-status"
                   :options="statusOptions"
                   :label="t('jobs.status')"
                   outlined
@@ -187,6 +188,7 @@
             <q-input
               v-model="form.description"
               :label="t('jobs.description')"
+              data-tour="job-description"
               type="textarea"
               autogrow
               outlined
@@ -200,6 +202,7 @@
                 <q-select
                   v-model="form.company_id"
                   :options="filteredCompanyOptions"
+                  data-tour="job-company"
                   :label="t('jobs.company')"
                   outlined
                   dense
@@ -221,6 +224,7 @@
                 <q-select
                   v-model="form.contact_person_id"
                   :options="filteredPersonOptions"
+                  data-tour="job-person"
                   :label="t('jobs.contactPerson')"
                   outlined
                   dense
@@ -397,7 +401,7 @@
             <div class="text-caption text-grey-7">{{ t('jobs.pickList') }}</div>
           </div>
           <div class="col-auto" v-if="authStore.canEdit">
-            <q-btn color="primary" unelevated icon="add" :label="isPhone ? undefined : t('jobs.addProductRequirements')" @click="requirementDialogOpen = true" />
+            <q-btn color="primary" unelevated icon="add" :label="isPhone ? undefined : t('jobs.addProductRequirements')" data-tour="job-requirements" @click="requirementDialogOpen = true" />
           </div>
         </q-card-section>
 

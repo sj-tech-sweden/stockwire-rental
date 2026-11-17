@@ -146,6 +146,7 @@
             <q-select
               v-model="scanJobId"
               :options="jobSelectOptions"
+              data-tour="scan-job-select"
               :label="t('scan.selectJob')"
               outlined
               dense
@@ -233,6 +234,7 @@
                 ref="scanCodeInputRef"
                 v-model="scanCode"
                 :label="t('scan.scanCode')"
+                data-tour="scan-code"
                 outlined
                 dense
                 :placeholder="scanCodePlaceholder"

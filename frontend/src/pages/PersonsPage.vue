@@ -2,7 +2,7 @@
   <q-page class="q-pa-md ec-page">
     <div class="row items-center q-mb-md">
       <div class="ec-page-title col">{{ t('persons.title') }}</div>
-      <q-btn v-if="authStore.canEdit" color="primary" icon="person_add" :label="t('persons.newPerson')" unelevated @click="openCreate" />
+      <q-btn v-if="authStore.canEdit" color="primary" icon="person_add" :label="t('persons.newPerson')" data-tour="persons-new" unelevated @click="openCreate" />
     </div>
 
     <div class="row q-col-gutter-md q-mb-md">
@@ -30,6 +30,7 @@
       :rows="filteredPersons"
       :columns="columns"
       row-key="id"
+      data-tour="persons-list"
       :grid="compactGrid"
       :hide-header="compactGrid"
       flat
@@ -53,7 +54,7 @@
       <template #body-cell-actions="props">
         <q-td :props="props" auto-width>
           <q-btn flat round dense :icon="authStore.canEdit ? 'edit' : 'info'" color="primary" @click="openDetail(props.row)" />
-          <q-btn v-if="authStore.canEdit" flat round dense icon="delete" color="negative" class="q-ml-xs" @click="confirmDelete(props.row)" />
+          <q-btn v-if="authStore.canEdit" flat round dense icon="delete" color="negative" class="q-ml-xs" data-tour="person-delete" @click="confirmDelete(props.row)" />
         </q-td>
       </template>
 

@@ -209,6 +209,9 @@
     <q-page-container>
       <router-view />
     </q-page-container>
+
+    <!-- Interactive click-through walkthrough overlay -->
+    <HelpTour />
   </q-layout>
 </template>
 
@@ -222,6 +225,7 @@ import { useSettingsStore } from '../stores/settings'
 import { useAssistantStore } from '../stores/assistantStore'
 import { getUserLocalePreference, resolveAppLocale, setLocale } from '../i18n'
 import AssistantDrawer from '../components/AssistantDrawer.vue'
+import HelpTour from '../components/HelpTour.vue'
 
 const drawerOpen = ref(false)
 const drawerExpanded = ref(false)

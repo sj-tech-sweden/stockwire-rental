@@ -152,13 +152,13 @@
           </q-table>
         </q-card>
 
-        <q-card class="ec-card q-pa-md q-mt-md">
+        <q-card class="ec-card q-pa-md q-mt-md" data-tour="settings-sso-card">
           <div class="ec-card-title q-mb-sm">{{ t('settings.sso.title') }}</div>
           <div class="text-caption ec-text-muted q-mb-sm">{{ t('settings.sso.description') }}</div>
 
           <div class="row q-col-gutter-sm q-mb-sm">
             <div class="col-12 col-md-3">
-              <q-toggle v-model="authSsoDraft.enabled" :label="t('settings.sso.enableSso')" color="primary" />
+              <q-toggle v-model="authSsoDraft.enabled" :label="t('settings.sso.enableSso')" data-tour="settings-sso-enable" color="primary" />
             </div>
             <div class="col-12 col-md-3">
               <q-toggle v-model="authSsoDraft.auto_create_users" :label="t('settings.sso.autoCreateUsers')" color="primary" />
@@ -234,7 +234,7 @@
               <div class="col-12 col-md-3"><q-input v-model="provider.subject_claim" :label="t('settings.sso.subjectClaim')" outlined dense /></div>
             </div>
           </div>
-          <q-btn flat dense icon="add" color="primary" :label="t('settings.sso.addOidcProvider')" class="q-mb-md" @click="addOidcProvider" />
+          <q-btn flat dense icon="add" color="primary" :label="t('settings.sso.addOidcProvider')" data-tour="settings-sso-add-oidc" class="q-mb-md" @click="addOidcProvider" />
 
           <div class="text-subtitle2 q-mb-sm">{{ t('settings.sso.samlProviders') }}</div>
           <div class="text-caption ec-text-muted q-mb-sm">{{ t('settings.sso.samlProvidersHint') }}</div>
@@ -262,7 +262,7 @@
               <div class="col-12 col-md-3"><q-input v-model="provider.subject_attribute" :label="t('settings.sso.subjectAttribute')" outlined dense /></div>
             </div>
           </div>
-          <q-btn flat dense icon="add" color="primary" :label="t('settings.sso.addSamlProvider')" class="q-mb-sm" @click="addSamlProvider" />
+          <q-btn flat dense icon="add" color="primary" :label="t('settings.sso.addSamlProvider')" data-tour="settings-sso-add-saml" class="q-mb-sm" @click="addSamlProvider" />
 
           <q-banner v-if="authSsoValidationError" class="bg-warning text-dark rounded-borders q-mb-sm" dense>
             {{ authSsoValidationError }}

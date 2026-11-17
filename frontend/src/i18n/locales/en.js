@@ -3583,6 +3583,7 @@ export default {
       financeReports: 'Finance & reports',
       settings: 'Settings',
       more: 'More',
+      walkthroughs: 'Walkthroughs',
     },
     articles: {
       gettingStarted: {
@@ -3645,7 +3646,7 @@ export default {
           {
             heading: 'Run your first job',
             body: [
-              'Create a Job for the customer and venue, add the products you need, and Pull stock so the app shows what is reserved and what is still missing.',
+              'Create a Job for the customer and venue, add the products you need, and confirm it so the app reserves those products and shows what is available versus what is still missing.',
               'On site, use Scan to check items in and out, and mark the job Completed when the gear is back so availability stays correct.',
             ],
           },
@@ -4251,6 +4252,364 @@ export default {
           },
         ],
       },
+      walkthroughs: {
+        title: 'Walkthroughs',
+        summary: 'Step-by-step guides that take you through common tasks from start to finish.',
+        group: 'walkthroughs',
+        sections: [
+          {
+            heading: 'What you will find here',
+            body: [
+              'Each walkthrough is a numbered procedure: open this, do that, move to the next step. Follow them in order the first time you do a task.',
+              'They build on the explanations in the other help articles — open those from the index if you want the background.',
+            ],
+          },
+        ],
+      },
+      walkthroughReceivePo: {
+        title: 'Walkthrough: receive a purchase order',
+        summary: 'From creating the PO to having the received units in your inventory.',
+        group: 'walkthroughs',
+        parent: 'walkthroughs',
+        sections: [
+          {
+            heading: 'Overview',
+            body: [
+              'This walkthrough takes you from creating a purchase order to checking the delivered goods into inventory as individual devices.',
+            ],
+          },
+          {
+            heading: 'Step 1 — Create the purchase order',
+            body: [
+              'Open Purchase Orders and click New. Choose the Supplier company, then set the Status to Draft.',
+            ],
+          },
+          {
+            heading: 'Step 2 — Add the items you ordered',
+            body: [
+              'On each line, pick the Item (product), its SKU, the Qty, Unit price, and Currency. When ordering across several jobs at once, use the Consolidate option to merge lines from the same supplier and save on freight.',
+            ],
+          },
+          {
+            heading: 'Step 3 — Send or approve the order',
+            body: [
+              'Move the PO to Sent, then Approved or Ordered so the team knows it is on its way.',
+            ],
+          },
+          {
+            heading: 'Step 4 — Receive the goods',
+            body: [
+              'When the delivery arrives, open the PO and click Receive, or use Scan to look items up. Scan or type each serial number, or set the quantity for non-serialised items.',
+            ],
+          },
+          {
+            heading: 'Step 5 — Finish receiving',
+            body: [
+              'Once all expected serials or the quantity are in, finish receiving to close the line and create the Devices in Inventory.',
+            ],
+          },
+          {
+            heading: 'Clean up the practice PO',
+            body: [
+              'Following this walkthrough end-to-end creates real data. When you are done practising, delete the purchase order from the Purchase Orders list (tap its trash/delete action and confirm). Stock you received stays in Inventory and can be removed there if needed. If you only read along, no cleanup is needed.',
+            ],
+          },
+        ],
+      },
+      walkthroughRunJob: {
+        title: 'Walkthrough: run a job end-to-end',
+        summary: 'From the first booking to the gear back on the shelf.',
+        group: 'walkthroughs',
+        parent: 'walkthroughs',
+        sections: [
+          {
+            heading: 'Overview',
+            body: [
+              'This walkthrough follows a job from creation through to completion, including reserving stock and scanning on site.',
+            ],
+          },
+          {
+            heading: 'Step 1 — Create the job',
+            body: [
+              'Open Jobs and click New. A Job code is generated for you — keep it or change it, it is not required. Fill in the Description (it is worth the effort), then pick the Company, Contact person and Venue. Each dropdown has a + to create one if it is missing.',
+            ],
+          },
+          {
+            heading: 'Step 2 — Add what you need',
+            body: [
+              'Under Product requirements, add the products and quantities the job needs.',
+            ],
+          },
+          {
+            heading: 'Step 3 — Confirm the job',
+            body: [
+              'Set the job status from Draft to Confirmed. The app reserves the required products automatically and shows what is available versus what is still missing — there is no separate “pull stock” button.',
+            ],
+          },
+          {
+            heading: 'Step 4 — Prepare and scan on site',
+            body: [
+              'From the job, tap Scan out (or Scan in to receive gear back) to open the scanner with the job pre-selected. If you open the scanner directly, use the job picker dropdown (labelled Select job) to choose the job — it filters as you type, so you never have to memorise the exact code. Set the action to Job out to check items out, or Job in to check them back in, then scan each device’s barcode, QR or NFC and Submit. Keep each unit’s Status honest (Reserved or In use).',
+            ],
+          },
+          {
+            heading: 'Step 5 — Complete the job',
+            body: [
+              'When everything is back, mark the job Completed so availability is restored and the rental period closes.',
+            ],
+          },
+          {
+            heading: 'Clean up the practice job',
+            body: [
+              'Following this walkthrough end-to-end creates real data. When you are done practising, delete the job from the Jobs list (tap its trash/delete action and confirm) — that also removes its product requirements. If you only read along, no cleanup is needed.',
+            ],
+          },
+        ],
+      },
+      walkthroughProductVendor: {
+        title: 'Walkthrough: set up a product and link the vendor catalog',
+        summary: 'Create a rentable product and pull the supplier’s data automatically.',
+        group: 'walkthroughs',
+        parent: 'walkthroughs',
+        sections: [
+          {
+            heading: 'Overview',
+            body: [
+              'This walkthrough creates a product and links it to a Vendor catalog item so prices and barcodes are filled in for you.',
+            ],
+          },
+          {
+            heading: 'Step 1 — Create the product',
+            body: [
+              'Open Products and click New.',
+            ],
+          },
+          {
+            heading: 'Step 2 — Enter the basics',
+            body: [
+              'Enter the Name, SKU, Type (Equipment, Accessory, Consumable, Case, or Rental), and Category.',
+            ],
+          },
+          {
+            heading: 'Step 3 — Link the vendor item',
+            body: [
+              'In the product’s Suppliers section, click Link vendor item and pick the matching Vendor catalog product; its price, barcode, and stock are filled in automatically.',
+            ],
+          },
+          {
+            heading: 'Step 4 — Set pricing and thresholds',
+            body: [
+              'Enter the Daily rate, Replacement cost, and Min stock level and Min order quantity.',
+            ],
+          },
+          {
+            heading: 'Step 5 — Add the physical units',
+            body: [
+              'For serialised gear, create a Device per unit with a Serial number and an Asset tag, and assign a Location.',
+            ],
+          },
+          {
+            heading: 'Clean up the practice product',
+            body: [
+              'Following this walkthrough end-to-end creates a real product. When you are done practising, open the product from Inventory and delete it in its dialog (this also removes any devices you added). If you only read along, no cleanup is needed.',
+            ],
+          },
+        ],
+      },
+      walkthroughDeliveryRoute: {
+        title: 'Walkthrough: plan a delivery route',
+        summary: 'Group deliveries and collections into one optimised run.',
+        group: 'walkthroughs',
+        parent: 'walkthroughs',
+        sections: [
+          {
+            heading: 'Overview',
+            body: [
+              'This walkthrough groups several jobs into a single route, assigns vehicles, and orders the stops by drive time.',
+            ],
+          },
+          {
+            heading: 'Step 1 — Create the route',
+            body: [
+              'Open the Route Planner and create a route.',
+            ],
+          },
+          {
+            heading: 'Step 2 — Add jobs',
+            body: [
+              'Add the jobs to deliver or collect; each job becomes a stop.',
+            ],
+          },
+          {
+            heading: 'Step 3 — Assign vehicles',
+            body: [
+              'Pick the vehicle(s) that fit the total weight and volume. The planner warns if capacity is exceeded.',
+            ],
+          },
+          {
+            heading: 'Step 4 — Optimise',
+            body: [
+              'Click Optimise route to order the stops by drive time, or drag to reorder manually.',
+            ],
+          },
+          {
+            heading: 'Step 5 — Preview and dispatch',
+            body: [
+              'Preview the route on the map, pack in reverse order (first drop on top), and hand the driver the packing list and addresses.',
+            ],
+          },
+          {
+            heading: 'Clean up the practice route',
+            body: [
+              'Following this walkthrough end-to-end creates a real route. When you are done practising, delete it from the Route Planner list (tap its trash/delete action). If you only read along, no cleanup is needed.',
+            ],
+          },
+        ],
+      },
+      walkthroughPrintLabels: {
+        title: 'Walkthrough: print labels for new stock',
+        summary: 'Print barcode and QR labels for devices, products, locations, or cases in one batch.',
+        group: 'walkthroughs',
+        parent: 'walkthroughs',
+        sections: [
+          {
+            heading: 'Overview',
+            body: [
+              'This walkthrough prints a batch of labels using a saved template, useful when new stock arrives or gear is reorganised.',
+            ],
+          },
+          {
+            heading: 'Step 1 — Choose or create a template',
+            body: [
+              'Open Labels and choose an existing template, or create one with text, barcodes, QR codes, and your logo.',
+            ],
+          },
+          {
+            heading: 'Step 2 — Select what to print',
+            body: [
+              'Tick many Devices, Products, Locations, or Cases at once to include them in the batch.',
+            ],
+          },
+          {
+            heading: 'Step 3 — Set visibility and roles',
+            body: [
+              'Choose who can see and edit the template: all users, admins only, or the owner only.',
+            ],
+          },
+          {
+            heading: 'Step 4 — Print',
+            body: [
+              'Connect a Brother QL printer for direct printing, or export to a system printer for other media sizes.',
+            ],
+          },
+          {
+            heading: 'Clean up the practice template',
+            body: [
+              'If you saved a label template while following along, delete it: open the template and tap its trash/delete action. If you only read along or printed without saving, no cleanup is needed.',
+            ],
+          },
+        ],
+      },
+      walkthroughEntraSso: {
+        title: 'Walkthrough: connect Microsoft Entra ID SSO',
+        summary: 'Let users sign in with Microsoft Entra ID via OIDC or SAML.',
+        group: 'walkthroughs',
+        parent: 'walkthroughs',
+        sections: [
+          {
+            heading: 'Overview',
+            body: [
+              'This walkthrough connects Stockwire Rental to Microsoft Entra ID so users log in through your existing directory.',
+            ],
+          },
+          {
+            heading: 'Step 1 — Enable SSO',
+            body: [
+              'In Settings > Users & access > Single sign-on, turn on SSO and decide whether to auto-create users and sync roles on login.',
+            ],
+          },
+          {
+            heading: 'Step 2 — Add a provider',
+            body: [
+              'Add an OIDC or SAML provider and note the provider key — it appears in the login redirect URL.',
+            ],
+          },
+          {
+            heading: 'Step 3 — OIDC: configure Entra ID',
+            body: [
+              'In Entra, register an app and add the redirect URI https://<your-domain>/login?oidc_provider=<key>. Create a client secret and grant openid, email, and profile.',
+            ],
+          },
+          {
+            heading: 'Step 4 — SAML: configure Entra ID',
+            body: [
+              'In Entra, set the ACS URL (https://<your-domain>/api/v1/auth/sso/saml/acs) and SP entity ID from the app, and provide the IdP entity ID, SSO URL, and signing certificate.',
+            ],
+          },
+          {
+            heading: 'Step 5 — Verify',
+            body: [
+              'Use the app SSO button to sign in; a successful redirect back confirms it works. If login fails, check that the redirect URI or ACS URL and entity ID match exactly.',
+            ],
+          },
+          {
+            heading: 'Revert the SSO setup',
+            body: [
+              'If you enabled SSO or added a provider while practising, revert it here: turn SSO off and delete the provider you created so it does not affect real sign-ins. If you only read along, no change was made.',
+            ],
+          },
+        ],
+      },
+      walkthroughOnboardCrew: {
+        title: 'Walkthrough: onboard a new crew member',
+        summary: 'Add a person, link them to a company, and put them on a job.',
+        group: 'walkthroughs',
+        parent: 'walkthroughs',
+        sections: [
+          {
+            heading: 'Overview',
+            body: [
+              'This walkthrough adds a new person to the system and assigns them to a job.',
+            ],
+          },
+          {
+            heading: 'Step 1 — Create the person',
+            body: [
+              'Open Persons and click New. Enter the First name and Last name (required), plus Email and Phone.',
+            ],
+          },
+          {
+            heading: 'Step 2 — Link the company',
+            body: [
+              'Set Company to the organisation they represent, or leave them standalone for a one-off contact.',
+            ],
+          },
+          {
+            heading: 'Step 3 — Add skills and roles',
+            body: [
+              'Record their preferred roles, skills, certifications (with expiry), and rate.',
+            ],
+          },
+          {
+            heading: 'Step 4 — Assign to a job',
+            body: [
+              'Open the job, add the role and count needed, and assign the person. Confirm them so they are notified.',
+            ],
+          },
+          {
+            heading: 'Step 5 — Share the calendar',
+            body: [
+              'They can copy their personal calendar feed (My Calendar) to see their assignments.',
+            ],
+          },
+          {
+            heading: 'Clean up the practice person',
+            body: [
+              'Following this walkthrough end-to-end creates a real person. When you are done practising, delete them from the Persons list (tap their trash/delete action and confirm). If you only read along, no cleanup is needed.',
+            ],
+          },
+        ],
+      },
       settings: {
         title: 'Settings',
         summary: 'Configure the system, users, and business options.',
@@ -4648,6 +5007,91 @@ export default {
               'Refresh the rates to update converted totals; missing rates are shown in their original currency.',
             ],
           },
+        ],
+      },
+    },
+    tour: {
+      startClickThrough: 'Start click-through',
+      next: 'Next',
+      back: 'Back',
+      exit: 'Exit',
+      skip: 'Skip tour',
+      finish: 'Finish',
+      stepOf: 'Step {current} of {total}',
+    },
+    tours: {
+      walkthroughReceivePo: {
+        steps: [
+          { title: 'Create the purchase order', text: 'Open Purchase Orders and start a new order. Pick the supplier, then save it as a Draft so you can keep building it.' },
+          { title: 'Add the items you ordered', text: 'On each line, choose the product, its SKU, the quantity, unit price and currency. When ordering across several jobs at once, use the Consolidate option to merge lines from the same supplier and save on freight.' },
+          { title: 'Send or approve the order', text: 'Move the PO to Sent, then Approved or Ordered so the team knows it is on its way.' },
+          { title: 'Receive the goods', text: 'When the delivery arrives, open the PO and use Receive (or Scan) to check items in. Scan each serial number, or enter a quantity for non-serialised items.' },
+          { title: 'Finish receiving', text: 'Once everything expected is in, finish receiving to close the line and create the Devices in Inventory.' },
+          { title: 'Clean up the practice PO', text: 'Following along created a real purchase order. To keep things tidy, delete it: on the Purchase Orders list, tap the trash/delete action on the order you made and confirm. (If you only read along, you can skip this.)' },
+        ],
+      },
+      walkthroughRunJob: {
+        steps: [
+          { title: 'Create the job', text: 'Open Jobs and tap New job. A job code is generated for you — you can keep it or change it, but that is not required.' },
+          { title: 'Describe the job', text: 'Fill in the Description so the crew and customer know what this job is about.' },
+          { title: 'Add the customer', text: 'Select the Company this job belongs to. If it is not in the list yet, tap the + to create it.' },
+          { title: 'Add the contact person', text: 'Pick the Contact person for the job, or tap the + to add a new person (ideally linked to the company you just chose).' },
+          { title: 'Add what you need', text: 'Under Product requirements, add the products and quantities this job needs.' },
+          { title: 'Confirm the job', text: 'Reserve the stock by setting the status (here) from Draft to Confirmed. The required products are then reserved automatically and availability updates across the app — there is no separate “pull stock” action.' },
+          { title: 'Pick the job to scan', text: 'Open the scanner set to Job out. You do not need to know the exact job code — use the job picker dropdown (labelled Select job) to choose it. It filters as you type, so you can find the job by name, code or customer without memorising anything.' },
+          { title: 'Scan items out', text: 'With the job selected, scan each device’s barcode, QR or NFC into the field and Submit to check it out. (You can also get here from a job’s Scan out button, which pre-selects the job for you.)' },
+          { title: 'Scan items back in', text: 'When the gear returns, switch the action to Job in — or tap Scan in on the job — and scan each unit back into this same field to release the reservation.' },
+          { title: 'Complete the job', text: 'When everything is back, set the status to Completed so availability is restored and the rental period closes.' },
+          { title: 'Clean up the practice job', text: 'Following along created real data. To keep things tidy, delete the job you made: on the Jobs list, tap the trash/delete action on that job and confirm. Deleting also removes its product requirements. (If you only read along, you can skip this.)' },
+        ],
+      },
+      walkthroughProductVendor: {
+        steps: [
+          { title: 'Create the product', text: 'Open Products (Inventory) and create a new product.' },
+          { title: 'Enter the basics', text: 'Add the name, SKU, type and category. The SKU is the unique stock code you will search by.' },
+          { title: 'Link the vendor item', text: 'In the product’s Suppliers section, click Link vendor item and pick the matching item from the Vendor catalog — its price, barcode and stock are filled in automatically.' },
+          { title: 'Set pricing and thresholds', text: 'Enter the daily rate, replacement cost, and the minimum stock and order quantities that trigger reorder reminders.' },
+          { title: 'Add the physical units', text: 'For serialised gear, create a Device per unit with a serial number and asset tag, and assign a location so you always know where it is.' },
+          { title: 'Clean up the practice product', text: 'Following along created a real product. Open the product you made from Inventory, and in its dialog tap Delete to remove it (and any devices you added). (If you only read along, you can skip this.)' },
+        ],
+      },
+      walkthroughDeliveryRoute: {
+        steps: [
+          { title: 'Create the route', text: 'Open the Route Planner and create a new route.' },
+          { title: 'Add jobs', text: 'Add the jobs to deliver or collect. Each job becomes a stop on the route.' },
+          { title: 'Assign vehicles', text: 'Choose the vehicle(s) that fit the total weight and volume. The planner warns if capacity is exceeded.' },
+          { title: 'Optimise', text: 'Click Optimise route to order the stops by drive time, or drag to reorder them manually.' },
+          { title: 'Preview and dispatch', text: 'Preview the route on the map, pack in reverse order (first drop on top), and hand the driver the packing list and addresses.' },
+          { title: 'Clean up the practice route', text: 'Following along created a real route. To keep things tidy, delete it: in the Route Planner list, tap the trash/delete action on the route you made. (If you only read along, you can skip this.)' },
+        ],
+      },
+      walkthroughPrintLabels: {
+        steps: [
+          { title: 'Choose or create a template', text: 'Open Labels and pick an existing template, or build one with text, barcodes, QR codes and your logo.' },
+          { title: 'Select what to print', text: 'Tick many devices, products, locations or cases at once to include them in the batch.' },
+          { title: 'Set visibility and roles', text: 'Decide who can see and edit the template: all users, admins only, or the owner only.' },
+          { title: 'Print', text: 'Connect a Brother QL printer for direct printing, or export to a system printer for other media sizes.' },
+          { title: 'Clean up the practice template', text: 'If you saved a label template while following along, delete it: open the template and tap the trash/delete action. (If you only read along or printed without saving, you can skip this.)' },
+        ],
+      },
+      walkthroughEntraSso: {
+        steps: [
+          { title: 'Enable SSO', text: 'In Settings, open Users & access and the Single sign-on panel. Turn SSO on and choose whether to auto-create users and sync roles on login.' },
+          { title: 'Add a provider', text: 'Add an OIDC or SAML provider. Note the provider key — it appears in the login redirect URL.' },
+          { title: 'OIDC: configure Entra ID', text: 'In Entra, register an app and add the redirect URI shown in the app. Create a client secret and grant openid, email and profile.' },
+          { title: 'SAML: configure Entra ID', text: 'In Entra, set the ACS URL and SP entity ID from the app, and provide the IdP entity ID, SSO URL and signing certificate.' },
+          { title: 'Verify', text: 'Use the app’s SSO button to sign in. A successful redirect back confirms it works. If it fails, check that the redirect URI (or ACS URL) and entity ID match exactly.' },
+          { title: 'Revert the SSO setup', text: 'If you enabled SSO or added a provider while practising, revert it here: turn SSO off and delete the provider you created so it does not affect real sign-ins. (If you only read along, no change was made.)' },
+        ],
+      },
+      walkthroughOnboardCrew: {
+        steps: [
+          { title: 'Create the person', text: 'Open Persons and add a new person. Enter the first and last name (required), plus email and phone.' },
+          { title: 'Link the company', text: 'Set the company they represent, or leave them standalone for a one-off contact.' },
+          { title: 'Add skills and roles', text: 'Record their preferred roles, skills, certifications (with expiry) and rate.' },
+          { title: 'Assign to a job', text: 'Open the job, add the role and count needed, and assign the person. Confirm them so they are notified.' },
+          { title: 'Share the calendar', text: 'They can copy their personal calendar feed (My Calendar) to see their assignments in their own calendar app.' },
+          { title: 'Clean up the practice person', text: 'Following along created a real person. To keep things tidy, delete them: on the Persons list, tap the trash/delete action on the person you made and confirm. (If you only read along, you can skip this.)' },
         ],
       },
     },
