@@ -3583,6 +3583,7 @@ export default {
       financeReports: 'Finance & reports',
       settings: 'Settings',
       more: 'More',
+      walkthroughs: 'Walkthroughs',
     },
     articles: {
       gettingStarted: {
@@ -4247,6 +4248,322 @@ export default {
             body: [
               'If something looks wrong — a unit in the wrong place, a job edited — search the log by entity or time to see exactly who changed it and when.',
               'The log is read-only and covers the whole system, so it is the first place to look when reconciling a discrepancy.',
+            ],
+          },
+        ],
+      },
+      walkthroughs: {
+        title: 'Walkthroughs',
+        summary: 'Step-by-step guides that take you through common tasks from start to finish.',
+        group: 'walkthroughs',
+        sections: [
+          {
+            heading: 'What you will find here',
+            body: [
+              'Each walkthrough is a numbered procedure: open this, do that, move to the next step. Follow them in order the first time you do a task.',
+              'They build on the explanations in the other help articles — open those from the index if you want the background.',
+            ],
+          },
+        ],
+      },
+      walkthroughReceivePo: {
+        title: 'Walkthrough: receive a purchase order',
+        summary: 'From creating the PO to having the received units in your inventory.',
+        group: 'walkthroughs',
+        parent: 'walkthroughs',
+        sections: [
+          {
+            heading: 'Overview',
+            body: [
+              'This walkthrough takes you from creating a purchase order to checking the delivered goods into inventory as individual devices.',
+            ],
+          },
+          {
+            heading: 'Step 1 — Create the purchase order',
+            body: [
+              'Open Purchase Orders and click New. Choose the Supplier company, then set the Status to Draft.',
+            ],
+          },
+          {
+            heading: 'Step 2 — Add the items you ordered',
+            body: [
+              'On each line, pick the Item (product), its SKU, the Qty, Unit price, and Currency. Use Consolidate to merge lines from the same supplier.',
+            ],
+          },
+          {
+            heading: 'Step 3 — Send or approve the order',
+            body: [
+              'Move the PO to Sent, then Approved or Ordered so the team knows it is on its way.',
+            ],
+          },
+          {
+            heading: 'Step 4 — Receive the goods',
+            body: [
+              'When the delivery arrives, open the PO and click Receive, or use Scan to look items up. Scan or type each serial number, or set the quantity for non-serialised items.',
+            ],
+          },
+          {
+            heading: 'Step 5 — Finish receiving',
+            body: [
+              'Once all expected serials or the quantity are in, finish receiving to close the line and create the Devices in Inventory.',
+            ],
+          },
+        ],
+      },
+      walkthroughRunJob: {
+        title: 'Walkthrough: run a job end-to-end',
+        summary: 'From the first booking to the gear back on the shelf.',
+        group: 'walkthroughs',
+        parent: 'walkthroughs',
+        sections: [
+          {
+            heading: 'Overview',
+            body: [
+              'This walkthrough follows a job from creation through to completion, including pulling stock and scanning on site.',
+            ],
+          },
+          {
+            heading: 'Step 1 — Create the job',
+            body: [
+              'Open Jobs and click New. Enter a Job code, pick the Customer (company) and Venue, and set the Start and End dates.',
+            ],
+          },
+          {
+            heading: 'Step 2 — Add what you need',
+            body: [
+              'Under Product requirements, add the products and quantities the job needs.',
+            ],
+          },
+          {
+            heading: 'Step 3 — Pull stock',
+            body: [
+              'Click Pull stock so the app reserves units and shows what is available versus what is still missing.',
+            ],
+          },
+          {
+            heading: 'Step 4 — Prepare and scan on site',
+            body: [
+              'Use Scan to check items out as they leave and back in on return. Keep each unit’s Status honest (Reserved or In use).',
+            ],
+          },
+          {
+            heading: 'Step 5 — Complete the job',
+            body: [
+              'When everything is back, mark the job Completed so availability is restored and the rental period closes.',
+            ],
+          },
+        ],
+      },
+      walkthroughProductVendor: {
+        title: 'Walkthrough: set up a product and link the vendor catalog',
+        summary: 'Create a rentable product and pull the supplier’s data automatically.',
+        group: 'walkthroughs',
+        parent: 'walkthroughs',
+        sections: [
+          {
+            heading: 'Overview',
+            body: [
+              'This walkthrough creates a product and links it to a Vendor catalog item so prices and barcodes are filled in for you.',
+            ],
+          },
+          {
+            heading: 'Step 1 — Create the product',
+            body: [
+              'Open Products and click New.',
+            ],
+          },
+          {
+            heading: 'Step 2 — Enter the basics',
+            body: [
+              'Enter the Name, SKU, Type (Equipment, Accessory, Consumable, Case, or Rental), and Category.',
+            ],
+          },
+          {
+            heading: 'Step 3 — Link the vendor item',
+            body: [
+              'Under Suppliers, click Link vendor item and pick the matching Vendor catalog product; its price, barcode, and stock are filled in automatically.',
+            ],
+          },
+          {
+            heading: 'Step 4 — Set pricing and thresholds',
+            body: [
+              'Enter the Daily rate, Replacement cost, and Min stock level and Min order quantity.',
+            ],
+          },
+          {
+            heading: 'Step 5 — Add the physical units',
+            body: [
+              'For serialised gear, create a Device per unit with a Serial number and an Asset tag, and assign a Location.',
+            ],
+          },
+        ],
+      },
+      walkthroughDeliveryRoute: {
+        title: 'Walkthrough: plan a delivery route',
+        summary: 'Group deliveries and collections into one optimised run.',
+        group: 'walkthroughs',
+        parent: 'walkthroughs',
+        sections: [
+          {
+            heading: 'Overview',
+            body: [
+              'This walkthrough groups several jobs into a single route, assigns vehicles, and orders the stops by drive time.',
+            ],
+          },
+          {
+            heading: 'Step 1 — Create the route',
+            body: [
+              'Open the Route Planner and create a route.',
+            ],
+          },
+          {
+            heading: 'Step 2 — Add jobs',
+            body: [
+              'Add the jobs to deliver or collect; each job becomes a stop.',
+            ],
+          },
+          {
+            heading: 'Step 3 — Assign vehicles',
+            body: [
+              'Pick the vehicle(s) that fit the total weight and volume. The planner warns if capacity is exceeded.',
+            ],
+          },
+          {
+            heading: 'Step 4 — Optimise',
+            body: [
+              'Click Optimise route to order the stops by drive time, or drag to reorder manually.',
+            ],
+          },
+          {
+            heading: 'Step 5 — Preview and dispatch',
+            body: [
+              'Preview the route on the map, pack in reverse order (first drop on top), and hand the driver the packing list and addresses.',
+            ],
+          },
+        ],
+      },
+      walkthroughPrintLabels: {
+        title: 'Walkthrough: print labels for new stock',
+        summary: 'Print barcode and QR labels for devices, products, locations, or cases in one batch.',
+        group: 'walkthroughs',
+        parent: 'walkthroughs',
+        sections: [
+          {
+            heading: 'Overview',
+            body: [
+              'This walkthrough prints a batch of labels using a saved template, useful when new stock arrives or gear is reorganised.',
+            ],
+          },
+          {
+            heading: 'Step 1 — Choose or create a template',
+            body: [
+              'Open Labels and choose an existing template, or create one with text, barcodes, QR codes, and your logo.',
+            ],
+          },
+          {
+            heading: 'Step 2 — Select what to print',
+            body: [
+              'Tick many Devices, Products, Locations, or Cases at once to include them in the batch.',
+            ],
+          },
+          {
+            heading: 'Step 3 — Set visibility and roles',
+            body: [
+              'Choose who can see and edit the template: all users, admins only, or the owner only.',
+            ],
+          },
+          {
+            heading: 'Step 4 — Print',
+            body: [
+              'Connect a Brother QL printer for direct printing, or export to a system printer for other media sizes.',
+            ],
+          },
+        ],
+      },
+      walkthroughEntraSso: {
+        title: 'Walkthrough: connect Microsoft Entra ID SSO',
+        summary: 'Let users sign in with Microsoft Entra ID via OIDC or SAML.',
+        group: 'walkthroughs',
+        parent: 'walkthroughs',
+        sections: [
+          {
+            heading: 'Overview',
+            body: [
+              'This walkthrough connects Stockwire Rental to Microsoft Entra ID so users log in through your existing directory.',
+            ],
+          },
+          {
+            heading: 'Step 1 — Enable SSO',
+            body: [
+              'In Settings > Users & access > Single sign-on, turn on SSO and decide whether to auto-create users and sync roles on login.',
+            ],
+          },
+          {
+            heading: 'Step 2 — Add a provider',
+            body: [
+              'Add an OIDC or SAML provider and note the provider key — it appears in the login redirect URL.',
+            ],
+          },
+          {
+            heading: 'Step 3 — OIDC: configure Entra ID',
+            body: [
+              'In Entra, register an app and add the redirect URI https://<your-domain>/login?oidc_provider=<key>. Create a client secret and grant openid, email, and profile.',
+            ],
+          },
+          {
+            heading: 'Step 4 — SAML: configure Entra ID',
+            body: [
+              'In Entra, set the ACS URL (https://<your-domain>/api/v1/auth/sso/saml/acs) and SP entity ID from the app, and provide the IdP entity ID, SSO URL, and signing certificate.',
+            ],
+          },
+          {
+            heading: 'Step 5 — Verify',
+            body: [
+              'Use the app SSO button to sign in; a successful redirect back confirms it works. If login fails, check that the redirect URI or ACS URL and entity ID match exactly.',
+            ],
+          },
+        ],
+      },
+      walkthroughOnboardCrew: {
+        title: 'Walkthrough: onboard a new crew member',
+        summary: 'Add a person, link them to a company, and put them on a job.',
+        group: 'walkthroughs',
+        parent: 'walkthroughs',
+        sections: [
+          {
+            heading: 'Overview',
+            body: [
+              'This walkthrough adds a new person to the system and assigns them to a job.',
+            ],
+          },
+          {
+            heading: 'Step 1 — Create the person',
+            body: [
+              'Open Persons and click New. Enter the First name and Last name (required), plus Email and Phone.',
+            ],
+          },
+          {
+            heading: 'Step 2 — Link the company',
+            body: [
+              'Set Company to the organisation they represent, or leave them standalone for a one-off contact.',
+            ],
+          },
+          {
+            heading: 'Step 3 — Add skills and roles',
+            body: [
+              'Record their preferred roles, skills, certifications (with expiry), and rate.',
+            ],
+          },
+          {
+            heading: 'Step 4 — Assign to a job',
+            body: [
+              'Open the job, add the role and count needed, and assign the person. Confirm them so they are notified.',
+            ],
+          },
+          {
+            heading: 'Step 5 — Share the calendar',
+            body: [
+              'They can copy their personal calendar feed (My Calendar) to see their assignments.',
             ],
           },
         ],

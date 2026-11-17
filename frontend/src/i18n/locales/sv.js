@@ -3572,6 +3572,7 @@ export default {
       financeReports: 'Ekonomi och rapporter',
       settings: 'Inställningar',
       more: 'Mer',
+      walkthroughs: 'Genomgångar',
     },
     articles: {
       gettingStarted: {
@@ -4236,6 +4237,322 @@ export default {
             body: [
               'Om något ser fel ut — en enhet på fel plats, ett jobb redigerat — sök i loggen efter entitet eller tid för att se exakt vem som ändrade det och när.',
               'Loggen är skrivskyddad och täcker hela systemet, så den är första stället att titta när du stämmer av en avvikelse.',
+            ],
+          },
+        ],
+      },
+      walkthroughs: {
+        title: 'Genomgångar',
+        summary: 'Steg-för-steg-guider som tar dig genom vanliga uppgifter från början till slut.',
+        group: 'walkthroughs',
+        sections: [
+          {
+            heading: 'Vad du hittar här',
+            body: [
+              'Varje genomgång är ett numrerat förfarande: öppna detta, gör detta, gå till nästa steg. Följ dem i ordning första gången du gör en uppgift.',
+              'De bygger på förklaringarna i de andra hjälpavsnitten — öppna dem från indexet om du vill ha bakgrunden.',
+            ],
+          },
+        ],
+      },
+      walkthroughReceivePo: {
+        title: 'Genomgång: ta emot en inköpsorder',
+        summary: 'Från att skapa inköpsordern till att ha de mottagna enheterna i lagret.',
+        group: 'walkthroughs',
+        parent: 'walkthroughs',
+        sections: [
+          {
+            heading: 'Översikt',
+            body: [
+              'Den här genomgången tar dig från att skapa en inköpsorder till att checka in de levererade varorna i lagret som enskilda enheter.',
+            ],
+          },
+          {
+            heading: 'Steg 1 — Skapa inköpsordern',
+            body: [
+              'Öppna Inköpsordrar och klicka på Ny. Välj leverantörsföretaget och ställ sedan Status på Utkast.',
+            ],
+          },
+          {
+            heading: 'Steg 2 — Lägg till det du beställde',
+            body: [
+              'På varje rad, välj Artikel (produkt), dess Artikelnummer, Antal, Styckpris och Valuta. Använd Sammanläggning för att slå ihop rader från samma leverantör.',
+            ],
+          },
+          {
+            heading: 'Steg 3 — Skicka eller godkänn ordern',
+            body: [
+              'Flytta inköpsordern till Skickad, sedan Godkänd eller Beställd så att teamet vet att den är på väg.',
+            ],
+          },
+          {
+            heading: 'Steg 4 — Ta emot varorna',
+            body: [
+              'När leveransen anländer, öppna inköpsordern och klicka på Ta emot, eller använd Skanna för att slå upp artiklar. Skanna eller skriv in varje serienummer, eller ange antalet för artiklar utan serienummer.',
+            ],
+          },
+          {
+            heading: 'Steg 5 — Avsluta mottagningen',
+            body: [
+              'När alla förväntade serienummer eller antalet är inne, avsluta mottagningen för att stänga raden och skapa enheterna i Lagret.',
+            ],
+          },
+        ],
+      },
+      walkthroughRunJob: {
+        title: 'Genomgång: kör ett jobb från början till slut',
+        summary: 'Från första bokningen till utrustningen tillbaka på hyllan.',
+        group: 'walkthroughs',
+        parent: 'walkthroughs',
+        sections: [
+          {
+            heading: 'Översikt',
+            body: [
+              'Den här genomgången följer ett jobb från skapande till slutförande, inklusive plock av lager och skanning på plats.',
+            ],
+          },
+          {
+            heading: 'Steg 1 — Skapa jobbet',
+            body: [
+              'Öppna Jobb och klicka på Ny. Ange en Jobbkod, välj Kund (företag) och Plats, och ange Startdatum och Slutdatum.',
+            ],
+          },
+          {
+            heading: 'Steg 2 — Lägg till vad du behöver',
+            body: [
+              'Under Produktbehov, lägg till de produkter och kvantiteter jobbet behöver.',
+            ],
+          },
+          {
+            heading: 'Steg 3 — Plocka lager',
+            body: [
+              'Klicka på Plocka lager så att appen reserverar enheter och visar vad som är tillgängligt jämfört med vad som fortfarande saknas.',
+            ],
+          },
+          {
+            heading: 'Steg 4 — Förbered och skanna på plats',
+            body: [
+              'Använd Skanna för att checka ut saker när de lämnar och in igen vid retur. Håll varje enhets Status ärlig (Reserverad eller I bruk).',
+            ],
+          },
+          {
+            heading: 'Steg 5 — Slutför jobbet',
+            body: [
+              'När allt är tillbaka, markera jobbet som Slutfört så att tillgängligheten återställs och hyresperioden stängs.',
+            ],
+          },
+        ],
+      },
+      walkthroughProductVendor: {
+        title: 'Genomgång: skapa en produkt och koppla leverantörskatalogen',
+        summary: 'Skapa en hyrbar produkt och hämta leverantörens data automatiskt.',
+        group: 'walkthroughs',
+        parent: 'walkthroughs',
+        sections: [
+          {
+            heading: 'Översikt',
+            body: [
+              'Den här genomgången skapar en produkt och kopplar den till en Leverantörskatalogpost så att priser och streckkoder fylls i åt dig.',
+            ],
+          },
+          {
+            heading: 'Steg 1 — Skapa produkten',
+            body: [
+              'Öppna Produkter och klicka på Ny.',
+            ],
+          },
+          {
+            heading: 'Steg 2 — Fyll i grunderna',
+            body: [
+              'Ange Namn, Artikelnummer, Typ (Utrustning, Tillbehör, Förbrukningsvara, Väska eller Hyra) och Kategori.',
+            ],
+          },
+          {
+            heading: 'Steg 3 — Koppla leverantörsposten',
+            body: [
+              'Under Leverantörer, klicka på Koppla leverantörspost och välj den matchande Leverantörskatalogprodukten; dess pris, streckkod och lager fylls i automatiskt.',
+            ],
+          },
+          {
+            heading: 'Steg 4 — Sätt pris och trösklar',
+            body: [
+              'Ange Dygnspris, Ersättningskostnad, samt Minsta lager och Minsta orderkvantitet.',
+            ],
+          },
+          {
+            heading: 'Steg 5 — Lägg till de fysiska enheterna',
+            body: [
+              'För serienummerutrustning, skapa en Enhet per exemplar med Serienummer och Tillgångsetikett, och tilldela en Plats.',
+            ],
+          },
+        ],
+      },
+      walkthroughDeliveryRoute: {
+        title: 'Genomgång: planera en leveransrunda',
+        summary: 'Samla leveranser och upphämtningar i en optimerad runda.',
+        group: 'walkthroughs',
+        parent: 'walkthroughs',
+        sections: [
+          {
+            heading: 'Översikt',
+            body: [
+              'Den här genomgången samlar flera jobb i en enda rutt, tilldelar fordon och ordnar stoppen efter körtid.',
+            ],
+          },
+          {
+            heading: 'Steg 1 — Skapa rutten',
+            body: [
+              'Öppna Ruttschemaläggaren och skapa en rutt.',
+            ],
+          },
+          {
+            heading: 'Steg 2 — Lägg till jobb',
+            body: [
+              'Lägg till jobben att leverera eller hämta; varje jobb blir ett stopp.',
+            ],
+          },
+          {
+            heading: 'Steg 3 — Tilldela fordon',
+            body: [
+              'Välj det/de fordon som rymmer totalvikten och volymen. Planeraren varnar om kapaciteten överskrids.',
+            ],
+          },
+          {
+            heading: 'Steg 4 — Optimera',
+            body: [
+              'Klicka på Optimera rutt för att ordna stoppen efter körtid, eller dra för att ordna om manuellt.',
+            ],
+          },
+          {
+            heading: 'Steg 5 — Förhandsgranska och skicka',
+            body: [
+              'Förhandsgranska rutten på kartan, packa i omvänd ordning (första leveransen överst), och ge föraren packlistan och adresserna.',
+            ],
+          },
+        ],
+      },
+      walkthroughPrintLabels: {
+        title: 'Genomgång: skriv ut etiketter för nytt lager',
+        summary: 'Skriv ut streckkods- och QR-etiketter för enheter, produkter, platser eller väskor i en batch.',
+        group: 'walkthroughs',
+        parent: 'walkthroughs',
+        sections: [
+          {
+            heading: 'Översikt',
+            body: [
+              'Den här genomgången skriver ut en batch etiketter med en sparad mall, användbart när nytt lager anländer eller utrustning organiseras om.',
+            ],
+          },
+          {
+            heading: 'Steg 1 — Välj eller skapa en mall',
+            body: [
+              'Öppna Etiketter och välj en befintlig mall, eller skapa en med text, streckkoder, QR-koder och din logotyp.',
+            ],
+          },
+          {
+            heading: 'Steg 2 — Välj vad som ska skrivas ut',
+            body: [
+              'Markera många Enheter, Produkter, Platser eller Väskor på en gång för att inkludera dem i batchen.',
+            ],
+          },
+          {
+            heading: 'Steg 3 — Sätt synlighet och roller',
+            body: [
+              'Välj vem som kan se och redigera mallen: alla användare, endast admins eller endast ägare.',
+            ],
+          },
+          {
+            heading: 'Steg 4 — Skriv ut',
+            body: [
+              'Anslut en Brother QL-skrivare för direktutskrift, eller exportera till en systemskrivare för andra mediastorlekar.',
+            ],
+          },
+        ],
+      },
+      walkthroughEntraSso: {
+        title: 'Genomgång: koppla Microsoft Entra ID SSO',
+        summary: 'Låt användare logga in med Microsoft Entra ID via OIDC eller SAML.',
+        group: 'walkthroughs',
+        parent: 'walkthroughs',
+        sections: [
+          {
+            heading: 'Översikt',
+            body: [
+              'Den här genomgången kopplar Stockwire Rental till Microsoft Entra ID så att användare loggar in via din befintliga katalog.',
+            ],
+          },
+          {
+            heading: 'Steg 1 — Aktivera SSO',
+            body: [
+              'I Inställningar > Användare och åtkomst > Enkel inloggning, slå på SSO och bestäm om användare ska skapas automatiskt och om roller ska synkroniseras vid inloggning.',
+            ],
+          },
+          {
+            heading: 'Steg 2 — Lägg till en leverantör',
+            body: [
+              'Lägg till en OIDC- eller SAML-leverantör och anteckna leverantörsnyckeln — den visas i inloggningens omdirigerings-URL.',
+            ],
+          },
+          {
+            heading: 'Steg 3 — OIDC: konfigurera Entra ID',
+            body: [
+              'I Entra, registrera en app och lägg till omdirigerings-URI https://<din-domän>/login?oidc_provider=<nyckel>. Skapa en klienthemlighet och bevilja openid, email och profile.',
+            ],
+          },
+          {
+            heading: 'Steg 4 — SAML: konfigurera Entra ID',
+            body: [
+              'I Entra, ställ in ACS-URL (https://<din-domän>/api/v1/auth/sso/saml/acs) och SP-enhets-ID från appen, och tillhandahåll IdP-enhets-ID, SSO-URL och signeringscertifikat.',
+            ],
+          },
+          {
+            heading: 'Steg 5 — Verifiera',
+            body: [
+              'Använd appens SSO-knapp för att logga in; en lyckad omdirigering tillbaka bekräftar att det fungerar. Om inloggningen misslyckas, kontrollera att omdirigerings-URI eller ACS-URL och enhets-ID matchar exakt.',
+            ],
+          },
+        ],
+      },
+      walkthroughOnboardCrew: {
+        title: 'Genomgång: onboarda en ny medarbetare',
+        summary: 'Lägg till en person, koppla dem till ett företag och sätt dem på ett jobb.',
+        group: 'walkthroughs',
+        parent: 'walkthroughs',
+        sections: [
+          {
+            heading: 'Översikt',
+            body: [
+              'Den här genomgången lägger till en ny person i systemet och tilldelar dem ett jobb.',
+            ],
+          },
+          {
+            heading: 'Steg 1 — Skapa personen',
+            body: [
+              'Öppna Personer och klicka på Ny. Ange Förnamn och Efternamn (obligatoriskt), samt E-post och Telefon.',
+            ],
+          },
+          {
+            heading: 'Steg 2 — Koppla företaget',
+            body: [
+              'Ställ in Företag till den organisation de representerar, eller låt dem vara fristående för en engångskontakt.',
+            ],
+          },
+          {
+            heading: 'Steg 3 — Lägg till kompetenser och roller',
+            body: [
+              'Registrera deras föredragna roller, kompetenser, certifieringar (med utgångsdatum) och pris.',
+            ],
+          },
+          {
+            heading: 'Steg 4 — Tilldela till ett jobb',
+            body: [
+              'Öppna jobbet, lägg till roll och antal som behövs, och tilldela personen. Bekräfta dem så att de får en avisering.',
+            ],
+          },
+          {
+            heading: 'Steg 5 — Dela kalendern',
+            body: [
+              'De kan kopiera sin personliga kalenderfeed (Min kalender) för att se sina tilldelningar.',
             ],
           },
         ],
