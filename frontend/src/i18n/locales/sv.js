@@ -3568,6 +3568,7 @@ export default {
       operations: 'Drift',
       people: 'Personer och företag',
       financeReports: 'Ekonomi och rapporter',
+      settings: 'Inställningar',
       more: 'Mer',
     },
     articles: {
@@ -3968,7 +3969,7 @@ export default {
       warehouseLeds: {
         title: 'Lager-LED',
         summary: 'Tänd bin för att lokalisera enheter och guida plock.',
-        group: 'more',
+        group: 'settings',
         sections: [
           {
             heading: 'Styrenheter och mappningar',
@@ -4016,20 +4017,223 @@ export default {
       settings: {
         title: 'Inställningar',
         summary: 'Konfigurera systemet, användare och affärsalternativ.',
-        group: 'more',
+        group: 'settings',
         sections: [
           {
             heading: 'Vad finns i Inställningar?',
             body: [
-              'Inställningar är där administratörer konfigurerar systemet: användare och roller, företagsuppgifter, integrationer och standardvärden.',
-              'Endast användare med rätt behörighet ser Inställningar i navigeringsmenyn.',
+              'Inställningar är adminområdet där du konfigurerar användare, företagsuppgifter, integrationer och hur appen beter sig.',
+              'Det är ordnat i flikar. Artiklarna nedan förklarar varje flik i detalj; öppna en från Hjälp-indexet under Inställningar.',
             ],
           },
           {
-            heading: 'Håll det aktuellt',
+            heading: 'Vem kan använda Inställningar?',
             body: [
-              'När du ändrar hur verksamheten fungerar — nya användarroller, integrationer eller standardbeteenden — uppdatera Inställningar så att resten av appen speglar det.',
-              'Rapportmallar och brevhuvuden hanteras under Rapporter i stället för Inställningar.',
+              'Endast användare med rollen Admin ser Inställningar i navigeringen.',
+              'Vissa flikar, som Offline-kön, är också användbara för chefer som felsöker synkronisering på plats.',
+            ],
+          },
+        ],
+      },
+      settingsUsers: {
+        title: 'Användare och åtkomst',
+        summary: 'Hantera användarkonton, roller, API-nycklar och enkel inloggning.',
+        group: 'settings',
+        sections: [
+          {
+            heading: 'Användare och roller',
+            body: [
+              'Skapa användarkonton och tilldela en roll: Admin, Manager eller Viewer. Rollen styr vad varje person kan se och ändra.',
+              'Admins hanterar systemet; Managers sköter den dagliga driften; Viewers kan bläddra men inte redigera.',
+            ],
+          },
+          {
+            heading: 'Tjänst-API-nycklar',
+            body: [
+              'API-nycklar låter andra system autentisera mot Stockwire Rental utan en användarinloggning.',
+              'En Admin-nyckel har full åtkomst; en begränsad nyckel är begränsad till specifika operationer. Kopiera den råa nyckeln när den skapas — den kan inte visas igen.',
+            ],
+          },
+          {
+            heading: 'Enkel inloggning (SSO)',
+            body: [
+              'Anslut identitetsleverantörer med OpenID Connect (OIDC) eller SAML så att användare loggar in via ditt befintliga system.',
+              'Mappa externa grupper till approller, aktivera automatisk skapning av användare och synkronisera roller vid inloggning för att hålla åtkomsten i fas med din katalog.',
+            ],
+          },
+        ],
+      },
+      settingsCompany: {
+        title: 'Företagsprofil',
+        summary: 'Varumärke, kontaktuppgifter och standardföretagsinformation.',
+        group: 'settings',
+        sections: [
+          {
+            heading: 'Varumärke och logotyper',
+            body: [
+              'Ange företagsnamn, standardvaluta, momsnummer och standardspråk för plattformen.',
+              'Ladda upp logotyper för ljusa och mörka teman och för olika storlekar; etiketter och dokument föredrar de mörka varianterna, inloggningssidan föredrar ljusa.',
+            ],
+          },
+          {
+            heading: 'Adress och kontakt',
+            body: [
+              'Håll din företagsadress, telefon, kontakt-e-post och webbplats uppdaterade.',
+              'Dessa uppgifter visas på dokument och ekonomiskappar, så noggrannhet är viktigt för fakturering och varumärke.',
+            ],
+          },
+        ],
+      },
+      settingsCustomFields: {
+        title: 'Anpassade fält',
+        summary: 'Lägg till egna fält på produkter, jobb, kunder och platser.',
+        group: 'settings',
+        sections: [
+          {
+            heading: 'Definiera fält',
+            body: [
+              'Anpassade fält låter dig fånga information som standardformulären inte täcker, för produkter, jobb, kunder eller platser.',
+              'Varje fält har en etikett, en nyckel (auto-normaliserad till snake_case), en värdetyp (text, nummer, boolean, datum eller urval) och om det är obligatoriskt.',
+            ],
+          },
+          {
+            heading: 'Använda anpassade fält',
+            body: [
+              'När de är definierade visas fältet på den aktuella entiteten så att personal kan fylla i det.',
+              'Urvalsfält använder en kommaseparerad lista med alternativ. Anpassade fält syns i filter, rapporter och etiketter där det stöds.',
+            ],
+          },
+        ],
+      },
+      settingsInventory: {
+        title: 'Lagerstandardvärden',
+        summary: 'Standardvarumärken, tillverkare, platser och kategorier för lager.',
+        group: 'settings',
+        sections: [
+          {
+            heading: 'Varumärken och tillverkare',
+            body: [
+              'Hantera de valbara varumärkes- och tillverkarlistorna som används när du skapar produkter, och välj standardvärdena som tillämpas på nya produkter.',
+              'Du kan också koppla ett varumärke till en föredragen tillverkare och lägga till webbplatslänkar för snabb referens.',
+            ],
+          },
+          {
+            heading: 'Platser och kategorier',
+            body: [
+              'Definiera platstyperna som är tillgängliga när du skapar lagringsplatser, så att din lagerstruktur förblir konsekvent.',
+              'Kategorifyllvägar (till exempel Ljud > Kablar > XLR) snabbar upp produktkategorisering med en känd, lokaliserad hierarki.',
+            ],
+          },
+        ],
+      },
+      settingsIntegrations: {
+        title: 'Integrationer',
+        summary: 'Anslut Stockwire Rental till externa system.',
+        group: 'settings',
+        sections: [
+          {
+            heading: 'Hyres- och planeringsintegrationer',
+            body: [
+              'Anslut Eventory för att synkronisera hyresprodukter och skapa jobb, och ProductionPlanner för att omvandla jobb och projekt till produktionsplaner.',
+              'Stagewire kopplar dess scenritningar och patch-ark till ditt lager, och Stockwire-instanser låter dig hyra utrustning från partnerinstallationer.',
+            ],
+          },
+          {
+            heading: 'Twenty CRM',
+            body: [
+              'Tvåvägssynkronisering håller Jobb i Stockwire matchade mot Opportunities i Twenty CRM, och Kunder matchade mot Företag och Personer.',
+              'Konfigurera API-nyckeln, synkroniseringsintervall och en webhook-hemlighet så att ändringar flödar i båda riktningarna.',
+            ],
+          },
+          {
+            heading: 'Testa anslutningar',
+            body: [
+              'Varje integration har en Testa anslutning-knapp så att du kan verifiera URL och nyckel innan du förlitar dig på den.',
+              'Eventory och Twenty visar också synkroniseringsstatus och låter dig utlösa en synkronisering manuellt.',
+            ],
+          },
+        ],
+      },
+      settingsNotifications: {
+        title: 'E-post och aviseringar',
+        summary: 'Konfigurera e-postleverans och aviseringsmallar.',
+        group: 'settings',
+        sections: [
+          {
+            heading: 'E-post / SMTP',
+            body: [
+              'Ställ in hur systemet skickar e-post för lösenordsåterställningar och aviseringar, via SMTP eller Resend-API.',
+              'Om SMTP hanteras av miljövariabler på servern visas dessa värden men kan inte redigeras här.',
+            ],
+          },
+          {
+            heading: 'Aviseringsinställningar och mallar',
+            body: [
+              'Välj vilka händelser som skickar e-post eller webbpush, och till vem (kund, personal eller båda).',
+              'Aviseringsmallar använder variabler (till exempel job_code, customer_name) så att varje meddelande fylls i automatiskt. Ladda standarder eller skriv egna.',
+            ],
+          },
+        ],
+      },
+      settingsOffline: {
+        title: 'Offline-synkkö',
+        summary: 'Se och hantera ändringar som köats medan du var offline.',
+        group: 'settings',
+        sections: [
+          {
+            heading: 'Vad kön gör',
+            body: [
+              'När appen är offline lagras dina ändringar i en kö och skickas till servern automatiskt när du återansluter.',
+              'Kön visar om du är online eller offline och hur många operationer som väntar.',
+            ],
+          },
+          {
+            heading: 'Hantera kön',
+            body: [
+              'Töm nu skickar köade operationer; Försök igen gör om operationer som misslyckades; Rensa blockerade tar bort operationer som inte kan lösas.',
+              'Konfliktpolicyer (sammanfoga, senaste skriver vinner, skyddad) avgör hur överlappande redigeringar kombineras när de når servern.',
+            ],
+          },
+        ],
+      },
+      settingsAiAssistant: {
+        title: 'AI-assistent',
+        summary: 'Konfigurera AI-assistentens backend (LLM).',
+        group: 'settings',
+        sections: [
+          {
+            heading: 'Välja en backend',
+            body: [
+              'AI-assistenten kan använda en lokal Ollama-modell, Google Gemini, OpenAI eller OpenCode.',
+              'Ange API-bas-URL, en API-nyckel där det behövs och modellnamnet, och hämta sedan tillgängliga modeller.',
+            ],
+          },
+          {
+            heading: 'Testa och spara',
+            body: [
+              'Använd Testa anslutning för att bekräfta att backend är nåbar innan du sparar.',
+              'Snabbval hjälper dig att komma igång med en känd fungerande konfiguration för varje leverantör.',
+            ],
+          },
+        ],
+      },
+      settingsCalendarFx: {
+        title: 'Kalenderflöden och valutakurser',
+        summary: 'Publika kalenderflöden och valutakurser.',
+        group: 'settings',
+        sections: [
+          {
+            heading: 'Kalenderflöden',
+            body: [
+              'Skapa publika iCal-flöden (till exempel ett personalschema) som vem som helst kan lägga till i Google Calendar eller en annan kalenderapp utan att logga in.',
+              'Varje flöde har en token i sin URL; återskapa token om ett flöde inte längre ska vara tillgängligt via sin gamla länk.',
+            ],
+          },
+          {
+            heading: 'Valutakurser',
+            body: [
+              'Ställ in basvaluta och växelkurser så att inköpsordrar och ekonomi i andra valutor konverteras korrekt.',
+              'Uppdatera kurserna för att uppdatera konverterade summor; saknade kurser visas i sin ursprungliga valuta.',
             ],
           },
         ],

@@ -3579,6 +3579,7 @@ export default {
       operations: 'Operations',
       people: 'People & companies',
       financeReports: 'Finance & reports',
+      settings: 'Settings',
       more: 'More',
     },
     articles: {
@@ -3979,7 +3980,7 @@ export default {
       warehouseLeds: {
         title: 'Warehouse LEDs',
         summary: 'Light up bins to locate devices and guide picks.',
-        group: 'more',
+        group: 'settings',
         sections: [
           {
             heading: 'Controllers and mappings',
@@ -4027,20 +4028,223 @@ export default {
       settings: {
         title: 'Settings',
         summary: 'Configure the system, users, and business options.',
-        group: 'more',
+        group: 'settings',
         sections: [
           {
             heading: 'What is in Settings?',
             body: [
-              'Settings is where administrators configure the system: users and roles, business details, integrations, and defaults.',
-              'Only users with the right permission see the Settings entry in the nav.',
+              'Settings is the admin area where you configure users, company details, integrations, and how the app behaves.',
+              'It is organised into tabs. The articles below explain each tab in detail; open one from the Help index under Settings.',
             ],
           },
           {
-            heading: 'Keep it current',
+            heading: 'Who can use Settings?',
             body: [
-              'When you change how the business works — new user roles, integrations, or default behaviours — update Settings so the rest of the app reflects it.',
-              'Report templates and letterheads are managed under Reports rather than Settings.',
+              'Only users with the Admin role see the Settings entry in the navigation.',
+              'Some tabs, like the Offline Queue, are also useful for managers troubleshooting sync on site.',
+            ],
+          },
+        ],
+      },
+      settingsUsers: {
+        title: 'Users & access',
+        summary: 'Manage user accounts, roles, API keys, and single sign-on.',
+        group: 'settings',
+        sections: [
+          {
+            heading: 'Users and roles',
+            body: [
+              'Create user accounts and assign a role: Admin, Manager, or Viewer. The role controls what each person can see and change.',
+              'Admins manage the system; Managers run day-to-day operations; Viewers can browse but not edit.',
+            ],
+          },
+          {
+            heading: 'Service API keys',
+            body: [
+              'API keys let other systems authenticate to Stockwire Rental without a user login.',
+              'An Admin key has full access; a Scoped key is limited to specific operations. Copy the raw key when it is created — it cannot be shown again.',
+            ],
+          },
+          {
+            heading: 'Single sign-on (SSO)',
+            body: [
+              'Connect identity providers using OpenID Connect (OIDC) or SAML so users log in through your existing system.',
+              'Map external groups to app roles, enable auto-create users, and sync roles on login to keep access in step with your directory.',
+            ],
+          },
+        ],
+      },
+      settingsCompany: {
+        title: 'Company profile',
+        summary: 'Branding, contact details, and default company information.',
+        group: 'settings',
+        sections: [
+          {
+            heading: 'Branding and logos',
+            body: [
+              'Set your company name, default currency, VAT number, and default platform language.',
+              'Upload logos for light and dark themes and for different sizes; labels and documents prefer the dark variants, the login page prefers light ones.',
+            ],
+          },
+          {
+            heading: 'Address and contact',
+            body: [
+              'Keep your business address, phone, contact email, and website up to date.',
+              'These details appear on documents and finance screens, so accuracy matters for invoicing and branding.',
+            ],
+          },
+        ],
+      },
+      settingsCustomFields: {
+        title: 'Custom fields',
+        summary: 'Add your own fields to products, jobs, customers, and venues.',
+        group: 'settings',
+        sections: [
+          {
+            heading: 'Defining fields',
+            body: [
+              'Custom fields let you capture information the standard forms do not cover, for products, jobs, customers, or venues.',
+              'Each field has a label, a key (auto-normalised to snake_case), a value type (text, number, boolean, date, or select), and whether it is required.',
+            ],
+          },
+          {
+            heading: 'Using custom fields',
+            body: [
+              'Once defined, the field appears on the relevant entity so staff can fill it in.',
+              'Select-type fields use a comma-separated list of options. Custom fields surface in filters, reports, and labels where supported.',
+            ],
+          },
+        ],
+      },
+      settingsInventory: {
+        title: 'Inventory defaults',
+        summary: 'Default brands, manufacturers, locations, and categories for inventory.',
+        group: 'settings',
+        sections: [
+          {
+            heading: 'Brands and manufacturers',
+            body: [
+              'Manage the selectable brand and manufacturer lists used when creating products, and choose the defaults applied to new products.',
+              'You can also link a brand to a preferred manufacturer and add website links for quick reference.',
+            ],
+          },
+          {
+            heading: 'Locations and categories',
+            body: [
+              'Define the location types available when creating storage locations, so your warehouse structure stays consistent.',
+              'Category prefill paths (for example Audio > Cables > XLR) speed up product categorisation with a known, localised hierarchy.',
+            ],
+          },
+        ],
+      },
+      settingsIntegrations: {
+        title: 'Integrations',
+        summary: 'Connect Stockwire Rental to external systems.',
+        group: 'settings',
+        sections: [
+          {
+            heading: 'Rental and planning integrations',
+            body: [
+              'Connect Eventory to sync rental products and create jobs, and ProductionPlanner to turn jobs and projects into production plans.',
+              'Stagewire links its stage plots and patch sheets to your stock, and Stockwire instances let you rent equipment from partner installations.',
+            ],
+          },
+          {
+            heading: 'Twenty CRM',
+            body: [
+              'Two-way sync keeps Jobs in Stockwire matched to Opportunities in Twenty CRM, and Customers matched to Companies and People.',
+              'Configure the API key, sync interval, and a webhook secret so changes flow in both directions.',
+            ],
+          },
+          {
+            heading: 'Testing connections',
+            body: [
+              'Each integration offers a Test connection button so you can verify the URL and key before relying on it.',
+              'Eventory and Twenty also show sync status and let you trigger a sync manually.',
+            ],
+          },
+        ],
+      },
+      settingsNotifications: {
+        title: 'Email & notifications',
+        summary: 'Configure email delivery and notification templates.',
+        group: 'settings',
+        sections: [
+          {
+            heading: 'Email / SMTP',
+            body: [
+              'Set how the system sends email for password resets and notifications, via SMTP or the Resend API.',
+              'If SMTP is managed by environment variables on the server, those values are shown but cannot be edited here.',
+            ],
+          },
+          {
+            heading: 'Notification preferences and templates',
+            body: [
+              'Choose which events send email or web push, and to whom (customer, staff, or both).',
+              'Notification templates use variables (for example job_code, customer_name) so each message is filled in automatically. Load defaults or write your own.',
+            ],
+          },
+        ],
+      },
+      settingsOffline: {
+        title: 'Offline sync queue',
+        summary: 'See and manage changes queued while offline.',
+        group: 'settings',
+        sections: [
+          {
+            heading: 'What the queue does',
+            body: [
+              'When the app is offline, your changes are stored in a queue and sent to the server automatically when you reconnect.',
+              'The queue shows whether you are online or offline and how many operations are waiting.',
+            ],
+          },
+          {
+            heading: 'Managing the queue',
+            body: [
+              'Flush now sends queued operations; Retry failed re-attempts operations that errored; Clear blocked removes operations that cannot be resolved.',
+              'Conflict policies (merge, last-write-wins, guarded) decide how overlapping edits are combined when they reach the server.',
+            ],
+          },
+        ],
+      },
+      settingsAiAssistant: {
+        title: 'AI Assistant',
+        summary: 'Configure the AI Assistant backend (LLM).',
+        group: 'settings',
+        sections: [
+          {
+            heading: 'Choosing a backend',
+            body: [
+              'The AI Assistant can use a local Ollama model, Google Gemini, OpenAI, or OpenCode.',
+              'Enter the API base URL, an API key where needed, and the model name, then fetch the available models.',
+            ],
+          },
+          {
+            heading: 'Testing and saving',
+            body: [
+              'Use Test Connection to confirm the backend is reachable before saving.',
+              'Quick presets help you start with a known-good configuration for each provider.',
+            ],
+          },
+        ],
+      },
+      settingsCalendarFx: {
+        title: 'Calendar feeds & FX rates',
+        summary: 'Public calendar feeds and currency exchange rates.',
+        group: 'settings',
+        sections: [
+          {
+            heading: 'Calendar feeds',
+            body: [
+              'Create public iCal feeds (for example a crew schedule) that anyone can add to Google Calendar or another calendar app without logging in.',
+              'Each feed has a token in its URL; regenerate the token if a feed should no longer be accessible at its old link.',
+            ],
+          },
+          {
+            heading: 'FX rates',
+            body: [
+              'Set the base currency and exchange rates so purchase orders and finance in other currencies convert correctly.',
+              'Refresh the rates to update converted totals; missing rates are shown in their original currency.',
             ],
           },
         ],
