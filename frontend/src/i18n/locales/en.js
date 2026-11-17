@@ -3646,7 +3646,7 @@ export default {
           {
             heading: 'Run your first job',
             body: [
-              'Create a Job for the customer and venue, add the products you need, and Pull stock so the app shows what is reserved and what is still missing.',
+              'Create a Job for the customer and venue, add the products you need, and confirm it so the app reserves those products and shows what is available versus what is still missing.',
               'On site, use Scan to check items in and out, and mark the job Completed when the gear is back so availability stays correct.',
             ],
           },
@@ -4287,7 +4287,7 @@ export default {
           {
             heading: 'Step 2 — Add the items you ordered',
             body: [
-              'On each line, pick the Item (product), its SKU, the Qty, Unit price, and Currency. Use Consolidate to merge lines from the same supplier.',
+              'On each line, pick the Item (product), its SKU, the Qty, Unit price, and Currency. When ordering across several jobs at once, use the Consolidate option to merge lines from the same supplier and save on freight.',
             ],
           },
           {
@@ -4335,9 +4335,9 @@ export default {
             ],
           },
           {
-            heading: 'Step 3 — Pull stock',
+            heading: 'Step 3 — Confirm the job',
             body: [
-              'Click Pull stock so the app reserves units and shows what is available versus what is still missing.',
+              'Set the job status from Draft to Confirmed. The app reserves the required products automatically and shows what is available versus what is still missing — there is no separate “pull stock” button.',
             ],
           },
           {
@@ -4381,7 +4381,7 @@ export default {
           {
             heading: 'Step 3 — Link the vendor item',
             body: [
-              'Under Suppliers, click Link vendor item and pick the matching Vendor catalog product; its price, barcode, and stock are filled in automatically.',
+              'In the product’s Suppliers section, click Link vendor item and pick the matching Vendor catalog product; its price, barcode, and stock are filled in automatically.',
             ],
           },
           {
@@ -4981,7 +4981,7 @@ export default {
       walkthroughReceivePo: {
         steps: [
           { title: 'Create the purchase order', text: 'Open Purchase Orders and start a new order. Pick the supplier, then save it as a Draft so you can keep building it.' },
-          { title: 'Add the items you ordered', text: 'On each line, choose the product, its SKU, the quantity, unit price and currency. Use Consolidate to merge lines from the same supplier.' },
+          { title: 'Add the items you ordered', text: 'On each line, choose the product, its SKU, the quantity, unit price and currency. When ordering across several jobs at once, use the Consolidate option to merge lines from the same supplier and save on freight.' },
           { title: 'Send or approve the order', text: 'Move the PO to Sent, then Approved or Ordered so the team knows it is on its way.' },
           { title: 'Receive the goods', text: 'When the delivery arrives, open the PO and use Receive (or Scan) to check items in. Scan each serial number, or enter a quantity for non-serialised items.' },
           { title: 'Finish receiving', text: 'Once everything expected is in, finish receiving to close the line and create the Devices in Inventory.' },
@@ -4991,16 +4991,16 @@ export default {
         steps: [
           { title: 'Create the job', text: 'Open Jobs and create a new job. Give it a code, pick the customer and venue, and set the start and end dates.' },
           { title: 'Add what you need', text: 'Under Product requirements, add the products and quantities this job needs.' },
-          { title: 'Pull stock', text: 'Click Pull stock so the app reserves units and shows what is available versus what is still missing.' },
+          { title: 'Confirm the job', text: 'Reserve the stock by setting the status (here) from Draft to Confirmed. The required products are then reserved automatically and availability updates across the app — there is no separate “pull stock” action.' },
           { title: 'Prepare and scan on site', text: 'Use Scan to check items out as they leave and back in on return. Keep each unit’s status honest (Reserved or In use).' },
-          { title: 'Complete the job', text: 'When everything is back, mark the job Completed so availability is restored and the rental period closes.' },
+          { title: 'Complete the job', text: 'When everything is back, set the status to Completed so availability is restored and the rental period closes.' },
         ],
       },
       walkthroughProductVendor: {
         steps: [
           { title: 'Create the product', text: 'Open Products (Inventory) and create a new product.' },
           { title: 'Enter the basics', text: 'Add the name, SKU, type and category. The SKU is the unique stock code you will search by.' },
-          { title: 'Link the vendor item', text: 'Open the Vendor catalog to find the matching item. Linking it fills in the supplier’s price, barcode and stock automatically.' },
+          { title: 'Link the vendor item', text: 'In the product’s Suppliers section, click Link vendor item and pick the matching item from the Vendor catalog — its price, barcode and stock are filled in automatically.' },
           { title: 'Set pricing and thresholds', text: 'Enter the daily rate, replacement cost, and the minimum stock and order quantities that trigger reorder reminders.' },
           { title: 'Add the physical units', text: 'For serialised gear, create a Device per unit with a serial number and asset tag, and assign a location so you always know where it is.' },
         ],

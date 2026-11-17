@@ -31,7 +31,7 @@ export const TOURS = {
   walkthroughRunJob: [
     { route: '/jobs', target: '[data-tour="jobs-new"]' },
     { route: '/jobs', target: '[data-tour="job-requirements"]' },
-    { route: '/jobs', target: '[data-tour="jobs-list"]' },
+    { route: '/jobs', target: '[data-tour="job-status"]' },
     { route: '/jobs', target: '[data-tour="job-scan"]' },
     { route: '/jobs', target: '[data-tour="job-status"]' },
   ],

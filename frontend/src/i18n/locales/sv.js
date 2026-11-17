@@ -3635,7 +3635,7 @@ export default {
           {
             heading: 'Kör ditt första jobb',
             body: [
-              'Skapa ett Jobb för kunden och platsen, lägg till de produkter du behöver och Plocka lager så att appen visar vad som är reserverat och vad som saknas.',
+              'Skapa ett Jobb för kunden och platsen, lägg till de produkter du behöver och bekräfta det så att appen reserverar dessa produkter och visar vad som är tillgängligt jämfört med vad som saknas.',
               'På plats, använd Skanna för att checka in och ut saker, och markera jobbet som Slutfört när utrustningen är tillbaka så att tillgängligheten stämmer.',
             ],
           },
@@ -4276,7 +4276,7 @@ export default {
           {
             heading: 'Steg 2 — Lägg till det du beställde',
             body: [
-              'På varje rad, välj Artikel (produkt), dess Artikelnummer, Antal, Styckpris och Valuta. Använd Sammanläggning för att slå ihop rader från samma leverantör.',
+              'På varje rad, välj Artikel (produkt), dess Artikelnummer, Antal, Styckpris och Valuta. När du beställer till flera jobb samtidigt, använd alternativet Sammanläggning för att slå ihop rader från samma leverantör och spara frakt.',
             ],
           },
           {
@@ -4324,9 +4324,9 @@ export default {
             ],
           },
           {
-            heading: 'Steg 3 — Plocka lager',
+            heading: 'Steg 3 — Bekräfta jobbet',
             body: [
-              'Klicka på Plocka lager så att appen reserverar enheter och visar vad som är tillgängligt jämfört med vad som fortfarande saknas.',
+              'Ändra jobbets status från Utkast till Bekräftad. Appen reserverar de efterfrågade produkterna automatiskt och visar vad som är tillgängligt jämfört med vad som saknas — det finns ingen separat knapp för att plocka lager.',
             ],
           },
           {
@@ -4370,7 +4370,7 @@ export default {
           {
             heading: 'Steg 3 — Koppla leverantörsposten',
             body: [
-              'Under Leverantörer, klicka på Koppla leverantörspost och välj den matchande Leverantörskatalogprodukten; dess pris, streckkod och lager fylls i automatiskt.',
+              'I produktens Leverantörssektion, klicka på Koppla leverantörspost och välj den matchande Leverantörskatalogprodukten; dess pris, streckkod och lager fylls i automatiskt.',
             ],
           },
           {
@@ -4970,7 +4970,7 @@ export default {
       walkthroughReceivePo: {
         steps: [
           { title: 'Skapa inköpsordern', text: 'Öppna Inköpsordrar och skapa en ny order. Välj leverantör och spara den som Utkast så att du kan fortsätta bygga den.' },
-          { title: 'Lägg till det du beställde', text: 'På varje rad, välj produkt, dess artikelnummer, antal, styckpris och valuta. Använd Sammanläggning för att slå ihop rader från samma leverantör.' },
+          { title: 'Lägg till det du beställde', text: 'På varje rad, välj produkt, dess artikelnummer, antal, styckpris och valuta. När du beställer till flera jobb samtidigt, använd alternativet Sammanläggning för att slå ihop rader från samma leverantör och spara frakt.' },
           { title: 'Skicka eller godkänn ordern', text: 'Flytta inköpsordern till Skickad, sedan Godkänd eller Beställd så att teamet vet att den är på väg.' },
           { title: 'Ta emot varorna', text: 'När leveransen anländer, öppna inköpsordern och använd Ta emot (eller Skanna) för att checka in dem. Skanna varje serienummer, eller ange ett antal för artiklar utan serienummer.' },
           { title: 'Avsluta mottagningen', text: 'När allt förväntat är inne, avsluta mottagningen för att stänga raden och skapa enheterna i Lagret.' },
@@ -4980,16 +4980,16 @@ export default {
         steps: [
           { title: 'Skapa jobbet', text: 'Öppna Jobb och skapa ett nytt jobb. Ge det en kod, välj kund och plats, och ange start- och slutdatum.' },
           { title: 'Lägg till vad du behöver', text: 'Under Produktbehov, lägg till de produkter och kvantiteter jobbet behöver.' },
-          { title: 'Plocka lager', text: 'Klicka på Plocka lager så att appen reserverar enheter och visar vad som är tillgängligt jämfört med vad som fortfarande saknas.' },
+          { title: 'Bekräfta jobbet', text: 'Reservera lagret genom att ändra status (här) från Utkast till Bekräftad. De efterfrågade produkterna reserveras då automatiskt och tillgängligheten uppdateras i hela appen — det finns ingen separat åtgärd för att plocka lager.' },
           { title: 'Förbered och skanna på plats', text: 'Använd Skanna för att checka ut saker när de lämnar och in igen vid retur. Håll varje enhets status ärlig (Reserverad eller I bruk).' },
-          { title: 'Slutför jobbet', text: 'När allt är tillbaka, markera jobbet som Slutfört så att tillgängligheten återställs och hyresperioden stängs.' },
+          { title: 'Slutför jobbet', text: 'När allt är tillbaka, ställ in status på Slutfört så att tillgängligheten återställs och hyresperioden stängs.' },
         ],
       },
       walkthroughProductVendor: {
         steps: [
           { title: 'Skapa produkten', text: 'Öppna Produkter (Lager) och skapa en ny produkt.' },
           { title: 'Fyll i grunderna', text: 'Lägg till namn, artikelnummer, typ och kategori. Artikelnumret är den unika lagerkod du söker på.' },
-          { title: 'Koppla leverantörsposten', text: 'Öppna Leverantörskatalogen för att hitta den matchande posten. Att koppla den fyller i leverantörens pris, streckkod och lager automatiskt.' },
+          { title: 'Koppla leverantörsposten', text: 'I produktens Leverantörssektion, klicka på Koppla leverantörspost och välj den matchande posten från Leverantörskatalogen — dess pris, streckkod och lager fylls i automatiskt.' },
           { title: 'Sätt pris och trösklar', text: 'Ange dygnspris, ersättningskostnad och de minsta lager- och orderkvantiteterna som utlöser påminnelser om ombeställning.' },
           { title: 'Lägg till de fysiska enheterna', text: 'För serienummerutrustning, skapa en enhet per exemplar med serienummer och tillgångsetikett, och tilldela en plats så att du alltid vet var den är.' },
         ],
