@@ -71,6 +71,37 @@ def test_normalize_stagebox_spec_drops_none_fields():
     assert normalized == {"digital_io": [{"protocol": "avb"}]}
 
 
+def test_normalize_stagebox_spec_keeps_interface_name():
+    # An optional interface name (e.g. "dSnake", "dSnake Expander") is carried through so an
+    # imported product's channels are labelled in stagewire's soft patch.
+    normalized = normalize_stagebox_spec(
+        {
+            "stagebox": {
+                "digital_io": [
+                    {"protocol": "dsnake", "channels_in": 32, "channels_out": 16, "name": "dSnake"},
+                    {
+                        "protocol": "dsnake",
+                        "channels_in": 8,
+                        "channels_out": 4,
+                        "name": "dSnake Expander",
+                    },
+                ]
+            }
+        }
+    )
+    assert normalized == {
+        "digital_io": [
+            {"protocol": "dsnake", "channels_in": 32, "channels_out": 16, "name": "dSnake"},
+            {
+                "protocol": "dsnake",
+                "channels_in": 8,
+                "channels_out": 4,
+                "name": "dSnake Expander",
+            },
+        ]
+    }
+
+
 # ---------------------------------------------------------------------------
 # Shared digital-transport vocabulary (R4: identical across both repos)
 # ---------------------------------------------------------------------------

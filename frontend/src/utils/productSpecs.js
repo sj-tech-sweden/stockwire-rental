@@ -763,7 +763,7 @@ export function getStageboxDigitalPorts(specs) {
 }
 
 function emptyStageboxDigitalPort() {
-  return { protocol: 'dsnake', channels_in: null, channels_out: null }
+  return { protocol: 'dsnake', channels_in: null, channels_out: null, name: '' }
 }
 
 export function addStageboxDigitalPort(specs) {
@@ -776,7 +776,9 @@ export function addStageboxDigitalPort(specs) {
 
 export function updateStageboxDigitalPort(specs, index, field, value) {
   const numericFields = ['channels_in', 'channels_out']
-  if (!['protocol', ...numericFields].includes(field)) return specs || {}
+  // `name` is the optional interface label (e.g. "dSnake", "dSnake Expander"); it is carried
+  // through to stagewire's Port.label so imported products arrive with named channels.
+  if (!['protocol', 'name', ...numericFields].includes(field)) return specs || {}
   return updateStageboxSpec(specs, (s) => {
     const ports = Array.isArray(s.digital_io) ? s.digital_io : []
     if (!ports[index]) return

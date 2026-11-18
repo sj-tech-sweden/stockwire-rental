@@ -2257,6 +2257,8 @@ export default {
     specStageboxPortProtocol: 'Protocol',
     specStageboxPortChIn: 'Ch in',
     specStageboxPortChOut: 'Ch out',
+    specStageboxPortName: 'Interface name',
+    specStageboxPortNameOptional: 'optional',
     specStageboxPortRemove: 'Remove port',
     conditionExcellent: 'Excellent',
     conditionGood: 'Good',

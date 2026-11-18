@@ -27,9 +27,7 @@ from pydantic import BaseModel, ConfigDict, Field
 # ({dsnake, dante, aes50, avb, madi}) so import mapping between the two repos is stable.
 # Mixer expansion cards (io_card / option_card / waves / other) are intentionally excluded
 # here: a stagebox's digital links are point-to-point or network transports, not console cards.
-DIGITAL_PROTOCOLS: frozenset[str] = frozenset(
-    {"dsnake", "dante", "aes50", "avb", "madi"}
-)
+DIGITAL_PROTOCOLS: frozenset[str] = frozenset({"dsnake", "dante", "aes50", "avb", "madi"})
 DIGITAL_PROTOCOL_OPTIONS: list[str] = ["dsnake", "dante", "aes50", "avb", "madi"]
 
 
@@ -41,6 +39,9 @@ class StageboxDigitalPort(BaseModel):
     protocol: str | None = None
     channels_in: int | None = None
     channels_out: int | None = None
+    # Optional interface name (e.g. "dSnake", "dSnake Expander"). Carried through to stagewire's
+    # Port.label so an imported product's channels are labelled instead of a bare connector.
+    name: str | None = None
 
 
 class StageboxSpec(BaseModel):

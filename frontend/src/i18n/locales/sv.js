@@ -2244,6 +2244,8 @@ export default {
     specStageboxPortProtocol: 'Protokoll',
     specStageboxPortChIn: 'Ing kanaler',
     specStageboxPortChOut: 'Utg kanaler',
+    specStageboxPortName: 'Gränssnittsnamn',
+    specStageboxPortNameOptional: 'valfritt',
     specStageboxPortRemove: 'Ta bort port',
     productTypeRental: 'Uthyrning',
     productTypeCrew: 'Personal',

@@ -1028,6 +1028,18 @@
                                 <q-btn flat round dense icon="close" color="grey-7" :aria-label="t('inventory.specStageboxPortRemove')" @click="productForm.specs = removeStageboxDigitalPort(productForm.specs, portIndex)" />
                               </div>
                             </div>
+                            <div class="row items-start q-col-gutter-sm q-mt-xs">
+                              <div class="col-12 col-md-6">
+                                <q-input
+                                  :model-value="port.name"
+                                  :label="t('inventory.specStageboxPortName')"
+                                  :placeholder="t('inventory.specStageboxPortNameOptional')"
+                                  outlined
+                                  dense
+                                  @update:model-value="val => (productForm.specs = updateStageboxDigitalPort(productForm.specs, portIndex, 'name', val))"
+                                />
+                              </div>
+                            </div>
                           </div>
                         </div>
                       </template>
