@@ -969,6 +969,81 @@
                         </div>
                       </template>
                     </div>
+                    <div v-else-if="PRODUCT_SPEC_FIELDS[fieldKey].type === 'stagebox_digital_io'" class="q-mb-sm">
+                      <template v-if="!getStageboxSpec(productForm.specs)">
+                        <div class="row q-mb-sm">
+                          <q-btn
+                            flat
+                            dense
+                            icon="add"
+                            color="primary"
+                            :label="t('inventory.specStageboxDigitalIoSetup')"
+                            @click="productForm.specs = addStageboxSpec(productForm.specs)"
+                          />
+                        </div>
+                      </template>
+                      <template v-else>
+                        <div class="text-caption text-grey-8 q-mt-sm row items-center">
+                          <span>{{ t('inventory.specStageboxDigitalIo') }}</span>
+                          <q-space />
+                          <q-btn flat dense icon="add" color="primary" :label="t('inventory.specStageboxAddPort')" @click="productForm.specs = addStageboxDigitalPort(productForm.specs)" />
+                        </div>
+                        <div class="row items-start q-col-gutter-sm q-mb-xs" v-for="(port, portIndex) in getStageboxDigitalPorts(productForm.specs)" :key="portIndex">
+                          <div class="col-12">
+                            <div class="row items-start q-col-gutter-sm">
+                              <div class="col-6 col-md-4">
+                                <q-select
+                                  :model-value="port.protocol"
+                                  :options="STAGEWIRE_STAGEBOX_PROTOCOLS.map(value => ({ label: value, value }))"
+                                  :label="t('inventory.specStageboxPortProtocol')"
+                                  use-input
+                                  fill-input
+                                  new-value-mode="add-unique"
+                                  emit-value
+                                  map-options
+                                  outlined
+                                  dense
+                                  @update:model-value="val => (productForm.specs = updateStageboxDigitalPort(productForm.specs, portIndex, 'protocol', val))"
+                                />
+                              </div>
+                              <div class="col-6 col-md-3">
+                                <q-input
+                                  :model-value="port.channels_in"
+                                  :label="t('inventory.specStageboxPortChIn')"
+                                  type="number" min="0" step="1"
+                                  outlined dense
+                                  @update:model-value="val => (productForm.specs = updateStageboxDigitalPort(productForm.specs, portIndex, 'channels_in', val))"
+                                />
+                              </div>
+                              <div class="col-6 col-md-3">
+                                <q-input
+                                  :model-value="port.channels_out"
+                                  :label="t('inventory.specStageboxPortChOut')"
+                                  type="number" min="0" step="1"
+                                  outlined dense
+                                  @update:model-value="val => (productForm.specs = updateStageboxDigitalPort(productForm.specs, portIndex, 'channels_out', val))"
+                                />
+                              </div>
+                              <div class="col-12 col-md-2">
+                                <q-btn flat round dense icon="close" color="grey-7" :aria-label="t('inventory.specStageboxPortRemove')" @click="productForm.specs = removeStageboxDigitalPort(productForm.specs, portIndex)" />
+                              </div>
+                            </div>
+                            <div class="row items-start q-col-gutter-sm q-mt-xs">
+                              <div class="col-12 col-md-6">
+                                <q-input
+                                  :model-value="port.name"
+                                  :label="t('inventory.specStageboxPortName')"
+                                  :placeholder="t('inventory.specStageboxPortNameOptional')"
+                                  outlined
+                                  dense
+                                  @update:model-value="val => (productForm.specs = updateStageboxDigitalPort(productForm.specs, portIndex, 'name', val))"
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </template>
+                    </div>
                     <q-toggle
                       v-if="fieldKey === 'throw_m'"
                       :model-value="productForm.specs?.throw_m_manual === true"
@@ -1143,6 +1218,7 @@ import {
   MIXER_ARCHITECTURES,
   MIXER_BUS_ROLES,
   MIXER_EXPANSION_PROTOCOLS,
+  STAGEWIRE_STAGEBOX_PROTOCOLS,
   getMixerSpec,
   addMixerSpec,
   setMixerArchitecture,
@@ -1161,6 +1237,14 @@ import {
   addMixerExpansionPort,
   updateMixerExpansionPort,
   removeMixerExpansionPort,
+  getStageboxSpec,
+  addStageboxSpec,
+  removeStageboxSpec,
+  getStageboxDigitalPorts,
+  addStageboxDigitalPort,
+  updateStageboxDigitalPort,
+  removeStageboxDigitalPort,
+  describeStageboxSpec,
 } from '../utils/productSpecs'
 import { useProductImage } from '../composables/useProductImage'
 import { api } from '../boot/axios'

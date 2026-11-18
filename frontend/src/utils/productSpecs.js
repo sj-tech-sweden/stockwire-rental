@@ -17,10 +17,17 @@ export const COMMON_CONNECTOR_OPTIONS = [
 ]
 
 export const STAGEWIRE_CONNECTOR_OPTIONS = [
-  'xlr3', 'xlr5', 'trs', 'speakon', 'dante', 'aes50', 'madi', 'avb', 'ethernet',
+  'xlr3', 'xlr5', 'trs', 'speakon', 'dante', 'dsnake', 'aes50', 'madi', 'avb', 'ethernet',
   'ethercon', 'fiber', 'sdi', 'hdmi', 'displayport', 'bnc', 'usb', 'dmx',
   'powercon', 'schuko', 'cee16',
 ]
+
+// Digital transport protocols a stagebox's digital link can carry. This is the stagebox
+// analogue of MIXER_EXPANSION_PROTOCOLS but deliberately excludes console-card types
+// (io_card / option_card / waves / other) — a stagebox link is a point-to-point or network
+// transport, not a console expansion slot. Kept identical to stagewire's digital-connector
+// set so import mapping between the two repos is stable.
+export const STAGEWIRE_STAGEBOX_PROTOCOLS = ['dsnake', 'dante', 'aes50', 'avb', 'madi']
 
 const CONNECTOR_DIRECTIONS = ['in', 'out', 'both']
 const CONNECTOR_SIGNALS = ['audio', 'video', 'dmx', 'power', 'data']
@@ -48,6 +55,10 @@ export const PRODUCT_SPEC_FIELDS = {
   sb_inputs: { labelKey: 'inventory.specInputs', type: 'number', min: 0, step: 1 },
   sb_outputs: { labelKey: 'inventory.specOutputs', type: 'number', min: 0, step: 1 },
   sb_aux: { labelKey: 'inventory.specAux', type: 'number', min: 0, step: 1 },
+  // Structured digital I/O for a stagebox (specs.stagebox.digital_io). Edited by a
+  // dedicated editor because the data is nested (protocol + channels_in/out per port),
+  // mirroring the mixer expansion-ports model but for stageboxes.
+  digital_io: { labelKey: 'inventory.specStageboxDigitalIo', type: 'stagebox_digital_io' },
   // Stagewire connector groups: { connector, direction, count, signal? }.
   connectors: { labelKey: 'inventory.specConnectors', type: 'connectors' },
   // Digital / modular console bus-pool model (specs.mixer.*). Edited by a
@@ -134,7 +145,7 @@ export const PRODUCT_SPEC_GROUPS = [
   {
     key: 'stagebox',
     labelKey: 'inventory.specGroupStagebox',
-    fields: ['sb_inputs', 'sb_outputs', 'sb_aux'],
+    fields: ['sb_inputs', 'sb_outputs', 'sb_aux', 'digital_io'],
   },
   {
     key: 'speaker',
@@ -281,8 +292,14 @@ export function populatedSpecGroups(specs) {
   // non-mixer devices (speakers, distros, cables), so they must not by
   // themselves turn an unrelated product into a mixer.
   const isMixerByContent = ['inputs', 'outputs', 'mixer'].some((f) => s[f] != null && s[f] !== '')
+  // The Stagebox group's structured digital I/O lives under `specs.stagebox`, not as
+  // flat fields, so presence of the block (not the flat `digital_io` key) is what
+  // marks the group populated. Like the mixer case, the flat sb_inputs/outputs/aux
+  // also count.
+  const isStageboxByContent = s.stagebox != null && s.stagebox !== ''
   const groups = PRODUCT_SPEC_GROUPS.filter((group) => {
     if (group.key === 'mixer') return isMixerByContent
+    if (group.key === 'stagebox') return isStageboxByContent
     return group.fields.some((field) => {
       if (field === 'connectors') return getConnectorGroups(s).length > 0
       return s[field] !== undefined && s[field] !== null && s[field] !== ''
@@ -305,7 +322,9 @@ export function productSpecDisplayGroups(specs, translate) {
     fields: group.fields
       .filter((key) => key === 'cam_sensor_width_mm'
         ? cameraSensorWidth !== undefined && cameraSensorWidth !== null && cameraSensorWidth !== ''
-        : values[key] !== undefined && values[key] !== null && values[key] !== '')
+        : PRODUCT_SPEC_FIELDS[key].type === 'stagebox_digital_io'
+          ? !!getStageboxSpec(values)
+          : values[key] !== undefined && values[key] !== null && values[key] !== '')
       .map((key) => ({
         key,
         label: translate(PRODUCT_SPEC_FIELDS[key].labelKey),
@@ -323,7 +342,9 @@ export function productSpecDisplayGroups(specs, translate) {
                 .join(', ')
               : PRODUCT_SPEC_FIELDS[key].type === 'mixer'
                 ? describeMixerSpec(values, translate)
-                : values[key],
+                : PRODUCT_SPEC_FIELDS[key].type === 'stagebox_digital_io'
+                  ? describeStageboxSpec(values, translate)
+                  : values[key],
       })),
   }))
 }
@@ -688,4 +709,105 @@ export function describeMixerSpec(specs, translate) {
   const ports = Array.isArray(m.expansion_ports) ? m.expansion_ports : []
   if (ports.length) parts.push(`${ports.length} ${translate('inventory.specMixerExpansionPortsShort')}`)
   return parts.join(' · ')
+}
+
+// --- Stagebox digital I/O model (specs.stagebox.digital_io) -----------------
+//
+// Models a stagebox's structured digital transport links (dSnake / Dante / AES50 / AVB /
+// MADI), each carrying a separate channels_in / channels_out count. Mirrors the mixer
+// expansion-ports model but for stageboxes: no slots / max_channels (those belong to console
+// cards), just a protocol and its in/out channel capacity. See backend
+// app/domain/inventory/stagebox_spec.py for the matching typed model.
+
+function emptyStageboxSpec() {
+  return { digital_io: [] }
+}
+
+function cloneStagebox(specs) {
+  if (!specs || typeof specs !== 'object') return emptyStageboxSpec()
+  const raw = specs.stagebox
+  if (!raw || typeof raw !== 'object') return emptyStageboxSpec()
+  const s = JSON.parse(JSON.stringify(raw))
+  if (!Array.isArray(s.digital_io)) s.digital_io = []
+  return s
+}
+
+export function getStageboxSpec(specs) {
+  const raw = specs && typeof specs === 'object' ? specs.stagebox : undefined
+  if (!raw || typeof raw !== 'object') return null
+  return raw
+}
+
+export function addStageboxSpec(specs) {
+  if (getStageboxSpec(specs)) return specs || {}
+  return { ...(specs || {}), stagebox: emptyStageboxSpec() }
+}
+
+export function removeStageboxSpec(specs) {
+  const next = { ...(specs || {}) }
+  delete next.stagebox
+  return next
+}
+
+// Applies a mutation to a normalized copy of the stagebox block and writes it back to
+// `specs`, returning a new specs object (never mutates the input).
+function updateStageboxSpec(specs, mutate) {
+  const stagebox = cloneStagebox(specs)
+  mutate(stagebox)
+  return { ...(specs || {}), stagebox }
+}
+
+export function getStageboxDigitalPorts(specs) {
+  const s = getStageboxSpec(specs)
+  return Array.isArray(s?.digital_io) ? s.digital_io : []
+}
+
+function emptyStageboxDigitalPort() {
+  return { protocol: 'dsnake', channels_in: null, channels_out: null, name: '' }
+}
+
+export function addStageboxDigitalPort(specs) {
+  return updateStageboxSpec(specs, (s) => {
+    const ports = Array.isArray(s.digital_io) ? s.digital_io : []
+    ports.push(emptyStageboxDigitalPort())
+    s.digital_io = ports
+  })
+}
+
+export function updateStageboxDigitalPort(specs, index, field, value) {
+  const numericFields = ['channels_in', 'channels_out']
+  // `name` is the optional interface label (e.g. "dSnake", "dSnake Expander"); it is carried
+  // through to stagewire's Port.label so imported products arrive with named channels.
+  if (!['protocol', 'name', ...numericFields].includes(field)) return specs || {}
+  return updateStageboxSpec(specs, (s) => {
+    const ports = Array.isArray(s.digital_io) ? s.digital_io : []
+    if (!ports[index]) return
+    if (numericFields.includes(field)) ports[index][field] = toIntOrNull(value)
+    else ports[index][field] = value
+  })
+}
+
+export function removeStageboxDigitalPort(specs, index) {
+  return updateStageboxSpec(specs, (s) => {
+    const ports = Array.isArray(s.digital_io) ? s.digital_io : []
+    s.digital_io = ports.filter((_, i) => i !== index)
+  })
+}
+
+// Human-readable one-line summary for the read-only display (ProductInfoDialog).
+export function describeStageboxSpec(specs, translate) {
+  const s = getStageboxSpec(specs)
+  if (!s) return ''
+  const ports = Array.isArray(s.digital_io) ? s.digital_io : []
+  if (!ports.length) return ''
+  const detail = ports
+    .map((p) => {
+      const proto = p.protocol || '—'
+      const inC = p.channels_in != null ? `${p.channels_in}in` : ''
+      const outC = p.channels_out != null ? `${p.channels_out}out` : ''
+      const counts = [inC, outC].filter(Boolean).join('/')
+      return counts ? `${proto} ${counts}` : proto
+    })
+    .join(', ')
+  return `${ports.length} ${translate('inventory.specStageboxDigitalIoShort')}: ${detail}`
 }

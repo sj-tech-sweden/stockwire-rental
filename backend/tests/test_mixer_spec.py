@@ -262,3 +262,83 @@ def test_list_products_filters_by_mixer_architecture(client):
     returned_ids = {item["id"] for item in resp.json()["items"]}
     assert digital.json()["id"] in returned_ids
     assert analog.json()["id"] not in returned_ids
+
+
+# ---------------------------------------------------------------------------
+# Stagebox digital I/O on the public device-specs endpoint
+# ---------------------------------------------------------------------------
+
+
+def test_device_specs_includes_stagebox(client):
+    create = client.post(
+        "/api/v1/inventory/products",
+        json={
+            "sku": "AHO-GX4816",
+            "name": "Allen & Heath GX4816",
+            "specs": {
+                "sb_inputs": 48,
+                "sb_outputs": 24,
+                "stagebox": {
+                    "digital_io": [
+                        {"protocol": "dsnake", "channels_in": 48, "channels_out": 24},
+                        {"protocol": "dante", "channels_in": 64, "channels_out": 64},
+                    ]
+                },
+            },
+        },
+    )
+    assert create.status_code in (200, 201), create.text
+    product_id = create.json()["id"]
+
+    resp = client.get(f"/api/v1/stockwire/products/{product_id}/device-specs")
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["inputs"] == 48
+    assert body["outputs"] == 24
+    assert body["stagebox"] == {
+        "digital_io": [
+            {"protocol": "dsnake", "channels_in": 48, "channels_out": 24},
+            {"protocol": "dante", "channels_in": 64, "channels_out": 64},
+        ]
+    }
+
+
+def test_device_specs_stagebox_absent_is_none(client):
+    create = client.post(
+        "/api/v1/inventory/products",
+        json={"sku": "SB-ANALOG", "name": "Analog Stagebox", "specs": {"sb_inputs": 16, "sb_outputs": 4}},
+    )
+    assert create.status_code in (200, 201), create.text
+    product_id = create.json()["id"]
+
+    resp = client.get(f"/api/v1/stockwire/products/{product_id}/device-specs")
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["stagebox"] is None
+
+
+def test_device_specs_preserves_connector_protocol(client):
+    # A connector group with an explicit digital-transport protocol must keep it on
+    # export (e.g. a dSnake link), not infer it from the connector name alone.
+    create = client.post(
+        "/api/v1/inventory/products",
+        json={
+            "sku": "SB-PROTO",
+            "name": "Protocol Stagebox",
+            "specs": {
+                "connectors": [
+                    {"connector": "dante", "direction": "both", "count": 1, "protocol": "dante"},
+                    {"connector": "xlr3", "direction": "in", "count": 8},
+                ]
+            },
+        },
+    )
+    assert create.status_code in (200, 201), create.text
+    product_id = create.json()["id"]
+
+    resp = client.get(f"/api/v1/stockwire/products/{product_id}/device-specs")
+    assert resp.status_code == 200, resp.text
+    groups = resp.json()["connector_groups"]
+    by_connector = {g["connector"]: g for g in groups}
+    assert by_connector["dante"]["protocol"] == "dante"
+    # A connector with no protocol is left without one.
+    assert "protocol" not in by_connector["xlr3"]

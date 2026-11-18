@@ -16,6 +16,7 @@ from app.domain.inventory.models import (
     ProductTypeTranslation,
 )
 from app.domain.inventory.mixer_spec import normalize_mixer_spec
+from app.domain.inventory.stagebox_spec import normalize_stagebox_spec
 from app.domain.inventory.schemas import PublicProductImage, PublicProductRead
 from app.domain.settings.models import AppSetting
 from app.domain.storage.models import AssetFile
@@ -29,6 +30,11 @@ PRODUCT_IMAGE_CATEGORY = "product-image"
 _STAGEWIRE_POWER_INLETS = {"iec_c13", "attached_schuko", "powercon", "cee16", "other"}
 _STAGEWIRE_SIGNALS = {"audio", "video", "dmx", "power", "data"}
 _STAGEWIRE_DIRECTIONS = {"in", "out", "both"}
+# Digital transports a stagebox / mixer digital link can carry. Mirrors the stagewire
+# digital-connector vocabulary so connector-group protocols survive import intact.
+_STAGEWIRE_DIGITAL_PROTOCOLS = frozenset(
+    {"dsnake", "dante", "aes50", "avb", "madi"}
+)
 
 # Fallback labels so the endpoint works even before translations are seeded.
 PRODUCT_TYPE_LABELS: dict[str, dict[str, str]] = {
@@ -289,6 +295,15 @@ def _normalize_stagewire_connector_groups(specs: object) -> list[dict[str, objec
         normalized = {"connector": connector, "direction": direction, "count": count}
         if signal is not None:
             normalized["signal"] = signal
+        # Preserve an explicit digital-transport protocol on the connector group (e.g.
+        # a dSnake/Dante link) rather than inferring it from the connector name alone.
+        # Lenient: any non-empty string is carried through so vendor-specific protocols
+        # are not silently dropped.
+        protocol = entry.get("protocol")
+        if isinstance(protocol, str) and protocol.strip():
+            norm_protocol = protocol.strip().lower()
+            if norm_protocol in _STAGEWIRE_DIGITAL_PROTOCOLS:
+                normalized["protocol"] = norm_protocol
         groups.append(normalized)
     return groups
 
@@ -330,6 +345,16 @@ def _normalize_stagewire_mixer(specs: object) -> dict | None:
     if not isinstance(specs, dict):
         return None
     return normalize_mixer_spec(specs)
+
+
+def _normalize_stagewire_stagebox(specs: object) -> dict | None:
+    """Surface the optional structured ``specs.stagebox`` digital-I/O block.
+
+    Returns a clean dict, or ``None`` when the product has no (valid) stagebox block.
+    """
+    if not isinstance(specs, dict):
+        return None
+    return normalize_stagebox_spec(specs)
 
 
 @router.get("/products", response_model=PaginatedResponse[PublicProductRead])
@@ -436,6 +461,7 @@ def get_stagewire_device_specs(product_id: int, db: Session = Depends(get_db)) -
         "inputs": _normalize_stagewire_inputs(specs),
         "outputs": _normalize_stagewire_outputs(specs),
         "mixer": _normalize_stagewire_mixer(specs),
+        "stagebox": _normalize_stagewire_stagebox(specs),
         "weight_kg": _coerce_float(product.weight_kg),
         "power_watts": _coerce_float(product.power_consumption_watts),
     }
