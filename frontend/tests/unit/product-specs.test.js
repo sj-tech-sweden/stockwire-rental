@@ -18,6 +18,16 @@ import {
   updateConnectorGroup,
   updateFixtureChannelMode,
   withCalculatedCameraSensorWidth,
+  STAGEWIRE_CONNECTOR_OPTIONS,
+  STAGEWIRE_STAGEBOX_PROTOCOLS,
+  getStageboxSpec,
+  addStageboxSpec,
+  removeStageboxSpec,
+  getStageboxDigitalPorts,
+  addStageboxDigitalPort,
+  updateStageboxDigitalPort,
+  removeStageboxDigitalPort,
+  describeStageboxSpec,
 } from '../../src/utils/productSpecs.js'
 
 describe('speaker product specifications', () => {
@@ -240,6 +250,96 @@ describe('speaker product specifications', () => {
           ],
         },
       ])
+    })
+  })
+
+  describe('stagebox digital I/O specifications', () => {
+    it('offers the shared digital-transport vocabulary without console cards', () => {
+      expect(STAGEWIRE_STAGEBOX_PROTOCOLS).toEqual(['dsnake', 'dante', 'aes50', 'avb', 'madi'])
+    })
+
+    it('keeps every stagebox protocol selectable as a connector (R4 vocabulary match)', () => {
+      for (const proto of STAGEWIRE_STAGEBOX_PROTOCOLS) {
+        expect(STAGEWIRE_CONNECTOR_OPTIONS).toContain(proto)
+      }
+      // No console-card types leak into the stagebox vocabulary.
+      expect(STAGEWIRE_STAGEBOX_PROTOCOLS).not.toContain('io_card')
+      expect(STAGEWIRE_STAGEBOX_PROTOCOLS).not.toContain('option_card')
+      expect(STAGEWIRE_STAGEBOX_PROTOCOLS).not.toContain('waves')
+    })
+
+    it('adds, mutates, and removes digital I/O ports', () => {
+      let specs = { sb_inputs: 32 }
+      expect(getStageboxSpec(specs)).toBeNull()
+      // Adding the block does not clobber sibling flat stagebox fields.
+      specs = addStageboxSpec(specs)
+      expect(specs.sb_inputs).toBe(32)
+      expect(getStageboxSpec(specs)).toEqual({ digital_io: [] })
+
+      specs = addStageboxDigitalPort(specs)
+      expect(getStageboxDigitalPorts(specs)).toEqual([
+        { protocol: 'dsnake', channels_in: null, channels_out: null },
+      ])
+
+      specs = updateStageboxDigitalPort(specs, 0, 'channels_in', '48')
+      specs = updateStageboxDigitalPort(specs, 0, 'channels_out', '24')
+      specs = updateStageboxDigitalPort(specs, 0, 'protocol', 'dante')
+      expect(getStageboxDigitalPorts(specs)).toEqual([
+        { protocol: 'dante', channels_in: 48, channels_out: 24 },
+      ])
+
+      // Unknown field is ignored (never mutates).
+      const unchanged = updateStageboxDigitalPort(specs, 0, 'bogus', 'x')
+      expect(unchanged).toEqual(specs)
+
+      specs = removeStageboxDigitalPort(specs, 0)
+      expect(getStageboxDigitalPorts(specs)).toEqual([])
+
+      specs = removeStageboxSpec(specs)
+      expect(getStageboxSpec(specs)).toBeNull()
+      expect(specs.sb_inputs).toBe(32)
+    })
+
+    it('never mutates the input specs object', () => {
+      const original = { stagebox: { digital_io: [] } }
+      const next = addStageboxDigitalPort(original)
+      expect(original.stagebox.digital_io).toEqual([])
+      expect(getStageboxDigitalPorts(next)).toHaveLength(1)
+    })
+
+    it('describes the digital I/O for product info', () => {
+      const translate = (key) => ({
+        'inventory.specStageboxDigitalIoShort': 'links',
+      }[key] || key)
+      const specs = {
+        stagebox: {
+          digital_io: [
+            { protocol: 'dsnake', channels_in: 48, channels_out: 24 },
+            { protocol: 'dante', channels_in: 64, channels_out: 64 },
+          ],
+        },
+      }
+      expect(describeStageboxSpec(specs, translate)).toBe(
+        '2 links: dsnake 48in/24out, dante 64in/64out',
+      )
+      expect(describeStageboxSpec({ sb_inputs: 8 }, translate)).toBe('')
+    })
+
+    it('surfaces the stagebox group in display groups from the structured block alone', () => {
+      const translate = (key) => ({
+        'inventory.specStageboxDigitalIo': 'Digital I/O',
+        'inventory.specStageboxDigitalIoShort': 'links',
+      }[key] || key)
+      const groups = productSpecDisplayGroups({
+        stagebox: { digital_io: [{ protocol: 'dsnake', channels_in: 48, channels_out: 24 }] },
+      }, translate)
+      const stagebox = groups.find((group) => group.key === 'stagebox')
+      expect(stagebox).toBeDefined()
+      expect(stagebox.fields).toContainEqual({
+        key: 'digital_io',
+        label: 'Digital I/O',
+        value: '1 links: dsnake 48in/24out',
+      })
     })
   })
 })
