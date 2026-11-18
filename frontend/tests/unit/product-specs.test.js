@@ -278,14 +278,14 @@ describe('speaker product specifications', () => {
 
       specs = addStageboxDigitalPort(specs)
       expect(getStageboxDigitalPorts(specs)).toEqual([
-        { protocol: 'dsnake', channels_in: null, channels_out: null },
+        { protocol: 'dsnake', channels_in: null, channels_out: null, name: '' },
       ])
 
       specs = updateStageboxDigitalPort(specs, 0, 'channels_in', '48')
       specs = updateStageboxDigitalPort(specs, 0, 'channels_out', '24')
       specs = updateStageboxDigitalPort(specs, 0, 'protocol', 'dante')
       expect(getStageboxDigitalPorts(specs)).toEqual([
-        { protocol: 'dante', channels_in: 48, channels_out: 24 },
+        { protocol: 'dante', channels_in: 48, channels_out: 24, name: '' },
       ])
 
       // Unknown field is ignored (never mutates).
