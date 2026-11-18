@@ -1,5 +1,24 @@
 # Changelog
 
+## [0.33.0](https://github.com/sj-tech-sweden/stockwire-rental/compare/0.32.0...0.33.0) (2026-11-18)
+
+
+### Features
+
+* **deps:** update dependency fastapi to v0.164.0 ([#840](https://github.com/sj-tech-sweden/stockwire-rental/issues/840)) ([ddac430](https://github.com/sj-tech-sweden/stockwire-rental/commit/ddac430f0a3533365c9099f58eefeb5fdbd7918e))
+* **deps:** update dependency openai to &gt;=3.53.0,&lt;3.54.0 ([#834](https://github.com/sj-tech-sweden/stockwire-rental/issues/834)) ([7f32d42](https://github.com/sj-tech-sweden/stockwire-rental/commit/7f32d4209974aeff6cb3056cb524240f2ac89a00))
+* **deps:** update dependency openai to &gt;=3.54.0,&lt;3.55.0 ([#836](https://github.com/sj-tech-sweden/stockwire-rental/issues/836)) ([b0266b2](https://github.com/sj-tech-sweden/stockwire-rental/commit/b0266b2f400fe8c7d581f5d652eeb2f9bcd60997))
+* **deps:** update dependency openai to &gt;=3.55.0,&lt;3.56.0 ([#839](https://github.com/sj-tech-sweden/stockwire-rental/issues/839)) ([78dfbdb](https://github.com/sj-tech-sweden/stockwire-rental/commit/78dfbdbe51dba91c90d2b825177c24d46d246fd5))
+* **inventory:** model digital stageboxes with structured digital I/O (R1-R5) ([#837](https://github.com/sj-tech-sweden/stockwire-rental/issues/837)) ([6b97cb3](https://github.com/sj-tech-sweden/stockwire-rental/commit/6b97cb3e62b47c04a0111b51f1ee0481b5f3017f))
+
+
+### Bug Fixes
+
+* **deps:** update dependency boto3 to v1.44.5 ([#835](https://github.com/sj-tech-sweden/stockwire-rental/issues/835)) ([408252e](https://github.com/sj-tech-sweden/stockwire-rental/commit/408252e512c9a4c98d5457fd7f4e1e86b645824e))
+* **deps:** update dependency fastapi to v0.163.2 ([#833](https://github.com/sj-tech-sweden/stockwire-rental/issues/833)) ([99a4687](https://github.com/sj-tech-sweden/stockwire-rental/commit/99a4687347522ec2ddda9d13dd80229b0846c1a4))
+* **deps:** update dependency vitest to v5.1.1 ([#838](https://github.com/sj-tech-sweden/stockwire-rental/issues/838)) ([f88cc40](https://github.com/sj-tech-sweden/stockwire-rental/commit/f88cc40acead1ef2355b83d81770fc12c713ab49))
+* **deps:** update dependency vue-i18n to v11.4.22 ([#831](https://github.com/sj-tech-sweden/stockwire-rental/issues/831)) ([eb01f66](https://github.com/sj-tech-sweden/stockwire-rental/commit/eb01f66f1183898a8fa3f0a6ed3c92e33292fc88))
+
 ## [0.32.0](https://github.com/sj-tech-sweden/stockwire-rental/compare/0.31.0...0.32.0) (2026-11-17)
 
 
