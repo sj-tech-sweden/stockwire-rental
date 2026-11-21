@@ -1,5 +1,30 @@
 # Changelog
 
+## [0.34.0](https://github.com/sj-tech-sweden/stockwire-rental/compare/0.33.0...0.34.0) (2026-11-21)
+
+
+### ⚠ BREAKING CHANGES
+
+* **deps:** Update postgres Docker tag to v19 ([#851](https://github.com/sj-tech-sweden/stockwire-rental/issues/851))
+* **deps:** Update postgres Docker tag to v19 ([#849](https://github.com/sj-tech-sweden/stockwire-rental/issues/849))
+
+### Features
+
+* **deps:** update dependency fastapi to v0.165.0 ([#842](https://github.com/sj-tech-sweden/stockwire-rental/issues/842)) ([5e68e90](https://github.com/sj-tech-sweden/stockwire-rental/commit/5e68e901906b0e567689e585bd0c7643875f9d42))
+* **deps:** update dependency openai to &gt;=3.57.0,&lt;3.58.0 ([#847](https://github.com/sj-tech-sweden/stockwire-rental/issues/847)) ([aaef008](https://github.com/sj-tech-sweden/stockwire-rental/commit/aaef008d1b7fb87ba0a500c06ccad84605847ebb))
+* **deps:** Update postgres Docker tag to v19 ([#849](https://github.com/sj-tech-sweden/stockwire-rental/issues/849)) ([c9da4a8](https://github.com/sj-tech-sweden/stockwire-rental/commit/c9da4a8db169a16e4aff6598e8d9da89e15b7be5))
+* **deps:** Update postgres Docker tag to v19 ([#851](https://github.com/sj-tech-sweden/stockwire-rental/issues/851)) ([bbf0405](https://github.com/sj-tech-sweden/stockwire-rental/commit/bbf0405993ca4eb751b8bfb5c9492226ed04525a))
+
+
+### Bug Fixes
+
+* **deps:** update dependency boto3 to v1.44.6 ([#841](https://github.com/sj-tech-sweden/stockwire-rental/issues/841)) ([1dc2407](https://github.com/sj-tech-sweden/stockwire-rental/commit/1dc2407ffa09b81131902079ecf62e5b5071e822))
+* **deps:** update dependency boto3 to v1.44.9 ([#846](https://github.com/sj-tech-sweden/stockwire-rental/issues/846)) ([d60e85a](https://github.com/sj-tech-sweden/stockwire-rental/commit/d60e85abf5c7c89aea8c21b06456f1d7b1007952))
+* **deps:** update dependency icalendar to v7.3.2 ([#850](https://github.com/sj-tech-sweden/stockwire-rental/issues/850)) ([64c2fcb](https://github.com/sj-tech-sweden/stockwire-rental/commit/64c2fcb0074eff6ceb3c43ae85b229b4b0d62ffb))
+* **deps:** update dependency ruff to v0.17.6 ([#845](https://github.com/sj-tech-sweden/stockwire-rental/issues/845)) ([010d895](https://github.com/sj-tech-sweden/stockwire-rental/commit/010d895ab2667003cc87d1b36bf74116a61d722d))
+* **deps:** update dependency vue to v3.5.46 ([#848](https://github.com/sj-tech-sweden/stockwire-rental/issues/848)) ([c8b2c4c](https://github.com/sj-tech-sweden/stockwire-rental/commit/c8b2c4c87a66e056c231288bfcfe69708ef7923e))
+* **deps:** update dependency vue-i18n to v11.4.23 ([#844](https://github.com/sj-tech-sweden/stockwire-rental/issues/844)) ([07d9249](https://github.com/sj-tech-sweden/stockwire-rental/commit/07d9249bbb420439d9506f48b5d1c34417667fbe))
+
 ## [0.33.0](https://github.com/sj-tech-sweden/stockwire-rental/compare/0.32.0...0.33.0) (2026-11-18)
 
 
