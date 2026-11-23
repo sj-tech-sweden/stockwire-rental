@@ -22,7 +22,7 @@ dependencies = [
   "redis==8.1.0",
   "structlog==26.1.0",
   "PyJWT[crypto]==2.15.1",
-  "passlib[bcrypt]==1.7.4",
+  "passlib[bcrypt]==1.9.5",
   "python3-saml==1.16.0",
   "python-multipart==0.0.34",
   "httpx==0.28.1",
