@@ -19,7 +19,7 @@ dependencies = [
   "asyncpg==0.32.0",
   "psycopg[binary]==3.3.9",
   "alembic==1.20.1",
-  "redis==8.1.0",
+  "redis==8.2.0",
   "structlog==26.1.0",
   "PyJWT[crypto]==2.15.1",
   "passlib[bcrypt]==1.9.5",
