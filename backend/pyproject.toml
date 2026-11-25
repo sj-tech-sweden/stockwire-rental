@@ -30,7 +30,7 @@ dependencies = [
   "boto3==1.44.10",
   "prometheus-fastapi-instrumentator==8.1.0",
   "icalendar==7.3.2",
-  "openai>=3.58.0,<3.59.0",
+  "openai>=3.59.0,<3.60.0",
   # MCP server exposing the assistant tools to outside agents.
   # v2 high-level API (MCPServer). No upper bound: v3+ allowed; any API drift
   # (e.g. import path / tool() signature) will be fixed when we bump.
